@@ -1,0 +1,216 @@
+/* ── System Settings Page — Admin Portal ── */
+import { apiFetch } from '../api/client.js';
+import { icon, renderIcons } from '../components/icons.js';
+
+const roleBadge = { Admin: 'error', Coordinator: 'info', Staff: 'success' };
+const statusBadge = { Active: 'success', Inactive: 'neutral' };
+
+export default async function SettingsPage(container) {
+  container.innerHTML = `
+    <div class="page-header">
+      <h1 class="page-header__title">${icon('settings', 24)} System Settings</h1>
+      <p class="page-header__subtitle">Academic calendar, user accounts, audit log, and data privacy compliance</p>
+    </div>
+    <div class="tab-bar" id="settings-tabs">
+      <button class="tab-bar__item tab-bar__item--active" data-tab="calendar">Calendar</button>
+      <button class="tab-bar__item" data-tab="users">User Accounts</button>
+      <button class="tab-bar__item" data-tab="audit">Audit Log</button>
+      <button class="tab-bar__item" data-tab="privacy">Data Privacy</button>
+      <button class="tab-bar__item" data-tab="notifications">Notifications</button>
+    </div>
+    <div id="settings-content" style="margin-top:20px;"></div>
+  `;
+  renderIcons();
+
+  const [calendar, users, auditLog] = await Promise.all([
+    apiFetch('/settings/calendar'),
+    apiFetch('/settings/users'),
+    apiFetch('/settings/audit_log'),
+  ]);
+
+  const content = container.querySelector('#settings-content');
+
+  function renderCalendar() {
+    const c = calendar || {};
+    content.innerHTML = `
+      <div class="section-grid">
+        <div class="card">
+          <div class="card__header"><h3 class="card__title">${icon('calendar', 16)} Academic Calendar</h3></div>
+          <div class="card__body">
+            <div class="form-group"><label class="form-label">Academic Year</label><input class="form-input" value="${c.academicYear || ''}" /></div>
+            <div class="form-group"><label class="form-label">Current Semester</label><input class="form-input" value="${c.semester || ''}" /></div>
+            <div class="form-row" style="grid-template-columns:1fr 1fr;">
+              <div class="form-group"><label class="form-label">Semester Start</label><input class="form-input" type="date" value="${c.semStart || ''}" /></div>
+              <div class="form-group"><label class="form-label">Semester End</label><input class="form-input" type="date" value="${c.semEnd || ''}" /></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card__header"><h3 class="card__title">${icon('briefcase', 16)} OJT Period</h3></div>
+          <div class="card__body">
+            <div class="form-row" style="grid-template-columns:1fr 1fr;">
+              <div class="form-group"><label class="form-label">OJT Start</label><input class="form-input" type="date" value="${c.ojtPeriod?.start || ''}" /></div>
+              <div class="form-group"><label class="form-label">OJT End</label><input class="form-input" type="date" value="${c.ojtPeriod?.end || ''}" /></div>
+            </div>
+            <button class="btn btn--primary btn--sm" style="margin-top:12px;">${icon('check', 14)} Save Calendar</button>
+          </div>
+        </div>
+      </div>
+    `;
+    renderIcons();
+  }
+
+  function renderUsers() {
+    const list = users || [];
+    content.innerHTML = `
+      <div class="toolbar">
+        <div class="toolbar__left"><h3 style="margin:0;">User Accounts</h3></div>
+        <div class="toolbar__right"><button class="btn btn--primary btn--sm">${icon('plus', 14)} Add User</button></div>
+      </div>
+      <div class="card">
+        <div class="card__body" style="padding:0;">
+          <table class="data-table">
+            <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Last Login</th><th>Actions</th></tr></thead>
+            <tbody>
+              ${list.map(u => `
+                <tr>
+                  <td style="font-weight:600;">${u.name}</td>
+                  <td>${u.email}</td>
+                  <td><span class="badge badge--${roleBadge[u.role] || 'neutral'}">${u.role}</span></td>
+                  <td><span class="badge badge--${statusBadge[u.status] || 'neutral'}">${u.status}</span></td>
+                  <td style="font-size:0.8rem;color:var(--text-tertiary);">${u.lastLogin}</td>
+                  <td>
+                    <div style="display:flex;gap:4px;">
+                      <button class="btn btn--ghost btn--sm">${icon('edit', 14)}</button>
+                      <button class="btn btn--ghost btn--sm">${icon('trash-2', 14)}</button>
+                    </div>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+    renderIcons();
+  }
+
+  function renderAudit() {
+    const list = auditLog || [];
+    content.innerHTML = `
+      <div class="toolbar">
+        <div class="toolbar__left"><h3 style="margin:0;">${icon('shield', 16)} Audit Log</h3></div>
+        <div class="toolbar__right"><button class="btn btn--outline btn--sm">${icon('download', 14)} Export</button></div>
+      </div>
+      <div class="card">
+        <div class="card__body" style="padding:0;">
+          <table class="data-table">
+            <thead><tr><th>Action</th><th>User</th><th>Target</th><th>Timestamp</th><th>IP</th></tr></thead>
+            <tbody>
+              ${list.map(l => `
+                <tr>
+                  <td style="font-weight:600;">${l.action}</td>
+                  <td>${l.user}</td>
+                  <td style="font-size:0.8rem;">${l.target}</td>
+                  <td style="font-size:0.8rem;color:var(--text-tertiary);">${l.timestamp}</td>
+                  <td style="font-size:0.75rem;font-family:monospace;">${l.ip}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+    renderIcons();
+  }
+
+  function renderPrivacy() {
+    content.innerHTML = `
+      <div class="section-grid">
+        <div class="card">
+          <div class="card__header"><h3 class="card__title">${icon('shield', 16)} RA 10173 Compliance</h3></div>
+          <div class="card__body">
+            <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:16px;">
+              The Data Privacy Act of 2012 (RA 10173) requires institutions to protect personal and sensitive information.
+            </p>
+            <div style="display:flex;flex-direction:column;gap:12px;">
+              ${[
+                { label: 'Data Processing Agreement', done: true },
+                { label: 'Privacy Impact Assessment', done: true },
+                { label: 'Consent Forms Updated', done: true },
+                { label: 'DPO Appointment', done: true },
+                { label: 'Annual Compliance Report', done: false },
+                { label: 'Breach Notification Protocol', done: false },
+              ].map(c => `
+                <div class="checklist-item">
+                  <div class="checklist-item__check${c.done ? ' checklist-item__check--done' : ''}">${c.done ? icon('check', 12) : ''}</div>
+                  <span>${c.label}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card__header"><h3 class="card__title">${icon('eye', 16)} Data Retention</h3></div>
+          <div class="card__body">
+            <div class="form-group"><label class="form-label">Student Records Retention</label><select class="form-select"><option>5 years after graduation</option><option>10 years after graduation</option><option>Indefinite</option></select></div>
+            <div class="form-group"><label class="form-label">Company Records Retention</label><select class="form-select"><option>While MOA active + 3 years</option><option>5 years</option><option>Indefinite</option></select></div>
+            <div class="form-group"><label class="form-label">Audit Logs Retention</label><select class="form-select"><option>1 year</option><option selected>3 years</option><option>5 years</option></select></div>
+            <button class="btn btn--primary btn--sm" style="margin-top:8px;">${icon('check', 14)} Save Policy</button>
+          </div>
+        </div>
+      </div>
+    `;
+    renderIcons();
+  }
+
+  function renderNotifications() {
+    content.innerHTML = `
+      <div class="card">
+        <div class="card__header"><h3 class="card__title">${icon('bell', 16)} Notification Settings</h3></div>
+        <div class="card__body">
+          <div style="display:flex;flex-direction:column;gap:16px;">
+            ${[
+              { label: 'New company registrations', on: true },
+              { label: 'Job posting submissions', on: true },
+              { label: 'Flagged content alerts', on: true },
+              { label: 'MOA expiration warnings (30 days)', on: true },
+              { label: 'OJT completion notifications', on: false },
+              { label: 'Weekly summary digest', on: false },
+              { label: 'System maintenance alerts', on: true },
+            ].map(n => `
+              <div class="toggle">
+                <div class="toggle__track${n.on ? ' toggle__track--on' : ''}"><div class="toggle__thumb"></div></div>
+                <span class="toggle__label">${n.label}</span>
+              </div>
+            `).join('')}
+          </div>
+          <button class="btn btn--primary btn--sm" style="margin-top:20px;">${icon('check', 14)} Save Preferences</button>
+        </div>
+      </div>
+    `;
+    renderIcons();
+
+    content.querySelectorAll('.toggle').forEach(toggle => {
+      toggle.addEventListener('click', () => {
+        const track = toggle.querySelector('.toggle__track');
+        track.classList.toggle('toggle__track--on');
+      });
+    });
+  }
+
+  renderCalendar();
+
+  container.querySelector('#settings-tabs').addEventListener('click', e => {
+    const t = e.target.closest('[data-tab]');
+    if (!t) return;
+    container.querySelectorAll('.tab-bar__item').forEach(i => i.classList.remove('tab-bar__item--active'));
+    t.classList.add('tab-bar__item--active');
+    const tab = t.dataset.tab;
+    if (tab === 'calendar') renderCalendar();
+    else if (tab === 'users') renderUsers();
+    else if (tab === 'audit') renderAudit();
+    else if (tab === 'privacy') renderPrivacy();
+    else renderNotifications();
+  });
+}

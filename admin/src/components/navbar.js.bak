@@ -1,0 +1,80 @@
+/* ── Navbar — Admin Portal ── */
+import { getState, setState, subscribe } from '../store.js';
+import { navigateTo } from '../router.js';
+import { icon, renderIcons } from './icons.js';
+
+const tabs = [
+  { path: '/', icon: 'home', label: 'Home' },
+  { path: '/students', icon: 'users', label: 'Students' },
+  { path: '/companies', icon: 'building-2', label: 'Companies' },
+  { path: '/ojt', icon: 'briefcase', label: 'OJT' },
+  { path: '/jobs', icon: 'clipboard-check', label: 'Jobs' },
+  { path: '/matching', icon: 'target', label: 'Matching' },
+  { path: '/reports', icon: 'bar-chart-3', label: 'Reports' },
+  { path: '/settings', icon: 'settings', label: 'Settings' },
+];
+
+function getActive() {
+  const h = window.location.hash.slice(1) || '/';
+  return h;
+}
+
+export function initNavbar() {
+  const navbar = document.getElementById('navbar');
+  if (!navbar) return;
+
+  const user = getState('user');
+  const theme = getState('ui.theme');
+
+  navbar.innerHTML = `
+    <nav class="navbar">
+      <div class="navbar__inner">
+        <div class="navbar__left">
+          <div class="navbar__logo" data-nav="/">
+            <div class="navbar__logo-icon">H</div>
+            <span class="navbar__logo-text">HireMe</span>
+            <span class="navbar__logo-badge">ADMIN</span>
+          </div>
+        </div>
+        <div class="navbar__center">
+          ${tabs.map(t => `
+            <button class="navbar__tab${getActive() === t.path ? ' navbar__tab--active' : ''}" data-nav="${t.path}" title="${t.label}">
+              ${icon(t.icon, 18)}
+              <div class="navbar__tab-indicator"></div>
+            </button>
+          `).join('')}
+        </div>
+        <div class="navbar__right">
+          <button class="navbar__action-btn" id="theme-toggle" title="Toggle theme">
+            ${icon(theme === 'dark' ? 'sun' : 'moon', 18)}
+          </button>
+          <button class="navbar__action-btn" title="Notifications">
+            ${icon('bell', 18)}
+          </button>
+          <div class="navbar__avatar" title="${user.name}">${user.initials}</div>
+        </div>
+      </div>
+    </nav>
+  `;
+
+  renderIcons();
+
+  navbar.querySelectorAll('[data-nav]').forEach(el => {
+    el.addEventListener('click', () => navigateTo(el.dataset.nav));
+  });
+
+  document.getElementById('theme-toggle')?.addEventListener('click', () => {
+    const next = getState('ui.theme') === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('admin-theme', next);
+    setState('ui.theme', next);
+    initNavbar();
+  });
+
+  window.addEventListener('hashchange', () => {
+    navbar.querySelectorAll('.navbar__tab').forEach(tab => {
+      const path = tab.dataset.nav;
+      tab.classList.toggle('navbar__tab--active', getActive() === path);
+    });
+  });
+}

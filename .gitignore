@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+vendor/
+hireme-api/vendor/
+hireme-api/node_modules/
+
+# Production builds
+dist/
+build/
+hireme-api/public/build/
+hireme-api/public/hot/
+hireme-api/public/storage/
+
+# Environment files and credentials (PROTECT SECRETS)
+.env
+.env.*
+!.env.example
+auth.json
+
+# Logs and databases
+*.log
+storage/*.key
+hireme-api/storage/*.key
+hireme-api/storage/logs/*.log
+hireme-api/storage/framework/cache/*
+hireme-api/storage/framework/sessions/*
+hireme-api/storage/framework/views/*
+!hireme-api/storage/framework/cache/.gitignore
+!hireme-api/storage/framework/sessions/.gitignore
+!hireme-api/storage/framework/views/.gitignore
+
+# Cache and testing
+.phpunit.result.cache
+.phpunit.cache/
+.phpactor.json
+hireme-api/.phpunit.result.cache
+
+# IDE and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

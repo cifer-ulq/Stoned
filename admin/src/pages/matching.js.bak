@@ -1,0 +1,158 @@
+/* ── Matching & Scoring Page — Admin Portal ── */
+import { apiFetch } from '../api/client.js';
+import { icon, renderIcons } from '../components/icons.js';
+
+export default async function MatchingPage(container) {
+  container.innerHTML = `
+    <div class="page-header">
+      <h1 class="page-header__title">${icon('target', 24)} Matching & Scoring</h1>
+      <p class="page-header__subtitle">Configure scoring weights, skill taxonomy, and course-to-job alignment</p>
+    </div>
+    <div class="tab-bar" id="match-tabs">
+      <button class="tab-bar__item tab-bar__item--active" data-tab="weights">Weight Config</button>
+      <button class="tab-bar__item" data-tab="taxonomy">Skill Taxonomy</button>
+      <button class="tab-bar__item" data-tab="alignment">Course Alignment</button>
+    </div>
+    <div id="match-content" style="margin-top:20px;"></div>
+  `;
+  renderIcons();
+
+  const [config, taxonomy, alignment] = await Promise.all([
+    apiFetch('/matching/config'),
+    apiFetch('/skill/taxonomy'),
+    apiFetch('/course/alignment'),
+  ]);
+
+  const content = container.querySelector('#match-content');
+
+  function renderWeights() {
+    const w = config?.weights || { academic: 35, skills: 35, ojtEvaluation: 30 };
+    const factors = {
+      Academic: config?.academicFactors || [],
+      Skills: config?.skillsFactors || [],
+      'OJT Evaluation': config?.ojtFactors || [],
+    };
+
+    content.innerHTML = `
+      <div class="section-grid">
+        <div class="card">
+          <div class="card__header"><h3 class="card__title">${icon('sliders', 16)} Main Weights</h3></div>
+          <div class="card__body">
+            <p style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:16px;">
+              Adjust the relative importance of each scoring dimension. Total must equal 100%.
+            </p>
+            ${[
+              { key: 'academic', label: 'Academic Performance', value: w.academic },
+              { key: 'skills', label: 'Skills Match', value: w.skills },
+              { key: 'ojtEvaluation', label: 'OJT Evaluation', value: w.ojtEvaluation },
+            ].map(s => `
+              <div class="weight-row">
+                <div class="weight-row__label">${s.label}</div>
+                <div class="weight-row__slider"><input type="range" min="0" max="100" value="${s.value}" data-key="${s.key}" class="weight-slider" /></div>
+                <div class="weight-row__value" id="val-${s.key}">${s.value}%</div>
+              </div>
+            `).join('')}
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;padding-top:12px;border-top:1px solid var(--border-default);">
+              <span style="font-size:0.8rem;font-weight:600;">Total: <span id="total-weight">${w.academic + w.skills + w.ojtEvaluation}%</span></span>
+              <button class="btn btn--primary btn--sm">${icon('check', 14)} Save Weights</button>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card__header"><h3 class="card__title">${icon('layers', 16)} Sub-Factors</h3></div>
+          <div class="card__body">
+            ${Object.entries(factors).map(([cat, items]) => `
+              <h4 style="font-size:0.8rem;font-weight:600;margin:12px 0 8px;color:var(--text-secondary);">${cat}</h4>
+              ${items.map(f => `
+                <div style="display:flex;justify-content:space-between;font-size:0.8rem;padding:4px 0;">
+                  <span>${f.name}</span><span style="font-weight:600;">${f.weight}%</span>
+                </div>
+              `).join('')}
+            `).join('')}
+          </div>
+        </div>
+      </div>
+    `;
+    renderIcons();
+
+    content.querySelectorAll('.weight-slider').forEach(slider => {
+      slider.addEventListener('input', () => {
+        container.querySelector(`#val-${slider.dataset.key}`).textContent = slider.value + '%';
+        const total = Array.from(content.querySelectorAll('.weight-slider')).reduce((s, sl) => s + parseInt(sl.value), 0);
+        const totalEl = container.querySelector('#total-weight');
+        totalEl.textContent = total + '%';
+        totalEl.style.color = total === 100 ? 'var(--color-success)' : 'var(--color-error)';
+      });
+    });
+  }
+
+  function renderTaxonomy() {
+    const cats = taxonomy || [];
+    content.innerHTML = `
+      <div class="toolbar">
+        <div class="toolbar__left">
+          <div class="search-box"><span class="search-box__icon">${icon('search', 16)}</span><input class="search-box__input" placeholder="Search skills..." id="skill-search" /></div>
+        </div>
+        <div class="toolbar__right">
+          <button class="btn btn--primary btn--sm">${icon('plus', 14)} Add Category</button>
+        </div>
+      </div>
+      <div class="entity-grid">
+        ${cats.map(c => `
+          <div class="card">
+            <div class="card__header">
+              <h3 class="card__title">${c.category}</h3>
+              <span class="badge badge--neutral">${c.skills.length} skills</span>
+            </div>
+            <div class="card__body">
+              <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                ${c.skills.map(s => `<span class="skill-tag skill-tag--primary">${s}</span>`).join('')}
+              </div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+    renderIcons();
+  }
+
+  function renderAlignment() {
+    const items = alignment || [];
+    content.innerHTML = `
+      <div class="card">
+        <div class="card__header"><h3 class="card__title">${icon('book-open', 16)} Course-to-Job Alignment</h3></div>
+        <div class="card__body" style="padding:0;">
+          <table class="data-table">
+            <thead><tr><th>Program</th><th>Top Job Matches</th></tr></thead>
+            <tbody>
+              ${items.map(a => `
+                <tr>
+                  <td style="font-weight:600;">${a.program}</td>
+                  <td>
+                    <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                      ${a.topMatches.map(m => `<span class="badge badge--info">${m}</span>`).join('')}
+                    </div>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+    renderIcons();
+  }
+
+  renderWeights();
+
+  container.querySelector('#match-tabs').addEventListener('click', e => {
+    const t = e.target.closest('[data-tab]');
+    if (!t) return;
+    container.querySelectorAll('.tab-bar__item').forEach(i => i.classList.remove('tab-bar__item--active'));
+    t.classList.add('tab-bar__item--active');
+    const tab = t.dataset.tab;
+    if (tab === 'weights') renderWeights();
+    else if (tab === 'taxonomy') renderTaxonomy();
+    else renderAlignment();
+  });
+}

@@ -1,0 +1,132 @@
+/* ── Dashboard Page — Admin Portal ── */
+import { apiFetch } from '../api/client.js';
+import { icon, renderIcons } from '../components/icons.js';
+
+const statIcons = [
+  { key: 'totalStudents', label: 'Total Students', ic: 'users', color: 'var(--color-primary)' },
+  { key: 'activeCompanies', label: 'Partner Companies', ic: 'building-2', color: 'var(--color-success)' },
+  { key: 'activePostings', label: 'Active Postings', ic: 'clipboard-check', color: 'var(--color-info)' },
+  { key: 'ojtDeployed', label: 'OJT Deployed', ic: 'briefcase', color: 'var(--color-warning)' },
+  { key: 'graduatesPlaced', label: 'Graduates Placed', ic: 'award', color: '#8B5CF6' },
+  { key: 'pendingApprovals', label: 'Pending Approvals', ic: 'clock', color: 'var(--color-error)' },
+];
+
+function num(n) { return (n || 0).toLocaleString(); }
+
+function renderBar(data) {
+  if (!data || !data.length) return '';
+  const maxVal = 100;
+  return `<div style="display:flex;align-items:flex-end;gap:6px;height:120px;padding-top:8px;">
+    ${data.map(d => `
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+        <div style="width:100%;display:flex;flex-direction:column;gap:2px;height:100px;justify-content:flex-end;">
+          <div style="height:${d.employed}%;background:var(--color-success);border-radius:3px 3px 0 0;min-height:2px;" title="Employed ${d.employed}%"></div>
+          <div style="height:${d.underemployed}%;background:var(--color-warning);min-height:2px;" title="Underemployed ${d.underemployed}%"></div>
+          <div style="height:${d.unemployed}%;background:var(--color-error);border-radius:0 0 3px 3px;min-height:2px;" title="Unemployed ${d.unemployed}%"></div>
+        </div>
+        <span style="font-size:0.65rem;color:var(--text-tertiary);">${d.year}</span>
+      </div>
+    `).join('')}
+  </div>
+  <div style="display:flex;gap:12px;margin-top:12px;font-size:0.7rem;">
+    <span style="display:flex;align-items:center;gap:4px;"><span style="width:8px;height:8px;border-radius:2px;background:var(--color-success);"></span> Employed</span>
+    <span style="display:flex;align-items:center;gap:4px;"><span style="width:8px;height:8px;border-radius:2px;background:var(--color-warning);"></span> Underemployed</span>
+    <span style="display:flex;align-items:center;gap:4px;"><span style="width:8px;height:8px;border-radius:2px;background:var(--color-error);"></span> Unemployed</span>
+  </div>`;
+}
+
+function renderDonut(match) {
+  if (!match) return '';
+  const total = match.matchRate + match.partialMatch + match.mismatch;
+  return `
+    <div style="display:flex;align-items:center;gap:24px;">
+      <div style="position:relative;width:100px;height:100px;">
+        <svg viewBox="0 0 36 36" style="width:100%;height:100%;">
+          <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--bg-tertiary)" stroke-width="3"/>
+          <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--color-success)" stroke-width="3"
+            stroke-dasharray="${match.matchRate} ${100 - match.matchRate}" stroke-dashoffset="25" stroke-linecap="round"/>
+          <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--color-warning)" stroke-width="3"
+            stroke-dasharray="${match.partialMatch} ${100 - match.partialMatch}" stroke-dashoffset="${25 - match.matchRate}" stroke-linecap="round"/>
+        </svg>
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;">
+          <span style="font-size:1.1rem;font-weight:700;">${match.matchRate}%</span>
+          <span style="font-size:0.6rem;color:var(--text-tertiary);">Match</span>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;font-size:0.75rem;">
+        <div style="display:flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:var(--color-success);"></span> Matched — ${match.matchRate}%</div>
+        <div style="display:flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:var(--color-warning);"></span> Partial — ${match.partialMatch}%</div>
+        <div style="display:flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:var(--color-error);"></span> Mismatch — ${match.mismatch}%</div>
+      </div>
+    </div>`;
+}
+
+function renderOjtBar(ojt) {
+  if (!ojt) return '';
+  return `
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      ${[
+        { label: 'On Track', value: ojt.onTrack, total: ojt.total, color: 'var(--color-success)' },
+        { label: 'Delayed', value: ojt.delayed, total: ojt.total, color: 'var(--color-warning)' },
+        { label: 'Completed', value: ojt.completed, total: ojt.total, color: 'var(--color-info)' },
+      ].map(r => `
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:0.75rem;margin-bottom:4px;">
+            <span>${r.label}</span><span style="font-weight:600;">${r.value} / ${r.total}</span>
+          </div>
+          <div class="progress-bar"><div class="progress-bar__fill" style="width:${Math.round(r.value / r.total * 100)}%;background:${r.color};"></div></div>
+        </div>
+      `).join('')}
+    </div>`;
+}
+
+export default async function DashboardPage(container) {
+  container.innerHTML = `<div class="page-header"><h1 class="page-header__title">${icon('home', 24)} Dashboard</h1><p class="page-header__subtitle">CIER Admin Overview — at a glance</p></div><div class="stats-grid stats-grid--6 anim-stagger"></div><div class="dash-panels"></div>`;
+
+  const [stats, chart, mismatch, ojt] = await Promise.all([
+    apiFetch('/dashboard/stats'),
+    apiFetch('/dashboard/employment_chart'),
+    apiFetch('/dashboard/mismatch'),
+    apiFetch('/dashboard/ojt_status'),
+  ]);
+
+  const grid = container.querySelector('.stats-grid');
+  grid.innerHTML = statIcons.map(s => `
+    <div class="stat-card anim-fade-in-up">
+      <div class="stat-card__icon" style="background:${s.color}20;color:${s.color}">${icon(s.ic, 22)}</div>
+      <div class="stat-card__body">
+        <div class="stat-card__value">${num(stats?.[s.key])}</div>
+        <div class="stat-card__label">${s.label}</div>
+      </div>
+    </div>
+  `).join('');
+
+  const panels = container.querySelector('.dash-panels');
+  panels.innerHTML = `
+    <div class="card anim-fade-in-up">
+      <div class="card__header"><h3 class="card__title">${icon('trending-up', 16)} Employment Outcomes</h3></div>
+      <div class="card__body">${renderBar(chart)}</div>
+    </div>
+    <div class="card anim-fade-in-up">
+      <div class="card__header"><h3 class="card__title">${icon('target', 16)} Skills-Job Mismatch</h3></div>
+      <div class="card__body">${renderDonut(mismatch)}</div>
+    </div>
+    <div class="card anim-fade-in-up">
+      <div class="card__header"><h3 class="card__title">${icon('briefcase', 16)} OJT Status</h3></div>
+      <div class="card__body">${renderOjtBar(ojt)}</div>
+    </div>
+    <div class="card anim-fade-in-up">
+      <div class="card__header"><h3 class="card__title">${icon('activity', 16)} System Health</h3></div>
+      <div class="card__body">
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div style="display:flex;justify-content:space-between;font-size:0.8rem;"><span>API Uptime</span><span class="badge badge--success">99.8%</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:0.8rem;"><span>Active Sessions</span><span style="font-weight:600;">34</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:0.8rem;"><span>Data Freshness</span><span class="badge badge--info">Live</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:0.8rem;"><span>Last Backup</span><span style="color:var(--text-tertiary);">2 hrs ago</span></div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  renderIcons();
+}

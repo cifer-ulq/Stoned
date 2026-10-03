@@ -1,0 +1,254 @@
+﻿/* CHMSU HireMe — Admin Login — Minimal */
+
+/* ══ ROOT ══ */
+.al-root {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-primary);
+  position: relative;
+  overflow: hidden;
+  font-family: var(--font-body);
+}
+
+/* Subtle background mesh */
+.al-root::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 60% 50% at 20% 20%, rgba(0,89,48,0.07) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 50% at 80% 80%, rgba(0,89,48,0.06) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+/* ══ CARD ══ */
+.al-card {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  margin: 1.5rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: 16px;
+  padding: 2.5rem 2.25rem 2rem;
+  box-shadow: 0 4px 32px rgba(26,26,46,0.08), 0 1px 4px rgba(26,26,46,0.04);
+}
+
+[data-theme="dark"] .al-card {
+  box-shadow: 0 4px 32px rgba(0,0,0,0.4), 0 1px 4px rgba(0,0,0,0.2);
+}
+
+/* ══ THEME TOGGLE ══ */
+.al-theme-toggle {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-default);
+  color: var(--text-secondary);
+  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.al-theme-toggle:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+/* ══ BADGE ══ */
+.al-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: var(--color-primary-bg-strong);
+  color: var(--color-primary);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 999px;
+  margin-bottom: 1.5rem;
+}
+.al-badge__dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--color-primary);
+}
+
+/* ══ HEADER ══ */
+.al-header {
+  margin-bottom: 1.75rem;
+}
+.al-logo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.al-logo__mark {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #005930, #1A7A4A);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 1rem;
+  font-family: var(--font-heading);
+}
+.al-logo__text {
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--text-primary);
+  font-family: var(--font-heading);
+}
+.al-logo__text span { color: var(--color-primary); }
+
+.al-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 0.3rem;
+  font-family: var(--font-heading);
+  line-height: 1.25;
+}
+.al-subtitle {
+  font-size: 0.825rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* ══ FORM FIELDS ══ */
+.al-form { display: flex; flex-direction: column; gap: 1rem; }
+
+.al-field { display: flex; flex-direction: column; gap: 0.3rem; }
+.al-field__label {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  letter-spacing: 0.01em;
+}
+.al-field__wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border: 1.5px solid var(--border-default);
+  border-radius: 10px;
+  background: var(--bg-primary);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.al-field__wrap:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-bg);
+}
+.al-field__wrap--error {
+  border-color: var(--color-error) !important;
+  box-shadow: 0 0 0 3px var(--color-error-bg) !important;
+}
+.al-field__icon {
+  display: flex;
+  align-items: center;
+  padding: 0 0.75rem;
+  color: var(--text-tertiary);
+  pointer-events: none;
+  flex-shrink: 0;
+}
+.al-field__input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  padding: 0.65rem 0.75rem 0.65rem 0;
+  outline: none;
+}
+.al-field__input::placeholder { color: var(--text-tertiary); }
+.al-field__toggle {
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: 0 0.75rem;
+  display: flex;
+  align-items: center;
+  transition: color 0.2s;
+}
+.al-field__toggle:hover { color: var(--text-primary); }
+.al-field__error {
+  font-size: 0.75rem;
+  color: var(--color-error);
+  min-height: 0;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.2s;
+}
+.al-field__error--visible { max-height: 2rem; }
+
+/* ══ SUBMIT ══ */
+.al-submit {
+  margin-top: 0.5rem;
+  width: 100%;
+  padding: 0.75rem;
+  background: linear-gradient(135deg, #005930, #1A7A4A);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.01em;
+  transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
+  box-shadow: 0 4px 14px rgba(0,89,48,0.35);
+}
+.al-submit:hover:not(:disabled) {
+  opacity: 0.92;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(0,89,48,0.45);
+}
+.al-submit:active:not(:disabled) { transform: translateY(0); }
+.al-submit:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+/* Spinner */
+.al-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255,255,255,0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: alSpin 0.6s linear infinite;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+@keyframes alSpin { to { transform: rotate(360deg); } }
+
+/* ══ FOOTER ══ */
+.al-footer {
+  margin-top: 1.5rem;
+  text-align: center;
+  font-size: 0.72rem;
+  color: var(--text-tertiary);
+}
+.al-footer a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+.al-footer a:hover { text-decoration: underline; }
+
+/* ══ RESPONSIVE ══ */
+@media (max-width: 480px) {
+  .al-card { padding: 2rem 1.5rem 1.75rem; }
+}

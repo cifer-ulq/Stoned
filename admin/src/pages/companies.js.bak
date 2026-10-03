@@ -1,0 +1,155 @@
+/* ── Companies Page — Admin Portal ── */
+import { apiFetch } from '../api/client.js';
+import { icon, renderIcons } from '../components/icons.js';
+
+const statusBadge = { Verified: 'success', Pending: 'warning', Suspended: 'error' };
+const moaBadge = { Active: 'success', Pending: 'warning', Expiring: 'error', Expired: 'error' };
+
+function showModal(c, container) {
+  const existing = container.querySelector('.modal-backdrop');
+  if (existing) existing.remove();
+
+  const pct = c.ojtSlots > 0 ? Math.round((c.slotsUsed / c.ojtSlots) * 100) : 0;
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+  backdrop.innerHTML = `
+    <div class="modal" style="max-width:640px;">
+      <div class="modal__header">
+        <h3 class="modal__title">${icon('building-2', 18)} Company Profile</h3>
+        <button class="modal__close" id="modal-close">${icon('x', 18)}</button>
+      </div>
+      <div class="modal__body">
+        <h3 style="margin:0 0 2px;font-size:1.1rem;">${c.name}</h3>
+        <p style="margin:0 0 16px;font-size:0.8rem;color:var(--text-secondary);">${c.industry} — ${c.address}</p>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
+          <div style="background:var(--bg-secondary);border-radius:var(--radius-md);padding:12px;">
+            <div style="font-size:0.7rem;color:var(--text-tertiary);margin-bottom:4px;">Status</div>
+            <span class="badge badge--${statusBadge[c.status] || 'neutral'}">${c.status}</span>
+          </div>
+          <div style="background:var(--bg-secondary);border-radius:var(--radius-md);padding:12px;">
+            <div style="font-size:0.7rem;color:var(--text-tertiary);margin-bottom:4px;">MOA</div>
+            <span class="badge badge--${moaBadge[c.moaStatus] || 'neutral'}">${c.moaStatus}</span>
+            ${c.moaExpiry ? `<span style="font-size:0.7rem;color:var(--text-tertiary);margin-left:8px;">Exp: ${c.moaExpiry}</span>` : ''}
+          </div>
+          <div style="background:var(--bg-secondary);border-radius:var(--radius-md);padding:12px;">
+            <div style="font-size:0.7rem;color:var(--text-tertiary);margin-bottom:4px;">OJT Slots</div>
+            <div style="font-size:1.1rem;font-weight:700;">${c.slotsUsed}/${c.ojtSlots}</div>
+            <div class="progress-bar" style="margin-top:6px;"><div class="progress-bar__fill" style="width:${pct}%;background:var(--color-primary);"></div></div>
+          </div>
+          <div style="background:var(--bg-secondary);border-radius:var(--radius-md);padding:12px;">
+            <div style="font-size:0.7rem;color:var(--text-tertiary);margin-bottom:4px;">Job Postings</div>
+            <div style="font-size:1.1rem;font-weight:700;">${c.jobPostings}</div>
+          </div>
+        </div>
+
+        <h4 style="font-size:0.85rem;margin-bottom:8px;">${icon('file-text', 14)} Documents</h4>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;">
+          ${c.documents.length ? c.documents.map(d => `<span class="badge badge--info">${icon('check', 10)} ${d}</span>`).join('') : '<span class="badge badge--neutral">No documents</span>'}
+        </div>
+
+        <h4 style="font-size:0.85rem;margin-bottom:8px;">${icon('users', 14)} Contact</h4>
+        <div style="font-size:0.8rem;color:var(--text-secondary);display:flex;flex-direction:column;gap:4px;">
+          <span>${c.contactPerson}</span>
+          <span>${c.email}</span>
+          <span>${c.phone}</span>
+        </div>
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn--outline btn--sm" id="modal-cancel">Close</button>
+        ${c.status === 'Pending' ? `<button class="btn btn--success btn--sm">${icon('check', 14)} Approve</button><button class="btn btn--error btn--sm">${icon('x', 14)} Reject</button>` : `<button class="btn btn--primary btn--sm">${icon('edit', 14)} Edit</button>`}
+      </div>
+    </div>
+  `;
+
+  container.appendChild(backdrop);
+  renderIcons();
+
+  const close = () => backdrop.remove();
+  backdrop.querySelector('#modal-close').addEventListener('click', close);
+  backdrop.querySelector('#modal-cancel').addEventListener('click', close);
+  backdrop.addEventListener('click', e => { if (e.target === backdrop) close(); });
+}
+
+export default async function CompaniesPage(container) {
+  container.innerHTML = `
+    <div class="page-header">
+      <h1 class="page-header__title">${icon('building-2', 24)} Companies</h1>
+      <p class="page-header__subtitle">Industry partner management — verification, MOA tracking, OJT slots</p>
+    </div>
+    <div class="tab-bar" id="company-tabs">
+      <button class="tab-bar__item tab-bar__item--active" data-tab="all">All Companies</button>
+      <button class="tab-bar__item" data-tab="pending">Pending Approval</button>
+      <button class="tab-bar__item" data-tab="expiring">MOA Expiring</button>
+    </div>
+    <div class="toolbar" style="margin-top:16px;">
+      <div class="toolbar__left">
+        <div class="search-box"><span class="search-box__icon">${icon('search', 16)}</span><input class="search-box__input" id="comp-search" placeholder="Search companies..." /></div>
+      </div>
+      <div class="toolbar__right">
+        <button class="btn btn--primary btn--sm">${icon('plus', 14)} Register Company</button>
+      </div>
+    </div>
+    <div id="companies-grid" class="entity-grid anim-stagger"></div>
+  `;
+
+  renderIcons();
+
+  const companies = await apiFetch('/companies') || [];
+  const grid = container.querySelector('#companies-grid');
+  let activeTab = 'all';
+
+  function render(list) {
+    grid.innerHTML = list.map(c => `
+      <div class="entity-card anim-fade-in-up" data-id="${c.id}">
+        <div class="entity-card__header">
+          <div class="entity-card__avatar" style="background:linear-gradient(135deg,var(--color-success),#0d9488);">${c.name[0]}</div>
+          <div class="entity-card__info">
+            <p class="entity-card__name">${c.name}</p>
+            <p class="entity-card__sub">${c.industry}</p>
+          </div>
+          <span class="badge badge--${statusBadge[c.status] || 'neutral'}">${c.status}</span>
+        </div>
+        <div class="entity-card__meta">
+          <span>${icon('file-text', 12)} MOA: <span class="badge badge--${moaBadge[c.moaStatus] || 'neutral'}" style="font-size:0.65rem;">${c.moaStatus}</span></span>
+          <span>${icon('briefcase', 12)} ${c.slotsUsed}/${c.ojtSlots} OJT slots</span>
+          <span>${icon('clipboard-check', 12)} ${c.jobPostings} postings</span>
+        </div>
+        <div class="entity-card__actions">
+          <button class="btn btn--ghost btn--sm view-btn" data-id="${c.id}">${icon('eye', 14)} View</button>
+          ${c.status === 'Pending' ? `<button class="btn btn--success btn--sm">${icon('check', 14)} Approve</button>` : ''}
+        </div>
+      </div>
+    `).join('');
+    renderIcons();
+
+    grid.querySelectorAll('.view-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const co = list.find(c => c.id === btn.dataset.id);
+        if (co) showModal(co, container);
+      });
+    });
+  }
+
+  function applyFilters() {
+    const q = container.querySelector('#comp-search').value.toLowerCase();
+    let list = companies;
+    if (activeTab === 'pending') list = list.filter(c => c.status === 'Pending');
+    else if (activeTab === 'expiring') list = list.filter(c => c.moaStatus === 'Expiring');
+    if (q) list = list.filter(c => c.name.toLowerCase().includes(q) || c.industry.toLowerCase().includes(q));
+    render(list);
+  }
+
+  render(companies);
+
+  container.querySelector('#company-tabs').addEventListener('click', e => {
+    const tab = e.target.closest('[data-tab]');
+    if (!tab) return;
+    container.querySelectorAll('.tab-bar__item').forEach(t => t.classList.remove('tab-bar__item--active'));
+    tab.classList.add('tab-bar__item--active');
+    activeTab = tab.dataset.tab;
+    applyFilters();
+  });
+
+  container.querySelector('#comp-search').addEventListener('input', applyFilters);
+}

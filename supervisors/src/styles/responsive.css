@@ -1,0 +1,63 @@
+﻿/* ===========================
+   Responsive — Supervisor Portal
+   =========================== */
+
+@media (max-width: 1200px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .map-layout {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+  .map-container #map {
+    min-height: 400px;
+  }
+}
+
+@media (max-width: 900px) {
+  .sidebar-left {
+    display: none;
+  }
+  .layout__center {
+    margin-left: 0;
+    padding: var(--space-4) var(--space-3);
+  }
+  .mobile-menu-btn {
+    display: flex;
+  }
+  .sidebar-left--open {
+    display: flex;
+    z-index: var(--z-modal);
+  }
+  .navbar__center {
+    display: none;
+  }
+  .navbar__left {
+    width: auto;
+  }
+  .navbar__right {
+    width: auto;
+  }
+  .trainee-grid {
+    grid-template-columns: 1fr;
+  }
+  .eval-grid {
+    grid-template-columns: 1fr;
+  }
+  .reports-grid {
+    grid-template-columns: 1fr;
+  }
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+  .page-header__title {
+    font-size: var(--text-xl);
+  }
+}

@@ -1,0 +1,183 @@
+/* ── OJT Management Page — Admin Portal ── */
+import { apiFetch } from '../api/client.js';
+import { icon, renderIcons } from '../components/icons.js';
+
+const statusColors = { 'On Track': 'success', 'Delayed': 'warning', 'Completed': 'info' };
+
+const docLabels = {
+  endorsementLetter: 'Endorsement Letter',
+  parentConsent: 'Parent Consent',
+  medicalCert: 'Medical Certificate',
+  insurance: 'Insurance',
+  dailyLog: 'Daily Log',
+  completionReport: 'Completion Report',
+};
+
+function showDeployModal(d, container) {
+  const existing = container.querySelector('.modal-backdrop');
+  if (existing) existing.remove();
+  const pct = Math.round((d.hoursCompleted / d.hoursRequired) * 100);
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+  backdrop.innerHTML = `
+    <div class="modal" style="max-width:580px;">
+      <div class="modal__header">
+        <h3 class="modal__title">${icon('briefcase', 18)} OJT Deployment Details</h3>
+        <button class="modal__close" id="modal-close">${icon('x', 18)}</button>
+      </div>
+      <div class="modal__body">
+        <h3 style="margin:0 0 2px;">${d.studentName}</h3>
+        <p style="margin:0 0 16px;font-size:0.8rem;color:var(--text-secondary);">${d.program} — ${d.company}</p>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
+          <div style="background:var(--bg-secondary);border-radius:var(--radius-md);padding:12px;">
+            <div style="font-size:0.7rem;color:var(--text-tertiary);">Supervisor</div>
+            <div style="font-size:0.85rem;font-weight:600;">${d.supervisor}</div>
+          </div>
+          <div style="background:var(--bg-secondary);border-radius:var(--radius-md);padding:12px;">
+            <div style="font-size:0.7rem;color:var(--text-tertiary);">Status</div>
+            <span class="badge badge--${statusColors[d.status] || 'neutral'}">${d.status}</span>
+          </div>
+          <div style="background:var(--bg-secondary);border-radius:var(--radius-md);padding:12px;">
+            <div style="font-size:0.7rem;color:var(--text-tertiary);">Period</div>
+            <div style="font-size:0.8rem;">${d.startDate} → ${d.endDate}</div>
+          </div>
+          <div style="background:var(--bg-secondary);border-radius:var(--radius-md);padding:12px;">
+            <div style="font-size:0.7rem;color:var(--text-tertiary);">Hours</div>
+            <div style="font-size:1rem;font-weight:700;">${d.hoursCompleted}/${d.hoursRequired}</div>
+            <div class="progress-bar" style="margin-top:4px;"><div class="progress-bar__fill" style="width:${pct}%;background:var(--color-primary);"></div></div>
+          </div>
+        </div>
+
+        <h4 style="font-size:0.85rem;margin-bottom:8px;">${icon('file-text', 14)} Document Checklist</h4>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          ${Object.entries(d.documents).map(([k, v]) => `
+            <div class="checklist-item">
+              <div class="checklist-item__check${v ? ' checklist-item__check--done' : ''}">
+                ${v ? icon('check', 12) : ''}
+              </div>
+              <span>${docLabels[k] || k}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn--outline btn--sm" id="modal-cancel">Close</button>
+      </div>
+    </div>
+  `;
+  container.appendChild(backdrop);
+  renderIcons();
+  const close = () => backdrop.remove();
+  backdrop.querySelector('#modal-close').addEventListener('click', close);
+  backdrop.querySelector('#modal-cancel').addEventListener('click', close);
+  backdrop.addEventListener('click', e => { if (e.target === backdrop) close(); });
+}
+
+export default async function OjtPage(container) {
+  container.innerHTML = `
+    <div class="page-header">
+      <h1 class="page-header__title">${icon('briefcase', 24)} OJT Management</h1>
+      <p class="page-header__subtitle">Deployment overview, supervisor assignments, and document tracking</p>
+    </div>
+    <div class="tab-bar" id="ojt-tabs">
+      <button class="tab-bar__item tab-bar__item--active" data-tab="deployments">Deployments</button>
+      <button class="tab-bar__item" data-tab="supervisors">Supervisors</button>
+    </div>
+    <div id="ojt-content" style="margin-top:20px;"></div>
+  `;
+  renderIcons();
+
+  const [deployments, supervisors] = await Promise.all([
+    apiFetch('/ojt/deployments'),
+    apiFetch('/ojt/supervisors'),
+  ]);
+
+  const content = container.querySelector('#ojt-content');
+  let tab = 'deployments';
+
+  function renderDeployments() {
+    const list = deployments || [];
+    content.innerHTML = `
+      <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px;">
+        <div class="stat-card">
+          <div class="stat-card__icon" style="background:var(--color-success)20;color:var(--color-success);">${icon('check-circle', 20)}</div>
+          <div class="stat-card__body"><div class="stat-card__value">${list.filter(d => d.status === 'On Track').length}</div><div class="stat-card__label">On Track</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card__icon" style="background:var(--color-warning)20;color:var(--color-warning);">${icon('alert-triangle', 20)}</div>
+          <div class="stat-card__body"><div class="stat-card__value">${list.filter(d => d.status === 'Delayed').length}</div><div class="stat-card__label">Delayed</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card__icon" style="background:var(--color-info)20;color:var(--color-info);">${icon('users', 20)}</div>
+          <div class="stat-card__body"><div class="stat-card__value">${list.length}</div><div class="stat-card__label">Total Deployed</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card__header"><h3 class="card__title">${icon('layers', 16)} Active Deployments</h3></div>
+        <div class="card__body">
+          ${list.map(d => {
+            const pct = Math.round((d.hoursCompleted / d.hoursRequired) * 100);
+            return `
+              <div class="deploy-row" data-id="${d.id}" style="cursor:pointer;">
+                <div class="deploy-row__info">
+                  <div class="deploy-row__name">${d.studentName}</div>
+                  <div class="deploy-row__detail">${d.company} — ${d.program}</div>
+                </div>
+                <span class="badge badge--${statusColors[d.status] || 'neutral'}" style="margin-right:12px;">${d.status}</span>
+                <div class="deploy-row__bar">
+                  <div style="font-size:0.65rem;text-align:right;margin-bottom:2px;">${pct}%</div>
+                  <div class="progress-bar"><div class="progress-bar__fill" style="width:${pct}%;background:var(--color-primary);"></div></div>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+    renderIcons();
+    content.querySelectorAll('.deploy-row').forEach(row => {
+      row.addEventListener('click', () => {
+        const d = list.find(x => x.id === row.dataset.id);
+        if (d) showDeployModal(d, container);
+      });
+    });
+  }
+
+  function renderSupervisors() {
+    const list = supervisors || [];
+    content.innerHTML = `
+      <div class="card">
+        <div class="card__header"><h3 class="card__title">${icon('user-check', 16)} Assigned Supervisors</h3></div>
+        <div class="card__body">
+          <table class="data-table">
+            <thead><tr><th>Name</th><th>Company</th><th>Trainees</th><th>Rating</th></tr></thead>
+            <tbody>
+              ${list.map(s => `
+                <tr>
+                  <td style="font-weight:600;">${s.name}</td>
+                  <td>${s.company}</td>
+                  <td>${s.trainees}</td>
+                  <td><span style="display:flex;align-items:center;gap:4px;">${icon('star', 12)} ${s.rating.toFixed(1)}</span></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+    renderIcons();
+  }
+
+  renderDeployments();
+
+  container.querySelector('#ojt-tabs').addEventListener('click', e => {
+    const t = e.target.closest('[data-tab]');
+    if (!t) return;
+    container.querySelectorAll('.tab-bar__item').forEach(i => i.classList.remove('tab-bar__item--active'));
+    t.classList.add('tab-bar__item--active');
+    tab = t.dataset.tab;
+    if (tab === 'deployments') renderDeployments();
+    else renderSupervisors();
+  });
+}

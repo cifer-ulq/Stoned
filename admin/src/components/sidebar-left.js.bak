@@ -1,0 +1,79 @@
+/* ── Sidebar Left — Admin Portal ── */
+import { getState } from '../store.js';
+import { navigateTo } from '../router.js';
+import { icon, renderIcons } from './icons.js';
+
+const navItems = [
+  { path: '/', icon: 'home', label: 'Dashboard' },
+  { path: '/students', icon: 'users', label: 'Students', badge: '2,847' },
+  { path: '/companies', icon: 'building-2', label: 'Companies', badge: '156' },
+  { path: '/ojt', icon: 'briefcase', label: 'OJT Management' },
+  { path: '/jobs', icon: 'clipboard-check', label: 'Job Postings', badge: '89' },
+  { path: '/matching', icon: 'target', label: 'Matching & Scoring' },
+  { path: '/reports', icon: 'bar-chart-3', label: 'Reports' },
+  { path: '/settings', icon: 'settings', label: 'Settings' },
+];
+
+const quickActions = [
+  { icon: 'plus', label: 'Register Company', action: '/companies' },
+  { icon: 'upload', label: 'Import Students', action: '/students' },
+  { icon: 'flag', label: 'Review Flagged', action: '/jobs' },
+];
+
+function getActive() { return window.location.hash.slice(1) || '/'; }
+
+export function initSidebarLeft() {
+  const el = document.getElementById('sidebar-left');
+  if (!el) return;
+
+  const user = getState('user');
+
+  el.innerHTML = `
+    <div class="sidebar-user" data-nav="/">
+      <div class="sidebar-user__avatar">${user.initials}</div>
+      <div>
+        <div class="sidebar-user__name">${user.name}</div>
+        <div class="sidebar-user__role">${user.role}</div>
+      </div>
+    </div>
+    <div class="sidebar-divider"></div>
+    <nav class="sidebar-nav">
+      ${navItems.map(n => `
+        <div class="sidebar-nav__item${getActive() === n.path ? ' sidebar-nav__item--active' : ''}" data-nav="${n.path}">
+          <span class="sidebar-nav__icon">${icon(n.icon, 18)}</span>
+          <span class="sidebar-nav__label">${n.label}</span>
+          ${n.badge ? `<span class="sidebar-nav__badge">${n.badge}</span>` : ''}
+        </div>
+      `).join('')}
+    </nav>
+    <div class="sidebar-section">
+      <div class="sidebar-section__title">Quick Actions</div>
+      <nav class="sidebar-nav">
+        ${quickActions.map(q => `
+          <div class="sidebar-nav__item sidebar-nav__item--compact" data-nav="${q.action}">
+            <span class="sidebar-nav__icon sidebar-nav__icon--sm">${icon(q.icon, 14)}</span>
+            <span class="sidebar-nav__label">${q.label}</span>
+          </div>
+        `).join('')}
+      </nav>
+    </div>
+    <div class="sidebar-footer">
+      <div class="sidebar-nav__item sidebar-nav__item--compact" id="sidebar-logout">
+        <span class="sidebar-nav__icon sidebar-nav__icon--sm">${icon('log-out', 14)}</span>
+        <span class="sidebar-nav__label">Log Out</span>
+      </div>
+    </div>
+  `;
+
+  renderIcons();
+
+  el.querySelectorAll('[data-nav]').forEach(item => {
+    item.addEventListener('click', () => navigateTo(item.dataset.nav));
+  });
+
+  window.addEventListener('hashchange', () => {
+    el.querySelectorAll('.sidebar-nav__item[data-nav]').forEach(item => {
+      item.classList.toggle('sidebar-nav__item--active', getActive() === item.dataset.nav);
+    });
+  });
+}

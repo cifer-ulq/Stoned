@@ -1,0 +1,22 @@
+@media (max-width: 1200px) {
+  .sidebar-right { display: none; }
+  .layout__center { margin-right: 0; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .reports-grid { grid-template-columns: 1fr; }
+  .section-grid { grid-template-columns: 1fr; }
+  .dash-panels { grid-template-columns: 1fr; }
+}
+@media (max-width: 900px) {
+  .sidebar-left { display: none; }
+  .layout__center { margin-left: 0; padding: var(--space-4) var(--space-3); }
+  .navbar__center { display: none; }
+  .navbar__left { width: auto; }
+  .navbar__right { width: auto; }
+  .entity-grid { grid-template-columns: 1fr; }
+  .settings-grid { grid-template-columns: 1fr; }
+  .form-row { grid-template-columns: 1fr; }
+}
+@media (max-width: 600px) {
+  .stats-grid { grid-template-columns: 1fr; }
+  .page-header__title { font-size: var(--text-xl); }
+}

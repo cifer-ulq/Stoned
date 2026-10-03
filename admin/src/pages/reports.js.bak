@@ -1,0 +1,93 @@
+/* ── Reports & Analytics Page — Admin Portal ── */
+import { apiFetch } from '../api/client.js';
+import { icon, renderIcons } from '../components/icons.js';
+
+const reportIcons = {
+  'R-01': { ic: 'trending-up', color: 'var(--color-success)' },
+  'R-02': { ic: 'users', color: 'var(--color-primary)' },
+  'R-03': { ic: 'briefcase', color: 'var(--color-info)' },
+  'R-04': { ic: 'target', color: 'var(--color-warning)' },
+  'R-05': { ic: 'building-2', color: '#8B5CF6' },
+  'R-06': { ic: 'book-open', color: 'var(--color-error)' },
+};
+
+export default async function ReportsPage(container) {
+  container.innerHTML = `
+    <div class="page-header">
+      <h1 class="page-header__title">${icon('bar-chart-3', 24)} Reports & Analytics</h1>
+      <p class="page-header__subtitle">Generate institutional reports — employment outcomes, tracer studies, competency gaps</p>
+    </div>
+    <div id="reports-content"></div>
+  `;
+  renderIcons();
+
+  const [reports, employment] = await Promise.all([
+    apiFetch('/reports/list'),
+    apiFetch('/reports/employment'),
+  ]);
+
+  const content = container.querySelector('#reports-content');
+
+  /* Quick stats */
+  const emp = employment || {};
+  const overall = emp.overall || {};
+  content.innerHTML = `
+    <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:24px;">
+      <div class="stat-card">
+        <div class="stat-card__icon" style="background:var(--color-success)20;color:var(--color-success);">${icon('trending-up', 20)}</div>
+        <div class="stat-card__body"><div class="stat-card__value">${overall.employed || 0}%</div><div class="stat-card__label">Employment Rate</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__icon" style="background:var(--color-info)20;color:var(--color-info);">${icon('award', 20)}</div>
+        <div class="stat-card__body"><div class="stat-card__value">₱${((emp.salaryRange?.median || 0) / 1000).toFixed(0)}K</div><div class="stat-card__label">Median Salary</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__icon" style="background:var(--color-warning)20;color:var(--color-warning);">${icon('target', 20)}</div>
+        <div class="stat-card__body"><div class="stat-card__value">${overall.underemployed || 0}%</div><div class="stat-card__label">Underemployment</div></div>
+      </div>
+    </div>
+
+    <!-- By program -->
+    <div class="card" style="margin-bottom:24px;">
+      <div class="card__header"><h3 class="card__title">${icon('bar-chart-3', 16)} Employment by Program</h3></div>
+      <div class="card__body" style="padding:0;">
+        <table class="data-table">
+          <thead><tr><th>Program</th><th>Employed</th><th>Under-employed</th><th>Unemployed</th></tr></thead>
+          <tbody>
+            ${(emp.byProgram || []).map(p => `
+              <tr>
+                <td style="font-weight:600;">${p.program}</td>
+                <td><span class="badge badge--success">${p.employed}%</span></td>
+                <td><span class="badge badge--warning">${p.underemployed}%</span></td>
+                <td><span class="badge badge--error">${p.unemployed}%</span></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Report cards -->
+    <h3 style="font-size:1rem;margin-bottom:16px;">${icon('file-text', 16)} Available Reports</h3>
+    <div class="reports-grid">
+      ${(reports || []).map(r => {
+        const ri = reportIcons[r.id] || { ic: 'file-text', color: 'var(--color-primary)' };
+        return `
+          <div class="report-card">
+            <div class="report-card__icon" style="background:${ri.color}20;color:${ri.color};">${icon(ri.ic, 24)}</div>
+            <div class="report-card__title">${r.name}</div>
+            <div class="report-card__desc">${r.description}</div>
+            <div class="report-card__footer">
+              <span style="font-size:0.7rem;color:var(--text-tertiary);">Last: ${r.lastGenerated} • ${r.frequency}</span>
+              <div style="display:flex;gap:6px;">
+                <button class="btn btn--ghost btn--sm">${icon('printer', 14)}</button>
+                <button class="btn btn--primary btn--sm">${icon('download', 14)} Generate</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+  renderIcons();
+}

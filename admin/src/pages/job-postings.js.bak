@@ -1,0 +1,128 @@
+/* ── Job Postings Page — Admin Portal ── */
+import { apiFetch } from '../api/client.js';
+import { icon, renderIcons } from '../components/icons.js';
+
+const modBadge = { Approved: 'success', Pending: 'warning', Flagged: 'error' };
+const statusBadge = { Active: 'success', Pending: 'warning', Flagged: 'error', Closed: 'neutral' };
+
+export default async function JobPostingsPage(container) {
+  container.innerHTML = `
+    <div class="page-header">
+      <h1 class="page-header__title">${icon('clipboard-check', 24)} Job Postings</h1>
+      <p class="page-header__subtitle">Posting moderation, flagged review, and job fair management</p>
+    </div>
+    <div class="tab-bar" id="job-tabs">
+      <button class="tab-bar__item tab-bar__item--active" data-tab="all">All Postings</button>
+      <button class="tab-bar__item" data-tab="pending">Pending Review</button>
+      <button class="tab-bar__item" data-tab="flagged">Flagged</button>
+      <button class="tab-bar__item" data-tab="fairs">Job Fairs</button>
+    </div>
+    <div id="job-content" style="margin-top:20px;"></div>
+  `;
+  renderIcons();
+
+  const [postings, fairs] = await Promise.all([
+    apiFetch('/job/postings'),
+    apiFetch('/job/fairs'),
+  ]);
+
+  const content = container.querySelector('#job-content');
+  let activeTab = 'all';
+
+  function renderPostings(filter) {
+    let list = postings || [];
+    if (filter === 'pending') list = list.filter(j => j.moderationStatus === 'Pending');
+    else if (filter === 'flagged') list = list.filter(j => j.moderationStatus === 'Flagged');
+
+    content.innerHTML = `
+      <div class="card">
+        <div class="card__header">
+          <h3 class="card__title">${icon('briefcase', 16)} ${filter === 'flagged' ? 'Flagged Postings' : filter === 'pending' ? 'Pending Review' : 'All Job Postings'}</h3>
+          <span class="badge badge--neutral">${list.length} postings</span>
+        </div>
+        <div class="card__body" style="padding:0;">
+          <table class="data-table">
+            <thead>
+              <tr><th>Title</th><th>Company</th><th>Type</th><th>Salary</th><th>Applicants</th><th>Status</th><th>Moderation</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+              ${list.map(j => `
+                <tr>
+                  <td><strong>${j.title}</strong><br><span style="font-size:0.7rem;color:var(--text-tertiary);">${j.posted}</span></td>
+                  <td>${j.company}</td>
+                  <td><span class="badge badge--info">${j.type}</span></td>
+                  <td>${j.salary}</td>
+                  <td style="text-align:center;">${j.applicants}</td>
+                  <td><span class="badge badge--${statusBadge[j.status] || 'neutral'}">${j.status}</span></td>
+                  <td><span class="badge badge--${modBadge[j.moderationStatus] || 'neutral'}">${j.moderationStatus}</span></td>
+                  <td>
+                    <div style="display:flex;gap:4px;">
+                      <button class="btn btn--ghost btn--sm">${icon('eye', 14)}</button>
+                      ${j.moderationStatus === 'Pending' ? `<button class="btn btn--success btn--sm">${icon('check', 14)}</button>` : ''}
+                      ${j.moderationStatus === 'Flagged' ? `<button class="btn btn--error btn--sm">${icon('x', 14)}</button>` : ''}
+                    </div>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      ${list.some(j => j.flagReason) ? `
+        <div class="card" style="margin-top:16px;border-color:var(--color-error);">
+          <div class="card__header"><h3 class="card__title" style="color:var(--color-error);">${icon('alert-triangle', 16)} Flagged Details</h3></div>
+          <div class="card__body">
+            ${list.filter(j => j.flagReason).map(j => `
+              <div style="padding:8px 0;border-bottom:1px solid var(--border-default);">
+                <strong>${j.title}</strong> — ${j.company}<br>
+                <span style="font-size:0.8rem;color:var(--color-error);">${icon('flag', 12)} ${j.flagReason}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
+    `;
+    renderIcons();
+  }
+
+  function renderFairs() {
+    const list = fairs || [];
+    content.innerHTML = `
+      <div class="toolbar">
+        <div class="toolbar__left"><h3 style="margin:0;">${icon('calendar', 16)} Job Fairs</h3></div>
+        <div class="toolbar__right"><button class="btn btn--primary btn--sm">${icon('plus', 14)} Create Job Fair</button></div>
+      </div>
+      <div class="entity-grid">
+        ${list.map(f => `
+          <div class="entity-card">
+            <div class="entity-card__header">
+              <div class="entity-card__avatar" style="background:linear-gradient(135deg,var(--color-info),#0284c7);">${icon('calendar', 20)}</div>
+              <div class="entity-card__info">
+                <p class="entity-card__name">${f.title}</p>
+                <p class="entity-card__sub">${f.date} — ${f.venue}</p>
+              </div>
+              <span class="badge badge--${f.status === 'Upcoming' ? 'info' : 'success'}">${f.status}</span>
+            </div>
+            <div class="entity-card__meta">
+              <span>${icon('building-2', 12)} ${f.companies} Companies</span>
+              <span>${icon('briefcase', 12)} ${f.positions} Positions</span>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+    renderIcons();
+  }
+
+  renderPostings('all');
+
+  container.querySelector('#job-tabs').addEventListener('click', e => {
+    const t = e.target.closest('[data-tab]');
+    if (!t) return;
+    container.querySelectorAll('.tab-bar__item').forEach(i => i.classList.remove('tab-bar__item--active'));
+    t.classList.add('tab-bar__item--active');
+    activeTab = t.dataset.tab;
+    if (activeTab === 'fairs') renderFairs();
+    else renderPostings(activeTab);
+  });
+}

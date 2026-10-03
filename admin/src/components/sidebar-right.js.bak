@@ -1,0 +1,81 @@
+/* ── Sidebar Right — Admin Portal ── */
+import { apiFetch } from '../api/client.js';
+import { icon, renderIcons } from './icons.js';
+
+const typeIcons = { company: 'building-2', job: 'briefcase', moa: 'file-text', student: 'users' };
+const typeColors = { company: 'var(--color-primary)', job: 'var(--color-info)', moa: 'var(--color-warning)', student: 'var(--color-success)' };
+const actColors = { success: 'var(--color-success)', info: 'var(--color-info)', primary: 'var(--color-primary)', warning: 'var(--color-warning)' };
+const evtIcons = { event: 'calendar', orientation: 'users', deadline: 'alert-triangle', meeting: 'briefcase' };
+
+export async function initSidebarRight() {
+  const el = document.getElementById('sidebar-right');
+  if (!el) return;
+
+  el.innerHTML = `
+    <div class="widget"><div class="widget__title">Loading…</div></div>
+  `;
+
+  const [pending, activities, events] = await Promise.all([
+    apiFetch('/dashboard/pending'),
+    apiFetch('/dashboard/activities'),
+    apiFetch('/dashboard/events'),
+  ]);
+
+  el.innerHTML = `
+    <!-- Pending Approvals -->
+    <div class="widget">
+      <div class="widget__title">${icon('clock', 14)} Pending Approvals (${pending?.length || 0})</div>
+      <div class="widget__content">
+        ${(pending || []).slice(0, 4).map(p => `
+          <div class="approval-item">
+            <div class="approval-item__icon" style="background:${typeColors[p.type]}20;color:${typeColors[p.type]}">
+              ${icon(typeIcons[p.type] || 'file-text', 16)}
+            </div>
+            <div class="approval-item__info">
+              <div class="approval-item__name">${p.name}</div>
+              <div class="approval-item__detail">${p.detail}</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="widget">
+      <div class="widget__title">${icon('activity', 14)} Recent Activity</div>
+      <div class="widget__content">
+        ${(activities || []).slice(0, 5).map(a => `
+          <div class="activity-item">
+            <div class="activity-item__icon" style="background:${actColors[a.color] || 'var(--color-primary)'}20;color:${actColors[a.color] || 'var(--color-primary)'}">
+              ${icon(a.icon === 'check' ? 'check' : a.icon === 'briefcase' ? 'briefcase' : a.icon === 'users' ? 'users' : a.icon === 'alertTriangle' ? 'alert-triangle' : a.icon === 'fileText' ? 'file-text' : a.icon === 'clipboardCheck' ? 'clipboard-check' : a.icon === 'building' ? 'building-2' : 'activity', 14)}
+            </div>
+            <div class="activity-item__content">
+              <div class="activity-item__text">${a.text}</div>
+              <div class="activity-item__time">${a.time}</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+
+    <!-- Upcoming Events -->
+    <div class="widget">
+      <div class="widget__title">${icon('calendar', 14)} Upcoming Events</div>
+      <div class="widget__content">
+        ${(events || []).map(e => `
+          <div class="activity-item">
+            <div class="activity-item__icon" style="background:var(--color-primary-bg);color:var(--color-primary)">
+              ${icon(evtIcons[e.type] || 'calendar', 14)}
+            </div>
+            <div class="activity-item__content">
+              <div class="activity-item__text">${e.title}</div>
+              <div class="activity-item__time">${e.date}</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+
+  renderIcons();
+}

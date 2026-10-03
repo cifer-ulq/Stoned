@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="CHMSU HireMe System Diagrams — Operational Framework, Context Diagram, DFD, ERD, and Use Case Diagram" />
+  <title>CHMSU HireMe — System Diagrams</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- ── Header ─────────────────────────────────────────────── -->
+  <header class="header" id="header">
+    <div class="header-inner">
+      <div class="logo">
+        <div class="logo-icon">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+            <rect width="28" height="28" rx="8" fill="url(#logoGrad)"/>
+            <path d="M8 14h12M14 8v12" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
+            <defs><linearGradient id="logoGrad" x1="0" y1="0" x2="28" y2="28"><stop stop-color="#6366f1"/><stop offset="1" stop-color="#8b5cf6"/></linearGradient></defs>
+          </svg>
+        </div>
+        <span class="logo-text">CHMSU HireMe</span>
+        <span class="logo-divider">|</span>
+        <span class="logo-sub">System Diagrams</span>
+      </div>
+      <div class="header-actions">
+        <button class="btn-icon" id="themeToggle" title="Toggle theme">
+          <svg class="icon-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+          <svg class="icon-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Tab Navigation ─────────────────────────────────────── -->
+  <nav class="tabs" id="tabs">
+    <div class="tabs-inner">
+      <button class="tab active" data-tab="operational">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Operational Framework
+      </button>
+      <button class="tab" data-tab="context">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/></svg>
+        Context Diagram
+      </button>
+      <button class="tab" data-tab="dfd">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        DFD Level 1
+      </button>
+      <button class="tab" data-tab="erd">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+        ERD
+      </button>
+      <button class="tab" data-tab="usecase">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M20 8v6M23 11h-6"/></svg>
+        Use Case
+      </button>
+    </div>
+  </nav>
+
+  <!-- ── Diagram Panels ─────────────────────────────────────── -->
+  <main class="main">
+    <div class="diagram-panel active" id="panel-operational">
+      <div class="panel-header">
+        <h1>Operational Framework</h1>
+        <p class="panel-desc">High-level architecture showing how the CHMSU HireMe platform modules interact and the technology stack powering them.</p>
+      </div>
+      <div class="diagram-container" id="diagram-operational"></div>
+    </div>
+
+    <div class="diagram-panel" id="panel-context">
+      <div class="panel-header">
+        <h1>Context Diagram (Level 0 DFD)</h1>
+        <p class="panel-desc">Shows the CHMSU HireMe system as a single process with all external entities and the data flows between them.</p>
+      </div>
+      <div class="diagram-container" id="diagram-context"></div>
+    </div>
+
+    <div class="diagram-panel" id="panel-dfd">
+      <div class="panel-header">
+        <h1>Data Flow Diagram (Level 1)</h1>
+        <p class="panel-desc">10 processes, 5 external entities, and 19 data stores — each data store maps to an actual database table. Flows show the exact fields written or read per process.</p>
+      </div>
+      <div class="diagram-container" id="diagram-dfd"></div>
+    </div>
+
+    <div class="diagram-panel" id="panel-erd">
+      <div class="panel-header">
+        <h1>Entity Relationship Diagram</h1>
+        <p class="panel-desc">Complete database schema — 19 tables with every column, PK/FK markers, enum values, and cardinality-labelled relationships across all five domains: Auth, Profiles, Portfolio, OJT, and Job Hiring.</p>
+      </div>
+      <div class="diagram-container" id="diagram-erd"></div>
+    </div>
+
+    <div class="diagram-panel" id="panel-usecase">
+      <div class="panel-header">
+        <h1>Use Case Diagram</h1>
+        <p class="panel-desc">Shows all system actors and the use cases (functionalities) each actor can perform within CHMSU HireMe.</p>
+      </div>
+      <div class="diagram-container" id="diagram-usecase"></div>
+    </div>
+  </main>
+
+  <!-- ── Footer ─────────────────────────────────────────────── -->
+  <footer class="footer">
+    <p>CHMSU HireMe — System Documentation &copy; 2026</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

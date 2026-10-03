@@ -1,0 +1,384 @@
+/* ═══════════════════════════════════════════════
+   CHMSU HireMe — Company Registration Styles
+   Extends login.css — same design system
+   ═══════════════════════════════════════════════ */
+
+/* ── Company perks panel (left brand side) ── */
+.lp-company-perks {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 2.25rem;
+}
+
+.lp-perk {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 16px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 14px;
+  backdrop-filter: blur(8px);
+  transition: background 0.3s ease, border-color 0.3s ease, transform 0.3s ease;
+  animation: lpCardFloat ease-in-out 4.5s infinite;
+}
+
+.lp-perk:nth-child(2) { animation-duration: 5s; animation-delay: -1.5s; }
+.lp-perk:nth-child(3) { animation-duration: 3.8s; animation-delay: -3s; }
+
+.lp-perk:hover {
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(0,89,48,0.35);
+  transform: translateX(8px) !important;
+}
+
+.lp-perk__icon {
+  font-size: 1.3rem;
+  flex-shrink: 0;
+  width: 38px; height: 38px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(255,255,255,0.07);
+  border-radius: 10px;
+}
+
+.lp-perk__title {
+  font-size: 0.845rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.9);
+  margin-bottom: 1px;
+}
+
+.lp-perk__desc {
+  font-size: 0.71rem;
+  color: rgba(255,255,255,0.42);
+  line-height: 1.4;
+}
+
+/* ── MOA notice banner (form panel) ── */
+.cr-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 13px 16px;
+  background: rgba(0,89,48,0.08);
+  border: 1px solid rgba(0,89,48,0.2);
+  border-radius: 12px;
+  margin-bottom: 1.25rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+
+.cr-notice__icon {
+  flex-shrink: 0;
+  color: var(--color-primary);
+  margin-top: 1px;
+  display: flex;
+}
+
+.cr-notice strong {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+/* ── Two-column row ── */
+.cr-row2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* ── Select input styling ── */
+.cr-select-wrap .lf-field__input {
+  appearance: none;
+  padding-right: 40px;
+  cursor: pointer;
+}
+
+.cr-select-wrap::after {
+  content: '';
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  width: 0; height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid var(--text-tertiary);
+}
+
+/* Select label float: since value is always there, float immediately */
+.cr-select {
+  padding-top: 22px;
+  padding-bottom: 7px;
+  color: var(--text-primary);
+}
+
+.cr-select option[value=""] { color: var(--text-tertiary); }
+
+/* ── Company CTA Banner (shown on regular signup tab) ── */
+.cr-cta-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 1rem;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, rgba(245,158,11,0.08) 0%, rgba(251,191,36,0.06) 100%);
+  border: 1.5px solid rgba(245,158,11,0.22);
+  border-radius: 14px;
+  transition: border-color 0.25s ease, background 0.25s ease;
+}
+
+.cr-cta-banner:hover {
+  border-color: rgba(245,158,11,0.4);
+  background: linear-gradient(135deg, rgba(245,158,11,0.12) 0%, rgba(251,191,36,0.09) 100%);
+}
+
+.cr-cta-banner__icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.cr-cta-banner__text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cr-cta-banner__title {
+  font-size: 0.825rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.cr-cta-banner__desc {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+
+.cr-cta-banner__btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 14px;
+  background: linear-gradient(135deg, #F59E0B, #FBBF24);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  box-shadow: 0 4px 14px rgba(245,158,11,0.3);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.cr-cta-banner__btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(245,158,11,0.4);
+}
+
+.cr-cta-banner__btn:active { transform: scale(0.97); }
+
+/* ── Server error ── */
+.cr-server-error {
+  padding: 12px 16px;
+  background: rgba(255,107,107,0.1);
+  border: 1px solid rgba(255,107,107,0.25);
+  border-radius: 10px;
+  font-size: 0.82rem;
+  color: var(--color-error);
+  line-height: 1.5;
+}
+
+/* ── Company form wider inner ── */
+.lp-form-panel:has(.cr-form) .lp-form-inner,
+.lp-form-panel:has(.cr-success) .lp-form-inner {
+  max-width: 480px;
+}
+
+/* ── Success Screen ── */
+.cr-success {
+  text-align: center;
+  animation: lp-enter 0.55s cubic-bezier(0,0,0.2,1) both;
+}
+
+.cr-success__icon-wrap {
+  position: relative;
+  width: 100px; height: 100px;
+  margin: 0 auto 1.5rem;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.cr-success__ring {
+  position: absolute;
+  border-radius: 50%;
+  animation: crRingPulse 2.5s ease-out infinite;
+}
+.cr-success__ring--1 {
+  inset: -10px;
+  border: 2px solid rgba(0,89,48,0.25);
+  animation-delay: 0s;
+}
+.cr-success__ring--2 {
+  inset: -20px;
+  border: 2px solid rgba(0,89,48,0.12);
+  animation-delay: 0.4s;
+}
+@keyframes crRingPulse {
+  0%   { transform: scale(0.85); opacity: 0; }
+  50%  { opacity: 1; }
+  100% { transform: scale(1.15); opacity: 0; }
+}
+
+.cr-success__icon {
+  width: 80px; height: 80px;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 8px 32px rgba(0,89,48,0.4);
+  position: relative;
+  z-index: 1;
+  animation: crIconBounce 0.7s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+@keyframes crIconBounce {
+  from { transform: scale(0); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+
+.cr-success__title {
+  font-family: var(--font-heading);
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.025em;
+  margin-bottom: 0.5rem;
+}
+
+.cr-success__subtitle {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+}
+
+.cr-success__status-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: 14px;
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+  text-align: left;
+}
+
+.cr-success__status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--border-default);
+  gap: 12px;
+}
+
+.cr-success__status-row:last-child { border-bottom: none; }
+
+.cr-success__status-label {
+  font-size: 0.78rem;
+  color: var(--text-tertiary);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.cr-success__badge {
+  font-size: 0.73rem;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.cr-success__badge--pending {
+  background: rgba(245,158,11,0.12);
+  color: #D97706;
+  border: 1px solid rgba(245,158,11,0.25);
+}
+
+.cr-success__badge--moa {
+  background: rgba(0,89,48,0.1);
+  color: var(--color-primary);
+  border: 1px solid rgba(0,89,48,0.2);
+}
+
+.cr-success__email {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  word-break: break-all;
+}
+
+/* Steps list */
+.cr-success__steps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 1.25rem;
+  text-align: left;
+}
+
+.cr-success__step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cr-success__step-dot {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.cr-success__step-dot--done {
+  background: linear-gradient(135deg, #10B981, #34D399);
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(16,185,129,0.3);
+}
+
+.cr-success__step-dot--wait {
+  background: var(--bg-secondary);
+  border: 1.5px solid var(--border-default);
+  color: var(--text-tertiary);
+}
+
+.cr-success__step-text {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.cr-success__note {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 1.25rem;
+  padding: 12px 16px;
+  background: var(--bg-secondary);
+  border-radius: 10px;
+  border: 1px solid var(--border-default);
+}
+
+.cr-success__note strong { color: var(--text-primary); }
+
+/* ── Responsive ── */
+@media (max-width: 520px) {
+  .cr-row2 { grid-template-columns: 1fr; }
+  .cr-cta-banner { flex-wrap: wrap; }
+  .cr-cta-banner__btn { width: 100%; justify-content: center; }
+}

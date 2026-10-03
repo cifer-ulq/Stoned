@@ -1,0 +1,166 @@
+/* ── Students Page — Admin Portal ── */
+import { apiFetch } from '../api/client.js';
+import { icon, renderIcons } from '../components/icons.js';
+
+const statusColors = { OJT: 'info', Employed: 'success', Active: 'neutral', Alumni: 'warning' };
+const empColors = { 'Full-time': 'success', Intern: 'info', Student: 'neutral' };
+
+function initials(name) { return name.split(' ').map(w => w[0]).join('').slice(0, 2); }
+
+function showModal(s, container) {
+  const existing = container.querySelector('.modal-backdrop');
+  if (existing) existing.remove();
+
+  const pct = Math.round((s.ojtHours / s.ojtRequired) * 100);
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+  backdrop.innerHTML = `
+    <div class="modal" style="max-width:640px;">
+      <div class="modal__header">
+        <h3 class="modal__title">${icon('users', 18)} Student Profile</h3>
+        <button class="modal__close" id="modal-close">${icon('x', 18)}</button>
+      </div>
+      <div class="modal__body">
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;">
+          <div class="entity-card__avatar" style="width:56px;height:56px;font-size:1rem;">${initials(s.name)}</div>
+          <div>
+            <h3 style="margin:0;font-size:1rem;">${s.name}</h3>
+            <p style="margin:2px 0 0;font-size:0.8rem;color:var(--text-secondary);">${s.program} — ${s.year}</p>
+            <p style="margin:2px 0 0;font-size:0.75rem;color:var(--text-tertiary);">${s.email}</p>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
+          <div style="background:var(--bg-secondary);border-radius:var(--radius-md);padding:12px;">
+            <div style="font-size:0.7rem;color:var(--text-tertiary);margin-bottom:4px;">GPA</div>
+            <div style="font-size:1.2rem;font-weight:700;">${s.gpa.toFixed(2)}</div>
+          </div>
+          <div style="background:var(--bg-secondary);border-radius:var(--radius-md);padding:12px;">
+            <div style="font-size:0.7rem;color:var(--text-tertiary);margin-bottom:4px;">Status</div>
+            <span class="badge badge--${statusColors[s.status] || 'neutral'}">${s.status}</span>
+          </div>
+          <div style="background:var(--bg-secondary);border-radius:var(--radius-md);padding:12px;">
+            <div style="font-size:0.7rem;color:var(--text-tertiary);margin-bottom:4px;">Employment</div>
+            <span class="badge badge--${empColors[s.employmentStatus] || 'neutral'}">${s.employmentStatus}</span>
+          </div>
+          <div style="background:var(--bg-secondary);border-radius:var(--radius-md);padding:12px;">
+            <div style="font-size:0.7rem;color:var(--text-tertiary);margin-bottom:4px;">Applications</div>
+            <div style="font-size:1.2rem;font-weight:700;">${s.applications}</div>
+          </div>
+        </div>
+
+        <h4 style="font-size:0.85rem;margin-bottom:8px;">${icon('briefcase', 14)} OJT Progress</h4>
+        <div style="margin-bottom:16px;">
+          <div style="display:flex;justify-content:space-between;font-size:0.75rem;margin-bottom:4px;">
+            <span>${s.ojtCompany || 'Not assigned'}</span>
+            <span>${s.ojtHours}/${s.ojtRequired} hrs (${pct}%)</span>
+          </div>
+          <div class="progress-bar"><div class="progress-bar__fill" style="width:${pct}%;background:var(--color-primary);"></div></div>
+        </div>
+
+        <h4 style="font-size:0.85rem;margin-bottom:8px;">${icon('layers', 14)} Skills</h4>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;">
+          ${s.skills.map(sk => `<span class="skill-tag skill-tag--primary">${sk}</span>`).join('')}
+        </div>
+
+        <div style="display:flex;gap:8px;">
+          ${s.portfolio ? `<span class="badge badge--success">${icon('check-circle', 12)} Portfolio</span>` : `<span class="badge badge--neutral">No Portfolio</span>`}
+        </div>
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn--outline btn--sm" id="modal-cancel">Close</button>
+        <button class="btn btn--primary btn--sm">${icon('mail', 14)} Contact Student</button>
+      </div>
+    </div>
+  `;
+
+  container.appendChild(backdrop);
+  renderIcons();
+
+  const close = () => backdrop.remove();
+  backdrop.querySelector('#modal-close').addEventListener('click', close);
+  backdrop.querySelector('#modal-cancel').addEventListener('click', close);
+  backdrop.addEventListener('click', e => { if (e.target === backdrop) close(); });
+}
+
+export default async function StudentsPage(container) {
+  container.innerHTML = `
+    <div class="page-header">
+      <h1 class="page-header__title">${icon('users', 24)} Students</h1>
+      <p class="page-header__subtitle">Master student list — academic records, OJT, and employment tracking</p>
+    </div>
+    <div class="toolbar">
+      <div class="toolbar__left">
+        <div class="search-box"><span class="search-box__icon">${icon('search', 16)}</span><input class="search-box__input" id="student-search" placeholder="Search students..." /></div>
+        <select class="form-select" id="filter-status" style="width:auto;"><option value="">All Status</option><option>Active</option><option>OJT</option><option>Alumni</option><option>Employed</option></select>
+        <select class="form-select" id="filter-program" style="width:auto;"><option value="">All Programs</option><option>BS Information Technology</option><option>BS Computer Science</option><option>BS Information Systems</option><option>BS Computer Engineering</option></select>
+      </div>
+      <div class="toolbar__right">
+        <button class="btn btn--outline btn--sm">${icon('upload', 14)} CSV Import</button>
+        <button class="btn btn--outline btn--sm">${icon('download', 14)} Export</button>
+      </div>
+    </div>
+    <div id="students-grid" class="entity-grid anim-stagger"></div>
+  `;
+
+  renderIcons();
+
+  const students = await apiFetch('/students') || [];
+  const grid = container.querySelector('#students-grid');
+  let filtered = [...students];
+
+  function render(list) {
+    grid.innerHTML = list.map(s => `
+      <div class="entity-card anim-fade-in-up" data-id="${s.id}">
+        <div class="entity-card__header">
+          <div class="entity-card__avatar">${initials(s.name)}</div>
+          <div class="entity-card__info">
+            <p class="entity-card__name">${s.name}</p>
+            <p class="entity-card__sub">${s.program} — ${s.year}</p>
+          </div>
+          <span class="badge badge--${statusColors[s.status] || 'neutral'}">${s.status}</span>
+        </div>
+        <div class="entity-card__meta">
+          <span>${icon('star', 12)} GPA: ${s.gpa.toFixed(2)}</span>
+          <span>${icon('briefcase', 12)} ${s.ojtCompany || 'No OJT'}</span>
+          <span>${icon('mail', 12)} ${s.email}</span>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;">
+          ${s.skills.slice(0, 3).map(sk => `<span class="skill-tag">${sk}</span>`).join('')}
+          ${s.skills.length > 3 ? `<span class="skill-tag">+${s.skills.length - 3}</span>` : ''}
+        </div>
+        <div class="entity-card__actions">
+          <button class="btn btn--ghost btn--sm view-btn" data-id="${s.id}">${icon('eye', 14)} View</button>
+          <button class="btn btn--ghost btn--sm">${icon('edit', 14)} Edit</button>
+        </div>
+      </div>
+    `).join('');
+    renderIcons();
+
+    grid.querySelectorAll('.view-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const st = list.find(s => s.id === btn.dataset.id);
+        if (st) showModal(st, container);
+      });
+    });
+  }
+
+  render(filtered);
+
+  function applyFilters() {
+    const q = container.querySelector('#student-search').value.toLowerCase();
+    const st = container.querySelector('#filter-status').value;
+    const pr = container.querySelector('#filter-program').value;
+    filtered = students.filter(s => {
+      if (q && !s.name.toLowerCase().includes(q) && !s.email.toLowerCase().includes(q)) return false;
+      if (st && s.status !== st) return false;
+      if (pr && s.program !== pr) return false;
+      return true;
+    });
+    render(filtered);
+  }
+
+  container.querySelector('#student-search').addEventListener('input', applyFilters);
+  container.querySelector('#filter-status').addEventListener('change', applyFilters);
+  container.querySelector('#filter-program').addEventListener('change', applyFilters);
+}
