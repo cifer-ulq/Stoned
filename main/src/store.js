@@ -9,7 +9,8 @@ const state = {
     email:   '',
     initials: '',
     role:    'Student',
-    status:  'active_ojt', // 'active_ojt' | 'alumni'
+    status:  'regular', // 'regular' | 'active_ojt' | 'alumni'
+    is_active_ojt: false,
     avatar:  null,
   },
   theme: localStorage.getItem('hireme-theme') || 'light',

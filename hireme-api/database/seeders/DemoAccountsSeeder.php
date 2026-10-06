@@ -161,7 +161,7 @@ class DemoAccountsSeeder extends Seeder
         $this->command->table(
             ['Role', 'Name', 'Email', 'Password', 'Notes'],
             [
-                ['Admin',      'CIER Admin',          'admin@chmsu.edu.ph',  'Admin@CHMSU2026!', 'Untouched'],
+                ['Admin',      'Marites Manganti',    'admin@chmsu.edu.ph',  'Admin@CHMSU2026!', 'Untouched'],
                 ['Student',    'Juan Miguel Santos',  'student@demo.com',    'Demo@1234',        'Profile complete'],
                 ['Graduate',   'Maria Clara Reyes',   'graduate@demo.com',   'Demo@1234',        'Profile complete'],
                 ['Supervisor', 'Prof. Alma Bernardo', 'supervisor@demo.com', 'Demo@1234',        'OJT Coordinator'],

@@ -13,7 +13,7 @@ class AdminSeeder extends Seeder
         User::updateOrCreate(
             ['email' => 'admin@chmsu.edu.ph'],
             [
-                'name'                 => 'CIER Admin',
+                'name'                 => 'Marites Manganti',
                 'password'             => Hash::make('Admin@CHMSU2026!'),
                 'role'                 => 'admin',
                 'onboarding_completed' => true,

@@ -464,6 +464,26 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
         ${icon('calendar', 15)} Non-Working Day (${sched.todayDay || 'Off Day'})
       </div>
     `;
+  } else if (sessionState === 'before_shift') {
+    punchClockHtml = `
+      <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(59,130,246,0.1);color:#1d4ed8;border:1px solid rgba(59,130,246,0.25);padding:8px 16px;border-radius:99px;font-size:0.83rem;font-weight:600;" title="Morning time-in opens 1 hour before shift start">
+        ${icon('clock', 15)} Shift starts at ${sched.shiftStart || '8:00 AM'} &middot; Morning time-in opens soon
+      </div>
+    `;
+  } else if (sessionState === 'shift_ended') {
+    const amNote = todayLog?.morningIn ? `AM: ${todayLog.morningIn} – ${todayLog.morningOut || '12:00'}` : null;
+    punchClockHtml = `
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        ${amNote ? `
+          <span style="display:flex;align-items:center;gap:6px;background:rgba(16,185,129,0.1);color:#059669;padding:8px 14px;border-radius:99px;font-size:0.82rem;font-weight:600;">
+            ${icon('checkCircle', 14)} ${amNote}
+          </span>
+        ` : ''}
+        <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(239,68,68,0.1);color:#dc2626;border:1px solid rgba(239,68,68,0.25);padding:8px 16px;border-radius:99px;font-size:0.83rem;font-weight:600;" title="Today's scheduled shift has ended. You can time in again tomorrow morning.">
+          ${icon('alertCircle', 15)} Shift Ended (${sched.shiftEnd || '5:00 PM'}) &middot; Time-in Closed for Today
+        </div>
+      </div>
+    `;
   } else if (sessionState === 'ready_morning_in') {
     punchClockHtml = `
       <button class="btn btn--primary" id="btn-morning-in" style="display:flex;align-items:center;gap:8px;">
@@ -1528,6 +1548,20 @@ function showLogInModal(sessionLabelOrSuccess, onSuccessMaybe) {
   });
 }
 
+// ── Parse 12h/24h Time Helper ────────────────────────────────────────────────
+function parseTimeTo24(timeStr) {
+  if (!timeStr || timeStr === '—' || timeStr === '-') return null;
+  const str = String(timeStr).trim();
+  const m12 = str.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?$/i);
+  if (!m12) return null;
+  let h = parseInt(m12[1], 10);
+  const min = m12[2];
+  const ampm = m12[3] ? m12[3].toUpperCase() : null;
+  if (ampm === 'PM' && h < 12) h += 12;
+  if (ampm === 'AM' && h === 12) h = 0;
+  return `${String(h).padStart(2, '0')}:${min}`;
+}
+
 // ── Log Out Modal ─────────────────────────────────────────────────────────────
 function showLogOutModal(todayLog, sessionLabelOrSuccess, onSuccessMaybe) {
   const sessionLabel = typeof sessionLabelOrSuccess === 'string' ? sessionLabelOrSuccess : 'Log Out';
@@ -1536,6 +1570,21 @@ function showLogOutModal(todayLog, sessionLabelOrSuccess, onSuccessMaybe) {
 
   const isMorning = sessionLabel.toLowerCase().includes('lunch') || sessionLabel.toLowerCase().includes('morning');
   const loggedInAt = isMorning ? (todayLog?.morningIn || todayLog?.timeIn || '—') : (todayLog?.afternoonIn || todayLog?.timeIn || '—');
+  const loggedIn24 = parseTimeTo24(loggedInAt);
+  const nowHM = currentTimeHHMM();
+
+  // Smart default value:
+  // If current device time is earlier than time in (e.g. testing during off-hours, or same minute):
+  // Default to regular shift end (e.g. '17:00' for afternoon, '12:00' for morning) so user does not get an invalid time.
+  let defaultTimeOut = nowHM;
+  if (loggedIn24 && nowHM < loggedIn24) {
+    if (isMorning) {
+      defaultTimeOut = loggedIn24 > '12:00' ? loggedIn24 : '12:00';
+    } else {
+      defaultTimeOut = loggedIn24 > '17:00' ? loggedIn24 : '17:00';
+    }
+  }
+
   const infoText = isMorning
     ? `Morning session started at <strong>${loggedInAt}</strong>. Taking lunch break?`
     : `Afternoon session started at <strong>${loggedInAt}</strong>. Ending shift for today?`;
@@ -1554,7 +1603,8 @@ function showLogOutModal(todayLog, sessionLabelOrSuccess, onSuccessMaybe) {
         </div>
         <div class="form-group">
           <label class="form-label">Time Out *</label>
-          <input type="time" class="form-input" id="lo-time" value="${currentTimeHHMM()}" required />
+          <input type="time" class="form-input" id="lo-time" value="${defaultTimeOut}" ${loggedIn24 ? `min="${loggedIn24}"` : ''} required />
+          <p id="lo-time-warning" class="text-xs" style="margin-top:5px;display:none;color:#ef4444;font-weight:600;"></p>
         </div>
         <div id="lo-geo-status" style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--bg-secondary);border:1px solid transparent;border-radius:var(--radius-md);margin-top:4px;">
           ${icon('mapPin', 14)}
@@ -1580,6 +1630,27 @@ function showLogOutModal(todayLog, sessionLabelOrSuccess, onSuccessMaybe) {
   const submitBtn = bd.querySelector('#lo-submit');
   const failPanel = bd.querySelector('#lo-geo-fail-panel');
   const retryBtn  = bd.querySelector('#lo-retry');
+  const timeInput = bd.querySelector('#lo-time');
+  const warningEl = bd.querySelector('#lo-time-warning');
+
+  function checkTimeValidity() {
+    const val = timeInput.value;
+    if (loggedIn24 && val && val < loggedIn24) {
+      warningEl.textContent = `Time Out cannot be earlier than Time In (${loggedInAt}).`;
+      warningEl.style.display = 'block';
+      submitBtn.disabled = true;
+      return false;
+    } else {
+      warningEl.style.display = 'none';
+      if (geoResult && geoResult.lat != null && geoResult.lon != null) {
+        submitBtn.disabled = false;
+      }
+      return true;
+    }
+  }
+
+  timeInput.addEventListener('input', checkTimeValidity);
+  timeInput.addEventListener('change', checkTimeValidity);
 
   function attemptGeo() {
     geoResult = null;
@@ -1593,7 +1664,7 @@ function showLogOutModal(todayLog, sessionLabelOrSuccess, onSuccessMaybe) {
       geoResult = result;
       if (result && result.lat != null && result.lon != null) {
         failPanel.style.display = 'none';
-        submitBtn.disabled = false;
+        checkTimeValidity();
       } else {
         failPanel.style.display = 'block';
         submitBtn.disabled = true;
@@ -1613,6 +1684,10 @@ function showLogOutModal(todayLog, sessionLabelOrSuccess, onSuccessMaybe) {
   submitBtn.addEventListener('click', () => {
     const timeVal = bd.querySelector('#lo-time').value;
     if (!timeVal) return;
+    if (loggedIn24 && timeVal < loggedIn24) {
+      showToast(`Time Out cannot be earlier than Time In (${loggedInAt}).`, 'error');
+      return;
+    }
     if (!geoResult || geoResult.lat == null || geoResult.lon == null) {
       showToast('GPS location is required to log attendance.', 'error');
       return;

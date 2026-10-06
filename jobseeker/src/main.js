@@ -294,6 +294,14 @@ initAuth().then(async (authenticated) => {
   if (!authenticated) return;
   buildShell();
 
+  // Welcome banner if transitioned from student promotion
+  if (sessionStorage.getItem('hireme_just_promoted') === 'true') {
+    sessionStorage.removeItem('hireme_just_promoted');
+    setTimeout(() => {
+      showToast('🎓 Welcome to your Alumni & Career Portal! Your account and records are ready.', 'success', 6000);
+    }, 600);
+  }
+
   // Load profile completeness before registering routes
   const comp = await apiGet('/jobseeker/profile-completeness');
   if (comp) setState('profileCompleteness', comp);

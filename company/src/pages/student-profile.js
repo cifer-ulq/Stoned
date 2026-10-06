@@ -282,9 +282,14 @@ function renderProfile(d, params) {
           </span>
         </div>
         <div class="sp-review-bar__actions">
-          <button id="sp-btn-mark-viewed" class="sp-review-btn sp-review-btn--mark" title="Record that your company has reviewed this candidate profile">
-            ${icon('checkCircle', 14)} <span>Mark as Reviewed</span>
+          <button id="sp-btn-mark-viewed" class="sp-review-btn sp-review-btn--mark" title="Candidate profile officially inspected">
+            ${icon('checkCircle', 14)} <span>Profile Inspected</span>
           </button>
+          ${isOjt && slotId && interestId ? `
+            <button id="sp-btn-review-proceed" class="sp-review-btn" style="background:#005930;color:#fff;border-color:#005930;font-weight:700;display:inline-flex;align-items:center;gap:6px;" title="Submit review note to proceed with coordinator endorsement">
+              ${icon('fileText', 14)} <span>Submit Review Note</span>
+            </button>
+          ` : ''}
           <button onclick="window.close()" class="sp-review-btn sp-review-btn--secondary" title="Close this tab">
             ${icon('x', 14)} Close
           </button>
@@ -1216,8 +1221,27 @@ function renderProfile(d, params) {
     });
   }
 
-  // ── Reviewer "Mark as Reviewed" Action ────────────────────────────────────
+  // ── Auto-mark profile as inspected on load ────────────────────────────────
+  (async () => {
+    try {
+      if (isOjt && slotId && interestId) {
+        await apiFetch(`/company/ojt-postings/${slotId}/mark-viewed/${interestId}`, { method: 'POST' });
+      } else if (isJob && appId) {
+        await apiFetch(`/company/applications/${appId}/status`, {
+          method: 'PATCH',
+          body: JSON.stringify({ status: 'reviewed' }),
+        });
+      }
+      if (markBtn) {
+        markBtn.innerHTML = `${icon('checkCircle', 14)} <span>Profile Inspected</span>`;
+        markBtn.disabled = true;
+      }
+    } catch (e) {
+      console.warn('Auto mark viewed:', e);
+    }
+  })();
 
+  // ── Reviewer "Mark as Reviewed" Action ────────────────────────────────────
   const markBtn = document.getElementById('sp-btn-mark-viewed');
   if (markBtn) {
     markBtn.addEventListener('click', async () => {
@@ -1245,12 +1269,97 @@ function renderProfile(d, params) {
       }
 
       if (success) {
-        markBtn.innerHTML = `${icon('checkCircle', 14)} <span>Viewed & Reviewed</span>`;
+        markBtn.innerHTML = `${icon('checkCircle', 14)} <span>Profile Inspected</span>`;
         markBtn.disabled = true;
       } else {
         markBtn.disabled = false;
         markBtn.innerHTML = `${icon('checkCircle', 14)} <span>Mark as Reviewed</span>`;
       }
+    });
+  }
+
+  // ── Reviewer "Submit Review Note" Modal Action ─────────────────────────────
+  const reviewProceedBtn = document.getElementById('sp-btn-review-proceed');
+  if (reviewProceedBtn) {
+    reviewProceedBtn.addEventListener('click', () => {
+      const modal = document.createElement('div');
+      modal.className = 'modal-backdrop modal-backdrop--visible';
+      modal.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.7);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;';
+
+      modal.innerHTML = `
+        <div style="background:#fff;border-radius:14px;max-width:480px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3);overflow:hidden;animation:fadeIn 0.2s ease;">
+          <div style="padding:18px 22px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;background:#f8fafc;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div style="width:36px;height:36px;border-radius:8px;background:rgba(0,89,48,0.1);color:#005930;display:flex;align-items:center;justify-content:center;">${icon('fileText', 18)}</div>
+              <div>
+                <h3 style="margin:0;font-size:1.05rem;font-weight:700;color:#0f172a;">Submit Review Note</h3>
+                <p style="margin:2px 0 0;font-size:0.78rem;color:#64748b;">${name} &bull; OJT Applicant</p>
+              </div>
+            </div>
+            <button id="sp-note-close" style="background:none;border:none;color:#64748b;cursor:pointer;padding:4px;">${icon('x', 18)}</button>
+          </div>
+          <div style="padding:22px;">
+            <div style="background:rgba(0,89,48,0.06);border:1px solid rgba(0,89,48,0.2);border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:0.8rem;color:#005930;line-height:1.45;">
+              ${icon('checkCircle', 14)} <strong>Profile Inspected!</strong> Submitting this review note marks the candidate as reviewed and notifies the OJT Coordinator to prepare the endorsement letter.
+            </div>
+            <div style="margin-bottom:14px;">
+              <label style="display:block;font-size:0.8rem;font-weight:700;color:#334155;margin-bottom:6px;">Review Note / Message for Student <span style="color:#ef4444;">*</span></label>
+              <textarea id="sp-note-text" style="width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:8px;padding:10px 12px;font-size:0.85rem;line-height:1.5;min-height:90px;resize:vertical;" placeholder="e.g. We have reviewed your profile and portfolio and would like to proceed with your application.">We have reviewed your profile and portfolio and would like to proceed with your application.</textarea>
+              <p id="sp-note-err" style="color:#ef4444;font-size:0.78rem;margin:4px 0 0;display:none;"></p>
+            </div>
+          </div>
+          <div style="padding:14px 22px;background:#f8fafc;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end;gap:10px;">
+            <button id="sp-note-cancel" style="padding:8px 16px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;color:#334155;font-weight:600;font-size:0.84rem;cursor:pointer;">Cancel</button>
+            <button id="sp-note-submit" style="padding:8px 18px;border-radius:6px;border:none;background:#005930;color:#fff;font-weight:700;font-size:0.84rem;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">${icon('checkCircle', 14)} Confirm &amp; Submit</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+
+      const closeModal = () => modal.remove();
+      modal.querySelector('#sp-note-close').addEventListener('click', closeModal);
+      modal.querySelector('#sp-note-cancel').addEventListener('click', closeModal);
+      modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+
+      modal.querySelector('#sp-note-submit').addEventListener('click', async () => {
+        const note = modal.querySelector('#sp-note-text').value.trim();
+        const err = modal.querySelector('#sp-note-err');
+        if (!note || note.length < 5) {
+          err.textContent = 'Please enter a note of at least 5 characters.';
+          err.style.display = 'block';
+          return;
+        }
+        const submitBtn = modal.querySelector('#sp-note-submit');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `${icon('loader', 14)} Processing…`;
+        err.style.display = 'none';
+
+        try {
+          const res = await apiFetch(`/company/ojt-postings/${slotId}/accept/${interestId}`, {
+            method: 'POST',
+            body: JSON.stringify({ company_note: note }),
+          });
+
+          if (res?.success) {
+            closeModal();
+            reviewProceedBtn.disabled = true;
+            reviewProceedBtn.style.background = '#10b981';
+            reviewProceedBtn.style.borderColor = '#10b981';
+            reviewProceedBtn.innerHTML = `${icon('checkCircle', 14)} <span>Candidate Reviewed</span>`;
+            alert('Student application reviewed successfully! The OJT Coordinator will be notified to process the endorsement.');
+          } else {
+            err.textContent = res?.message || 'Failed to submit review note.';
+            err.style.display = 'block';
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = `${icon('checkCircle', 14)} Confirm &amp; Submit`;
+          }
+        } catch {
+          err.textContent = 'Network error. Please try again.';
+          err.style.display = 'block';
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = `${icon('checkCircle', 14)} Confirm &amp; Submit`;
+        }
+      });
     });
   }
 }

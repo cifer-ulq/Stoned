@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CHMSU HireMe — System ERD & Export Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --surface: #111827;
+      --border: #1f2937;
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+      --primary: #4f46e5;
+      --primary-hover: #4338ca;
+      --success: #059669;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+    /* Toolbar */
+    .toolbar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      z-index: 20;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .badge-icon {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      color: #fff;
+    }
+    .title-area h1 {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.2px;
+    }
+    .title-area p {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: #1e293b;
+      color: #e2e8f0;
+      transition: all 0.15s ease;
+    }
+    .btn:hover {
+      background: #334155;
+      color: #fff;
+    }
+    .btn-primary {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+    .btn-success {
+      background: var(--success);
+      border-color: var(--success);
+      color: #fff;
+    }
+    .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #0f172a;
+      padding: 4px;
+      border-radius: 8px;
+      border: 1px solid #1e293b;
+    }
+    .filter-btn {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 5px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .filter-btn.active, .filter-btn:hover {
+      background: #1e293b;
+      color: #f8fafc;
+    }
+    /* Canvas Area */
+    .viewport {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      cursor: grab;
+      background: #090d16;
+      background-image: radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+    .viewport:active {
+      cursor: grabbing;
+    }
+    #svgContainer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      transform-origin: 0 0;
+      transition: transform 0.05s ease-out;
+    }
+    /* Floating Stats Bar */
+    .stats-card {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      background: rgba(17, 24, 39, 0.92);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-size: 12px;
+      display: flex;
+      gap: 16px;
+      z-index: 10;
+    }
+    .stat-item {
+      display: flex;
+      flex-direction: column;
+    }
+    .stat-val {
+      font-weight: 700;
+      color: #60a5fa;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .stat-lbl {
+      font-size: 10px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+    /* Export notification toast */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #10b981;
+      color: #fff;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      display: none;
+      z-index: 50;
+      animation: fadeIn 0.2s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body>
+
+  <!-- Top Toolbar -->
+  <header class="toolbar">
+    <div class="brand">
+      <div class="badge-icon">ERD</div>
+      <div class="title-area">
+        <h1>CHMSU HireMe — System ERD & Export Studio</h1>
+        <p>Interactive Schema Visualizer for Academic Capstone Papers &amp; Data Dictionary</p>
+      </div>
+    </div>
+
+    <!-- Filter Buttons -->
+    <div class="filter-group">
+      <button class="filter-btn active" onclick="filterDomain('all', this)">All (27)</button>
+      <button class="filter-btn" onclick="filterDomain('auth', this)">Auth &amp; Core</button>
+      <button class="filter-btn" onclick="filterDomain('profile', this)">Profiles</button>
+      <button class="filter-btn" onclick="filterDomain('portfolio', this)">Portfolio</button>
+      <button class="filter-btn" onclick="filterDomain('ojt', this)">OJT &amp; DTR</button>
+      <button class="filter-btn" onclick="filterDomain('eval', this)">Evaluations</button>
+      <button class="filter-btn" onclick="filterDomain('job', this)">Hiring</button>
+    </div>
+
+    <!-- Export & View Controls -->
+    <div class="controls">
+      <button class="btn" onclick="zoomIn()" title="Zoom In">+</button>
+      <button class="btn" onclick="zoomOut()" title="Zoom Out">−</button>
+      <button class="btn" onclick="resetZoom()" title="Reset View">Reset</button>
+      <button class="btn" onclick="downloadSVG()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download SVG
+      </button>
+      <button class="btn btn-primary" onclick="exportPNG(1)" title="Standard resolution image">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        Export PNG (Standard)
+      </button>
+      <button class="btn btn-success" onclick="exportPNG(2)" title="High-resolution 300 DPI for Thesis / Word / LaTeX inclusion">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        Export High-Res PNG (300 DPI)
+      </button>
+    </div>
+  </header>
+
+  <!-- Interactive Pan/Zoom Canvas Viewport -->
+  <main class="viewport" id="viewport">
+    <div id="svgContainer"></div>
+  </main>
+
+  <!-- Status HUD -->
+  <div class="stats-card">
+    <div class="stat-item"><span class="stat-val">27</span><span class="stat-lbl">Entities</span></div>
+    <div class="stat-item"><span class="stat-val">28</span><span class="stat-lbl">Relationships</span></div>
+    <div class="stat-item"><span class="stat-val">PostgreSQL</span><span class="stat-lbl">Engine</span></div>
+    <div class="stat-item"><span class="stat-val" id="zoomDisplay">65%</span><span class="stat-lbl">Scale</span></div>
+  </div>
+
+  <div id="toast">Exporting image...</div>
+
+  <script>
+    let scale = 0.85;
+    let panX = 40;
+    let panY = 20;
+    let isDragging = false;
+    let startX = 0, startY = 0;
+
+    const viewport = document.getElementById('viewport');
+    const container = document.getElementById('svgContainer');
+    const zoomDisplay = document.getElementById('zoomDisplay');
+
+    // Load external SVG content
+    fetch('erd_chmsu_hireme.svg')
+      .then(res => res.text())
+      .then(svgText => {
+        container.innerHTML = svgText;
+        updateTransform();
+      });
+
+    function updateTransform() {
+      container.style.transform = `translate(\${panX}px, \${panY}px) scale(\${scale})`;
+      zoomDisplay.textContent = Math.round(scale * 100) + '%';
+    }
+
+    // Pan / Dragging
+    viewport.addEventListener('mousedown', e => {
+      if (e.target.closest('button')) return;
+      isDragging = true;
+      startX = e.clientX - panX;
+      startY = e.clientY - panY;
+    });
+
+    window.addEventListener('mousemove', e => {
+      if (!isDragging) return;
+      panX = e.clientX - startX;
+      panY = e.clientY - startY;
+      updateTransform();
+    });
+
+    window.addEventListener('mouseup', () => { isDragging = false; });
+
+    // Wheel Zooming
+    viewport.addEventListener('wheel', e => {
+      e.preventDefault();
+      const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+      const newScale = Math.min(Math.max(scale * zoomFactor, 0.2), 3.0);
+      
+      const mouseX = e.clientX - panX;
+      const mouseY = e.clientY - panY;
+      panX -= (mouseX * (newScale / scale - 1));
+      panY -= (mouseY * (newScale / scale - 1));
+      scale = newScale;
+      updateTransform();
+    });
+
+    function zoomIn() { scale = Math.min(scale * 1.25, 3.0); updateTransform(); }
+    function zoomOut() { scale = Math.max(scale * 0.8, 0.2); updateTransform(); }
+    function resetZoom() { scale = 0.85; panX = 40; panY = 20; updateTransform(); }
+
+    // Filter domain
+    function filterDomain(domain, btn) {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      const cards = container.querySelectorAll('.entity-card');
+      cards.forEach(c => {
+        if (domain === 'all' || c.getAttribute('data-domain') === domain) {
+          c.style.opacity = '1';
+          c.style.filter = '';
+        } else {
+          c.style.opacity = '0.15';
+          c.style.filter = 'grayscale(100%)';
+        }
+      });
+    }
+
+    // Download Raw SVG
+    function downloadSVG() {
+      const svgEl = container.querySelector('svg');
+      if (!svgEl) return;
+      const serializer = new XMLSerializer();
+      const blob = new Blob([serializer.serializeToString(svgEl)], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'CHMSU_HireMe_Minimal_ERD.svg';
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('Minimal Vector ERD downloaded!');
+    }
+
+    // High-Resolution PNG Export (supports 300 DPI / 2x scale)
+    function exportPNG(pixelRatio = 2) {
+      const svgEl = container.querySelector('svg');
+      if (!svgEl) return;
+
+      showToast(pixelRatio > 1 ? 'Generating 300 DPI High-Res PNG...' : 'Exporting PNG...');
+      
+      const serializer = new XMLSerializer();
+      const svgStr = serializer.serializeToString(svgEl);
+      const svgBlob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(svgBlob);
+      
+      const img = new Image();
+      img.onload = function() {
+        const baseW = 1750;
+        const baseH = 1060;
+        const canvas = document.createElement('canvas');
+        canvas.width = baseW * pixelRatio;
+        canvas.height = baseH * pixelRatio;
+        const ctx = canvas.getContext('2d');
+        
+        // Fill clean background
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.scale(pixelRatio, pixelRatio);
+        ctx.drawImage(img, 0, 0, baseW, baseH);
+        
+        canvas.toBlob(function(blob) {
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = pixelRatio > 1 ? 'CHMSU_HireMe_ERD_Minimal_300DPI.png' : 'CHMSU_HireMe_ERD_Minimal.png';
+          a.click();
+          URL.revokeObjectURL(url);
+          showToast('Minimal PNG successfully exported!');
+        }, 'image/png');
+      };
+      img.src = url;
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.style.display = 'block';
+      setTimeout(() => { t.style.display = 'none'; }, 3000);
+    }
+  </script>
+</body>
+</html>

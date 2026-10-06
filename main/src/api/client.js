@@ -65,6 +65,14 @@ function handleMutationInvalidation(path) {
       '/student/applications*',
       '/student/dashboard*'
     ]);
+  } else if (p.includes('/requirements')) {
+    apiCache.invalidate([
+      '/student/requirements*',
+      '/student/employment-status*',
+      '/student/portfolio*',
+      '/ojt/postings*',
+      '/student/dashboard*'
+    ]);
   } else if (p.includes('/tracker') || p.includes('/time-in') || p.includes('/time-out') || p.includes('/attendance')) {
     apiCache.invalidate([
       '/student/ojt-tracker*',
@@ -151,8 +159,9 @@ export async function apiRequest(method, path, body = null, options = {}) {
  */
 export async function apiGet(path, options = {}) {
   const isChat = path.startsWith('/chat');
-  const forceRefresh = isChat || options.forceRefresh;
-  const bypassCache = isChat || options.bypassCache;
+  const isGate = path.startsWith('/student/employment-status') || path.startsWith('/student/requirements');
+  const forceRefresh = isChat || isGate || options.forceRefresh;
+  const bypassCache = isChat || isGate || options.bypassCache;
 
   if (!bypassCache && !forceRefresh) {
     const cached = apiCache.get(path);
@@ -161,7 +170,7 @@ export async function apiGet(path, options = {}) {
     }
   }
 
-  return apiRequest('GET', path, null, { ...options, skipDedup: isChat ? true : options.skipDedup });
+  return apiRequest('GET', path, null, { ...options, skipDedup: (isChat || isGate || forceRefresh) ? true : options.skipDedup });
 }
 
 /**

@@ -51,17 +51,65 @@ export async function renderAnalytics(container) {
   const jFun = data.hiringFunnel  || {};
   const oFun = ojt.ojtFunnel      || {};
 
-  const timeToHire = data.kpiMetrics?.find(k => k.label === 'Avg. Time to Hire')?.value || '18 days';
-  const offerAcc   = data.kpiMetrics?.find(k => k.label === 'Offer Acceptance')?.value  || '85%';
+  const timeToHire = data.timeToHire || data.kpiMetrics?.find(k => k.label === 'Avg. Time to Hire')?.value || '0 days';
+  const offerAcc   = data.offerAcceptanceRate || data.kpiMetrics?.find(k => k.label === 'Offer Acceptance' || k.label === 'Offer Acceptance Rate')?.value || '0%';
 
   // Overview 6-KPI metrics (clean & executive)
   const overviewKpis = [
-    { label: 'Total Job Applications', value: jFun.applied ?? 0,    icon: 'fileText',      color: '#005930', trend: '+12% vs last month', isUp: true },
-    { label: 'Total Hired Candidates', value: jFun.hired ?? 0,      icon: 'userCheck',     color: '#059669', trend: 'Direct hires',        isUp: null },
-    { label: 'Avg. Time to Hire',      value: timeToHire,           icon: 'clock',         color: '#0284C7', trend: '-2 days faster',     isUp: true },
-    { label: 'Offer Acceptance Rate',  value: offerAcc,             icon: 'checkCircle',   color: '#0D9488', trend: '+4% acceptance',     isUp: true },
-    { label: 'OJT Inquiries',          value: oFun.interested ?? 0, icon: 'graduationCap', color: '#D97706', trend: 'Academic year 2025', isUp: null },
-    { label: 'Active OJT Trainees',    value: oFun.accepted ?? 0,   icon: 'award',         color: '#7C3AED', trend: 'Currently rendered', isUp: null },
+    {
+      label: 'Total Job Applications',
+      value: jFun.applied ?? 0,
+      icon: 'fileText',
+      color: '#005930',
+      trend: (jFun.applied > 0 && data.appsTrend) ? data.appsTrend : '',
+      isUp: data.appsTrendIsUp ?? null,
+      sub: (jFun.applied ?? 0) === 0 ? 'No applications yet' : ''
+    },
+    {
+      label: 'Total Hired Candidates',
+      value: jFun.hired ?? 0,
+      icon: 'userCheck',
+      color: '#059669',
+      trend: (jFun.hired ?? 0) > 0 ? 'Direct hires' : '',
+      isUp: null,
+      sub: (jFun.hired ?? 0) === 0 ? 'No hires yet' : ''
+    },
+    {
+      label: 'Avg. Time to Hire',
+      value: timeToHire === '—' ? '0 days' : timeToHire,
+      icon: 'clock',
+      color: '#0284C7',
+      trend: '',
+      isUp: null,
+      sub: (timeToHire === '0 days' || timeToHire === '—') ? 'Based on completed hires' : 'Application to hire'
+    },
+    {
+      label: 'Offer Acceptance Rate',
+      value: offerAcc === '—' ? '0%' : offerAcc,
+      icon: 'checkCircle',
+      color: '#0D9488',
+      trend: '',
+      isUp: null,
+      sub: (offerAcc === '0%' || offerAcc === '—') ? 'Based on extended offers' : 'Accepted vs offered'
+    },
+    {
+      label: 'OJT Inquiries',
+      value: oFun.interested ?? 0,
+      icon: 'graduationCap',
+      color: '#D97706',
+      trend: '',
+      isUp: null,
+      sub: (oFun.interested ?? 0) === 0 ? 'No inquiries yet' : 'Academic year 2025'
+    },
+    {
+      label: 'Active OJT Trainees',
+      value: oFun.accepted ?? 0,
+      icon: 'award',
+      color: '#7C3AED',
+      trend: '',
+      isUp: null,
+      sub: (oFun.accepted ?? 0) === 0 ? 'No active trainees' : 'Currently rendered'
+    },
   ];
 
   const jMonthlyTotal = (data.monthlyApplications || []).reduce((s, m) => s + m.count, 0);
@@ -274,10 +322,15 @@ export async function renderAnalytics(container) {
   });
 
   // Window resize ink adjuster
-  window.addEventListener('resize', () => {
+  const onResize = () => {
     const active = container.querySelector('.an2-tab--active');
     if (active) moveInk(active);
-  }, { passive: true });
+  };
+  if (container._resizeHandler) {
+    window.removeEventListener('resize', container._resizeHandler);
+  }
+  container._resizeHandler = onResize;
+  window.addEventListener('resize', onResize, { passive: true });
 
   // Refresh handler
   container.querySelector('#an2-refresh-btn')?.addEventListener('click', () => {
@@ -430,12 +483,23 @@ function renderDualBarChart(jobs, ojt) {
 
 // ─── SVG Donut Chart with Clean Legend ────────────────────────────────────────
 function renderDonutChart(items, keyName) {
-  if (!items.length) return `<div class="an2-empty-sm">No breakdown records available.</div>`;
-  const total = items.reduce((s, r) => s + r.count, 0) || 1;
+  const validItems = (items || []).filter(item => item && item.count > 0 && item[keyName] !== 'No data yet');
+  const total = validItems.reduce((s, r) => s + (r.count || 0), 0);
+
+  if (!validItems.length || total === 0) {
+    const isProgram = keyName === 'program';
+    return `
+      <div class="an2-empty" style="padding: var(--space-8) var(--space-4);">
+        <div class="an2-empty__icon">${icon(isProgram ? 'award' : 'pieChart', 22)}</div>
+        <p class="an2-empty__title">${isProgram ? 'No student program records yet' : 'No candidate sources yet'}</p>
+        <p class="an2-empty__sub">${isProgram ? 'Distribution of student academic courses will appear once trainees apply for your OJT slots.' : 'Candidate channel distribution will appear here as applicants discover and apply to your job listings.'}</p>
+      </div>`;
+  }
+
   const R = 38, C = 2 * Math.PI * R;
   let offset = 0;
 
-  const segs = items.map((item, i) => {
+  const segs = validItems.map((item, i) => {
     const color = PALETTE[i % PALETTE.length];
     const frac  = item.count / total;
     const dash  = frac * C;
@@ -449,7 +513,7 @@ function renderDonutChart(items, keyName) {
   }).join('');
 
   const labelMap = { full_time: 'Full-time', part_time: 'Part-time', contract: 'Contract', internship: 'Internship' };
-  const legend = items.map((item, i) => {
+  const legend = validItems.map((item, i) => {
     const color = PALETTE[i % PALETTE.length];
     const pct   = Math.round((item.count / total) * 100);
     const name  = labelMap[item[keyName]] || item[keyName];
@@ -521,8 +585,16 @@ function renderMiniCompare(jFun, oFun) {
 
 // ─── Department Breakdown Table ───────────────────────────────────────────────
 function renderDeptTable(departments) {
-  if (!departments.length) return `<div class="an2-empty-sm">No departmental hiring records yet.</div>`;
-  const maxAp = Math.max(...departments.map(d => d.applicants), 1);
+  const valid = (departments || []).filter(d => d.department && d.department !== 'No postings yet');
+  if (!valid.length) {
+    return `
+      <div class="an2-empty" style="padding: var(--space-8) var(--space-4);">
+        <div class="an2-empty__icon">${icon('briefcase', 22)}</div>
+        <p class="an2-empty__title">No departmental postings yet</p>
+        <p class="an2-empty__sub">Active job postings will be grouped by department to visualize candidate volume and filled positions.</p>
+      </div>`;
+  }
+  const maxAp = Math.max(...valid.map(d => d.applicants), 1);
 
   return `
     <div class="an2-dept-table-wrap">

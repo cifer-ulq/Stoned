@@ -68,14 +68,14 @@ const OJT_STATUS_ORDER = {
 
 const OJT_STEP_COLOR = {
   interested:            '#10B981',
-  company_reviewed:      '#D97706',
-  endorsement_requested: '#8B5CF6',
+  company_reviewed:      '#10B981',
+  endorsement_requested: '#10B981',
   endorsed:              '#10B981',
-  interview_scheduled:   '#059669',
-  company_accepted:      '#059669',
+  interview_scheduled:   '#10B981',
+  company_accepted:      '#10B981',
   accepted:              '#10B981',
-  ojt_confirmed:         '#8B5CF6',
-  ojt_started:           '#059669',
+  ojt_confirmed:         '#10B981',
+  ojt_started:           '#10B981',
   rejected:              '#EF4444',
 };
 
@@ -151,9 +151,11 @@ function relativeDate(dateStr) {
 /* ─────────────────────────────────────────────────────────────────────────────
    APPLICATION DETAILS MODAL
    ───────────────────────────────────────────────────────────────────────────── */
-function openApplicationDetailsModal(item, onWithdrawSuccess) {
-  const existing = document.getElementById('app-details-modal');
-  if (existing) existing.remove();
+function openApplicationDetailsModal(item, onWithdrawSuccess, existingOverlay = null) {
+  if (!existingOverlay) {
+    const existing = document.getElementById('app-details-modal');
+    if (existing) existing.remove();
+  }
 
   const isOjt = item.type === 'ojt';
   const color = isOjt ? (OJT_STEP_COLOR[item.rawStatus || 'interested'] || '#10B981') : '#005930';
@@ -168,9 +170,11 @@ function openApplicationDetailsModal(item, onWithdrawSuccess) {
     statusBadgeLabel = sc.label;
   }
 
-  const overlay = document.createElement('div');
+  const overlay = existingOverlay || document.createElement('div');
   overlay.id = 'app-details-modal';
   overlay.className = 'modal-overlay';
+  overlay.dataset.modalAppId = String(item.id);
+  overlay.dataset.modalType = item.type;
   overlay.innerHTML = `
     <div class="modal-box app-details-modal__box" role="dialog" aria-modal="true">
       <!-- Modal Header -->
@@ -487,8 +491,10 @@ function openApplicationDetailsModal(item, onWithdrawSuccess) {
     </div>
   `;
 
-  document.body.appendChild(overlay);
-  requestAnimationFrame(() => overlay.querySelector('.modal-box')?.classList.add('modal-box--visible'));
+  if (!existingOverlay) {
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.querySelector('.modal-box')?.classList.add('modal-box--visible'));
+  }
 
   const closeModal = () => {
     overlay.classList.add('modal-overlay--exit');
@@ -709,6 +715,9 @@ function unifiedApplicationCard(item, idx) {
    MAIN RENDER FUNCTION
    ───────────────────────────────────────────────────────────────────────────── */
 export async function renderApplications(container) {
+  if (typeof container._appCleanup === 'function') {
+    container._appCleanup();
+  }
   let currentTypeFilter = 'all';
 
   container.innerHTML = `
@@ -751,11 +760,16 @@ export async function renderApplications(container) {
           </button>
         </div>
 
-        <div style="display:flex; gap:10px; align-items:center;">
-          <a href="#/ojt" class="btn btn--sm" style="background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border-default);border-radius:99px;font-size:0.76rem;text-decoration:none;display:inline-flex;align-items:center;gap:4px;">
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          <button id="btn-sync-apps" class="btn btn--sm app-sync-btn" style="background:var(--bg-secondary);color:var(--text-secondary);border:1px solid var(--border-default);border-radius:99px;font-size:0.75rem;display:inline-flex;align-items:center;gap:6px;cursor:pointer;padding:6px 12px;height:32px;" title="Check for real-time application updates">
+            <span class="sync-icon" style="display:flex;align-items:center;">${icon('refreshCw', 12)}</span>
+            <span class="sync-label" style="font-weight:600;">Sync Status</span>
+            <span id="app-sync-indicator" style="font-size:0.68rem;opacity:0.75;margin-left:2px;">• Just now</span>
+          </button>
+          <a href="#/ojt" class="btn btn--sm" style="background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border-default);border-radius:99px;font-size:0.76rem;text-decoration:none;display:inline-flex;align-items:center;gap:4px;height:32px;">
             ${icon('graduationCap', 13)} Browse OJT
           </a>
-          <a href="#/jobs" class="btn btn--sm" style="background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border-default);border-radius:99px;font-size:0.76rem;text-decoration:none;display:inline-flex;align-items:center;gap:4px;">
+          <a href="#/jobs" class="btn btn--sm" style="background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border-default);border-radius:99px;font-size:0.76rem;text-decoration:none;display:inline-flex;align-items:center;gap:4px;height:32px;">
             ${icon('briefcase', 13)} Browse Jobs
           </a>
         </div>
@@ -784,119 +798,11 @@ export async function renderApplications(container) {
     </div>
   `;
 
-  // Fetch both endpoints concurrently
-  const [jobRes, ojtRes] = await Promise.all([
-    apiGet('/student/applications').catch(() => null),
-    apiGet('/ojt/my-interests').catch(() => null),
-  ]);
-
-  // Parse Jobs
-  const rawJobs = (jobRes?.success && Array.isArray(jobRes?.data))
-    ? jobRes.data
-    : (Array.isArray(jobRes) ? jobRes : (jobRes?.data || []));
-
-  const jobItems = rawJobs.map(a => {
-    const listing = a.job_listing;
-    const compName = listing?.company_name ?? 'Company';
-    return {
-      id:               a.id,
-      type:             'job',
-      title:            listing?.title ?? 'Unknown Position',
-      company:          compName,
-      companyInitial:   compName?.[0]?.toUpperCase() ?? 'J',
-      companyUserId:    listing?.company_user_id || null,
-      status:           jobStatusAlias[a.status] ?? a.status ?? 'applied',
-      rawStatus:        a.status,
-      appliedDate:      a.created_at,
-      timestamp:        new Date(a.created_at || 0).getTime(),
-      department:       listing?.department || 'General / Tech',
-      location:         listing?.location || 'Not specified',
-      employmentType:   listing?.employment_type || 'Full-time',
-      experienceLevel:  listing?.experience_level || 'Entry Level',
-      salaryRange:      listing?.salary_range || 'Competitive',
-      description:      listing?.description || '',
-      responsibilities: Array.isArray(listing?.responsibilities) ? listing.responsibilities : (typeof listing?.responsibilities === 'string' ? JSON.parse(listing.responsibilities || '[]') : []),
-      requirements:     Array.isArray(listing?.requirements) ? listing.requirements : (typeof listing?.requirements === 'string' ? JSON.parse(listing.requirements || '[]') : []),
-      benefits:         Array.isArray(listing?.benefits) ? listing.benefits : [],
-      requiredSkills:   Array.isArray(listing?.required_skills) ? listing.required_skills : [],
-      coverLetter:      a.cover_letter || '',
-      notes:            a.notes || '',
-      interview:        a.latest_interview || null,
-      raw:              a,
-    };
-  });
-
-  // Parse OJT
-  let rawOjt = (ojtRes?.success && Array.isArray(ojtRes?.data))
-    ? ojtRes.data
-    : (Array.isArray(ojtRes) ? ojtRes : (ojtRes?.data || []));
-
-  // Merge localStorage interests if any
-  try {
-    const user = JSON.parse(localStorage.getItem('hireme_user') || '{}');
-    const local = JSON.parse(localStorage.getItem('hireme_ojt_interests') || '[]');
-    const myLocal = local.filter(i => !user.email || i.studentEmail === user.email);
-    myLocal.forEach(loc => {
-      const exists = rawOjt.some(o => o.id === loc.id || (o.ojt_posting_id && o.ojt_posting_id === loc.slotId));
-      if (!exists) {
-        rawOjt.push({
-          id: loc.id,
-          status: loc.status || 'interested',
-          created_at: loc.createdAt,
-          posting: {
-            title: loc.slotTitle,
-            company_name: loc.company,
-          }
-        });
-      }
-    });
-  } catch (_) {}
-
-  const ojtItems = rawOjt
-    .filter(i => i.status !== 'rejected')
-    .map(interest => {
-      const posting = interest.posting || {};
-      const company = posting.company_name || posting.company || 'Partner Company';
-      return {
-        id:                     interest.id,
-        type:                   'ojt',
-        title:                  posting.title || posting.slotTitle || 'OJT Slot',
-        company:                company,
-        companyInitial:         company?.[0]?.toUpperCase() ?? 'O',
-        companyUserId:          posting.company_user_id || null,
-        status:                 interest.status || 'interested',
-        rawStatus:              interest.status || 'interested',
-        appliedDate:            interest.created_at || interest.applied_date,
-        timestamp:              new Date(interest.created_at || interest.applied_date || 0).getTime(),
-        department:             posting.department || 'General / OJT Placement',
-        industry:               posting.industry || '',
-        location:               posting.location || 'CHMSU Partner Area',
-        branchName:             posting.branch_name || '',
-        scheduleType:           posting.schedule_type || 'Full-time OJT (Mon-Fri)',
-        duration:               posting.duration || 'Standard OJT Hours',
-        slotsTotal:             posting.slots_total || null,
-        slotsRemaining:         posting.slots_remaining || null,
-        description:            posting.description || '',
-        learningOutcomes:       posting.learning_outcomes || '',
-        requiredSkills:         Array.isArray(posting.required_skills) ? posting.required_skills : [],
-        preferredCourses:       Array.isArray(posting.preferred_courses) ? posting.preferred_courses : [],
-        studentMessage:         interest.student_message || '',
-        companyNote:            interest.company_note || '',
-        coordinatorNote:        interest.coordinator_note || '',
-        interviewScheduledAt:   interest.interview_scheduled_at || null,
-        interviewType:          interest.interview_type || null,
-        interviewLocation:      interest.interview_location || null,
-        ojtStartDate:           interest.ojt_start_date || null,
-        ojtInstructions:        interest.ojt_instructions || '',
-        endorsedAt:             interest.endorsed_at || null,
-        endorsementRequestedAt: interest.endorsement_requested_at || null,
-        endorsementLetterSentAt:interest.endorsement_letter_sent_at || null,
-        raw:                    interest,
-      };
-    });
-
-  // Combine into single unified list, sorted by timestamp descending
-  let allApplications = [...jobItems, ...ojtItems].sort((a, b) => b.timestamp - a.timestamp);
+  let allApplications = [];
+  let isSyncing = false;
+  let lastSyncTime = Date.now();
+  let pollTimer = null;
+  let syncTimeTimer = null;
 
   // Stats calculation
   function renderStats() {
@@ -1047,40 +953,86 @@ export async function renderApplications(container) {
 
   // Action handlers
   function attachActions() {
-    // 1. Withdraw Button on Card
-    container.querySelectorAll('.btn-withdraw').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        const id = btn.dataset.id;
-        const type = btn.dataset.type;
-        if (!id) return;
-        btn.disabled = true;
-        await handleWithdraw(id, type);
-      });
-    });
-
-    // 2. Details Button on Card
-    container.querySelectorAll('.btn-details').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const id = btn.dataset.id;
-        const type = btn.dataset.type;
-        const item = allApplications.find(a => String(a.id) === String(id) && a.type === type);
-        if (item) openApplicationDetailsModal(item, handleWithdraw);
-      });
-    });
-
-    // 3. Card click to open details modal
     container.querySelectorAll('.ojt-app-card, .app-card').forEach(card => {
-      card.style.cursor = 'pointer';
-      card.addEventListener('click', (e) => {
-        if (e.target.closest('button, a, input, select')) return;
-        const id = card.dataset.appId;
-        const type = card.dataset.type;
-        const item = allApplications.find(a => String(a.id) === String(id) && a.type === type);
-        if (item) openApplicationDetailsModal(item, handleWithdraw);
-      });
+      const id = card.dataset.appId;
+      const type = card.dataset.type;
+      const item = allApplications.find(a => String(a.id) === String(id) && a.type === type);
+      if (item) wireCardActions(card, item, handleWithdraw);
     });
+  }
+
+  // Real-time synchronization engine
+  async function syncApplications(showSpinner = false) {
+    if (isSyncing) return;
+    isSyncing = true;
+    const syncBtn = container.querySelector('#btn-sync-apps');
+    const syncIndicator = container.querySelector('#app-sync-indicator');
+    if (showSpinner && syncBtn) syncBtn.classList.add('is-spinning');
+
+    try {
+      const freshApps = await fetchApplicationsData(true);
+      if (!container.isConnected) {
+        stopSyncLoop();
+        return;
+      }
+
+      // Check for structural changes vs in-place status progressions
+      let hasStructuralChanges = freshApps.length !== allApplications.length;
+      const changedItems = [];
+
+      if (!hasStructuralChanges) {
+        for (const fresh of freshApps) {
+          const existing = allApplications.find(a => String(a.id) === String(fresh.id) && a.type === fresh.type);
+          if (!existing) {
+            hasStructuralChanges = true;
+            break;
+          }
+          if (
+            existing.rawStatus !== fresh.rawStatus ||
+            existing.status !== fresh.status ||
+            existing.interviewScheduledAt !== fresh.interviewScheduledAt ||
+            existing.companyNote !== fresh.companyNote ||
+            existing.coordinatorNote !== fresh.coordinatorNote ||
+            existing.ojtStartDate !== fresh.ojtStartDate ||
+            existing.endorsedAt !== fresh.endorsedAt
+          ) {
+            changedItems.push({ prev: existing, next: fresh });
+          }
+        }
+      }
+
+      if (hasStructuralChanges) {
+        allApplications = freshApps;
+        renderStats();
+        renderFeed(currentTypeFilter);
+      } else if (changedItems.length > 0) {
+        allApplications = freshApps;
+        renderStats();
+
+        changedItems.forEach(({ prev, next }) => {
+          // 1. Patch the card in-place & trigger forward-pulse animation
+          patchApplicationCard(container, next, prev, handleWithdraw);
+
+          // 2. Patch the open details modal in-place if currently open
+          patchOpenModalIfApplicable(next, handleWithdraw);
+
+          // 3. If step moved forward, notify the student
+          if (next.rawStatus !== prev.rawStatus) {
+            const isOjt = next.type === 'ojt';
+            const badge = isOjt ? getOjtStatusBadge(next) : (jobStatusConfig[next.status]?.label || next.status);
+            showToast(`Application updated: "${next.title}" is now "${badge}"`, 'info');
+          }
+        });
+      }
+
+      lastSyncTime = Date.now();
+      if (syncIndicator) syncIndicator.textContent = '• Just now';
+    } catch (err) {
+      console.warn('Silent application sync error:', err);
+    } finally {
+      isSyncing = false;
+      if (syncBtn) syncBtn.classList.remove('is-spinning');
+    }
   }
 
   // Filter tabs listener
@@ -1101,6 +1053,252 @@ export async function renderApplications(container) {
     });
   }
 
+  // Manual Sync Button listener
+  const syncBtn = container.querySelector('#btn-sync-apps');
+  if (syncBtn) {
+    syncBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      syncApplications(true);
+    });
+  }
+
+  // Polling loop management (active tab only)
+  function startSyncLoop() {
+    stopSyncLoop();
+    pollTimer = setInterval(() => {
+      if (document.hidden) return; // Tab in background, skip
+      if (!container.isConnected) {
+        stopSyncLoop();
+        return;
+      }
+      syncApplications(false);
+    }, 6000); // 6 seconds live poll
+
+    syncTimeTimer = setInterval(() => {
+      if (!container.isConnected) {
+        stopSyncLoop();
+        return;
+      }
+      const syncIndicator = container.querySelector('#app-sync-indicator');
+      if (!syncIndicator) return;
+      const sec = Math.floor((Date.now() - lastSyncTime) / 1000);
+      if (sec < 15) syncIndicator.textContent = '• Just now';
+      else if (sec < 60) syncIndicator.textContent = `• ${sec}s ago`;
+      else syncIndicator.textContent = `• ${Math.floor(sec / 60)}m ago`;
+    }, 5000);
+  }
+
+  function stopSyncLoop() {
+    if (pollTimer) clearInterval(pollTimer);
+    if (syncTimeTimer) clearInterval(syncTimeTimer);
+    pollTimer = null;
+    syncTimeTimer = null;
+  }
+
+  // Tab visibility & focus wakeup listeners
+  const handleVisibilityChange = () => {
+    if (!document.hidden && container.isConnected) {
+      syncApplications(false);
+    }
+  };
+
+  const handleWindowFocus = () => {
+    if (container.isConnected) {
+      syncApplications(false);
+    }
+  };
+
+  const handleNotifRefresh = () => {
+    if (container.isConnected) {
+      syncApplications(false);
+    }
+  };
+
+  document.addEventListener('visibilitychange', handleVisibilityChange);
+  window.addEventListener('focus', handleWindowFocus);
+  window.addEventListener('hireme:applications-refresh', handleNotifRefresh);
+
+  const cleanup = () => {
+    stopSyncLoop();
+    document.removeEventListener('visibilitychange', handleVisibilityChange);
+    window.removeEventListener('focus', handleWindowFocus);
+    window.removeEventListener('hireme:applications-refresh', handleNotifRefresh);
+    window.removeEventListener('hashchange', cleanup);
+  };
+  container._appCleanup = cleanup;
+  window.addEventListener('hashchange', cleanup);
+
+  // Initial load
+  allApplications = await fetchApplicationsData(true);
   renderStats();
   renderFeed('all');
+  startSyncLoop();
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   HELPERS & APPLICATION DATA PIPELINE
+   ───────────────────────────────────────────────────────────────────────────── */
+function parseApplications(jobRes, ojtRes) {
+  // Parse Jobs
+  const rawJobs = (jobRes?.success && Array.isArray(jobRes?.data))
+    ? jobRes.data
+    : (Array.isArray(jobRes) ? jobRes : (jobRes?.data || []));
+
+  const jobItems = rawJobs.map(a => {
+    const listing = a.job_listing;
+    const compName = listing?.company_name ?? 'Company';
+    return {
+      id:               a.id,
+      type:             'job',
+      title:            listing?.title ?? 'Unknown Position',
+      company:          compName,
+      companyInitial:   compName?.[0]?.toUpperCase() ?? 'J',
+      companyUserId:    listing?.company_user_id || null,
+      status:           jobStatusAlias[a.status] ?? a.status ?? 'applied',
+      rawStatus:        a.status,
+      appliedDate:      a.created_at,
+      timestamp:        new Date(a.created_at || 0).getTime(),
+      department:       listing?.department || 'General / Tech',
+      location:         listing?.location || 'Not specified',
+      employmentType:   listing?.employment_type || 'Full-time',
+      experienceLevel:  listing?.experience_level || 'Entry Level',
+      salaryRange:      listing?.salary_range || 'Competitive',
+      description:      listing?.description || '',
+      responsibilities: Array.isArray(listing?.responsibilities) ? listing.responsibilities : (typeof listing?.responsibilities === 'string' ? JSON.parse(listing.responsibilities || '[]') : []),
+      requirements:     Array.isArray(listing?.requirements) ? listing.requirements : (typeof listing?.requirements === 'string' ? JSON.parse(listing.requirements || '[]') : []),
+      benefits:         Array.isArray(listing?.benefits) ? listing.benefits : [],
+      requiredSkills:   Array.isArray(listing?.required_skills) ? listing.required_skills : [],
+      coverLetter:      a.cover_letter || '',
+      notes:            a.notes || '',
+      interview:        a.latest_interview || null,
+      raw:              a,
+    };
+  });
+
+  // Parse OJT
+  let rawOjt = (ojtRes?.success && Array.isArray(ojtRes?.data))
+    ? ojtRes.data
+    : (Array.isArray(ojtRes) ? ojtRes : (ojtRes?.data || []));
+
+  // Merge localStorage interests if any
+  try {
+    const user = JSON.parse(localStorage.getItem('hireme_user') || '{}');
+    const local = JSON.parse(localStorage.getItem('hireme_ojt_interests') || '[]');
+    const myLocal = local.filter(i => !user.email || i.studentEmail === user.email);
+    myLocal.forEach(loc => {
+      const exists = rawOjt.some(o => o.id === loc.id || (o.ojt_posting_id && o.ojt_posting_id === loc.slotId));
+      if (!exists) {
+        rawOjt.push({
+          id: loc.id,
+          status: loc.status || 'interested',
+          created_at: loc.createdAt,
+          posting: {
+            title: loc.slotTitle,
+            company_name: loc.company,
+          }
+        });
+      }
+    });
+  } catch (_) {}
+
+  const ojtItems = rawOjt
+    .filter(i => i.status !== 'rejected')
+    .map(interest => {
+      const posting = interest.posting || {};
+      const company = posting.company_name || posting.company || 'Partner Company';
+      return {
+        id:                     interest.id,
+        type:                   'ojt',
+        title:                  posting.title || posting.slotTitle || 'OJT Slot',
+        company:                company,
+        companyInitial:         company?.[0]?.toUpperCase() ?? 'O',
+        companyUserId:          posting.company_user_id || null,
+        status:                 interest.status || 'interested',
+        rawStatus:              interest.status || 'interested',
+        appliedDate:            interest.created_at || interest.applied_date,
+        timestamp:              new Date(interest.created_at || interest.applied_date || 0).getTime(),
+        department:             posting.department || 'General / OJT Placement',
+        industry:               posting.industry || '',
+        location:               posting.location || 'CHMSU Partner Area',
+        branchName:             posting.branch_name || '',
+        scheduleType:           posting.schedule_type || 'Full-time OJT (Mon-Fri)',
+        duration:               posting.duration || 'Standard OJT Hours',
+        slotsTotal:             posting.slots_total || null,
+        slotsRemaining:         posting.slots_remaining || null,
+        description:            posting.description || '',
+        learningOutcomes:       posting.learning_outcomes || '',
+        requiredSkills:         Array.isArray(posting.required_skills) ? posting.required_skills : [],
+        preferredCourses:       Array.isArray(posting.preferred_courses) ? posting.preferred_courses : [],
+        studentMessage:         interest.student_message || '',
+        companyNote:            interest.company_note || '',
+        coordinatorNote:        interest.coordinator_note || '',
+        interviewScheduledAt:   interest.interview_scheduled_at || null,
+        interviewType:          interest.interview_type || null,
+        interviewLocation:      interest.interview_location || null,
+        ojtStartDate:           interest.ojt_start_date || null,
+        ojtInstructions:        interest.ojt_instructions || '',
+        endorsedAt:             interest.endorsed_at || null,
+        endorsementRequestedAt: interest.endorsement_requested_at || null,
+        endorsementLetterSentAt:interest.endorsement_letter_sent_at || null,
+        raw:                    interest,
+      };
+    });
+
+  return [...jobItems, ...ojtItems].sort((a, b) => b.timestamp - a.timestamp);
+}
+
+async function fetchApplicationsData(forceRefresh = true) {
+  const options = forceRefresh ? { forceRefresh: true, bypassCache: true } : {};
+  const [jobRes, ojtRes] = await Promise.all([
+    apiGet('/student/applications', options).catch(() => null),
+    apiGet('/ojt/my-interests', options).catch(() => null),
+  ]);
+  return parseApplications(jobRes, ojtRes);
+}
+
+function wireCardActions(card, item, handleWithdraw) {
+  card.style.cursor = 'pointer';
+  card.addEventListener('click', (e) => {
+    if (e.target.closest('button, a, input, select')) return;
+    openApplicationDetailsModal(item, handleWithdraw);
+  });
+
+  const btnDetails = card.querySelector('.btn-details');
+  if (btnDetails) {
+    btnDetails.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openApplicationDetailsModal(item, handleWithdraw);
+    });
+  }
+
+  const btnWithdraw = card.querySelector('.btn-withdraw');
+  if (btnWithdraw) {
+    btnWithdraw.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      btnWithdraw.disabled = true;
+      await handleWithdraw(item.id, item.type);
+    });
+  }
+}
+
+function patchApplicationCard(container, next, prev, handleWithdraw) {
+  const oldCard = container.querySelector(`[data-app-id="${next.id}"][data-type="${next.type}"]`);
+  if (!oldCard) return;
+
+  const temp = document.createElement('div');
+  temp.innerHTML = unifiedApplicationCard(next, 0).trim();
+  const newCard = temp.firstElementChild;
+
+  // Visual feedback: remove enter delay & add subtle advance pulse animation
+  newCard.classList.remove('animate-fade-in-up');
+  newCard.classList.add('app-card--step-advanced');
+
+  oldCard.replaceWith(newCard);
+  wireCardActions(newCard, next, handleWithdraw);
+}
+
+function patchOpenModalIfApplicable(next, handleWithdraw) {
+  const overlay = document.querySelector(`.modal-overlay[data-modal-app-id="${next.id}"][data-modal-type="${next.type}"]`);
+  if (!overlay) return;
+  openApplicationDetailsModal(next, handleWithdraw, overlay);
 }

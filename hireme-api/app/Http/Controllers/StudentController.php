@@ -318,10 +318,7 @@ class StudentController extends Controller
                 'award_level' => $a->award_level, 'expires_at' => $a->expires_at,
                 'does_not_expire' => $a->does_not_expire,
             ]),
-            'requirements' => StudentOjtRequirement::where('student_user_id', $user->id)
-                ->with(['supervisor:id,name,email', 'posting:id,title,company_name'])
-                ->orderByDesc('id')
-                ->get(),
+            'requirements' => $this->resolveStudentRequirements($user),
         ]);
     }
 
@@ -587,10 +584,7 @@ class StudentController extends Controller
     public function getRequirements(Request $request)
     {
         $student = $request->user();
-        $requirements = StudentOjtRequirement::where('student_user_id', $student->id)
-            ->with(['supervisor:id,name,email', 'posting:id,title,company_name'])
-            ->orderByDesc('id')
-            ->get();
+        $requirements = $this->resolveStudentRequirements($student);
 
         $profile = $student->studentProfile;
 
@@ -1145,14 +1139,24 @@ class StudentController extends Controller
             }
         }
 
+        $nowTime      = \Carbon\Carbon::now()->format('H:i');
+        $shiftStartHM = \Carbon\Carbon::parse($shiftStart)->format('H:i');
+        $shiftEndHM   = \Carbon\Carbon::parse($shiftEnd)->format('H:i');
+        $lunchStartHM = \Carbon\Carbon::parse($lunchStart)->format('H:i');
+        $lunchEndHM   = \Carbon\Carbon::parse($lunchEnd)->format('H:i');
+        $earlyGateHM  = \Carbon\Carbon::parse($shiftStart)->subHour()->format('H:i');
+
         $sessionState = 'ready_morning_in';
         if (!$isWorkDay) {
             $sessionState = 'off_day';
         } elseif (!$todayLogRecord) {
-            $nowTime = \Carbon\Carbon::now()->format('H:i');
-            if ($hasLunch && $nowTime >= $lunchStart && $nowTime < $lunchEnd) {
+            if ($nowTime < $earlyGateHM) {
+                $sessionState = 'before_shift';
+            } elseif ($hasLunch && $nowTime >= $lunchStartHM && $nowTime < $lunchEndHM) {
                 $sessionState = 'on_lunch';
-            } elseif ($hasLunch && $nowTime >= $lunchEnd) {
+            } elseif ($nowTime >= $shiftEndHM) {
+                $sessionState = 'shift_ended';
+            } elseif ($hasLunch && $nowTime >= $lunchEndHM) {
                 $sessionState = 'ready_afternoon_in';
             } else {
                 $sessionState = 'ready_morning_in';
@@ -1163,9 +1167,10 @@ class StudentController extends Controller
             } elseif ($todayLogRecord->afternoon_in) {
                 $sessionState = 'afternoon_active';
             } elseif ($todayLogRecord->morning_out) {
-                $nowTime = \Carbon\Carbon::now()->format('H:i');
-                if ($nowTime < $lunchEnd) {
+                if ($nowTime < $lunchEndHM) {
                     $sessionState = 'on_lunch';
+                } elseif ($nowTime >= $shiftEndHM) {
+                    $sessionState = 'shift_ended';
                 } else {
                     $sessionState = 'ready_afternoon_in';
                 }
@@ -1175,6 +1180,8 @@ class StudentController extends Controller
         } else {
             if ($todayLogRecord->time_out) {
                 $sessionState = 'day_completed';
+            } elseif ($nowTime >= $shiftEndHM && !$todayLogRecord->time_in) {
+                $sessionState = 'shift_ended';
             } else {
                 $sessionState = 'morning_active';
             }
@@ -1435,6 +1442,27 @@ class StudentController extends Controller
         $lunchStart12h    = \Carbon\Carbon::parse($lunchStart)->format('g:i A');
         $lunchEnd12h      = \Carbon\Carbon::parse($lunchEnd)->format('g:i A');
 
+        $shiftStartHM  = \Carbon\Carbon::parse($shiftStart)->format('H:i');
+        $shiftStart12h = \Carbon\Carbon::parse($shiftStart)->format('g:i A');
+        $shiftEndHM    = \Carbon\Carbon::parse($shiftEnd)->format('H:i');
+        $shiftEnd12h   = \Carbon\Carbon::parse($shiftEnd)->format('g:i A');
+        $earlyGateHM   = \Carbon\Carbon::parse($shiftStart)->subHour()->format('H:i');
+
+        // Rule 0: Cannot time in after shift has ended for today
+        if ($reqTimeHM >= $shiftEndHM) {
+            return response()->json([
+                'message' => "Your scheduled OJT shift for today ended at {$shiftEnd12h}. Time-in is closed for the rest of the day. Please time in again tomorrow morning.",
+            ], 422);
+        }
+
+        // Rule 0b: Too early in the morning before gate opens
+        if ($sessionRequested !== 'afternoon' && $reqTimeHM < $earlyGateHM) {
+            $gate12h = \Carbon\Carbon::parse($earlyGateHM)->format('g:i A');
+            return response()->json([
+                'message' => "It is too early to time in. Your shift starts at {$shiftStart12h}. Morning time-in opens at {$gate12h}.",
+            ], 422);
+        }
+
         // Check lunch break constraints
         if ($hasLunch) {
             // Rule 1: Afternoon session CANNOT time in before lunch_end (13:00 / 1:00 PM)
@@ -1677,8 +1705,20 @@ class StudentController extends Controller
                 return response()->json(['message' => 'Already logged out today.'], 422);
             }
             $timeIn = \Carbon\Carbon::parse($log->time_in);
-            if ($reqTimeOut->lte($timeIn)) {
-                return response()->json(['message' => 'Time out must be after time in.'], 422);
+
+            // Auto-correct 12-hour format if user typed e.g. 05:00 instead of 17:00
+            if ($reqTimeOut->lt($timeIn) && $reqTimeOut->hour < 12) {
+                $pmCandidate = $reqTimeOut->copy()->addHours(12);
+                if ($pmCandidate->gte($timeIn)) {
+                    $reqTimeOut = $pmCandidate;
+                    $request->merge(['time_out' => $reqTimeOut->format('H:i')]);
+                }
+            }
+
+            if ($reqTimeOut->lt($timeIn)) {
+                $inFmt = $timeIn->format('g:i A');
+                $outFmt = $reqTimeOut->format('g:i A');
+                return response()->json(['message' => "Time out ({$outFmt}) cannot be earlier than time in ({$inFmt})."], 422);
             }
             $hours = round($timeIn->diffInMinutes($reqTimeOut) / 60, 2);
             $log->update([
@@ -1700,9 +1740,11 @@ class StudentController extends Controller
             // Branch A: Morning session is active (timed in, but not yet timed out for lunch)
             if ($log->morning_in && !$log->morning_out) {
                 $timeIn = \Carbon\Carbon::parse($log->morning_in);
-                if ($reqTimeOut->lte($timeIn)) {
+                if ($reqTimeOut->lt($timeIn)) {
+                    $inFmt = $timeIn->format('g:i A');
+                    $outFmt = $reqTimeOut->format('g:i A');
                     return response()->json([
-                        'message' => "Morning time out must be after morning time in ({$log->morning_in}).",
+                        'message' => "Morning time out ({$outFmt}) cannot be earlier than morning time in ({$inFmt}).",
                     ], 422);
                 }
 
@@ -1735,9 +1777,21 @@ class StudentController extends Controller
             // Branch B: Afternoon session is active (timed in, but not yet timed out for end of day)
             elseif ($log->afternoon_in && !$log->afternoon_out) {
                 $timeIn = \Carbon\Carbon::parse($log->afternoon_in);
-                if ($reqTimeOut->lte($timeIn)) {
+
+                // Auto-correct 12-hour format or off-hours entry (e.g. 01:50 -> 13:50, 05:00 -> 17:00)
+                if ($reqTimeOut->lt($timeIn) && $reqTimeOut->hour < 12) {
+                    $pmCandidate = $reqTimeOut->copy()->addHours(12);
+                    if ($pmCandidate->gte($timeIn)) {
+                        $reqTimeOut = $pmCandidate;
+                        $request->merge(['time_out' => $reqTimeOut->format('H:i')]);
+                    }
+                }
+
+                if ($reqTimeOut->lt($timeIn)) {
+                    $inFmt = $timeIn->format('g:i A');
+                    $outFmt = $reqTimeOut->format('g:i A');
                     return response()->json([
-                        'message' => "Afternoon time out must be after afternoon time in ({$log->afternoon_in}).",
+                        'message' => "Afternoon time out ({$outFmt}) cannot be earlier than afternoon time in ({$inFmt}).",
                     ], 422);
                 }
 
@@ -1758,6 +1812,7 @@ class StudentController extends Controller
                 if ($ojtRecord && $pmHours > 0) {
                     $ojtRecord->increment('completed_hours', $pmHours);
                 }
+
 
                 $sessionLabel = 'Time Out (Afternoon)';
                 $sessionHours = $pmHours;
@@ -2315,14 +2370,14 @@ class StudentController extends Controller
 
         // Active OJT: student has an accepted OJT interest (this is what drives the "Active OJT" badge)
         $activeOjtInterest = StudentOjtInterest::where('student_user_id', $user->id)
-            ->where('status', 'accepted')
+            ->whereIn('status', ['accepted', 'ojt_confirmed', 'ojt_started'])
             ->with('posting')
             ->latest()
             ->first();
 
         // Also check OjtRecord as secondary source
         $activeOjtRecord = OjtRecord::where('user_id', $user->id)
-            ->where('status', 'active')
+            ->whereIn('status', ['active', 'in_progress', 'ojt_started'])
             ->first();
 
         $isActiveOjt = (bool) $activeOjtInterest || (bool) $activeOjtRecord;
@@ -2339,10 +2394,8 @@ class StudentController extends Controller
         $ojtPosition = $activeOjtInterest?->posting?->title ?? 'OJT Trainee';
 
         // OJT Requirements gate status
-        $latestReq = StudentOjtRequirement::where('student_user_id', $user->id)
-            ->with('supervisor:id,name')
-            ->orderByDesc('id')
-            ->first();
+        $reqs = $this->resolveStudentRequirements($user);
+        $latestReq = $reqs->first();
 
         $ojtRequirements = [
             'has_requirement' => (bool) $latestReq,
@@ -2661,5 +2714,105 @@ class StudentController extends Controller
         })->values();
 
         return response()->json(['success' => true, 'data' => $merged]);
+    }
+
+    /**
+     * Resolve student requirements list. Only returns requirements explicitly assigned by a supervisor.
+     */
+    private function resolveStudentRequirements($student)
+    {
+        return StudentOjtRequirement::where('student_user_id', $student->id)
+            ->with(['supervisor:id,name,email', 'posting:id,title,company_name'])
+            ->orderByDesc('id')
+            ->get();
+    }
+
+    /**
+     * GET /api/student/peo-survey
+     * Return active PEO definitions and current user's assessments.
+     */
+    public function getPeoSurvey(Request $request)
+    {
+        $user = $request->user();
+        $peoService = new \App\Services\PeoAnalyticsService();
+        $peoService->ensurePeoDefinitions();
+
+        $program = 'Bachelor of Science in Information Technology';
+        if ($user->studentProfile && stripos($user->studentProfile->program, 'CS') !== false) {
+            $program = 'Bachelor of Science in Computer Science';
+        }
+
+        $peos = \App\Models\PeoDefinition::where('program', $program)
+            ->orderBy('sort_order')
+            ->get();
+
+        $currentYear = (string) date('Y');
+        $assessments = \App\Models\AlumniPeoAssessment::where('user_id', $user->id)
+            ->where('survey_year', $currentYear)
+            ->get()
+            ->keyBy('peo_id');
+
+        $data = $peos->map(function ($peo) use ($assessments, $user, $peoService) {
+            $existing = $assessments->get($peo->id);
+            if ($existing) {
+                $score = (float) $existing->score;
+                $evidence = $existing->evidence_summary;
+                $isExplicit = true;
+            } else {
+                $heuristic = $peoService->calculateHeuristicScore($user, $peo->code);
+                $score = $heuristic['score'];
+                $evidence = $heuristic['evidence'];
+                $isExplicit = false;
+            }
+
+            return [
+                'peo_id'      => $peo->id,
+                'code'        => $peo->code,
+                'title'       => $peo->title,
+                'description' => $peo->description,
+                'indicators'  => $peo->indicators ?? [],
+                'score'       => $score,
+                'evidence'    => $evidence,
+                'is_explicit' => $isExplicit,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'program' => $program,
+            'year'    => $currentYear,
+            'peos'    => $data,
+        ]);
+    }
+
+    /**
+     * POST /api/student/peo-survey
+     * Submit alumni PEO self-evaluation responses.
+     */
+    public function submitPeoSurvey(Request $request)
+    {
+        $user = $request->user();
+        $data = $request->validate([
+            'responses' => 'required|array',
+            'responses.*.peo_id' => 'required|integer',
+            'responses.*.score'  => 'required|numeric|min:1|max:5',
+            'responses.*.evidence' => 'nullable|string|max:1000',
+        ]);
+
+        $peoService = new \App\Services\PeoAnalyticsService();
+        $formatted = [];
+        foreach ($data['responses'] as $r) {
+            $formatted[$r['peo_id']] = [
+                'score'    => $r['score'],
+                'evidence' => $r['evidence'] ?? null,
+            ];
+        }
+
+        $peoService->saveAlumniSurvey($user->id, $formatted);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Alumni PEO tracer assessment recorded successfully.',
+        ]);
     }
 }

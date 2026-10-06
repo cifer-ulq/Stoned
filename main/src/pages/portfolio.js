@@ -240,82 +240,142 @@ function renderAbout() {
         </div>
       </div>
 
-      <!-- OJT Requirements Section (Minimal Design) -->
-      <div class="profile-section" style="padding:16px 20px;border:1px solid ${reqStatus === 'needs_revision' ? 'rgba(239,68,68,0.25)' : reqStatus === 'verified' ? 'rgba(16,185,129,0.25)' : 'rgba(2,132,199,0.2)'};background:${reqStatus === 'needs_revision' ? 'rgba(239,68,68,0.015)' : 'rgba(2,132,199,0.015)'};border-radius:12px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-          <div style="display:flex;align-items:center;gap:10px;min-width:0;">
-            <div style="width:32px;height:32px;border-radius:8px;background:${reqStatus === 'verified' ? 'rgba(16,185,129,0.12)' : reqStatus === 'needs_revision' ? 'rgba(239,68,68,0.12)' : 'rgba(2,132,199,0.12)'};color:${reqStatus === 'verified' ? '#10b981' : reqStatus === 'needs_revision' ? '#ef4444' : '#0284c7'};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-              ${icon(reqStatus === 'verified' ? 'checkCircle' : 'folder', 16)}
+      <!-- OJT Requirements Section (Rich Checklist & Guidance or Unassigned State) -->
+      ${activeReq ? `
+      <div class="profile-section" style="padding:18px 22px;border:1px solid ${reqStatus === 'needs_revision' ? 'rgba(239,68,68,0.3)' : reqStatus === 'verified' ? 'rgba(16,185,129,0.3)' : reqStatus === 'submitted' ? 'rgba(2,132,199,0.3)' : 'rgba(245,158,11,0.3)'};background:${reqStatus === 'needs_revision' ? 'rgba(239,68,68,0.02)' : reqStatus === 'verified' ? 'rgba(16,185,129,0.02)' : reqStatus === 'submitted' ? 'rgba(2,132,199,0.02)' : 'rgba(245,158,11,0.02)'};border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,0.02);">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;">
+          <div style="display:flex;align-items:flex-start;gap:12px;min-width:0;flex:1;">
+            <div style="width:38px;height:38px;border-radius:10px;background:${reqStatus === 'verified' ? 'rgba(16,185,129,0.14)' : reqStatus === 'needs_revision' ? 'rgba(239,68,68,0.14)' : reqStatus === 'submitted' ? 'rgba(2,132,199,0.14)' : 'rgba(245,158,11,0.14)'};color:${reqStatus === 'verified' ? '#10b981' : reqStatus === 'needs_revision' ? '#ef4444' : reqStatus === 'submitted' ? '#0284c7' : '#d97706'};display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">
+              ${icon(reqStatus === 'verified' ? 'checkCircle' : reqStatus === 'needs_revision' ? 'alertTriangle' : 'folder', 18)}
             </div>
-            <div style="min-width:0;">
+            <div style="min-width:0;flex:1;">
               <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                <h4 style="margin:0;font-size:0.95rem;font-weight:700;color:var(--text-primary);">${activeReq ? activeReq.title : 'OJT Requirements Drive'}</h4>
+                <h4 style="margin:0;font-size:1.02rem;font-weight:700;color:var(--text-primary);">${activeReq.title || 'Pre-Deployment OJT Document Packet'}</h4>
                 ${statusBadge}
               </div>
-              <p style="font-size:0.76rem;color:var(--text-tertiary);margin:2px 0 0;line-height:1.3;">
-                ${activeReq?.supervisor?.name ? `Assigned by <strong>${activeReq.supervisor.name}</strong>` : 'Academic Requirements'}
-                ${formattedDueDate ? ` &middot; Due: <strong>${formattedDueDate}</strong>` : ''}
+              <p style="font-size:0.78rem;color:var(--text-secondary);margin:3px 0 0;line-height:1.4;">
+                ${activeReq?.supervisor?.name ? `Assigned by <strong>${activeReq.supervisor.name}</strong> (OJT Coordinator)` : 'Assigned Requirements Packet'}
+                ${formattedDueDate ? ` &middot; Due Date: <strong>${formattedDueDate}</strong>` : ''}
               </p>
             </div>
           </div>
-          <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;margin-left:auto;">
+          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
             ${P.requirements_drive_url ? `
-              <a href="${P.requirements_drive_url}" target="_blank" rel="noopener" class="btn btn--secondary btn--sm" style="font-size:0.78rem;padding:4px 10px;display:inline-flex;align-items:center;gap:5px;">
-                ${icon('externalLink', 12)} <span>Open Folder</span>
+              <a href="${P.requirements_drive_url}" target="_blank" rel="noopener" class="btn btn--secondary btn--sm" style="font-size:0.8rem;padding:5px 12px;display:inline-flex;align-items:center;gap:6px;">
+                ${icon('externalLink', 13)} <span>Open Folder</span>
               </a>
-              <button class="btn btn--secondary btn--sm" id="edit-drive-btn" style="font-size:0.78rem;padding:4px 10px;display:inline-flex;align-items:center;gap:5px;">
-                ${icon('edit', 12)} <span>Update</span>
+              <button class="btn btn--secondary btn--sm" id="edit-drive-btn" style="font-size:0.8rem;padding:5px 12px;display:inline-flex;align-items:center;gap:6px;">
+                ${icon('edit', 13)} <span>Update Drive Link</span>
               </button>
             ` : `
-              <button class="btn btn--primary btn--sm" id="edit-drive-btn" style="font-size:0.78rem;padding:5px 12px;display:inline-flex;align-items:center;gap:5px;">
-                ${icon('plus', 12)} <span>Submit Drive Link</span>
+              <button class="btn btn--primary btn--sm" id="edit-drive-btn" style="font-size:0.82rem;padding:6px 14px;display:inline-flex;align-items:center;gap:6px;font-weight:600;">
+                ${icon('uploadCloud', 14)} <span>Submit Requirements Drive</span>
               </button>
             `}
           </div>
         </div>
 
         ${activeReq?.instructions ? `
-          <div style="margin-top:8px;padding:6px 10px;background:rgba(2,132,199,0.04);border-left:2.5px solid #0284c7;border-radius:4px;font-size:0.78rem;color:var(--text-secondary);line-height:1.4;">
-            <strong style="color:var(--text-primary);">Instructions:</strong> ${activeReq.instructions}
+          <div style="margin-top:12px;padding:8px 12px;background:rgba(2,132,199,0.05);border-left:3px solid #0284c7;border-radius:6px;font-size:0.8rem;color:var(--text-secondary);line-height:1.45;">
+            <strong style="color:var(--text-primary);">${icon('info', 13)} Coordinator Instructions:</strong> ${activeReq.instructions}
           </div>
         ` : ''}
 
         ${(reqStatus === 'needs_revision' && activeReq?.supervisor_remarks) ? `
-          <div style="margin-top:8px;padding:6px 10px;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;display:flex;align-items:flex-start;gap:8px;font-size:0.78rem;color:#b91c1c;line-height:1.4;">
-            <span style="flex-shrink:0;margin-top:1px;">${icon('alertTriangle', 13)}</span>
-            <div><strong>Feedback:</strong> ${activeReq.supervisor_remarks}</div>
+          <div style="margin-top:12px;padding:10px 14px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;display:flex;align-items:flex-start;gap:10px;font-size:0.82rem;color:#b91c1c;line-height:1.45;">
+            <span style="flex-shrink:0;margin-top:2px;">${icon('alertTriangle', 15)}</span>
+            <div><strong>Coordinator Feedback:</strong> ${activeReq.supervisor_remarks}</div>
           </div>
         ` : ''}
 
+        <!-- Required Documents Checklist -->
         ${Array.isArray(activeReq?.items) && activeReq.items.length ? `
-          <div style="margin-top:8px;">
-            <div style="display:flex;flex-wrap:wrap;gap:5px;">
-              ${activeReq.items.map(item => {
+          <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border-subtle);">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+              <span style="font-size:0.75rem;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.04em;">
+                Required Documents Checklist (${activeReq.items.length} Documents)
+              </span>
+              <span style="font-size:0.74rem;color:${reqStatus === 'verified' ? '#10b981' : '#0284c7'};font-weight:600;">
+                ${reqStatus === 'verified' ? '✓ All Documents Approved' : 'Upload to designated Google Drive folder'}
+              </span>
+            </div>
+
+            <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(260px, 1fr));gap:8px;">
+              ${activeReq.items.map((item) => {
                 const itemName = getReqItemName(item);
                 if (!itemName) return '';
                 return `
-                <span style="display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:5px;background:var(--bg-surface);border:1px solid var(--border-subtle);font-size:0.75rem;color:var(--text-secondary);">
-                  <span style="color:${reqStatus === 'verified' ? '#10b981' : '#0284c7'};display:inline-flex;flex-shrink:0;">
-                    ${icon(reqStatus === 'verified' ? 'checkCircle' : 'fileText', 11)}
-                  </span>
-                  <span>${itemName}</span>
-                </span>
-              `;
+                  <div style="display:flex;align-items:center;gap:9px;padding:8px 12px;border-radius:8px;background:var(--bg-surface);border:1px solid var(--border-subtle);font-size:0.8rem;transition:border-color 0.15s ease;">
+                    <span style="width:20px;height:20px;border-radius:6px;background:${reqStatus === 'verified' ? 'rgba(16,185,129,0.12)' : 'rgba(2,132,199,0.1)'};color:${reqStatus === 'verified' ? '#10b981' : '#0284c7'};display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">
+                      ${icon(reqStatus === 'verified' ? 'checkCircle' : 'fileText', 12)}
+                    </span>
+                    <span style="font-weight:500;color:var(--text-primary);flex:1;line-height:1.3;">${itemName}</span>
+                    <span style="font-size:0.68rem;padding:2px 6px;border-radius:4px;background:${reqStatus === 'verified' ? 'rgba(16,185,129,0.1)' : 'rgba(0,89,48,0.08)'};color:${reqStatus === 'verified' ? '#10b981' : '#005930'};font-weight:700;flex-shrink:0;">
+                      ${reqStatus === 'verified' ? 'Approved' : 'Required'}
+                    </span>
+                  </div>
+                `;
               }).join('')}
             </div>
           </div>
         ` : ''}
 
         ${P.requirements_drive_url ? `
-          <div style="margin-top:8px;padding:5px 8px;background:var(--bg-surface);border:1px solid rgba(2,132,199,0.15);border-radius:5px;display:flex;align-items:center;gap:6px;font-size:0.76rem;">
-            <span style="color:#0284c7;display:inline-flex;flex-shrink:0;">${icon('folder', 12)}</span>
-            <span style="color:var(--text-tertiary);flex-shrink:0;">Connected Drive:</span>
+          <div style="margin-top:12px;padding:8px 12px;background:var(--bg-surface);border:1px solid rgba(2,132,199,0.2);border-radius:8px;display:flex;align-items:center;gap:8px;font-size:0.8rem;">
+            <span style="color:#0284c7;display:inline-flex;flex-shrink:0;">${icon('folder', 14)}</span>
+            <span style="color:var(--text-tertiary);flex-shrink:0;font-weight:600;">Submitted Drive:</span>
             <a href="${P.requirements_drive_url}" target="_blank" rel="noopener" style="color:var(--color-primary,#0284c7);text-decoration:none;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;" title="${P.requirements_drive_url}">
               ${P.requirements_drive_url}
             </a>
           </div>
         ` : ''}
       </div>
+      ` : `
+      <!-- OJT Requirements Section (Unassigned State) -->
+      <div class="profile-section" style="padding:18px 22px;border:1px dashed var(--border-subtle);background:var(--bg-surface);border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,0.02);">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:12px;min-width:0;flex:1;">
+            <div style="width:38px;height:38px;border-radius:10px;background:rgba(100,116,139,0.1);color:#64748b;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              ${icon('folder', 18)}
+            </div>
+            <div style="min-width:0;flex:1;">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                <h4 style="margin:0;font-size:1.02rem;font-weight:700;color:var(--text-primary);">Pre-Deployment OJT Document Packet</h4>
+                <span class="badge" style="background:rgba(100,116,139,0.12);color:#475569;font-weight:700;font-size:0.72rem;padding:2px 8px;">Not Assigned</span>
+              </div>
+              <p style="font-size:0.78rem;color:var(--text-secondary);margin:3px 0 0;line-height:1.4;">
+                No pre-deployment requirements have been assigned to your account yet. Your designated OJT Coordinator will assign your required document packet prior to company deployment.
+              </p>
+            </div>
+          </div>
+          ${P.requirements_drive_url ? `
+            <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+              <a href="${P.requirements_drive_url}" target="_blank" rel="noopener" class="btn btn--secondary btn--sm" style="font-size:0.8rem;padding:5px 12px;display:inline-flex;align-items:center;gap:6px;">
+                ${icon('externalLink', 13)} <span>Open Folder</span>
+              </a>
+              <button class="btn btn--secondary btn--sm" id="edit-drive-btn" style="font-size:0.8rem;padding:5px 12px;display:inline-flex;align-items:center;gap:6px;">
+                ${icon('edit', 13)} <span>Update Drive Link</span>
+              </button>
+            </div>
+          ` : `
+            <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+              <button class="btn btn--secondary btn--sm" id="edit-drive-btn" style="font-size:0.8rem;padding:5px 12px;display:inline-flex;align-items:center;gap:6px;">
+                ${icon('uploadCloud', 13)} <span>Pre-link Drive Folder</span>
+              </button>
+            </div>
+          `}
+        </div>
+        ${P.requirements_drive_url ? `
+          <div style="margin-top:12px;padding:8px 12px;background:var(--bg-surface);border:1px solid rgba(2,132,199,0.2);border-radius:8px;display:flex;align-items:center;gap:8px;font-size:0.8rem;">
+            <span style="color:#0284c7;display:inline-flex;flex-shrink:0;">${icon('folder', 14)}</span>
+            <span style="color:var(--text-tertiary);flex-shrink:0;font-weight:600;">Linked Drive:</span>
+            <a href="${P.requirements_drive_url}" target="_blank" rel="noopener" style="color:var(--color-primary,#0284c7);text-decoration:none;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;" title="${P.requirements_drive_url}">
+              ${P.requirements_drive_url}
+            </a>
+          </div>
+        ` : ''}
+      </div>
+      `}
 
       <!-- Experience -->
       <div class="profile-section">
@@ -822,21 +882,55 @@ function openRequirementsDriveModal() {
   overlay.id = 'portfolio-modal-overlay';
   overlay.className = 'modal-overlay';
   overlay.innerHTML = `
-    <div class="modal-box pfm-box" role="dialog" aria-modal="true" style="max-width:500px;">
+    <div class="modal-box pfm-box" role="dialog" aria-modal="true" style="max-width:540px;">
       <div class="pfm-header">
         <div class="pfm-header-left">
           <div class="pfm-icon-box" style="background:linear-gradient(135deg,#0284c7,#38bdf8);">
             ${icon('folder', 20)}
           </div>
           <div>
-            <h3 class="pfm-title">${activeReq ? 'Submit OJT Requirements' : 'OJT Requirements Drive'}</h3>
-            <p class="pfm-subtitle">${activeReq ? `Upload documents for ${activeReq.title}` : 'Attach or update your Google Drive folder link'}</p>
+            <h3 class="pfm-title">${activeReq ? activeReq.title : 'Pre-Deployment OJT Document Packet'}</h3>
+            <p class="pfm-subtitle">${activeReq?.supervisor?.name ? `Assigned by ${activeReq.supervisor.name}` : 'OJT Document Submission'}</p>
           </div>
         </div>
         <button type="button" class="pfm-close-btn" aria-label="Close">${icon('x', 18)}</button>
       </div>
 
       <form id="pfm-drive-form" class="pfm-form-body" novalidate>
+        <!-- Required Documents Checklist Inside Modal (if assigned) -->
+        ${(activeReq && Array.isArray(activeReq.items) && activeReq.items.length) ? `
+        <div class="pfm-section" style="margin-bottom:12px;">
+          <div class="pfm-section-label" style="display:flex;align-items:center;justify-content:space-between;">
+            <span>${icon('clipboardCheck', 13)} Required Documents in Folder</span>
+            <span style="font-size:0.72rem;font-weight:700;color:#0284c7;">${activeReq.items.length} Required</span>
+          </div>
+          <div style="background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:8px;padding:8px 12px;display:flex;flex-direction:column;gap:6px;max-height:160px;overflow-y:auto;">
+            ${activeReq.items.map((it, idx) => {
+              const itName = getReqItemName(it);
+              return `
+                <div style="display:flex;align-items:center;gap:8px;font-size:0.78rem;">
+                  <span style="width:18px;height:18px;border-radius:4px;background:rgba(2,132,199,0.1);color:#0284c7;display:inline-flex;align-items:center;justify-content:center;font-size:0.68rem;font-weight:700;flex-shrink:0;">${idx + 1}</span>
+                  <span style="font-weight:500;color:var(--text-primary);flex:1;line-height:1.3;">${itName}</span>
+                  <span style="font-size:0.65rem;padding:1px 6px;border-radius:4px;background:rgba(0,89,48,0.08);color:#005930;font-weight:700;flex-shrink:0;">Required</span>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+        ` : `
+        <div class="pfm-section" style="margin-bottom:12px;">
+          <div style="background:var(--bg-surface);border:1px dashed var(--border-subtle);border-radius:8px;padding:10px 12px;font-size:0.78rem;color:var(--text-secondary);line-height:1.45;">
+            No requirement packet has been assigned yet by your OJT Coordinator. You can still save or update your Google Drive folder link in advance below.
+          </div>
+        </div>
+        `}
+
+        ${activeReq?.instructions ? `
+          <div style="margin-bottom:14px;padding:8px 12px;background:rgba(2,132,199,0.05);border-left:3px solid #0284c7;border-radius:6px;font-size:0.76rem;color:var(--text-secondary);line-height:1.45;">
+            <strong style="color:var(--text-primary);">${icon('info', 12)} Coordinator Instructions:</strong> ${activeReq.instructions}
+          </div>
+        ` : ''}
+
         <div class="pfm-section">
           <div class="pfm-section-label">
             ${icon('folder', 13)} Cloud Drive Link
@@ -849,7 +943,7 @@ function openRequirementsDriveModal() {
                 <input class="form-input pfm-input pfm-input--prefixed" name="requirements_drive_url" type="url" placeholder="https://drive.google.com/drive/folders/..." value="${P.requirements_drive_url || ''}">
               </div>
               <p style="font-size:0.75rem;color:var(--text-tertiary);margin:6px 0 0;line-height:1.4;">
-                Upload your required OJT documents (medical certificate, waiver, endorsement forms, etc.) to a cloud drive folder, set permissions to <strong>"Anyone with the link can view"</strong>, and paste the URL here.
+                Upload your signed documents to your Google Drive / OneDrive folder, set link sharing to <strong>"Anyone with the link can view"</strong>, and paste the folder URL above.
               </p>
             </div>
             ${P.requirements_drive_url ? `
@@ -3170,4 +3264,26 @@ export async function renderPortfolio(container) {
 
   // Initial render
   renderAbout();
+
+  // ── Reactive Real-Time Event Listeners (Zero Hard Refresh) ──
+  const onRequirementsUpdated = async () => {
+    try {
+      const res = await apiGet('/student/requirements');
+      if (res && Array.isArray(res.requirements)) {
+        REQS = res.requirements;
+        if (res.requirements_drive_url) {
+          P.requirements_drive_url = res.requirements_drive_url;
+        }
+        if (currentTab === 'about' && tabContent) {
+          renderAbout();
+        }
+      }
+    } catch (_) {}
+  };
+
+  if (container._reqHandler) {
+    window.removeEventListener('hireme:requirements-updated', container._reqHandler);
+  }
+  container._reqHandler = onRequirementsUpdated;
+  window.addEventListener('hireme:requirements-updated', onRequirementsUpdated);
 }

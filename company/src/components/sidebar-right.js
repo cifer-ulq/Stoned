@@ -2,7 +2,7 @@
  * CHMSU HireMe — Company Portal Right Sidebar
  */
 import { icon } from './icons.js';
-import { apiFetch } from '../api/client.js';
+import { apiGet, apiFetch } from '../api/client.js';
 
 export function createRightSidebar() {
   const sidebar = document.createElement('aside');
@@ -43,59 +43,81 @@ export function createRightSidebar() {
 }
 
 async function loadWidgetData(sidebar) {
-  // Pipeline widget
-  const analyticsRes = await apiFetch('analytics/overview', { delay: 400 });
-  if (analyticsRes.success) {
-    const funnel = analyticsRes.data.hiringFunnel;
-    sidebar.querySelector('#pipeline-content').innerHTML = `
-      <div class="progress-list">
-        <div class="progress-item">
-          <div class="progress-item__header">
-            <span class="text-xs">Applied</span>
-            <span class="text-xs font-semibold">${funnel.applied}</span>
+  // Pipeline widget — try live company analytics first
+  let funnel = null;
+  try {
+    const live = await apiGet('/company/analytics');
+    if (live?.success && live.data?.hiringFunnel) {
+      funnel = live.data.hiringFunnel;
+    }
+  } catch (_) {}
+
+  if (!funnel) {
+    const analyticsRes = await apiFetch('analytics/overview', { delay: 400 });
+    if (analyticsRes?.success) {
+      funnel = analyticsRes.data.hiringFunnel;
+    }
+  }
+
+  if (funnel) {
+    const applied = funnel.applied || 0;
+    if (applied === 0) {
+      sidebar.querySelector('#pipeline-content').innerHTML = `
+        <div class="text-xs text-tertiary text-center" style="padding: var(--space-4) 0;">
+          No candidates in pipeline yet
+        </div>
+      `;
+    } else {
+      sidebar.querySelector('#pipeline-content').innerHTML = `
+        <div class="progress-list">
+          <div class="progress-item">
+            <div class="progress-item__header">
+              <span class="text-xs">Applied</span>
+              <span class="text-xs font-semibold">${funnel.applied}</span>
+            </div>
+            <div class="progress-item__bar">
+              <div class="progress-item__fill" style="width: 100%; background: var(--color-primary);"></div>
+            </div>
           </div>
-          <div class="progress-item__bar">
-            <div class="progress-item__fill" style="width: 100%; background: var(--color-primary);"></div>
+          <div class="progress-item">
+            <div class="progress-item__header">
+              <span class="text-xs">Screened</span>
+              <span class="text-xs font-semibold">${funnel.screened}</span>
+            </div>
+            <div class="progress-item__bar">
+              <div class="progress-item__fill" style="width: ${Math.round(funnel.screened / funnel.applied * 100)}%; background: var(--color-info);"></div>
+            </div>
+          </div>
+          <div class="progress-item">
+            <div class="progress-item__header">
+              <span class="text-xs">Interviewed</span>
+              <span class="text-xs font-semibold">${funnel.interviewed}</span>
+            </div>
+            <div class="progress-item__bar">
+              <div class="progress-item__fill" style="width: ${Math.round(funnel.interviewed / funnel.applied * 100)}%; background: var(--color-warning);"></div>
+            </div>
+          </div>
+          <div class="progress-item">
+            <div class="progress-item__header">
+              <span class="text-xs">Offered</span>
+              <span class="text-xs font-semibold">${funnel.offered}</span>
+            </div>
+            <div class="progress-item__bar">
+              <div class="progress-item__fill" style="width: ${Math.round(funnel.offered / funnel.applied * 100)}%; background: var(--color-success);"></div>
+            </div>
+          </div>
+          <div class="progress-item">
+            <div class="progress-item__header">
+              <span class="text-xs">Hired</span>
+              <span class="text-xs font-semibold">${funnel.hired}</span>
+            </div>
+            <div class="progress-item__bar">
+              <div class="progress-item__fill" style="width: ${Math.round(funnel.hired / funnel.applied * 100)}%; background: var(--color-success);"></div>
+            </div>
           </div>
         </div>
-        <div class="progress-item">
-          <div class="progress-item__header">
-            <span class="text-xs">Screened</span>
-            <span class="text-xs font-semibold">${funnel.screened}</span>
-          </div>
-          <div class="progress-item__bar">
-            <div class="progress-item__fill" style="width: ${Math.round(funnel.screened / funnel.applied * 100)}%; background: var(--color-info);"></div>
-          </div>
-        </div>
-        <div class="progress-item">
-          <div class="progress-item__header">
-            <span class="text-xs">Interviewed</span>
-            <span class="text-xs font-semibold">${funnel.interviewed}</span>
-          </div>
-          <div class="progress-item__bar">
-            <div class="progress-item__fill" style="width: ${Math.round(funnel.interviewed / funnel.applied * 100)}%; background: var(--color-warning);"></div>
-          </div>
-        </div>
-        <div class="progress-item">
-          <div class="progress-item__header">
-            <span class="text-xs">Offered</span>
-            <span class="text-xs font-semibold">${funnel.offered}</span>
-          </div>
-          <div class="progress-item__bar">
-            <div class="progress-item__fill" style="width: ${Math.round(funnel.offered / funnel.applied * 100)}%; background: var(--color-success);"></div>
-          </div>
-        </div>
-        <div class="progress-item">
-          <div class="progress-item__header">
-            <span class="text-xs">Hired</span>
-            <span class="text-xs font-semibold">${funnel.hired}</span>
-          </div>
-          <div class="progress-item__bar">
-            <div class="progress-item__fill" style="width: ${Math.round(funnel.hired / funnel.applied * 100)}%; background: var(--color-success);"></div>
-          </div>
-        </div>
-      </div>
-    `;
+      `;
+    }
   }
 
   // Schedule widget

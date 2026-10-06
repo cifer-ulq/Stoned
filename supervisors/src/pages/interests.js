@@ -1214,6 +1214,12 @@ function showEndorsementUploadModal(interestId, slot, students, body, bd, allInt
           ${company ? `<p style="font-size:0.76rem;color:var(--text-secondary);margin:2px 0 0;">${icon('building', 11)} ${company}</p>` : ''}
         </div>
 
+        ${record?.endorsement_letter_url ? `
+          <div style="margin-bottom:14px;padding:8px 12px;background:#ecfdf5;border:1px solid rgba(16,185,129,0.25);border-radius:6px;display:flex;align-items:center;justify-content:space-between;font-size:0.75rem;">
+            <span style="color:#065f46;font-weight:600;display:inline-flex;align-items:center;gap:6px;">${icon('fileCheck', 13)} Current letter on file</span>
+            <a href="${record.endorsement_letter_url.startsWith('http') ? record.endorsement_letter_url : 'http://localhost:8000' + (record.endorsement_letter_url.startsWith('/') ? '' : '/') + record.endorsement_letter_url}" target="_blank" rel="noopener" style="color:#005930;font-weight:700;text-decoration:underline;display:inline-flex;align-items:center;gap:4px;">${icon('externalLink', 11)} View Current PDF</a>
+          </div>` : ''}
+
         <!-- File Upload Area -->
         <div class="form-group" style="margin-bottom:12px;">
           <label class="form-label" style="font-size:0.78rem;font-weight:600;margin-bottom:6px;display:block;">

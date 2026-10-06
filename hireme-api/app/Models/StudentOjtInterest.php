@@ -61,6 +61,19 @@ class StudentOjtInterest extends Model
     ];
 
 
+    protected $appends = [
+        'endorsement_letter_url',
+    ];
+
+    public function getEndorsementLetterUrlAttribute(): ?string
+    {
+        if (!$this->endorsement_letter) {
+            return null;
+        }
+
+        return url(\Illuminate\Support\Facades\Storage::disk('public')->url($this->endorsement_letter));
+    }
+
     public function student()
     {
         return $this->belongsTo(User::class, 'student_user_id');

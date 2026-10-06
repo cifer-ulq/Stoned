@@ -1,6 +1,7 @@
-/* â”€â”€ Navbar â€” Admin Portal (Redesigned) â”€â”€ */
+/* ── Navbar — Admin Portal (Redesigned) ── */
 import { getState, setState } from '../store.js';
 import { icon, renderIcons } from './icons.js';
+import { initNotifications } from './notifications.js';
 
 const pageNames = {
   '/': 'Dashboard',
@@ -48,10 +49,12 @@ export function initNavbar() {
             <button class="navbar__action-btn" id="theme-toggle" title="Toggle theme">
               ${icon(currentTheme === 'dark' ? 'sun' : 'moon', 17)}
             </button>
-            <button class="navbar__action-btn" title="Notifications">
-              ${icon('bell', 17)}
-              <span class="notification-dot"></span>
-            </button>
+            <div class="navbar__notif-wrapper">
+              <button class="navbar__action-btn" id="admin-notif-btn" title="Notifications" aria-label="Notifications">
+                ${icon('bell', 17)}
+                <span class="admin-notif-badge" style="display:none;">0</span>
+              </button>
+            </div>
             <div class="navbar__divider"></div>
             <div class="navbar__user">
               <div class="navbar__avatar">${user.initials}</div>
@@ -66,6 +69,7 @@ export function initNavbar() {
     `;
 
     renderIcons();
+    initNotifications(navbar.querySelector('#admin-notif-btn'));
   }
 
   render();

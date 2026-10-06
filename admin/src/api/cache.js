@@ -81,15 +81,29 @@ export function hasCached(key) {
 }
 
 /**
+ * Check if endpoint was recently revalidated (within cooldown period).
+ */
+export function isFresh(key, cooldownMs = 15000) {
+  const cached = getCached(key);
+  if (!cached) return false;
+  return (Date.now() - (cached.timestamp || 0)) < cooldownMs;
+}
+
+/**
  * Invalidate cache entries matching a key prefix, substring, or RegExp.
  * E.g.: invalidateCache('/admin/companies') removes all company list & detail caches.
  */
 export function invalidateCache(pattern) {
   if (!pattern) return;
 
+  const patterns = Array.isArray(pattern) ? pattern : [pattern];
+
   const matches = (k) => {
-    if (pattern instanceof RegExp) return pattern.test(k);
-    return k.includes(pattern);
+    return patterns.some(p => {
+      if (p instanceof RegExp) return p.test(k);
+      const str = String(p).replace(/\*/g, '.*');
+      return new RegExp('^' + str + '$').test(k) || k.includes(p);
+    });
   };
 
   // Memory cache
@@ -110,6 +124,13 @@ export function invalidateCache(pattern) {
         }
       }
     }
+  } catch (_) {}
+
+  // Dispatch global invalidation event
+  try {
+    window.dispatchEvent(new CustomEvent('hireme:cache-invalidated', {
+      detail: { patterns, timestamp: Date.now() }
+    }));
   } catch (_) {}
 }
 

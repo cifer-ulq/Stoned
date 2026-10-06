@@ -1,4 +1,4 @@
-﻿/* ── Page-Specific Styles — Admin Portal (Redesigned) ── */
+/* ── Page-Specific Styles — Admin Portal (Redesigned) ── */
 
 /* ══════════════════════════════════
    PAGE HEADER
@@ -503,3 +503,524 @@ input[type="range"]::-webkit-slider-thumb {
 }
 .toggle__track--on .toggle__thumb { transform: translateX(16px); }
 .toggle__label { font-size: var(--text-sm); }
+
+/* ══════════════════════════════════
+   PEO ANALYTICS EXTENSIONS
+   ══════════════════════════════════ */
+.peo-view-tabs {
+  display: flex; gap: var(--space-2); margin-bottom: var(--space-5);
+  background: var(--bg-secondary); padding: 4px; border-radius: var(--radius-lg);
+  width: fit-content; border: 1px solid var(--border-default);
+}
+.peo-tab-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 16px; border-radius: var(--radius-md); font-size: var(--text-xs);
+  font-weight: var(--weight-medium); color: var(--text-secondary); background: transparent;
+  border: none; cursor: pointer; transition: all 0.15s ease;
+}
+.peo-tab-btn:hover { color: var(--text-primary); }
+.peo-tab-btn--active {
+  background: var(--bg-elevated); color: var(--color-primary);
+  font-weight: var(--weight-semibold); box-shadow: var(--shadow-sm);
+}
+
+/* ── Redesigned PEO Filter & Control Center ── */
+.peo-filter-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xl);
+  padding: var(--space-4) var(--space-5);
+  margin-bottom: var(--space-5);
+  box-shadow: var(--shadow-xs);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.peo-filter-row-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.peo-filter-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.peo-filter-select {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-default);
+  color: var(--text-primary);
+  border-radius: var(--radius-md);
+  padding: 7px 32px 7px 12px;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  outline: none;
+  transition: border-color var(--duration-fast);
+}
+.peo-filter-select:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-bg);
+}
+
+.peo-filter-row-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px dashed var(--border-default);
+}
+
+.peo-filter-summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.peo-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--color-primary-bg);
+  color: var(--color-primary);
+  border: 1px solid rgba(0, 89, 48, 0.2);
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-size: 0.72rem;
+  font-weight: var(--weight-semibold);
+}
+
+.peo-filter-chip__clear {
+  cursor: pointer;
+  opacity: 0.75;
+  transition: opacity var(--duration-fast);
+}
+.peo-filter-chip__clear:hover {
+  opacity: 1;
+}
+
+.peo-search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: 5px 12px;
+  min-width: 260px;
+  transition: border-color var(--duration-fast);
+}
+.peo-search-box:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-bg);
+}
+.peo-search-input {
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: var(--text-xs);
+  color: var(--text-primary);
+  width: 100%;
+}
+
+/* ── 3 PEO Core Accreditation Triad Grid (Replacing Spider Graph) ── */
+.peo-triad-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-5);
+  margin-bottom: var(--space-6);
+}
+@media (max-width: 1080px) {
+  .peo-triad-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.peo-triad-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xl);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: var(--shadow-xs);
+  transition: transform var(--duration-fast), border-color var(--duration-fast), box-shadow var(--duration-fast);
+  position: relative;
+  overflow: hidden;
+}
+.peo-triad-card:hover {
+  border-color: var(--color-primary-bg-strong);
+  box-shadow: var(--shadow-md);
+}
+
+.peo-triad-card__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border-default);
+}
+
+.peo-triad-card__code {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: var(--weight-bold);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--color-primary-bg);
+  color: var(--color-primary);
+  letter-spacing: 0.04em;
+}
+
+.peo-triad-card__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  font-size: 0.68rem;
+  font-weight: var(--weight-semibold);
+}
+.peo-triad-card__badge--achieved {
+  background: rgba(0, 89, 48, 0.1);
+  color: #005930;
+}
+.peo-triad-card__badge--approaching {
+  background: rgba(245, 158, 11, 0.12);
+  color: #D97706;
+}
+.peo-triad-card__badge--needs-intervention {
+  background: rgba(239, 68, 68, 0.12);
+  color: #EF4444;
+}
+
+/* Attainment Radial Gauge & Hero Block */
+.peo-gauge-section {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.peo-radial-wrap {
+  position: relative;
+  width: 90px;
+  height: 90px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.peo-radial-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.peo-radial-pct {
+  font-size: 1.15rem;
+  font-weight: var(--weight-bold);
+  line-height: 1;
+}
+.peo-radial-sub {
+  font-size: 0.58rem;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 2px;
+}
+
+.peo-gauge-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.peo-gauge-score {
+  font-size: 1.25rem;
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+.peo-gauge-score-sub {
+  font-size: 0.72rem;
+  font-weight: var(--weight-normal);
+  color: var(--text-tertiary);
+}
+.peo-variance-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.7rem;
+  font-weight: var(--weight-semibold);
+}
+
+.peo-triad-title {
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+  margin-bottom: var(--space-2);
+}
+
+.peo-triad-question {
+  font-size: 0.74rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+  background: var(--bg-secondary);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--color-primary);
+  margin-bottom: var(--space-4);
+  font-style: italic;
+}
+
+/* Sub-metrics inside card */
+.peo-submetrics-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: var(--space-4);
+}
+
+.peo-submetric-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.74rem;
+}
+.peo-submetric-label {
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.peo-submetric-val {
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+
+/* Meter track inside card */
+.peo-meter-wrap {
+  margin-top: auto;
+  padding-top: var(--space-3);
+  border-top: 1px dashed var(--border-default);
+}
+.peo-meter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: var(--text-xs);
+  margin-bottom: 5px;
+}
+.peo-meter-bench {
+  font-size: 0.68rem;
+  color: var(--text-tertiary);
+}
+.peo-meter-track {
+  width: 100%;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--bg-secondary);
+  overflow: hidden;
+  position: relative;
+}
+.peo-meter-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.peo-meter-target-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #64748b;
+  z-index: 2;
+}
+
+/* ── Continuous Quality Improvement (CQI) Insights Grid ── */
+.peo-insights-box {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xl);
+  padding: var(--space-5);
+  margin-bottom: var(--space-6);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-6);
+}
+@media (max-width: 768px) {
+  .peo-insights-box {
+    grid-template-columns: 1fr;
+  }
+}
+.peo-insight-col h4 {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: var(--space-3);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.peo-insight-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.peo-insight-item {
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+.peo-insight-item svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* ── Alumni Evaluation Matrix Table & Pagination ── */
+.peo-table-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xs);
+  margin-top: var(--space-5);
+  overflow: hidden;
+}
+
+.peo-table-toolbar {
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border-default);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.peo-table-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+}
+
+.peo-table-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.peo-alumni-cell-score {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: var(--weight-semibold);
+  font-size: 0.75rem;
+  padding: 2px 7px;
+  border-radius: var(--radius-sm);
+}
+.peo-alumni-cell-score--met {
+  color: #005930;
+  background: rgba(0, 89, 48, 0.08);
+}
+.peo-alumni-cell-score--unmet {
+  color: #D97706;
+  background: rgba(245, 158, 11, 0.1);
+}
+
+/* Sleek Pagination */
+.peo-pagination {
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--border-default);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  background: var(--bg-primary);
+}
+
+.peo-pagination-info {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.peo-pagination-btns {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.peo-pg-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  transition: all var(--duration-fast);
+}
+.peo-pg-btn:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: var(--color-primary-bg);
+}
+.peo-pg-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.peo-pg-btn--active {
+  background: var(--color-primary);
+  color: #ffffff !important;
+  border-color: var(--color-primary);
+  font-weight: var(--weight-bold);
+}
+
+.peo-tag-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: 0.68rem;
+  font-weight: var(--weight-medium);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+}
+
+

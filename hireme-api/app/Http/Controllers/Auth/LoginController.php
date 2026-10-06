@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\StudentOjtInterest;
+use App\Models\OjtRecord;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
@@ -29,6 +31,13 @@ class LoginController extends Controller
 
         $user->load(['companyProfile', 'studentProfile', 'supervisorProfile', 'jobseekerProfile', 'graduateProfile']);
 
+        $isActiveOjt = false;
+        if ($user->role === 'student') {
+            $isActiveOjt = StudentOjtInterest::where('student_user_id', $user->id)
+                ->whereIn('status', ['accepted', 'ojt_confirmed', 'ojt_started'])
+                ->exists() || OjtRecord::where('user_id', $user->id)->whereIn('status', ['active', 'in_progress', 'ojt_started'])->exists();
+        }
+
         return response()->json([
             'token' => $token,
             'user'  => [
@@ -36,8 +45,11 @@ class LoginController extends Controller
                 'name'                 => $user->name,
                 'email'                => $user->email,
                 'role'                 => $user->role,
+                'status'               => $isActiveOjt ? 'active_ojt' : ($user->studentProfile?->status ?? 'regular'),
+                'is_active_ojt'        => $isActiveOjt,
                 'onboarding_completed' => $user->onboarding_completed,
                 'company_profile'      => $user->companyProfile,
+                'student_profile'      => $user->studentProfile,
                 'jobseeker_profile'    => $user->jobseekerProfile,
                 'graduate_profile'     => $user->graduateProfile,
             ],
@@ -87,6 +99,13 @@ class LoginController extends Controller
         $user = $request->user();
         $user->load(['companyProfile', 'studentProfile', 'supervisorProfile', 'jobseekerProfile', 'graduateProfile']);
 
+        $isActiveOjt = false;
+        if ($user->role === 'student') {
+            $isActiveOjt = StudentOjtInterest::where('student_user_id', $user->id)
+                ->whereIn('status', ['accepted', 'ojt_confirmed', 'ojt_started'])
+                ->exists() || OjtRecord::where('user_id', $user->id)->whereIn('status', ['active', 'in_progress', 'ojt_started'])->exists();
+        }
+
         $data = [
             'success' => true,
             'data'    => [
@@ -94,6 +113,8 @@ class LoginController extends Controller
                 'name'                 => $user->name,
                 'email'                => $user->email,
                 'role'                 => $user->role,
+                'status'               => $isActiveOjt ? 'active_ojt' : ($user->studentProfile?->status ?? 'regular'),
+                'is_active_ojt'        => $isActiveOjt,
                 'onboarding_completed' => $user->onboarding_completed,
                 'avatar_url'           => $user->avatar_url,
                 'company_profile'      => $user->companyProfile,

@@ -745,5 +745,17 @@ export default function traineesPage(container) {
       console.error('Failed to open chat with student:', err);
     }
   }
+
+  // ── Reactive Real-Time Event Listener (Zero Hard Refresh) ──
+  const onTraineesRefresh = () => {
+    if (document.body.contains(container)) {
+      loadTrainees();
+    }
+  };
+  if (container._refreshHandler) {
+    window.removeEventListener('hireme:trainees-refresh', container._refreshHandler);
+  }
+  container._refreshHandler = onTraineesRefresh;
+  window.addEventListener('hireme:trainees-refresh', onTraineesRefresh);
 }
 

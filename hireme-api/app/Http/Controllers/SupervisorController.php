@@ -545,7 +545,7 @@ class SupervisorController extends Controller
                     'interview_scheduled_at_raw' => $i->interview_scheduled_at?->toISOString(),
                     'interview_type'             => $i->interview_type,
                     'interview_location'         => $i->interview_location,
-                    'endorsement_letter_url'     => $i->endorsement_letter ? \Illuminate\Support\Facades\Storage::url($i->endorsement_letter) : null,
+                    'endorsement_letter_url'     => $i->endorsement_letter ? url(\Illuminate\Support\Facades\Storage::disk('public')->url($i->endorsement_letter)) : null,
                     'ojt_start_date'             => $i->ojt_start_date?->format('M d, Y'),
                     'ojt_instructions'           => $i->ojt_instructions,
                     'schedule_days'              => $i->schedule_days,

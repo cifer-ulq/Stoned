@@ -354,7 +354,7 @@ class CompanyController extends Controller
                         'position' => $i->endorser->supervisorProfile?->position ?? '',
                     ] : null,
                     'endorsement_letter_url' => $i->endorsement_letter
-                        ? \Illuminate\Support\Facades\Storage::url($i->endorsement_letter)
+                        ? url(\Illuminate\Support\Facades\Storage::disk('public')->url($i->endorsement_letter))
                         : null,
                     'endorsed_at'      => $i->endorsed_at?->format('M d, Y'),
                     'ojt_start_date'     => $i->ojt_start_date?->format('M d, Y'),
@@ -1079,11 +1079,29 @@ class CompanyController extends Controller
         $totalApps    = $totalRaw;
         $hireRate     = $totalApps > 0 ? round($hired / $totalApps * 100, 1) : 0;
         $ivToOffer    = $interviewed > 0 ? round($offered / $interviewed * 100, 1) : 0;
-        $offerAcc     = ($offered + $hired) > 0 ? round($hired / ($offered + $hired) * 100, 1) : 0;
+        $offerTotal   = $offered + $hired;
+        $offerAccRate = $offerTotal > 0 ? round($hired / $offerTotal * 100, 1) . '%' : '0%';
         $avgMatch     = round(
             JobApplication::whereHas('jobListing', $appScope)->avg('match_score') ?? 0,
             1
         );
+
+        // Average Time to Hire (days from application created_at to offer_decided_at / updated_at for hired candidates)
+        $hiredApps = JobApplication::whereHas('jobListing', $appScope)
+            ->where('status', 'hired')
+            ->select('created_at', 'offer_decided_at', 'updated_at')
+            ->get();
+
+        if ($hiredApps->isNotEmpty()) {
+            $totalDays = $hiredApps->reduce(function ($carry, $app) {
+                $decided = $app->offer_decided_at ?? $app->updated_at;
+                return $carry + max(1, $app->created_at->diffInDays($decided));
+            }, 0);
+            $avgDays = (int) round($totalDays / $hiredApps->count());
+            $timeToHire = "{$avgDays} " . ($avgDays === 1 ? 'day' : 'days');
+        } else {
+            $timeToHire = '0 days';
+        }
 
         // Month-over-month trend for total applications
         $thisMonth  = $today->copy()->startOfMonth();
@@ -1095,14 +1113,27 @@ class CompanyController extends Controller
             ->whereYear('created_at', $lastMonth->year)
             ->whereMonth('created_at', $lastMonth->month)
             ->count();
-        $diff        = $thisCount - $lastCount;
-        $appsTrend   = $diff >= 0 ? "+{$diff} vs last month" : "{$diff} vs last month";
+
+        $appsTrend     = '';
+        $appsTrendIsUp = null;
+        if ($totalApps > 0) {
+            if ($lastCount > 0) {
+                $pct = (int) round((($thisCount - $lastCount) / $lastCount) * 100);
+                $appsTrend     = ($pct >= 0 ? "+{$pct}%" : "{$pct}%") . ' vs last month';
+                $appsTrendIsUp = $pct >= 0;
+            } elseif ($thisCount > 0) {
+                $appsTrend     = "+{$thisCount} new this month";
+                $appsTrendIsUp = true;
+            }
+        }
 
         $kpiMetrics = [
-            ['label' => 'Total Applications',  'value' => (string) $totalApps,  'icon' => 'users',       'color' => '#4A6CF7', 'trend' => $appsTrend],
-            ['label' => 'Hire Rate',            'value' => $hireRate . '%',      'icon' => 'checkCircle', 'color' => '#10B981', 'trend' => ''],
-            ['label' => 'Interview-to-Offer',   'value' => $ivToOffer . '%',     'icon' => 'zap',         'color' => '#F59E0B', 'trend' => ''],
-            ['label' => 'Avg. Match Score',     'value' => $avgMatch . '%',      'icon' => 'star',        'color' => '#6366F1', 'trend' => ''],
+            ['label' => 'Total Applications',  'value' => (string) $totalApps,  'icon' => 'users',       'color' => '#4A6CF7', 'trend' => $appsTrend, 'isUp' => $appsTrendIsUp],
+            ['label' => 'Hire Rate',            'value' => $hireRate . '%',      'icon' => 'checkCircle', 'color' => '#10B981', 'trend' => '', 'isUp' => null],
+            ['label' => 'Interview-to-Offer',   'value' => $ivToOffer . '%',     'icon' => 'zap',         'color' => '#F59E0B', 'trend' => '', 'isUp' => null],
+            ['label' => 'Avg. Match Score',     'value' => $avgMatch . '%',      'icon' => 'star',        'color' => '#6366F1', 'trend' => '', 'isUp' => null],
+            ['label' => 'Avg. Time to Hire',    'value' => $timeToHire,          'icon' => 'clock',       'color' => '#0284C7', 'trend' => '', 'isUp' => null],
+            ['label' => 'Offer Acceptance',     'value' => $offerAccRate,        'icon' => 'checkCircle', 'color' => '#0D9488', 'trend' => '', 'isUp' => null],
         ];
 
         // ── Top Sources (grouped by employment_type of job listing) ────────
@@ -1114,10 +1145,6 @@ class CompanyController extends Controller
             ->get()
             ->map(fn ($r) => ['source' => (string) $r->source, 'count' => (int) $r->count])
             ->toArray();
-
-        if (empty($sourceRows)) {
-            $sourceRows = [['source' => 'No data yet', 'count' => 0]];
-        }
 
         // ── Department Breakdown ───────────────────────────────────────────
         $deptBreakdown = JobListing::where('company_user_id', $userId)
@@ -1142,10 +1169,6 @@ class CompanyController extends Controller
                 ];
             })
             ->toArray();
-
-        if (empty($deptBreakdown)) {
-            $deptBreakdown = [['department' => 'No postings yet', 'openPositions' => 0, 'applicants' => 0, 'filled' => 0, 'avgDays' => null]];
-        }
 
         // ── Hired Jobseekers list ──────────────────────────────────────────
         $hiredApplicants = JobApplication::with(['applicant', 'jobListing'])
@@ -1187,6 +1210,10 @@ class CompanyController extends Controller
             'success' => true,
             'data'    => [
                 'kpiMetrics'          => $kpiMetrics,
+                'timeToHire'          => $timeToHire,
+                'offerAcceptanceRate' => $offerAccRate,
+                'appsTrend'           => $appsTrend,
+                'appsTrendIsUp'       => $appsTrendIsUp,
                 'hiringFunnel'        => $funnel,
                 'monthlyApplications' => $monthlyApplications,
                 'topSources'          => $sourceRows,
@@ -1285,8 +1312,16 @@ class CompanyController extends Controller
             ->whereBetween('created_at', [$thisM, $today->copy()->endOfDay()])->count();
         $lastOjt = StudentOjtInterest::whereIn('ojt_posting_id', $postingIds)
             ->whereYear('created_at', $lastM->year)->whereMonth('created_at', $lastM->month)->count();
-        $diff = $thisOjt - $lastOjt;
-        $trend = $diff >= 0 ? "+{$diff} vs last mo." : "{$diff} vs last mo.";
+
+        $trend = '';
+        if ($ojtInterested > 0) {
+            if ($lastOjt > 0) {
+                $pct = (int) round((($thisOjt - $lastOjt) / $lastOjt) * 100);
+                $trend = ($pct >= 0 ? "+{$pct}%" : "{$pct}%") . ' vs last mo.';
+            } elseif ($thisOjt > 0) {
+                $trend = "+{$thisOjt} new this month";
+            }
+        }
 
         return [
             'ojtKpis' => [
@@ -1822,6 +1857,7 @@ class CompanyController extends Controller
                 'matched_skills'       => $matched,
                 'interview_id'   => $latestInterview?->id,
                 'interview_date' => $latestInterview?->scheduled_date?->toDateString(),
+                'resume_viewed'  => $app->status !== 'applied',
                 'job' => [
                     'id'              => $app->jobListing?->id,
                     'title'           => $app->jobListing?->title ?? 'Position',
@@ -1939,7 +1975,7 @@ class CompanyController extends Controller
                 'interview_type'         => $interest->interview_type,
                 'interview_location'     => $interest->interview_location,
                 'endorsement_letter_url' => $interest->endorsement_letter
-                    ? \Illuminate\Support\Facades\Storage::url($interest->endorsement_letter)
+                    ? url(\Illuminate\Support\Facades\Storage::disk('public')->url($interest->endorsement_letter))
                     : null,
                 'endorsed_at'            => $interest->endorsed_at?->format('M d, Y'),
                 'ojt_start_date'         => $interest->ojt_start_date?->format('M d, Y'),
@@ -2015,6 +2051,13 @@ class CompanyController extends Controller
             $companyName = $interest->posting->company_name ?? 'The Company';
 
             if ($newStatus === 'rejected') {
+                if ($interest->status === 'interested' && !$interest->resume_viewed_at) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Please view the student\'s profile and credentials before declining their application.',
+                    ], 422);
+                }
+
                 $interest->update([
                     'status' => 'rejected',
                     'company_note' => $data['notes'] ?? $interest->company_note,
@@ -2028,9 +2071,15 @@ class CompanyController extends Controller
                     ['posting_id' => $interest->ojt_posting_id, 'interest_id' => $interest->id]
                 );
             } elseif ($newStatus === 'reviewed') {
+                if (!$interest->resume_viewed_at) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'You must view the student\'s resume and portfolio before reviewing their application.',
+                    ], 422);
+                }
+
                 $interest->update([
                     'status'              => 'company_reviewed',
-                    'resume_viewed_at'    => $interest->resume_viewed_at ?? now(),
                     'company_accepted_at' => now(),
                     'company_note'        => $data['notes'] ?? $interest->company_note,
                 ]);
@@ -2043,6 +2092,13 @@ class CompanyController extends Controller
                     ['posting_id' => $interest->ojt_posting_id, 'interest_id' => $interest->id]
                 );
             } elseif ($newStatus === 'offered') {
+                if ($interest->status === 'interested' || !$interest->resume_viewed_at) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'You must review the applicant\'s portfolio and complete the interview process before accepting.',
+                    ], 422);
+                }
+
                 $interest->update([
                     'status'       => 'company_accepted',
                     'company_note' => $data['notes'] ?? ($data['offer_details']['message'] ?? 'Congratulations! You have been accepted for this OJT position.'),
@@ -2076,6 +2132,13 @@ class CompanyController extends Controller
         $app = JobApplication::whereHas('jobListing', fn ($q) => $q->where('company_user_id', $userId))
             ->with('jobListing')
             ->findOrFail($id);
+
+        if ($newStatus === 'offered' && $app->status === 'applied') {
+            return response()->json([
+                'success' => false,
+                'message' => 'You must review the candidate\'s profile and complete the interview stage before extending a job offer.',
+            ], 422);
+        }
 
         $app->update($data);
 

@@ -1121,6 +1121,27 @@ class EvaluationController extends Controller
                 ]
             );
 
+            // Notify admin users that student has completed evaluation & is ready for graduation review
+            try {
+                $admins = User::where('role', 'admin')->get();
+                $studentName = $evaluation->student?->name ?? 'Student';
+                foreach ($admins as $admin) {
+                    AppNotification::send(
+                        $admin->id,
+                        'student_eligible_graduation',
+                        'OJT Evaluation Submitted',
+                        "Host company submitted performance evaluation for {$studentName} ({$overallScore}/5.0). Candidate is ready for graduation review.",
+                        [
+                            'student_id'    => $evaluation->student_user_id,
+                            'evaluation_id' => $evaluation->id,
+                            'route'         => '/students',
+                        ]
+                    );
+                }
+            } catch (\Throwable $ne) {
+                \Log::error('[EvaluationController] Failed to notify admin: ' . $ne->getMessage());
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Evaluation submitted successfully! Thank you for evaluating our trainee.',

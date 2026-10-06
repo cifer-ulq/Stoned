@@ -1,0 +1,395 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1420 940" width="1420" height="940" style="background:#ffffff; font-family:'Inter',Arial,sans-serif;">
+<defs>
+  <marker id="crowFootMany" viewBox="0 0 16 16" refX="15" refY="8" markerWidth="9" markerHeight="9" orient="auto"><path d="M 0 2 L 15 8 L 0 14 M 15 1 L 15 15" fill="none" stroke="#1e293b" stroke-width="1.6"/></marker>
+  <marker id="oneOne" viewBox="0 0 16 16" refX="15" refY="8" markerWidth="9" markerHeight="9" orient="auto"><line x1="8" y1="2" x2="8" y2="14" stroke="#1e293b" stroke-width="1.6"/><line x1="14" y1="2" x2="14" y2="14" stroke="#1e293b" stroke-width="1.6"/></marker>
+</defs>
+<g id="relationshipLines">
+  <path d="M 540 370 L 130 370 L 130 264" fill="none" stroke="#334155" stroke-width="1.2" marker-end="url(#oneOne)" stroke-linejoin="round"/>
+  <path d="M 540 350 L 340 350 L 340 210" fill="none" stroke="#334155" stroke-width="1.2" marker-end="url(#oneOne)" stroke-linejoin="round"/>
+  <path d="M 560 340 L 560 174" fill="none" stroke="#334155" stroke-width="1.2" marker-end="url(#oneOne)" stroke-linejoin="round"/>
+  <path d="M 540 410 L 300 410 L 300 480 L 235 480" fill="none" stroke="#334155" stroke-width="1.2" marker-end="url(#oneOne)" stroke-linejoin="round"/>
+  <path d="M 735 360 L 760 360 L 760 160 L 810 160" fill="none" stroke="#334155" stroke-width="1.2" marker-end="url(#crowFootMany)" stroke-linejoin="round"/>
+  <path d="M 735 420 L 980 420 L 980 480 L 1120 480" fill="none" stroke="#334155" stroke-width="1.2" marker-end="url(#crowFootMany)" stroke-linejoin="round"/>
+  <path d="M 140 664 L 140 740" fill="none" stroke="#334155" stroke-width="1.2" marker-end="url(#crowFootMany)" stroke-linejoin="round"/>
+  <path d="M 280 650 L 180 650 L 180 740" fill="none" stroke="#334155" stroke-width="1.2" marker-end="url(#crowFootMany)" stroke-linejoin="round"/>
+  <path d="M 80 264 L 80 440 L 350 440 L 350 580" fill="none" stroke="#334155" stroke-width="1.2" marker-end="url(#crowFootMany)" stroke-linejoin="round"/>
+  <path d="M 995 120 L 1060 120 L 1060 180 L 1120 180" fill="none" stroke="#334155" stroke-width="1.2" marker-end="url(#crowFootMany)" stroke-linejoin="round"/>
+  <path d="M 1120 250 L 1040 250 L 1040 740 L 1025 740" fill="none" stroke="#334155" stroke-width="1.2" marker-end="url(#crowFootMany)" stroke-linejoin="round"/>
+  <path d="M 1210 582 L 1210 680" fill="none" stroke="#334155" stroke-width="1.2" marker-end="url(#crowFootMany)" stroke-linejoin="round"/>
+  <path d="M 465 680 L 750 680 L 750 520 L 1120 520" fill="none" stroke="#334155" stroke-width="1.2" marker-end="url(#crowFootMany)" stroke-linejoin="round"/>
+</g>
+  <!-- Entity: User -->
+  <g id="ent_User">
+    <rect x="540" y="340" width="195" height="150" fill="#ffffff" stroke="#334155" stroke-width="1.2"/>
+    <rect x="540" y="340" width="195" height="24" fill="#f8fafc" stroke="#334155" stroke-width="1.2"/>
+    <text x="637.5" y="356" font-size="11.5" font-weight="700" fill="#0f172a" text-anchor="middle" font-family="'Inter', sans-serif">User</text>
+    <line x1="574" y1="364" x2="574" y2="490" stroke="#334155" stroke-width="0.8"/>
+    <line x1="707" y1="364" x2="707" y2="490" stroke="#334155" stroke-width="0.8"/>
+    <text x="544" y="377" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">int</text>
+    <text x="580" y="377" font-size="9.5" font-weight="600" fill="#0f172a" font-family="'Inter', sans-serif">id</text>
+    <text x="721" y="377" font-size="8.5" font-weight="700" fill="#0284c7" text-anchor="middle" font-family="'JetBrains Mono', monospace">PK</text>
+    <line x1="540" y1="382" x2="735" y2="382" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="544" y="395" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">var</text>
+    <text x="580" y="395" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">name</text>
+    <line x1="540" y1="400" x2="735" y2="400" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="544" y="413" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">var</text>
+    <text x="580" y="413" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">email</text>
+    <line x1="540" y1="418" x2="735" y2="418" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="544" y="431" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">var</text>
+    <text x="580" y="431" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">password</text>
+    <line x1="540" y1="436" x2="735" y2="436" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="544" y="449" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">var</text>
+    <text x="580" y="449" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">role</text>
+    <line x1="540" y1="454" x2="735" y2="454" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="544" y="467" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">bool</text>
+    <text x="580" y="467" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">onboarding_completed</text>
+    <line x1="540" y1="472" x2="735" y2="472" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="544" y="485" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">var</text>
+    <text x="580" y="485" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">avatar_url</text>
+  </g>
+  <!-- Entity: CompanyProfile -->
+  <g id="ent_CompanyProfile">
+    <rect x="40" y="60" width="185" height="204" fill="#ffffff" stroke="#334155" stroke-width="1.2"/>
+    <rect x="40" y="60" width="185" height="24" fill="#f8fafc" stroke="#334155" stroke-width="1.2"/>
+    <text x="132.5" y="76" font-size="11.5" font-weight="700" fill="#0f172a" text-anchor="middle" font-family="'Inter', sans-serif">CompanyProfile</text>
+    <line x1="74" y1="84" x2="74" y2="264" stroke="#334155" stroke-width="0.8"/>
+    <line x1="197" y1="84" x2="197" y2="264" stroke="#334155" stroke-width="0.8"/>
+    <text x="44" y="97" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">int</text>
+    <text x="80" y="97" font-size="9.5" font-weight="600" fill="#0f172a" font-family="'Inter', sans-serif">id</text>
+    <text x="211" y="97" font-size="8.5" font-weight="700" fill="#0284c7" text-anchor="middle" font-family="'JetBrains Mono', monospace">PK</text>
+    <line x1="40" y1="102" x2="225" y2="102" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="44" y="115" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">int</text>
+    <text x="80" y="115" font-size="9.5" font-weight="600" fill="#0f172a" font-family="'Inter', sans-serif">user_id</text>
+    <text x="211" y="115" font-size="8.5" font-weight="700" fill="#64748b" text-anchor="middle" font-family="'JetBrains Mono', monospace">FK</text>
+    <line x1="40" y1="120" x2="225" y2="120" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="44" y="133" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">var</text>
+    <text x="80" y="133" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">company_name</text>
+    <line x1="40" y1="138" x2="225" y2="138" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="44" y="151" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">var</text>
+    <text x="80" y="151" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">company_type</text>
+    <line x1="40" y1="156" x2="225" y2="156" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="44" y="169" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">var</text>
+    <text x="80" y="169" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">company_size</text>
+    <line x1="40" y1="174" x2="225" y2="174" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="44" y="187" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">var</text>
+    <text x="80" y="187" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">contact_email</text>
+    <line x1="40" y1="192" x2="225" y2="192" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="44" y="205" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">var</text>
+    <text x="80" y="205" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">moa_status</text>
+    <line x1="40" y1="210" x2="225" y2="210" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="44" y="223" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">var</text>
+    <text x="80" y="223" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">moa_file_path</text>
+    <line x1="40" y1="228" x2="225" y2="228" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="44" y="241" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">date</text>
+    <text x="80" y="241" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">moa_start_date</text>
+    <line x1="40" y1="246" x2="225" y2="246" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="44" y="259" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">date</text>
+    <text x="80" y="259" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">moa_end_date</text>
+  </g>
+  <!-- Entity: GraduateProfile -->
+  <g id="ent_GraduateProfile">
+    <rect x="255" y="60" width="185" height="150" fill="#ffffff" stroke="#334155" stroke-width="1.2"/>
+    <rect x="255" y="60" width="185" height="24" fill="#f8fafc" stroke="#334155" stroke-width="1.2"/>
+    <text x="347.5" y="76" font-size="11.5" font-weight="700" fill="#0f172a" text-anchor="middle" font-family="'Inter', sans-serif">GraduateProfile</text>
+    <line x1="289" y1="84" x2="289" y2="210" stroke="#334155" stroke-width="0.8"/>
+    <line x1="412" y1="84" x2="412" y2="210" stroke="#334155" stroke-width="0.8"/>
+    <text x="259" y="97" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">int</text>
+    <text x="295" y="97" font-size="9.5" font-weight="600" fill="#0f172a" font-family="'Inter', sans-serif">id</text>
+    <text x="426" y="97" font-size="8.5" font-weight="700" fill="#0284c7" text-anchor="middle" font-family="'JetBrains Mono', monospace">PK</text>
+    <line x1="255" y1="102" x2="440" y2="102" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="259" y="115" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">int</text>
+    <text x="295" y="115" font-size="9.5" font-weight="600" fill="#0f172a" font-family="'Inter', sans-serif">user_id</text>
+    <text x="426" y="115" font-size="8.5" font-weight="700" fill="#64748b" text-anchor="middle" font-family="'JetBrains Mono', monospace">FK</text>
+    <line x1="255" y1="120" x2="440" y2="120" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="259" y="133" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">int</text>
+    <text x="295" y="133" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">year_graduated</text>
+    <line x1="255" y1="138" x2="440" y2="138" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="259" y="151" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">var</text>
+    <text x="295" y="151" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">campus</text>
+    <line x1="255" y1="156" x2="440" y2="156" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="259" y="169" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">var</text>
+    <text x="295" y="169" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">course</text>
+    <line x1="255" y1="174" x2="440" y2="174" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="259" y="187" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">var</text>
+    <text x="295" y="187" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">section</text>
+    <line x1="255" y1="192" x2="440" y2="192" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="259" y="205" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">var</text>
+    <text x="295" y="205" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">employment_status</text>
+  </g>
+  <!-- Entity: SupervisorProfile -->
+  <g id="ent_SupervisorProfile">
+    <rect x="470" y="60" width="185" height="114" fill="#ffffff" stroke="#334155" stroke-width="1.2"/>
+    <rect x="470" y="60" width="185" height="24" fill="#f8fafc" stroke="#334155" stroke-width="1.2"/>
+    <text x="562.5" y="76" font-size="11.5" font-weight="700" fill="#0f172a" text-anchor="middle" font-family="'Inter', sans-serif">SupervisorProfile</text>
+    <line x1="504" y1="84" x2="504" y2="174" stroke="#334155" stroke-width="0.8"/>
+    <line x1="627" y1="84" x2="627" y2="174" stroke="#334155" stroke-width="0.8"/>
+    <text x="474" y="97" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">int</text>
+    <text x="510" y="97" font-size="9.5" font-weight="600" fill="#0f172a" font-family="'Inter', sans-serif">id</text>
+    <text x="641" y="97" font-size="8.5" font-weight="700" fill="#0284c7" text-anchor="middle" font-family="'JetBrains Mono', monospace">PK</text>
+    <line x1="470" y1="102" x2="655" y2="102" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="474" y="115" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">int</text>
+    <text x="510" y="115" font-size="9.5" font-weight="600" fill="#0f172a" font-family="'Inter', sans-serif">user_id</text>
+    <text x="641" y="115" font-size="8.5" font-weight="700" fill="#64748b" text-anchor="middle" font-family="'JetBrains Mono', monospace">FK</text>
+    <line x1="470" y1="120" x2="655" y2="120" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="474" y="133" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">var</text>
+    <text x="510" y="133" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">company_name</text>
+    <line x1="470" y1="138" x2="655" y2="138" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="474" y="151" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">var</text>
+    <text x="510" y="151" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">position</text>
+    <line x1="470" y1="156" x2="655" y2="156" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="474" y="169" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">var</text>
+    <text x="510" y="169" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">course</text>
+  </g>
+  <!-- Entity: StudentProfile -->
+  <g id="ent_StudentProfile">
+    <rect x="50" y="460" width="185" height="204" fill="#ffffff" stroke="#334155" stroke-width="1.2"/>
+    <rect x="50" y="460" width="185" height="24" fill="#f8fafc" stroke="#334155" stroke-width="1.2"/>
+    <text x="142.5" y="476" font-size="11.5" font-weight="700" fill="#0f172a" text-anchor="middle" font-family="'Inter', sans-serif">StudentProfile</text>
+    <line x1="84" y1="484" x2="84" y2="664" stroke="#334155" stroke-width="0.8"/>
+    <line x1="207" y1="484" x2="207" y2="664" stroke="#334155" stroke-width="0.8"/>
+    <text x="54" y="497" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">int</text>
+    <text x="90" y="497" font-size="9.5" font-weight="600" fill="#0f172a" font-family="'Inter', sans-serif">id</text>
+    <text x="221" y="497" font-size="8.5" font-weight="700" fill="#0284c7" text-anchor="middle" font-family="'JetBrains Mono', monospace">PK</text>
+    <line x1="50" y1="502" x2="235" y2="502" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="54" y="515" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">int</text>
+    <text x="90" y="515" font-size="9.5" font-weight="600" fill="#0f172a" font-family="'Inter', sans-serif">user_id</text>
+    <text x="221" y="515" font-size="8.5" font-weight="700" fill="#64748b" text-anchor="middle" font-family="'JetBrains Mono', monospace">FK</text>
+    <line x1="50" y1="520" x2="235" y2="520" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="54" y="533" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">var</text>
+    <text x="90" y="533" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">student_id</text>
+    <line x1="50" y1="538" x2="235" y2="538" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="54" y="551" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">var</text>
+    <text x="90" y="551" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">school</text>
+    <line x1="50" y1="556" x2="235" y2="556" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="54" y="569" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">var</text>
+    <text x="90" y="569" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">campus</text>
+    <line x1="50" y1="574" x2="235" y2="574" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="54" y="587" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">var</text>
+    <text x="90" y="587" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">program</text>
+    <line x1="50" y1="592" x2="235" y2="592" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="54" y="605" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">var</text>
+    <text x="90" y="605" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">year_level</text>
+    <line x1="50" y1="610" x2="235" y2="610" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="54" y="623" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">var</text>
+    <text x="90" y="623" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">headline</text>
+    <line x1="50" y1="628" x2="235" y2="628" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="54" y="641" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">text</text>
+    <text x="90" y="641" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">bio</text>
+    <line x1="50" y1="646" x2="235" y2="646" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="54" y="659" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">var</text>
+    <text x="90" y="659" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">status</text>
+  </g>
+  <!-- Entity: OjtPosting -->
+  <g id="ent_OjtPosting">
+    <rect x="280" y="580" width="185" height="168" fill="#ffffff" stroke="#334155" stroke-width="1.2"/>
+    <rect x="280" y="580" width="185" height="24" fill="#f8fafc" stroke="#334155" stroke-width="1.2"/>
+    <text x="372.5" y="596" font-size="11.5" font-weight="700" fill="#0f172a" text-anchor="middle" font-family="'Inter', sans-serif">OjtPosting</text>
+    <line x1="314" y1="604" x2="314" y2="748" stroke="#334155" stroke-width="0.8"/>
+    <line x1="437" y1="604" x2="437" y2="748" stroke="#334155" stroke-width="0.8"/>
+    <text x="284" y="617" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">int</text>
+    <text x="320" y="617" font-size="9.5" font-weight="600" fill="#0f172a" font-family="'Inter', sans-serif">id</text>
+    <text x="451" y="617" font-size="8.5" font-weight="700" fill="#0284c7" text-anchor="middle" font-family="'JetBrains Mono', monospace">PK</text>
+    <line x1="280" y1="622" x2="465" y2="622" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="284" y="635" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">int</text>
+    <text x="320" y="635" font-size="9.5" font-weight="600" fill="#0f172a" font-family="'Inter', sans-serif">company_user_id</text>
+    <text x="451" y="635" font-size="8.5" font-weight="700" fill="#64748b" text-anchor="middle" font-family="'JetBrains Mono', monospace">FK</text>
+    <line x1="280" y1="640" x2="465" y2="640" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="284" y="653" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">var</text>
+    <text x="320" y="653" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">title</text>
+    <line x1="280" y1="658" x2="465" y2="658" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="284" y="671" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">var</text>
+    <text x="320" y="671" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">department</text>
+    <line x1="280" y1="676" x2="465" y2="676" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="284" y="689" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">var</text>
+    <text x="320" y="689" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">location</text>
+    <line x1="280" y1="694" x2="465" y2="694" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="284" y="707" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">int</text>
+    <text x="320" y="707" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">slots_total</text>
+    <line x1="280" y1="712" x2="465" y2="712" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="284" y="725" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">int</text>
+    <text x="320" y="725" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">slots_remaining</text>
+    <line x1="280" y1="730" x2="465" y2="730" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="284" y="743" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">var</text>
+    <text x="320" y="743" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">status</text>
+  </g>
+  <!-- Entity: StudentOjtInterest -->
+  <g id="ent_StudentOjtInterest">
+    <rect x="50" y="740" width="185" height="114" fill="#ffffff" stroke="#334155" stroke-width="1.2"/>
+    <rect x="50" y="740" width="185" height="24" fill="#f8fafc" stroke="#334155" stroke-width="1.2"/>
+    <text x="142.5" y="756" font-size="11.5" font-weight="700" fill="#0f172a" text-anchor="middle" font-family="'Inter', sans-serif">StudentOjtInterest</text>
+    <line x1="84" y1="764" x2="84" y2="854" stroke="#334155" stroke-width="0.8"/>
+    <line x1="207" y1="764" x2="207" y2="854" stroke="#334155" stroke-width="0.8"/>
+    <text x="54" y="777" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">int</text>
+    <text x="90" y="777" font-size="9.5" font-weight="600" fill="#0f172a" font-family="'Inter', sans-serif">id</text>
+    <text x="221" y="777" font-size="8.5" font-weight="700" fill="#0284c7" text-anchor="middle" font-family="'JetBrains Mono', monospace">PK</text>
+    <line x1="50" y1="782" x2="235" y2="782" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="54" y="795" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">int</text>
+    <text x="90" y="795" font-size="9.5" font-weight="600" fill="#0f172a" font-family="'Inter', sans-serif">student_user_id</text>
+    <text x="221" y="795" font-size="8.5" font-weight="700" fill="#64748b" text-anchor="middle" font-family="'JetBrains Mono', monospace">FK</text>
+    <line x1="50" y1="800" x2="235" y2="800" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="54" y="813" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">int</text>
+    <text x="90" y="813" font-size="9.5" font-weight="600" fill="#0f172a" font-family="'Inter', sans-serif">ojt_posting_id</text>
+    <text x="221" y="813" font-size="8.5" font-weight="700" fill="#64748b" text-anchor="middle" font-family="'JetBrains Mono', monospace">FK</text>
+    <line x1="50" y1="818" x2="235" y2="818" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="54" y="831" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">var</text>
+    <text x="90" y="831" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">status</text>
+    <line x1="50" y1="836" x2="235" y2="836" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="54" y="849" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">int</text>
+    <text x="90" y="849" font-size="9.5" font-weight="600" fill="#0f172a" font-family="'Inter', sans-serif">endorsed_by</text>
+    <text x="221" y="849" font-size="8.5" font-weight="700" fill="#64748b" text-anchor="middle" font-family="'JetBrains Mono', monospace">FK</text>
+  </g>
+  <!-- Entity: JobListing -->
+  <g id="ent_JobListing">
+    <rect x="810" y="60" width="185" height="168" fill="#ffffff" stroke="#334155" stroke-width="1.2"/>
+    <rect x="810" y="60" width="185" height="24" fill="#f8fafc" stroke="#334155" stroke-width="1.2"/>
+    <text x="902.5" y="76" font-size="11.5" font-weight="700" fill="#0f172a" text-anchor="middle" font-family="'Inter', sans-serif">JobListing</text>
+    <line x1="844" y1="84" x2="844" y2="228" stroke="#334155" stroke-width="0.8"/>
+    <line x1="967" y1="84" x2="967" y2="228" stroke="#334155" stroke-width="0.8"/>
+    <text x="814" y="97" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">int</text>
+    <text x="850" y="97" font-size="9.5" font-weight="600" fill="#0f172a" font-family="'Inter', sans-serif">id</text>
+    <text x="981" y="97" font-size="8.5" font-weight="700" fill="#0284c7" text-anchor="middle" font-family="'JetBrains Mono', monospace">PK</text>
+    <line x1="810" y1="102" x2="995" y2="102" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="814" y="115" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">int</text>
+    <text x="850" y="115" font-size="9.5" font-weight="600" fill="#0f172a" font-family="'Inter', sans-serif">company_user_id</text>
+    <text x="981" y="115" font-size="8.5" font-weight="700" fill="#64748b" text-anchor="middle" font-family="'JetBrains Mono', monospace">FK</text>
+    <line x1="810" y1="120" x2="995" y2="120" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="814" y="133" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">var</text>
+    <text x="850" y="133" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">title</text>
+    <line x1="810" y1="138" x2="995" y2="138" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="814" y="151" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">var</text>
+    <text x="850" y="151" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">department</text>
+    <line x1="810" y1="156" x2="995" y2="156" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="814" y="169" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">var</text>
+    <text x="850" y="169" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">location</text>
+    <line x1="810" y1="174" x2="995" y2="174" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="814" y="187" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">var</text>
+    <text x="850" y="187" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">employment_type</text>
+    <line x1="810" y1="192" x2="995" y2="192" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="814" y="205" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">var</text>
+    <text x="850" y="205" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">salary_range</text>
+    <line x1="810" y1="210" x2="995" y2="210" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="814" y="223" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">var</text>
+    <text x="850" y="223" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">status</text>
+  </g>
+  <!-- Entity: JobApplication -->
+  <g id="ent_JobApplication">
+    <rect x="1120" y="140" width="195" height="150" fill="#ffffff" stroke="#334155" stroke-width="1.2"/>
+    <rect x="1120" y="140" width="195" height="24" fill="#f8fafc" stroke="#334155" stroke-width="1.2"/>
+    <text x="1217.5" y="156" font-size="11.5" font-weight="700" fill="#0f172a" text-anchor="middle" font-family="'Inter', sans-serif">JobApplication</text>
+    <line x1="1154" y1="164" x2="1154" y2="290" stroke="#334155" stroke-width="0.8"/>
+    <line x1="1287" y1="164" x2="1287" y2="290" stroke="#334155" stroke-width="0.8"/>
+    <text x="1124" y="177" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">int</text>
+    <text x="1160" y="177" font-size="9.5" font-weight="600" fill="#0f172a" font-family="'Inter', sans-serif">id</text>
+    <text x="1301" y="177" font-size="8.5" font-weight="700" fill="#0284c7" text-anchor="middle" font-family="'JetBrains Mono', monospace">PK</text>
+    <line x1="1120" y1="182" x2="1315" y2="182" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="1124" y="195" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">int</text>
+    <text x="1160" y="195" font-size="9.5" font-weight="600" fill="#0f172a" font-family="'Inter', sans-serif">job_listing_id</text>
+    <text x="1301" y="195" font-size="8.5" font-weight="700" fill="#64748b" text-anchor="middle" font-family="'JetBrains Mono', monospace">FK</text>
+    <line x1="1120" y1="200" x2="1315" y2="200" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="1124" y="213" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">int</text>
+    <text x="1160" y="213" font-size="9.5" font-weight="600" fill="#0f172a" font-family="'Inter', sans-serif">applicant_user_id</text>
+    <text x="1301" y="213" font-size="8.5" font-weight="700" fill="#64748b" text-anchor="middle" font-family="'JetBrains Mono', monospace">FK</text>
+    <line x1="1120" y1="218" x2="1315" y2="218" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="1124" y="231" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">var</text>
+    <text x="1160" y="231" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">status</text>
+    <line x1="1120" y1="236" x2="1315" y2="236" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="1124" y="249" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">flo</text>
+    <text x="1160" y="249" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">match_score</text>
+    <line x1="1120" y1="254" x2="1315" y2="254" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="1124" y="267" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">text</text>
+    <text x="1160" y="267" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">cover_letter</text>
+    <line x1="1120" y1="272" x2="1315" y2="272" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="1124" y="285" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">var</text>
+    <text x="1160" y="285" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">offer_decision</text>
+  </g>
+  <!-- Entity: Interview -->
+  <g id="ent_Interview">
+    <rect x="840" y="700" width="185" height="150" fill="#ffffff" stroke="#334155" stroke-width="1.2"/>
+    <rect x="840" y="700" width="185" height="24" fill="#f8fafc" stroke="#334155" stroke-width="1.2"/>
+    <text x="932.5" y="716" font-size="11.5" font-weight="700" fill="#0f172a" text-anchor="middle" font-family="'Inter', sans-serif">Interview</text>
+    <line x1="874" y1="724" x2="874" y2="850" stroke="#334155" stroke-width="0.8"/>
+    <line x1="997" y1="724" x2="997" y2="850" stroke="#334155" stroke-width="0.8"/>
+    <text x="844" y="737" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">int</text>
+    <text x="880" y="737" font-size="9.5" font-weight="600" fill="#0f172a" font-family="'Inter', sans-serif">id</text>
+    <text x="1011" y="737" font-size="8.5" font-weight="700" fill="#0284c7" text-anchor="middle" font-family="'JetBrains Mono', monospace">PK</text>
+    <line x1="840" y1="742" x2="1025" y2="742" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="844" y="755" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">int</text>
+    <text x="880" y="755" font-size="9.5" font-weight="600" fill="#0f172a" font-family="'Inter', sans-serif">job_application_id</text>
+    <text x="1011" y="755" font-size="8.5" font-weight="700" fill="#64748b" text-anchor="middle" font-family="'JetBrains Mono', monospace">FK</text>
+    <line x1="840" y1="760" x2="1025" y2="760" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="844" y="773" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">int</text>
+    <text x="880" y="773" font-size="9.5" font-weight="600" fill="#0f172a" font-family="'Inter', sans-serif">company_user_id</text>
+    <text x="1011" y="773" font-size="8.5" font-weight="700" fill="#64748b" text-anchor="middle" font-family="'JetBrains Mono', monospace">FK</text>
+    <line x1="840" y1="778" x2="1025" y2="778" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="844" y="791" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">var</text>
+    <text x="880" y="791" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">type</text>
+    <line x1="840" y1="796" x2="1025" y2="796" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="844" y="809" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">date</text>
+    <text x="880" y="809" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">scheduled_date</text>
+    <line x1="840" y1="814" x2="1025" y2="814" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="844" y="827" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">var</text>
+    <text x="880" y="827" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">platform</text>
+    <line x1="840" y1="832" x2="1025" y2="832" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="844" y="845" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">var</text>
+    <text x="880" y="845" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">status</text>
+  </g>
+  <!-- Entity: OjtRecord -->
+  <g id="ent_OjtRecord">
+    <rect x="1120" y="450" width="185" height="132" fill="#ffffff" stroke="#334155" stroke-width="1.2"/>
+    <rect x="1120" y="450" width="185" height="24" fill="#f8fafc" stroke="#334155" stroke-width="1.2"/>
+    <text x="1212.5" y="466" font-size="11.5" font-weight="700" fill="#0f172a" text-anchor="middle" font-family="'Inter', sans-serif">OjtRecord</text>
+    <line x1="1154" y1="474" x2="1154" y2="582" stroke="#334155" stroke-width="0.8"/>
+    <line x1="1277" y1="474" x2="1277" y2="582" stroke="#334155" stroke-width="0.8"/>
+    <text x="1124" y="487" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">int</text>
+    <text x="1160" y="487" font-size="9.5" font-weight="600" fill="#0f172a" font-family="'Inter', sans-serif">id</text>
+    <text x="1291" y="487" font-size="8.5" font-weight="700" fill="#0284c7" text-anchor="middle" font-family="'JetBrains Mono', monospace">PK</text>
+    <line x1="1120" y1="492" x2="1305" y2="492" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="1124" y="505" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">int</text>
+    <text x="1160" y="505" font-size="9.5" font-weight="600" fill="#0f172a" font-family="'Inter', sans-serif">user_id</text>
+    <text x="1291" y="505" font-size="8.5" font-weight="700" fill="#64748b" text-anchor="middle" font-family="'JetBrains Mono', monospace">FK</text>
+    <line x1="1120" y1="510" x2="1305" y2="510" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="1124" y="523" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">var</text>
+    <text x="1160" y="523" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">company_name</text>
+    <line x1="1120" y1="528" x2="1305" y2="528" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="1124" y="541" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">int</text>
+    <text x="1160" y="541" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">required_hours</text>
+    <line x1="1120" y1="546" x2="1305" y2="546" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="1124" y="559" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">flo</text>
+    <text x="1160" y="559" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">completed_hours</text>
+    <line x1="1120" y1="564" x2="1305" y2="564" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="1124" y="577" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">var</text>
+    <text x="1160" y="577" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">status</text>
+  </g>
+  <!-- Entity: TimeLog -->
+  <g id="ent_TimeLog">
+    <rect x="1120" y="680" width="185" height="150" fill="#ffffff" stroke="#334155" stroke-width="1.2"/>
+    <rect x="1120" y="680" width="185" height="24" fill="#f8fafc" stroke="#334155" stroke-width="1.2"/>
+    <text x="1212.5" y="696" font-size="11.5" font-weight="700" fill="#0f172a" text-anchor="middle" font-family="'Inter', sans-serif">TimeLog</text>
+    <line x1="1154" y1="704" x2="1154" y2="830" stroke="#334155" stroke-width="0.8"/>
+    <line x1="1277" y1="704" x2="1277" y2="830" stroke="#334155" stroke-width="0.8"/>
+    <text x="1124" y="717" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">int</text>
+    <text x="1160" y="717" font-size="9.5" font-weight="600" fill="#0f172a" font-family="'Inter', sans-serif">id</text>
+    <text x="1291" y="717" font-size="8.5" font-weight="700" fill="#0284c7" text-anchor="middle" font-family="'JetBrains Mono', monospace">PK</text>
+    <line x1="1120" y1="722" x2="1305" y2="722" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="1124" y="735" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">int</text>
+    <text x="1160" y="735" font-size="9.5" font-weight="600" fill="#0f172a" font-family="'Inter', sans-serif">user_id</text>
+    <text x="1291" y="735" font-size="8.5" font-weight="700" fill="#64748b" text-anchor="middle" font-family="'JetBrains Mono', monospace">FK</text>
+    <line x1="1120" y1="740" x2="1305" y2="740" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="1124" y="753" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">int</text>
+    <text x="1160" y="753" font-size="9.5" font-weight="600" fill="#0f172a" font-family="'Inter', sans-serif">ojt_record_id</text>
+    <text x="1291" y="753" font-size="8.5" font-weight="700" fill="#64748b" text-anchor="middle" font-family="'JetBrains Mono', monospace">FK</text>
+    <line x1="1120" y1="758" x2="1305" y2="758" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="1124" y="771" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">date</text>
+    <text x="1160" y="771" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">log_date</text>
+    <line x1="1120" y1="776" x2="1305" y2="776" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="1124" y="789" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">tin</text>
+    <text x="1160" y="789" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">time_in</text>
+    <line x1="1120" y1="794" x2="1305" y2="794" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="1124" y="807" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">tin</text>
+    <text x="1160" y="807" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">time_out</text>
+    <line x1="1120" y1="812" x2="1305" y2="812" stroke="#cbd5e1" stroke-width="0.7"/>
+    <text x="1124" y="825" font-size="9" font-weight="500" fill="#64748b" font-family="'JetBrains Mono', monospace">flo</text>
+    <text x="1160" y="825" font-size="9.5" font-weight="400" fill="#334155" font-family="'Inter', sans-serif">hours_rendered</text>
+  </g>
+</svg>

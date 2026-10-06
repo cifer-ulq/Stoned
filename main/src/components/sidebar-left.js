@@ -2,13 +2,13 @@
  * CHMSU HireMe — Left Sidebar Navigation (Facebook-style)
  */
 import { icon } from './icons.js';
-import { getState } from '../store.js';
+import { getState, subscribe } from '../store.js';
 import { navigate } from '../router.js';
 
 export function createLeftSidebar() {
   const user = getState('user');
   const isAlumni = user.is_alumni || user.status === 'alumni' || user.rawRole === 'graduate' || user.role?.toLowerCase().includes('graduate') || user.role?.toLowerCase().includes('alumni');
-  const isOJT = !isAlumni && user.status === 'active_ojt';
+  const isOJT = !isAlumni && (user.is_active_ojt === true || user.status === 'active_ojt');
   const avatarSrc = user.avatar
     ? (user.avatar.startsWith('http') ? user.avatar : `http://localhost:8000${user.avatar}`)
     : null;
@@ -62,7 +62,7 @@ export function createLeftSidebar() {
       <a class="sidebar-nav__item" href="#/ojt-tracker" data-route="/ojt-tracker">
         <span class="sidebar-nav__icon" style="background: var(--color-accent-bg); color: var(--color-accent);">${icon('clock', 20)}</span>
         <span class="sidebar-nav__label">OJT Tracker</span>
-        ${isOJT ? '<span class="sidebar-nav__badge">Active</span>' : ''}
+        <span class="sidebar-nav__badge" id="sidebar-ojt-badge" style="${isOJT ? '' : 'display:none;'}">Active</span>
       </a>
       ` : `
       <a class="sidebar-nav__item" href="#/alumni" data-route="/alumni">
@@ -104,6 +104,16 @@ export function createLeftSidebar() {
       <span class="text-xs text-tertiary">CHMSU HireMe © 2026</span>
     </div>
   `;
+
+  subscribe('user', (updatedUser) => {
+    if (!updatedUser) return;
+    const alumni = updatedUser.is_alumni || updatedUser.status === 'alumni' || updatedUser.rawRole === 'graduate' || updatedUser.role?.toLowerCase().includes('graduate') || updatedUser.role?.toLowerCase().includes('alumni');
+    const active = !alumni && (updatedUser.is_active_ojt === true || updatedUser.status === 'active_ojt');
+    const badge = sidebar.querySelector('#sidebar-ojt-badge');
+    if (badge) {
+      badge.style.display = active ? '' : 'none';
+    }
+  });
 
   return sidebar;
 }

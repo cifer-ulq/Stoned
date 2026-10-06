@@ -2,8 +2,8 @@
 
 const state = {
   user: {
-    name: 'Dr. Elena Magsaysay',
-    initials: 'EM',
+    name: 'Marites Manganti',
+    initials: 'MM',
     role: 'CIER Administrator',
     department: 'Center for Institutional Effectiveness & Research',
     employeeId: 'ADM-2024-001',

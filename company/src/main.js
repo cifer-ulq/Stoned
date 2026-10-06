@@ -35,14 +35,15 @@ const scrollPositions = new Map();
 let activeRouteKey = null;
 
 const routeEndpointMap = {
-  '/':             ['/company/dashboard'],
+  '/':             ['/company/dashboard', '/company/profile'],
   '/jobs':         ['/company/jobs'],
+  '/post-job':     ['/company/jobs'],
   '/ojt-slots':    ['/company/ojt-postings'],
   '/ojt-trainees': ['/company/ojt-trainees'],
   '/applicants':   ['/company/applications'],
   '/interviews':   ['/company/interviews'],
   '/analytics':    ['/company/analytics'],
-  '/profile':      ['/company/profile'],
+  '/profile':      ['/company/profile', '/company/jobs', '/company/ojt-postings', '/company/ojt-trainees'],
   '/profile-setup':['/company/profile', '/auth/me'],
 };
 
@@ -143,8 +144,18 @@ window.addEventListener('hireme:cache-invalidated', (e) => {
 
     if (isAffected) {
       if (key === activeRouteKey) {
-        view.dirty = false;
-        view.renderer(view.container);
+        // Active page! Check if user is typing or modal is open
+        const hasOpenModal = !!document.querySelector('.modal-overlay, .modal-backdrop, .modal-box');
+        const isInteracting = view.container.contains(document.activeElement) &&
+          ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName);
+
+        if (hasOpenModal || isInteracting) {
+          // Defer until modal closes or interaction finishes
+          view.dirty = true;
+        } else {
+          view.dirty = false;
+          view.renderer(view.container);
+        }
       } else {
         view.dirty = true;
       }
@@ -157,6 +168,56 @@ window.addEventListener('hireme:clear-views', () => {
   pageViews.clear();
   scrollPositions.clear();
   activeRouteKey = null;
+});
+
+// ── Background Active View Revalidation Engine (Zero Hard Refresh) ──
+let activeSyncTimer = null;
+
+async function checkActiveViewFreshness() {
+  if (document.hidden || !activeRouteKey) return;
+  const view = pageViews.get(activeRouteKey);
+  if (!view || !view.endpoints || view.endpoints.length === 0) return;
+
+  // Don't interrupt user typing or active modal interaction
+  const hasOpenModal = !!document.querySelector('.modal-overlay, .modal-backdrop, .modal-box');
+  const isInteracting = view.container.contains(document.activeElement) &&
+    ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName);
+
+  if (hasOpenModal || isInteracting) {
+    return;
+  }
+
+  try {
+    const results = await Promise.all(
+      view.endpoints.map(ep => revalidateEndpoint(ep))
+    );
+    const hasChange = view.dirty || results.some(r => r.changed);
+    if (hasChange) {
+      view.dirty = false;
+      await view.renderer(view.container);
+    }
+  } catch (_) {}
+}
+
+function scheduleActiveViewCheck(delay = 6000) {
+  clearTimeout(activeSyncTimer);
+  activeSyncTimer = setTimeout(async () => {
+    await checkActiveViewFreshness();
+    scheduleActiveViewCheck(document.hidden ? 30000 : 6000);
+  }, delay);
+}
+
+window.addEventListener('focus', () => {
+  checkActiveViewFreshness();
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    checkActiveViewFreshness();
+    scheduleActiveViewCheck(6000);
+  } else {
+    scheduleActiveViewCheck(30000);
+  }
 });
 
 async function initApp() {
@@ -286,6 +347,7 @@ async function initApp() {
   });
 
   initRouter();
+  scheduleActiveViewCheck(6000);
 }
 
 function toggleMobileMenu() {

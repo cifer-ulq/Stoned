@@ -1,0 +1,815 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1750 1060" width="1750" height="1060" style="background:#0f172a; font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<defs>
+  <filter id="softGlow" x="-6%" y="-6%" width="112%" height="112%"><feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000000" flood-opacity="0.30"/></filter>
+  <marker id="crowMany" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="9" markerHeight="9" orient="auto"><path d="M 0 3 L 14 8 L 0 13 M 14 2 L 14 14" fill="none" stroke="#94a3b8" stroke-width="2"/></marker>
+  <marker id="crowOne" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="9" markerHeight="9" orient="auto"><line x1="8" y1="3" x2="8" y2="13" stroke="#94a3b8" stroke-width="2"/><line x1="14" y1="3" x2="14" y2="13" stroke="#94a3b8" stroke-width="2"/></marker>
+</defs>
+<g id="diagramHeader">
+  <rect x="40" y="20" width="1670" height="68" rx="10" fill="#1e293b" stroke="#334155" stroke-width="1.2"/>
+  <circle cx="70" cy="54" r="18" fill="#6366f1"/>
+  <path d="M 63 54 H 77 M 70 47 V 61" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+  <text x="100" y="47" font-size="18" font-weight="800" fill="#f8fafc" letter-spacing="-0.2">CHMSU HIREME — MINIMAL CONCEPTUAL &amp; LOGICAL ERD</text>
+  <text x="100" y="68" font-size="11" font-weight="500" fill="#94a3b8">Prepared for Academic Thesis &amp; Data Dictionary • 25 Core Domain Entities • Filtered Attributes (Core Keys &amp; Substantive Fields Only)</text>
+<circle cx="1010" cy="54" r="5" fill="#3b82f6"/>
+<text x="1019" y="58" font-size="9.5" font-weight="600" fill="#cbd5e1">Auth &amp; Core</text>
+<circle cx="1115" cy="54" r="5" fill="#0284c7"/>
+<text x="1124" y="58" font-size="9.5" font-weight="600" fill="#cbd5e1">Profiles</text>
+<circle cx="1220" cy="54" r="5" fill="#8b5cf6"/>
+<text x="1229" y="58" font-size="9.5" font-weight="600" fill="#cbd5e1">Portfolio</text>
+<circle cx="1325" cy="54" r="5" fill="#059669"/>
+<text x="1334" y="58" font-size="9.5" font-weight="600" fill="#cbd5e1">OJT &amp; DTR</text>
+<circle cx="1430" cy="54" r="5" fill="#d97706"/>
+<text x="1439" y="58" font-size="9.5" font-weight="600" fill="#cbd5e1">Evaluations</text>
+<circle cx="1535" cy="54" r="5" fill="#db2777"/>
+<text x="1544" y="58" font-size="9.5" font-weight="600" fill="#cbd5e1">Jobs &amp; Hiring</text>
+<circle cx="1640" cy="54" r="5" fill="#64748b"/>
+<text x="1649" y="58" font-size="9.5" font-weight="600" fill="#cbd5e1">Comms</text>
+</g>
+<g id="relationships" opacity="0.80">
+  <path d="M 600 184 C 586.5 184, 583.5 202, 570 202" fill="none" stroke="#60a5fa" stroke-width="1.4" stroke-dasharray="none" marker-end="url(#crowOne)" opacity="0.75"/>
+  <rect x="566" y="186" width="38" height="14" rx="3" fill="#1e293b" stroke="#60a5fa" stroke-width="0.8" opacity="0.95"/>
+  <text x="585" y="196" font-size="8" font-weight="700" fill="#f1f5f9" text-anchor="middle">1 : 1</text>
+  <path d="M 727.5 258 C 727.5 299.4, 727.5 308.6, 727.5 350" fill="none" stroke="#60a5fa" stroke-width="1.4" stroke-dasharray="none" marker-end="url(#crowOne)" opacity="0.75"/>
+  <rect x="708.5" y="297" width="38" height="14" rx="3" fill="#1e293b" stroke="#60a5fa" stroke-width="0.8" opacity="0.95"/>
+  <text x="727.5" y="307" font-size="8" font-weight="700" fill="#f1f5f9" text-anchor="middle">1 : 1</text>
+  <path d="M 855 184 C 868.5 184, 871.5 175, 885 175" fill="none" stroke="#60a5fa" stroke-width="1.4" stroke-dasharray="none" marker-end="url(#crowOne)" opacity="0.75"/>
+  <rect x="851" y="172.5" width="38" height="14" rx="3" fill="#1e293b" stroke="#60a5fa" stroke-width="0.8" opacity="0.95"/>
+  <text x="870" y="182.5" font-size="8" font-weight="700" fill="#f1f5f9" text-anchor="middle">1 : 1</text>
+  <path d="M 855 184 C 1125 184, 1185 184, 1455 184" fill="none" stroke="#60a5fa" stroke-width="1.4" stroke-dasharray="none" marker-end="url(#crowOne)" opacity="0.75"/>
+  <rect x="1136" y="177" width="38" height="14" rx="3" fill="#1e293b" stroke="#60a5fa" stroke-width="0.8" opacity="0.95"/>
+  <text x="1155" y="187" font-size="8" font-weight="700" fill="#f1f5f9" text-anchor="middle">1 : 1</text>
+  <path d="M 855 184 C 1125 184, 1185 384, 1455 384" fill="none" stroke="#60a5fa" stroke-width="1.4" stroke-dasharray="none" marker-end="url(#crowOne)" opacity="0.75"/>
+  <rect x="1136" y="277" width="38" height="14" rx="3" fill="#1e293b" stroke="#60a5fa" stroke-width="0.8" opacity="0.95"/>
+  <text x="1155" y="287" font-size="8" font-weight="700" fill="#f1f5f9" text-anchor="middle">1 : 1</text>
+  <path d="M 855 184 C 996.75 184, 1028.25 175, 1170 175" fill="none" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="4,3" marker-end="url(#crowMany)" opacity="0.75"/>
+  <rect x="993.5" y="172.5" width="38" height="14" rx="3" fill="#1e293b" stroke="#94a3b8" stroke-width="0.8" opacity="0.95"/>
+  <text x="1012.5" y="182.5" font-size="8" font-weight="700" fill="#f1f5f9" text-anchor="middle">1 : N</text>
+  <path d="M 727.5 258 C 727.5 497.4, 1012.5 550.6, 1012.5 790" fill="none" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="4,3" marker-end="url(#crowMany)" opacity="0.75"/>
+  <rect x="851" y="517" width="38" height="14" rx="3" fill="#1e293b" stroke="#94a3b8" stroke-width="0.8" opacity="0.95"/>
+  <text x="870" y="527" font-size="8" font-weight="700" fill="#f1f5f9" text-anchor="middle">1 : N</text>
+  <path d="M 320 202 C 306.5 202, 303.5 184, 290 184" fill="none" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="4,3" marker-end="url(#crowMany)" opacity="0.75"/>
+  <rect x="286" y="186" width="38" height="14" rx="3" fill="#1e293b" stroke="#94a3b8" stroke-width="0.8" opacity="0.95"/>
+  <text x="305" y="196" font-size="8" font-weight="700" fill="#f1f5f9" text-anchor="middle">1 : N</text>
+  <path d="M 320 202 C 320 268.6, 290 283.4, 290 350" fill="none" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="4,3" marker-end="url(#crowMany)" opacity="0.75"/>
+  <rect x="286" y="269" width="38" height="14" rx="3" fill="#1e293b" stroke="#94a3b8" stroke-width="0.8" opacity="0.95"/>
+  <text x="305" y="279" font-size="8" font-weight="700" fill="#f1f5f9" text-anchor="middle">1 : N</text>
+  <path d="M 320 202 C 320 346.9, 290 379.1, 290 524" fill="none" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="4,3" marker-end="url(#crowMany)" opacity="0.75"/>
+  <rect x="286" y="356" width="38" height="14" rx="3" fill="#1e293b" stroke="#94a3b8" stroke-width="0.8" opacity="0.95"/>
+  <text x="305" y="366" font-size="8" font-weight="700" fill="#f1f5f9" text-anchor="middle">1 : N</text>
+  <path d="M 320 202 C 320 421.6, 290 470.4, 290 690" fill="none" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="4,3" marker-end="url(#crowMany)" opacity="0.75"/>
+  <rect x="286" y="439" width="38" height="14" rx="3" fill="#1e293b" stroke="#94a3b8" stroke-width="0.8" opacity="0.95"/>
+  <text x="305" y="449" font-size="8" font-weight="700" fill="#f1f5f9" text-anchor="middle">1 : N</text>
+  <path d="M 320 202 C 320 499.9, 290 566.1, 290 864" fill="none" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="4,3" marker-end="url(#crowMany)" opacity="0.75"/>
+  <rect x="286" y="526" width="38" height="14" rx="3" fill="#1e293b" stroke="#94a3b8" stroke-width="0.8" opacity="0.95"/>
+  <text x="305" y="536" font-size="8" font-weight="700" fill="#f1f5f9" text-anchor="middle">1 : N</text>
+  <path d="M 727.5 534 C 727.5 572.7, 727.5 581.3, 727.5 620" fill="none" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="4,3" marker-end="url(#crowMany)" opacity="0.75"/>
+  <rect x="708.5" y="570" width="38" height="14" rx="3" fill="#1e293b" stroke="#94a3b8" stroke-width="0.8" opacity="0.95"/>
+  <text x="727.5" y="580" font-size="8" font-weight="700" fill="#f1f5f9" text-anchor="middle">1 : N</text>
+  <path d="M 445 294 C 445 332.7, 445 341.3, 445 380" fill="none" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="4,3" marker-end="url(#crowMany)" opacity="0.75"/>
+  <rect x="426" y="330" width="38" height="14" rx="3" fill="#1e293b" stroke="#94a3b8" stroke-width="0.8" opacity="0.95"/>
+  <text x="445" y="340" font-size="8" font-weight="700" fill="#f1f5f9" text-anchor="middle">1 : N</text>
+  <path d="M 600 712 C 600 595.9, 570 570.1, 570 454" fill="none" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="4,3" marker-end="url(#crowMany)" opacity="0.75"/>
+  <rect x="566" y="576" width="38" height="14" rx="3" fill="#1e293b" stroke="#94a3b8" stroke-width="0.8" opacity="0.95"/>
+  <text x="585" y="586" font-size="8" font-weight="700" fill="#f1f5f9" text-anchor="middle">1 : N</text>
+  <path d="M 445 528 C 445 569.4, 445 578.6, 445 620" fill="none" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="4,3" marker-end="url(#crowMany)" opacity="0.75"/>
+  <rect x="426" y="567" width="38" height="14" rx="3" fill="#1e293b" stroke="#94a3b8" stroke-width="0.8" opacity="0.95"/>
+  <text x="445" y="577" font-size="8" font-weight="700" fill="#f1f5f9" text-anchor="middle">1 : N</text>
+  <path d="M 570 202 C 711.75 202, 743.25 403, 885 403" fill="none" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="4,3" marker-end="url(#crowMany)" opacity="0.75"/>
+  <rect x="708.5" y="295.5" width="38" height="14" rx="3" fill="#1e293b" stroke="#94a3b8" stroke-width="0.8" opacity="0.95"/>
+  <text x="727.5" y="305.5" font-size="8" font-weight="700" fill="#f1f5f9" text-anchor="middle">1 : N</text>
+  <path d="M 1012.5 486 C 1012.5 519.3, 1012.5 526.7, 1012.5 560" fill="none" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="4,3" marker-end="url(#crowMany)" opacity="0.75"/>
+  <rect x="993.5" y="516" width="38" height="14" rx="3" fill="#1e293b" stroke="#94a3b8" stroke-width="0.8" opacity="0.95"/>
+  <text x="1012.5" y="526" font-size="8" font-weight="700" fill="#f1f5f9" text-anchor="middle">1 : N</text>
+  <path d="M 1297.5 440 C 1297.5 467, 1297.5 473, 1297.5 500" fill="none" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="4,3" marker-end="url(#crowMany)" opacity="0.75"/>
+  <rect x="1278.5" y="463" width="38" height="14" rx="3" fill="#1e293b" stroke="#94a3b8" stroke-width="0.8" opacity="0.95"/>
+  <text x="1297.5" y="473" font-size="8" font-weight="700" fill="#f1f5f9" text-anchor="middle">1 : N</text>
+  <path d="M 1297.5 440 C 1297.5 552.5, 1297.5 577.5, 1297.5 690" fill="none" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="4,3" marker-end="url(#crowMany)" opacity="0.75"/>
+  <rect x="1278.5" y="558" width="38" height="14" rx="3" fill="#1e293b" stroke="#94a3b8" stroke-width="0.8" opacity="0.95"/>
+  <text x="1297.5" y="568" font-size="8" font-weight="700" fill="#f1f5f9" text-anchor="middle">1 : N</text>
+  <path d="M 1140 403 C 1140 569.5, 1170 606.5, 1170 773" fill="none" stroke="#60a5fa" stroke-width="1.4" stroke-dasharray="none" marker-end="url(#crowOne)" opacity="0.75"/>
+  <rect x="1136" y="581" width="38" height="14" rx="3" fill="#1e293b" stroke="#60a5fa" stroke-width="0.8" opacity="0.95"/>
+  <text x="1155" y="591" font-size="8" font-weight="700" fill="#f1f5f9" text-anchor="middle">1 : 1</text>
+  <path d="M 1297.5 856 C 1297.5 873.55, 1297.5 877.45, 1297.5 895" fill="none" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="4,3" marker-end="url(#crowMany)" opacity="0.75"/>
+  <rect x="1278.5" y="868.5" width="38" height="14" rx="3" fill="#1e293b" stroke="#94a3b8" stroke-width="0.8" opacity="0.95"/>
+  <text x="1297.5" y="878.5" font-size="8" font-weight="700" fill="#f1f5f9" text-anchor="middle">1 : N</text>
+  <path d="M 1297.5 630 C 1297.5 778.5, 1170 811.5, 1170 960" fill="none" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="4,3" marker-end="url(#crowMany)" opacity="0.75"/>
+  <rect x="1214.75" y="788" width="38" height="14" rx="3" fill="#1e293b" stroke="#94a3b8" stroke-width="0.8" opacity="0.95"/>
+  <text x="1233.75" y="798" font-size="8" font-weight="700" fill="#f1f5f9" text-anchor="middle">1 : N</text>
+  <path d="M 855 442 C 1125 442, 1185 583, 1455 583" fill="none" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="4,3" marker-end="url(#crowMany)" opacity="0.75"/>
+  <rect x="1136" y="505.5" width="38" height="14" rx="3" fill="#1e293b" stroke="#94a3b8" stroke-width="0.8" opacity="0.95"/>
+  <text x="1155" y="515.5" font-size="8" font-weight="700" fill="#f1f5f9" text-anchor="middle">1 : N</text>
+  <path d="M 1582.5 666 C 1582.5 683.55, 1582.5 687.45, 1582.5 705" fill="none" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="4,3" marker-end="url(#crowMany)" opacity="0.75"/>
+  <rect x="1563.5" y="678.5" width="38" height="14" rx="3" fill="#1e293b" stroke="#94a3b8" stroke-width="0.8" opacity="0.95"/>
+  <text x="1582.5" y="688.5" font-size="8" font-weight="700" fill="#f1f5f9" text-anchor="middle">1 : N</text>
+  <path d="M 1582.5 258 C 1582.5 459.15, 1582.5 503.85, 1582.5 705" fill="none" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="4,3" marker-end="url(#crowMany)" opacity="0.75"/>
+  <rect x="1563.5" y="474.5" width="38" height="14" rx="3" fill="#1e293b" stroke="#94a3b8" stroke-width="0.8" opacity="0.95"/>
+  <text x="1582.5" y="484.5" font-size="8" font-weight="700" fill="#f1f5f9" text-anchor="middle">1 : N</text>
+  <path d="M 1582.5 853 C 1582.5 871.9, 1582.5 876.1, 1582.5 895" fill="none" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="4,3" marker-end="url(#crowMany)" opacity="0.75"/>
+  <rect x="1563.5" y="867" width="38" height="14" rx="3" fill="#1e293b" stroke="#94a3b8" stroke-width="0.8" opacity="0.95"/>
+  <text x="1582.5" y="877" font-size="8" font-weight="700" fill="#f1f5f9" text-anchor="middle">1 : N</text>
+</g>
+<g id="entities">
+  <!-- Entity: student_education -->
+  <g id="entity_student_education" class="entity-card" data-domain="portfolio">
+    <rect x="40" y="110" width="250" height="148" rx="6" fill="#1e293b" stroke="#7c3aed" stroke-width="1.4" filter="url(#softGlow)"/>
+    <path d="M 40 116 Q 40 110 46 110 L 284 110 Q 290 110 290 116 L 290 142 L 40 142 Z" fill="#8b5cf6"/>
+    <text x="50" y="130" font-size="11.5" font-weight="700" fill="#ffffff" letter-spacing="0.1">student_education</text>
+    <rect x="239" y="117" width="43" height="14" rx="3" fill="rgba(0,0,0,0.22)"/>
+    <text x="260.5" y="127" font-size="8" font-weight="600" fill="#ffffff" text-anchor="middle">6 attrs</text>
+    <rect x="46" y="145" width="17" height="11" rx="2" fill="#f59e0b" opacity="0.22"/>
+    <text x="54.5" y="154" font-size="7" font-weight="800" fill="#fbbf24" text-anchor="middle">PK</text>
+    <text x="68" y="154" font-size="8.5" font-weight="600" fill="#f8fafc">id</text>
+    <text x="282" y="154" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <rect x="41" y="160" width="248" height="18" fill="rgba(255,255,255,0.02)"/>
+    <rect x="46" y="163" width="17" height="11" rx="2" fill="#818cf8" opacity="0.22"/>
+    <text x="54.5" y="172" font-size="7" font-weight="800" fill="#a5b4fc" text-anchor="middle">FK</text>
+    <text x="68" y="172" font-size="8.5" font-weight="600" fill="#e2e8f0">user_id</text>
+    <text x="282" y="172" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <text x="50" y="190" font-size="8.5" font-weight="400" fill="#94a3b8">school</text>
+    <text x="282" y="190" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(255)</text>
+    <rect x="41" y="196" width="248" height="18" fill="rgba(255,255,255,0.02)"/>
+    <text x="50" y="208" font-size="8.5" font-weight="400" fill="#94a3b8">degree</text>
+    <text x="282" y="208" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(255)</text>
+    <text x="50" y="226" font-size="8.5" font-weight="400" fill="#94a3b8">year_start</text>
+    <text x="282" y="226" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(50)</text>
+    <rect x="41" y="232" width="248" height="18" fill="rgba(255,255,255,0.02)"/>
+    <text x="50" y="244" font-size="8.5" font-weight="400" fill="#94a3b8">year_end</text>
+    <text x="282" y="244" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(50)</text>
+  </g>
+  <!-- Entity: student_skills -->
+  <g id="entity_student_skills" class="entity-card" data-domain="portfolio">
+    <rect x="40" y="285" width="250" height="130" rx="6" fill="#1e293b" stroke="#7c3aed" stroke-width="1.4" filter="url(#softGlow)"/>
+    <path d="M 40 291 Q 40 285 46 285 L 284 285 Q 290 285 290 291 L 290 317 L 40 317 Z" fill="#8b5cf6"/>
+    <text x="50" y="305" font-size="11.5" font-weight="700" fill="#ffffff" letter-spacing="0.1">student_skills</text>
+    <rect x="239" y="292" width="43" height="14" rx="3" fill="rgba(0,0,0,0.22)"/>
+    <text x="260.5" y="302" font-size="8" font-weight="600" fill="#ffffff" text-anchor="middle">5 attrs</text>
+    <rect x="46" y="320" width="17" height="11" rx="2" fill="#f59e0b" opacity="0.22"/>
+    <text x="54.5" y="329" font-size="7" font-weight="800" fill="#fbbf24" text-anchor="middle">PK</text>
+    <text x="68" y="329" font-size="8.5" font-weight="600" fill="#f8fafc">id</text>
+    <text x="282" y="329" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <rect x="41" y="335" width="248" height="18" fill="rgba(255,255,255,0.02)"/>
+    <rect x="46" y="338" width="17" height="11" rx="2" fill="#818cf8" opacity="0.22"/>
+    <text x="54.5" y="347" font-size="7" font-weight="800" fill="#a5b4fc" text-anchor="middle">FK</text>
+    <text x="68" y="347" font-size="8.5" font-weight="600" fill="#e2e8f0">user_id</text>
+    <text x="282" y="347" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <text x="50" y="365" font-size="8.5" font-weight="400" fill="#94a3b8">name</text>
+    <text x="282" y="365" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(255)</text>
+    <rect x="41" y="371" width="248" height="18" fill="rgba(255,255,255,0.02)"/>
+    <text x="50" y="383" font-size="8.5" font-weight="400" fill="#94a3b8">level</text>
+    <text x="282" y="383" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">smallint</text>
+    <text x="50" y="401" font-size="8.5" font-weight="400" fill="#94a3b8">category</text>
+    <text x="282" y="401" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(255)</text>
+  </g>
+  <!-- Entity: student_experiences -->
+  <g id="entity_student_experiences" class="entity-card" data-domain="portfolio">
+    <rect x="40" y="450" width="250" height="148" rx="6" fill="#1e293b" stroke="#7c3aed" stroke-width="1.4" filter="url(#softGlow)"/>
+    <path d="M 40 456 Q 40 450 46 450 L 284 450 Q 290 450 290 456 L 290 482 L 40 482 Z" fill="#8b5cf6"/>
+    <text x="50" y="470" font-size="11.5" font-weight="700" fill="#ffffff" letter-spacing="0.1">student_experiences</text>
+    <rect x="239" y="457" width="43" height="14" rx="3" fill="rgba(0,0,0,0.22)"/>
+    <text x="260.5" y="467" font-size="8" font-weight="600" fill="#ffffff" text-anchor="middle">6 attrs</text>
+    <rect x="46" y="485" width="17" height="11" rx="2" fill="#f59e0b" opacity="0.22"/>
+    <text x="54.5" y="494" font-size="7" font-weight="800" fill="#fbbf24" text-anchor="middle">PK</text>
+    <text x="68" y="494" font-size="8.5" font-weight="600" fill="#f8fafc">id</text>
+    <text x="282" y="494" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <rect x="41" y="500" width="248" height="18" fill="rgba(255,255,255,0.02)"/>
+    <rect x="46" y="503" width="17" height="11" rx="2" fill="#818cf8" opacity="0.22"/>
+    <text x="54.5" y="512" font-size="7" font-weight="800" fill="#a5b4fc" text-anchor="middle">FK</text>
+    <text x="68" y="512" font-size="8.5" font-weight="600" fill="#e2e8f0">user_id</text>
+    <text x="282" y="512" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <text x="50" y="530" font-size="8.5" font-weight="400" fill="#94a3b8">role</text>
+    <text x="282" y="530" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(255)</text>
+    <rect x="41" y="536" width="248" height="18" fill="rgba(255,255,255,0.02)"/>
+    <text x="50" y="548" font-size="8.5" font-weight="400" fill="#94a3b8">company</text>
+    <text x="282" y="548" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(255)</text>
+    <text x="50" y="566" font-size="8.5" font-weight="400" fill="#94a3b8">type</text>
+    <text x="282" y="566" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(255)</text>
+    <rect x="41" y="572" width="248" height="18" fill="rgba(255,255,255,0.02)"/>
+    <text x="50" y="584" font-size="8.5" font-weight="400" fill="#94a3b8">is_it_related</text>
+    <text x="282" y="584" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bool</text>
+  </g>
+  <!-- Entity: student_achievements -->
+  <g id="entity_student_achievements" class="entity-card" data-domain="portfolio">
+    <rect x="40" y="625" width="250" height="130" rx="6" fill="#1e293b" stroke="#7c3aed" stroke-width="1.4" filter="url(#softGlow)"/>
+    <path d="M 40 631 Q 40 625 46 625 L 284 625 Q 290 625 290 631 L 290 657 L 40 657 Z" fill="#8b5cf6"/>
+    <text x="50" y="645" font-size="11.5" font-weight="700" fill="#ffffff" letter-spacing="0.1">student_achievements</text>
+    <rect x="239" y="632" width="43" height="14" rx="3" fill="rgba(0,0,0,0.22)"/>
+    <text x="260.5" y="642" font-size="8" font-weight="600" fill="#ffffff" text-anchor="middle">5 attrs</text>
+    <rect x="46" y="660" width="17" height="11" rx="2" fill="#f59e0b" opacity="0.22"/>
+    <text x="54.5" y="669" font-size="7" font-weight="800" fill="#fbbf24" text-anchor="middle">PK</text>
+    <text x="68" y="669" font-size="8.5" font-weight="600" fill="#f8fafc">id</text>
+    <text x="282" y="669" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <rect x="41" y="675" width="248" height="18" fill="rgba(255,255,255,0.02)"/>
+    <rect x="46" y="678" width="17" height="11" rx="2" fill="#818cf8" opacity="0.22"/>
+    <text x="54.5" y="687" font-size="7" font-weight="800" fill="#a5b4fc" text-anchor="middle">FK</text>
+    <text x="68" y="687" font-size="8.5" font-weight="600" fill="#e2e8f0">user_id</text>
+    <text x="282" y="687" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <text x="50" y="705" font-size="8.5" font-weight="400" fill="#94a3b8">title</text>
+    <text x="282" y="705" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(255)</text>
+    <rect x="41" y="711" width="248" height="18" fill="rgba(255,255,255,0.02)"/>
+    <text x="50" y="723" font-size="8.5" font-weight="400" fill="#94a3b8">type</text>
+    <text x="282" y="723" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(255)</text>
+    <text x="50" y="741" font-size="8.5" font-weight="400" fill="#94a3b8">issuer</text>
+    <text x="282" y="741" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(255)</text>
+  </g>
+  <!-- Entity: portfolio_projects -->
+  <g id="entity_portfolio_projects" class="entity-card" data-domain="portfolio">
+    <rect x="40" y="790" width="250" height="148" rx="6" fill="#1e293b" stroke="#7c3aed" stroke-width="1.4" filter="url(#softGlow)"/>
+    <path d="M 40 796 Q 40 790 46 790 L 284 790 Q 290 790 290 796 L 290 822 L 40 822 Z" fill="#8b5cf6"/>
+    <text x="50" y="810" font-size="11.5" font-weight="700" fill="#ffffff" letter-spacing="0.1">portfolio_projects</text>
+    <rect x="239" y="797" width="43" height="14" rx="3" fill="rgba(0,0,0,0.22)"/>
+    <text x="260.5" y="807" font-size="8" font-weight="600" fill="#ffffff" text-anchor="middle">6 attrs</text>
+    <rect x="46" y="825" width="17" height="11" rx="2" fill="#f59e0b" opacity="0.22"/>
+    <text x="54.5" y="834" font-size="7" font-weight="800" fill="#fbbf24" text-anchor="middle">PK</text>
+    <text x="68" y="834" font-size="8.5" font-weight="600" fill="#f8fafc">id</text>
+    <text x="282" y="834" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <rect x="41" y="840" width="248" height="18" fill="rgba(255,255,255,0.02)"/>
+    <rect x="46" y="843" width="17" height="11" rx="2" fill="#818cf8" opacity="0.22"/>
+    <text x="54.5" y="852" font-size="7" font-weight="800" fill="#a5b4fc" text-anchor="middle">FK</text>
+    <text x="68" y="852" font-size="8.5" font-weight="600" fill="#e2e8f0">user_id</text>
+    <text x="282" y="852" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <text x="50" y="870" font-size="8.5" font-weight="400" fill="#94a3b8">title</text>
+    <text x="282" y="870" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(255)</text>
+    <rect x="41" y="876" width="248" height="18" fill="rgba(255,255,255,0.02)"/>
+    <text x="50" y="888" font-size="8.5" font-weight="400" fill="#94a3b8">tech_stack</text>
+    <text x="282" y="888" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">json</text>
+    <text x="50" y="906" font-size="8.5" font-weight="400" fill="#94a3b8">project_url</text>
+    <text x="282" y="906" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(255)</text>
+    <rect x="41" y="912" width="248" height="18" fill="rgba(255,255,255,0.02)"/>
+    <text x="50" y="924" font-size="8.5" font-weight="400" fill="#94a3b8">is_featured</text>
+    <text x="282" y="924" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bool</text>
+  </g>
+  <!-- Entity: student_profiles -->
+  <g id="entity_student_profiles" class="entity-card" data-domain="profile">
+    <rect x="320" y="110" width="250" height="184" rx="6" fill="#1e293b" stroke="#0369a1" stroke-width="1.4" filter="url(#softGlow)"/>
+    <path d="M 320 116 Q 320 110 326 110 L 564 110 Q 570 110 570 116 L 570 142 L 320 142 Z" fill="#0284c7"/>
+    <text x="330" y="130" font-size="11.5" font-weight="700" fill="#ffffff" letter-spacing="0.1">student_profiles</text>
+    <rect x="519" y="117" width="43" height="14" rx="3" fill="rgba(0,0,0,0.22)"/>
+    <text x="540.5" y="127" font-size="8" font-weight="600" fill="#ffffff" text-anchor="middle">8 attrs</text>
+    <rect x="326" y="145" width="17" height="11" rx="2" fill="#f59e0b" opacity="0.22"/>
+    <text x="334.5" y="154" font-size="7" font-weight="800" fill="#fbbf24" text-anchor="middle">PK</text>
+    <text x="348" y="154" font-size="8.5" font-weight="600" fill="#f8fafc">id</text>
+    <text x="562" y="154" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <rect x="321" y="160" width="248" height="18" fill="rgba(255,255,255,0.02)"/>
+    <rect x="326" y="163" width="17" height="11" rx="2" fill="#818cf8" opacity="0.22"/>
+    <text x="334.5" y="172" font-size="7" font-weight="800" fill="#a5b4fc" text-anchor="middle">FK</text>
+    <text x="348" y="172" font-size="8.5" font-weight="600" fill="#e2e8f0">user_id</text>
+    <text x="562" y="172" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <rect x="326" y="181" width="17" height="11" rx="2" fill="#10b981" opacity="0.22"/>
+    <text x="334.5" y="190" font-size="7" font-weight="800" fill="#34d399" text-anchor="middle">UQ</text>
+    <text x="348" y="190" font-size="8.5" font-weight="600" fill="#94a3b8">student_id</text>
+    <text x="562" y="190" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(100)</text>
+    <rect x="321" y="196" width="248" height="18" fill="rgba(255,255,255,0.02)"/>
+    <text x="330" y="208" font-size="8.5" font-weight="400" fill="#94a3b8">school</text>
+    <text x="562" y="208" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(255)</text>
+    <text x="330" y="226" font-size="8.5" font-weight="400" fill="#94a3b8">campus</text>
+    <text x="562" y="226" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(255)</text>
+    <rect x="321" y="232" width="248" height="18" fill="rgba(255,255,255,0.02)"/>
+    <text x="330" y="244" font-size="8.5" font-weight="400" fill="#94a3b8">program</text>
+    <text x="562" y="244" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(255)</text>
+    <text x="330" y="262" font-size="8.5" font-weight="400" fill="#94a3b8">year_level</text>
+    <text x="562" y="262" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(50)</text>
+    <rect x="321" y="268" width="248" height="18" fill="rgba(255,255,255,0.02)"/>
+    <text x="330" y="280" font-size="8.5" font-weight="400" fill="#94a3b8">status</text>
+    <text x="562" y="280" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(50)</text>
+  </g>
+  <!-- Entity: student_ojt_interests -->
+  <g id="entity_student_ojt_interests" class="entity-card" data-domain="ojt">
+    <rect x="320" y="380" width="250" height="148" rx="6" fill="#1e293b" stroke="#047857" stroke-width="1.4" filter="url(#softGlow)"/>
+    <path d="M 320 386 Q 320 380 326 380 L 564 380 Q 570 380 570 386 L 570 412 L 320 412 Z" fill="#059669"/>
+    <text x="330" y="400" font-size="11.5" font-weight="700" fill="#ffffff" letter-spacing="0.1">student_ojt_interests</text>
+    <rect x="519" y="387" width="43" height="14" rx="3" fill="rgba(0,0,0,0.22)"/>
+    <text x="540.5" y="397" font-size="8" font-weight="600" fill="#ffffff" text-anchor="middle">6 attrs</text>
+    <rect x="326" y="415" width="17" height="11" rx="2" fill="#f59e0b" opacity="0.22"/>
+    <text x="334.5" y="424" font-size="7" font-weight="800" fill="#fbbf24" text-anchor="middle">PK</text>
+    <text x="348" y="424" font-size="8.5" font-weight="600" fill="#f8fafc">id</text>
+    <text x="562" y="424" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <rect x="321" y="430" width="248" height="18" fill="rgba(255,255,255,0.02)"/>
+    <rect x="326" y="433" width="17" height="11" rx="2" fill="#818cf8" opacity="0.22"/>
+    <text x="334.5" y="442" font-size="7" font-weight="800" fill="#a5b4fc" text-anchor="middle">FK</text>
+    <text x="348" y="442" font-size="8.5" font-weight="600" fill="#e2e8f0">student_user_id</text>
+    <text x="562" y="442" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <rect x="326" y="451" width="17" height="11" rx="2" fill="#818cf8" opacity="0.22"/>
+    <text x="334.5" y="460" font-size="7" font-weight="800" fill="#a5b4fc" text-anchor="middle">FK</text>
+    <text x="348" y="460" font-size="8.5" font-weight="600" fill="#e2e8f0">ojt_posting_id</text>
+    <text x="562" y="460" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <rect x="321" y="466" width="248" height="18" fill="rgba(255,255,255,0.02)"/>
+    <rect x="326" y="469" width="17" height="11" rx="2" fill="#818cf8" opacity="0.22"/>
+    <text x="334.5" y="478" font-size="7" font-weight="800" fill="#a5b4fc" text-anchor="middle">FK</text>
+    <text x="348" y="478" font-size="8.5" font-weight="600" fill="#e2e8f0">endorsed_by</text>
+    <text x="562" y="478" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <text x="330" y="496" font-size="8.5" font-weight="400" fill="#94a3b8">status</text>
+    <text x="562" y="496" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(50)</text>
+    <rect x="321" y="502" width="248" height="18" fill="rgba(255,255,255,0.02)"/>
+    <text x="330" y="514" font-size="8.5" font-weight="400" fill="#94a3b8">endorsed_at</text>
+    <text x="562" y="514" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">timestamp</text>
+  </g>
+  <!-- Entity: student_ojt_requirements -->
+  <g id="entity_student_ojt_requirements" class="entity-card" data-domain="ojt">
+    <rect x="320" y="620" width="250" height="148" rx="6" fill="#1e293b" stroke="#047857" stroke-width="1.4" filter="url(#softGlow)"/>
+    <path d="M 320 626 Q 320 620 326 620 L 564 620 Q 570 620 570 626 L 570 652 L 320 652 Z" fill="#059669"/>
+    <text x="330" y="640" font-size="11.5" font-weight="700" fill="#ffffff" letter-spacing="0.1">student_ojt_requirements</text>
+    <rect x="519" y="627" width="43" height="14" rx="3" fill="rgba(0,0,0,0.22)"/>
+    <text x="540.5" y="637" font-size="8" font-weight="600" fill="#ffffff" text-anchor="middle">6 attrs</text>
+    <rect x="326" y="655" width="17" height="11" rx="2" fill="#f59e0b" opacity="0.22"/>
+    <text x="334.5" y="664" font-size="7" font-weight="800" fill="#fbbf24" text-anchor="middle">PK</text>
+    <text x="348" y="664" font-size="8.5" font-weight="600" fill="#f8fafc">id</text>
+    <text x="562" y="664" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <rect x="321" y="670" width="248" height="18" fill="rgba(255,255,255,0.02)"/>
+    <rect x="326" y="673" width="17" height="11" rx="2" fill="#818cf8" opacity="0.22"/>
+    <text x="334.5" y="682" font-size="7" font-weight="800" fill="#a5b4fc" text-anchor="middle">FK</text>
+    <text x="348" y="682" font-size="8.5" font-weight="600" fill="#e2e8f0">student_user_id</text>
+    <text x="562" y="682" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <rect x="326" y="691" width="17" height="11" rx="2" fill="#818cf8" opacity="0.22"/>
+    <text x="334.5" y="700" font-size="7" font-weight="800" fill="#a5b4fc" text-anchor="middle">FK</text>
+    <text x="348" y="700" font-size="8.5" font-weight="600" fill="#e2e8f0">supervisor_user_id</text>
+    <text x="562" y="700" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <rect x="321" y="706" width="248" height="18" fill="rgba(255,255,255,0.02)"/>
+    <text x="330" y="718" font-size="8.5" font-weight="400" fill="#94a3b8">title</text>
+    <text x="562" y="718" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(255)</text>
+    <text x="330" y="736" font-size="8.5" font-weight="400" fill="#94a3b8">status</text>
+    <text x="562" y="736" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(50)</text>
+    <rect x="321" y="742" width="248" height="18" fill="rgba(255,255,255,0.02)"/>
+    <text x="330" y="754" font-size="8.5" font-weight="400" fill="#94a3b8">drive_url</text>
+    <text x="562" y="754" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">text</text>
+  </g>
+  <!-- Entity: users -->
+  <g id="entity_users" class="entity-card" data-domain="auth">
+    <rect x="600" y="110" width="255" height="148" rx="6" fill="#1e293b" stroke="#2563eb" stroke-width="1.4" filter="url(#softGlow)"/>
+    <path d="M 600 116 Q 600 110 606 110 L 849 110 Q 855 110 855 116 L 855 142 L 600 142 Z" fill="#3b82f6"/>
+    <text x="610" y="130" font-size="11.5" font-weight="700" fill="#ffffff" letter-spacing="0.1">users</text>
+    <rect x="804" y="117" width="43" height="14" rx="3" fill="rgba(0,0,0,0.22)"/>
+    <text x="825.5" y="127" font-size="8" font-weight="600" fill="#ffffff" text-anchor="middle">6 attrs</text>
+    <rect x="606" y="145" width="17" height="11" rx="2" fill="#f59e0b" opacity="0.22"/>
+    <text x="614.5" y="154" font-size="7" font-weight="800" fill="#fbbf24" text-anchor="middle">PK</text>
+    <text x="628" y="154" font-size="8.5" font-weight="600" fill="#f8fafc">id</text>
+    <text x="847" y="154" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <rect x="601" y="160" width="253" height="18" fill="rgba(255,255,255,0.02)"/>
+    <text x="610" y="172" font-size="8.5" font-weight="400" fill="#94a3b8">name</text>
+    <text x="847" y="172" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(255)</text>
+    <rect x="606" y="181" width="17" height="11" rx="2" fill="#10b981" opacity="0.22"/>
+    <text x="614.5" y="190" font-size="7" font-weight="800" fill="#34d399" text-anchor="middle">UQ</text>
+    <text x="628" y="190" font-size="8.5" font-weight="600" fill="#94a3b8">email</text>
+    <text x="847" y="190" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(255)</text>
+    <rect x="601" y="196" width="253" height="18" fill="rgba(255,255,255,0.02)"/>
+    <text x="610" y="208" font-size="8.5" font-weight="400" fill="#94a3b8">role</text>
+    <text x="847" y="208" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(50)</text>
+    <text x="610" y="226" font-size="8.5" font-weight="400" fill="#94a3b8">onboarding_completed</text>
+    <text x="847" y="226" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bool</text>
+    <rect x="601" y="232" width="253" height="18" fill="rgba(255,255,255,0.02)"/>
+    <text x="610" y="244" font-size="8.5" font-weight="400" fill="#94a3b8">avatar_url</text>
+    <text x="847" y="244" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(255)</text>
+  </g>
+  <!-- Entity: company_profiles -->
+  <g id="entity_company_profiles" class="entity-card" data-domain="profile">
+    <rect x="600" y="350" width="255" height="184" rx="6" fill="#1e293b" stroke="#0369a1" stroke-width="1.4" filter="url(#softGlow)"/>
+    <path d="M 600 356 Q 600 350 606 350 L 849 350 Q 855 350 855 356 L 855 382 L 600 382 Z" fill="#0284c7"/>
+    <text x="610" y="370" font-size="11.5" font-weight="700" fill="#ffffff" letter-spacing="0.1">company_profiles</text>
+    <rect x="804" y="357" width="43" height="14" rx="3" fill="rgba(0,0,0,0.22)"/>
+    <text x="825.5" y="367" font-size="8" font-weight="600" fill="#ffffff" text-anchor="middle">8 attrs</text>
+    <rect x="606" y="385" width="17" height="11" rx="2" fill="#f59e0b" opacity="0.22"/>
+    <text x="614.5" y="394" font-size="7" font-weight="800" fill="#fbbf24" text-anchor="middle">PK</text>
+    <text x="628" y="394" font-size="8.5" font-weight="600" fill="#f8fafc">id</text>
+    <text x="847" y="394" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <rect x="601" y="400" width="253" height="18" fill="rgba(255,255,255,0.02)"/>
+    <rect x="606" y="403" width="17" height="11" rx="2" fill="#818cf8" opacity="0.22"/>
+    <text x="614.5" y="412" font-size="7" font-weight="800" fill="#a5b4fc" text-anchor="middle">FK</text>
+    <text x="628" y="412" font-size="8.5" font-weight="600" fill="#e2e8f0">user_id</text>
+    <text x="847" y="412" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <text x="610" y="430" font-size="8.5" font-weight="400" fill="#94a3b8">company_name</text>
+    <text x="847" y="430" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(255)</text>
+    <rect x="601" y="436" width="253" height="18" fill="rgba(255,255,255,0.02)"/>
+    <text x="610" y="448" font-size="8.5" font-weight="400" fill="#94a3b8">company_location</text>
+    <text x="847" y="448" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(255)</text>
+    <text x="610" y="466" font-size="8.5" font-weight="400" fill="#94a3b8">company_type</text>
+    <text x="847" y="466" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(100)</text>
+    <rect x="601" y="472" width="253" height="18" fill="rgba(255,255,255,0.02)"/>
+    <text x="610" y="484" font-size="8.5" font-weight="400" fill="#94a3b8">contact_person</text>
+    <text x="847" y="484" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(255)</text>
+    <text x="610" y="502" font-size="8.5" font-weight="400" fill="#94a3b8">moa_status</text>
+    <text x="847" y="502" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(50)</text>
+    <rect x="601" y="508" width="253" height="18" fill="rgba(255,255,255,0.02)"/>
+    <text x="610" y="520" font-size="8.5" font-weight="400" fill="#94a3b8">status</text>
+    <text x="847" y="520" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(50)</text>
+  </g>
+  <!-- Entity: ojt_postings -->
+  <g id="entity_ojt_postings" class="entity-card" data-domain="ojt">
+    <rect x="600" y="620" width="255" height="184" rx="6" fill="#1e293b" stroke="#047857" stroke-width="1.4" filter="url(#softGlow)"/>
+    <path d="M 600 626 Q 600 620 606 620 L 849 620 Q 855 620 855 626 L 855 652 L 600 652 Z" fill="#059669"/>
+    <text x="610" y="640" font-size="11.5" font-weight="700" fill="#ffffff" letter-spacing="0.1">ojt_postings</text>
+    <rect x="804" y="627" width="43" height="14" rx="3" fill="rgba(0,0,0,0.22)"/>
+    <text x="825.5" y="637" font-size="8" font-weight="600" fill="#ffffff" text-anchor="middle">8 attrs</text>
+    <rect x="606" y="655" width="17" height="11" rx="2" fill="#f59e0b" opacity="0.22"/>
+    <text x="614.5" y="664" font-size="7" font-weight="800" fill="#fbbf24" text-anchor="middle">PK</text>
+    <text x="628" y="664" font-size="8.5" font-weight="600" fill="#f8fafc">id</text>
+    <text x="847" y="664" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <rect x="601" y="670" width="253" height="18" fill="rgba(255,255,255,0.02)"/>
+    <rect x="606" y="673" width="17" height="11" rx="2" fill="#818cf8" opacity="0.22"/>
+    <text x="614.5" y="682" font-size="7" font-weight="800" fill="#a5b4fc" text-anchor="middle">FK</text>
+    <text x="628" y="682" font-size="8.5" font-weight="600" fill="#e2e8f0">company_user_id</text>
+    <text x="847" y="682" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <text x="610" y="700" font-size="8.5" font-weight="400" fill="#94a3b8">title</text>
+    <text x="847" y="700" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(255)</text>
+    <rect x="601" y="706" width="253" height="18" fill="rgba(255,255,255,0.02)"/>
+    <text x="610" y="718" font-size="8.5" font-weight="400" fill="#94a3b8">department</text>
+    <text x="847" y="718" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(255)</text>
+    <text x="610" y="736" font-size="8.5" font-weight="400" fill="#94a3b8">location</text>
+    <text x="847" y="736" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(255)</text>
+    <rect x="601" y="742" width="253" height="18" fill="rgba(255,255,255,0.02)"/>
+    <text x="610" y="754" font-size="8.5" font-weight="400" fill="#94a3b8">slots_total</text>
+    <text x="847" y="754" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">int</text>
+    <text x="610" y="772" font-size="8.5" font-weight="400" fill="#94a3b8">slots_remaining</text>
+    <text x="847" y="772" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">int</text>
+    <rect x="601" y="778" width="253" height="18" fill="rgba(255,255,255,0.02)"/>
+    <text x="610" y="790" font-size="8.5" font-weight="400" fill="#94a3b8">status</text>
+    <text x="847" y="790" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(50)</text>
+  </g>
+  <!-- Entity: supervisor_profiles -->
+  <g id="entity_supervisor_profiles" class="entity-card" data-domain="profile">
+    <rect x="885" y="110" width="255" height="130" rx="6" fill="#1e293b" stroke="#0369a1" stroke-width="1.4" filter="url(#softGlow)"/>
+    <path d="M 885 116 Q 885 110 891 110 L 1134 110 Q 1140 110 1140 116 L 1140 142 L 885 142 Z" fill="#0284c7"/>
+    <text x="895" y="130" font-size="11.5" font-weight="700" fill="#ffffff" letter-spacing="0.1">supervisor_profiles</text>
+    <rect x="1089" y="117" width="43" height="14" rx="3" fill="rgba(0,0,0,0.22)"/>
+    <text x="1110.5" y="127" font-size="8" font-weight="600" fill="#ffffff" text-anchor="middle">5 attrs</text>
+    <rect x="891" y="145" width="17" height="11" rx="2" fill="#f59e0b" opacity="0.22"/>
+    <text x="899.5" y="154" font-size="7" font-weight="800" fill="#fbbf24" text-anchor="middle">PK</text>
+    <text x="913" y="154" font-size="8.5" font-weight="600" fill="#f8fafc">id</text>
+    <text x="1132" y="154" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <rect x="886" y="160" width="253" height="18" fill="rgba(255,255,255,0.02)"/>
+    <rect x="891" y="163" width="17" height="11" rx="2" fill="#818cf8" opacity="0.22"/>
+    <text x="899.5" y="172" font-size="7" font-weight="800" fill="#a5b4fc" text-anchor="middle">FK</text>
+    <text x="913" y="172" font-size="8.5" font-weight="600" fill="#e2e8f0">user_id</text>
+    <text x="1132" y="172" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <text x="895" y="190" font-size="8.5" font-weight="400" fill="#94a3b8">company_name</text>
+    <text x="1132" y="190" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(255)</text>
+    <rect x="886" y="196" width="253" height="18" fill="rgba(255,255,255,0.02)"/>
+    <text x="895" y="208" font-size="8.5" font-weight="400" fill="#94a3b8">position</text>
+    <text x="1132" y="208" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(255)</text>
+    <text x="895" y="226" font-size="8.5" font-weight="400" fill="#94a3b8">course</text>
+    <text x="1132" y="226" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(255)</text>
+  </g>
+  <!-- Entity: ojt_records -->
+  <g id="entity_ojt_records" class="entity-card" data-domain="ojt">
+    <rect x="885" y="320" width="255" height="166" rx="6" fill="#1e293b" stroke="#047857" stroke-width="1.4" filter="url(#softGlow)"/>
+    <path d="M 885 326 Q 885 320 891 320 L 1134 320 Q 1140 320 1140 326 L 1140 352 L 885 352 Z" fill="#059669"/>
+    <text x="895" y="340" font-size="11.5" font-weight="700" fill="#ffffff" letter-spacing="0.1">ojt_records</text>
+    <rect x="1089" y="327" width="43" height="14" rx="3" fill="rgba(0,0,0,0.22)"/>
+    <text x="1110.5" y="337" font-size="8" font-weight="600" fill="#ffffff" text-anchor="middle">7 attrs</text>
+    <rect x="891" y="355" width="17" height="11" rx="2" fill="#f59e0b" opacity="0.22"/>
+    <text x="899.5" y="364" font-size="7" font-weight="800" fill="#fbbf24" text-anchor="middle">PK</text>
+    <text x="913" y="364" font-size="8.5" font-weight="600" fill="#f8fafc">id</text>
+    <text x="1132" y="364" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <rect x="886" y="370" width="253" height="18" fill="rgba(255,255,255,0.02)"/>
+    <rect x="891" y="373" width="17" height="11" rx="2" fill="#818cf8" opacity="0.22"/>
+    <text x="899.5" y="382" font-size="7" font-weight="800" fill="#a5b4fc" text-anchor="middle">FK</text>
+    <text x="913" y="382" font-size="8.5" font-weight="600" fill="#e2e8f0">user_id</text>
+    <text x="1132" y="382" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <text x="895" y="400" font-size="8.5" font-weight="400" fill="#94a3b8">company_name</text>
+    <text x="1132" y="400" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(255)</text>
+    <rect x="886" y="406" width="253" height="18" fill="rgba(255,255,255,0.02)"/>
+    <text x="895" y="418" font-size="8.5" font-weight="400" fill="#94a3b8">required_hours</text>
+    <text x="1132" y="418" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">int</text>
+    <text x="895" y="436" font-size="8.5" font-weight="400" fill="#94a3b8">completed_hours</text>
+    <text x="1132" y="436" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">decimal(8,2)</text>
+    <rect x="886" y="442" width="253" height="18" fill="rgba(255,255,255,0.02)"/>
+    <text x="895" y="454" font-size="8.5" font-weight="400" fill="#94a3b8">start_date</text>
+    <text x="1132" y="454" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">date</text>
+    <text x="895" y="472" font-size="8.5" font-weight="400" fill="#94a3b8">status</text>
+    <text x="1132" y="472" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(50)</text>
+  </g>
+  <!-- Entity: time_logs -->
+  <g id="entity_time_logs" class="entity-card" data-domain="ojt">
+    <rect x="885" y="560" width="255" height="166" rx="6" fill="#1e293b" stroke="#047857" stroke-width="1.4" filter="url(#softGlow)"/>
+    <path d="M 885 566 Q 885 560 891 560 L 1134 560 Q 1140 560 1140 566 L 1140 592 L 885 592 Z" fill="#059669"/>
+    <text x="895" y="580" font-size="11.5" font-weight="700" fill="#ffffff" letter-spacing="0.1">time_logs</text>
+    <rect x="1089" y="567" width="43" height="14" rx="3" fill="rgba(0,0,0,0.22)"/>
+    <text x="1110.5" y="577" font-size="8" font-weight="600" fill="#ffffff" text-anchor="middle">7 attrs</text>
+    <rect x="891" y="595" width="17" height="11" rx="2" fill="#f59e0b" opacity="0.22"/>
+    <text x="899.5" y="604" font-size="7" font-weight="800" fill="#fbbf24" text-anchor="middle">PK</text>
+    <text x="913" y="604" font-size="8.5" font-weight="600" fill="#f8fafc">id</text>
+    <text x="1132" y="604" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <rect x="886" y="610" width="253" height="18" fill="rgba(255,255,255,0.02)"/>
+    <rect x="891" y="613" width="17" height="11" rx="2" fill="#818cf8" opacity="0.22"/>
+    <text x="899.5" y="622" font-size="7" font-weight="800" fill="#a5b4fc" text-anchor="middle">FK</text>
+    <text x="913" y="622" font-size="8.5" font-weight="600" fill="#e2e8f0">user_id</text>
+    <text x="1132" y="622" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <rect x="891" y="631" width="17" height="11" rx="2" fill="#818cf8" opacity="0.22"/>
+    <text x="899.5" y="640" font-size="7" font-weight="800" fill="#a5b4fc" text-anchor="middle">FK</text>
+    <text x="913" y="640" font-size="8.5" font-weight="600" fill="#e2e8f0">ojt_record_id</text>
+    <text x="1132" y="640" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <rect x="886" y="646" width="253" height="18" fill="rgba(255,255,255,0.02)"/>
+    <text x="895" y="658" font-size="8.5" font-weight="400" fill="#94a3b8">log_date</text>
+    <text x="1132" y="658" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">date</text>
+    <text x="895" y="676" font-size="8.5" font-weight="400" fill="#94a3b8">hours_rendered</text>
+    <text x="1132" y="676" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">decimal(5,2)</text>
+    <rect x="886" y="682" width="253" height="18" fill="rgba(255,255,255,0.02)"/>
+    <text x="895" y="694" font-size="8.5" font-weight="400" fill="#94a3b8">location_validity</text>
+    <text x="1132" y="694" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(50)</text>
+    <text x="895" y="712" font-size="8.5" font-weight="400" fill="#94a3b8">status</text>
+    <text x="1132" y="712" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(50)</text>
+  </g>
+  <!-- Entity: chat_messages -->
+  <g id="entity_chat_messages" class="entity-card" data-domain="comm">
+    <rect x="885" y="790" width="255" height="130" rx="6" fill="#1e293b" stroke="#334155" stroke-width="1.4" filter="url(#softGlow)"/>
+    <path d="M 885 796 Q 885 790 891 790 L 1134 790 Q 1140 790 1140 796 L 1140 822 L 885 822 Z" fill="#475569"/>
+    <text x="895" y="810" font-size="11.5" font-weight="700" fill="#ffffff" letter-spacing="0.1">chat_messages</text>
+    <rect x="1089" y="797" width="43" height="14" rx="3" fill="rgba(0,0,0,0.22)"/>
+    <text x="1110.5" y="807" font-size="8" font-weight="600" fill="#ffffff" text-anchor="middle">5 attrs</text>
+    <rect x="891" y="825" width="17" height="11" rx="2" fill="#f59e0b" opacity="0.22"/>
+    <text x="899.5" y="834" font-size="7" font-weight="800" fill="#fbbf24" text-anchor="middle">PK</text>
+    <text x="913" y="834" font-size="8.5" font-weight="600" fill="#f8fafc">id</text>
+    <text x="1132" y="834" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <rect x="886" y="840" width="253" height="18" fill="rgba(255,255,255,0.02)"/>
+    <rect x="891" y="843" width="17" height="11" rx="2" fill="#818cf8" opacity="0.22"/>
+    <text x="899.5" y="852" font-size="7" font-weight="800" fill="#a5b4fc" text-anchor="middle">FK</text>
+    <text x="913" y="852" font-size="8.5" font-weight="600" fill="#e2e8f0">sender_id</text>
+    <text x="1132" y="852" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <rect x="891" y="861" width="17" height="11" rx="2" fill="#818cf8" opacity="0.22"/>
+    <text x="899.5" y="870" font-size="7" font-weight="800" fill="#a5b4fc" text-anchor="middle">FK</text>
+    <text x="913" y="870" font-size="8.5" font-weight="600" fill="#e2e8f0">receiver_id</text>
+    <text x="1132" y="870" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <rect x="886" y="876" width="253" height="18" fill="rgba(255,255,255,0.02)"/>
+    <text x="895" y="888" font-size="8.5" font-weight="400" fill="#94a3b8">message</text>
+    <text x="1132" y="888" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">text</text>
+    <text x="895" y="906" font-size="8.5" font-weight="400" fill="#94a3b8">read_at</text>
+    <text x="1132" y="906" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">timestamp</text>
+  </g>
+  <!-- Entity: app_notifications -->
+  <g id="entity_app_notifications" class="entity-card" data-domain="comm">
+    <rect x="1170" y="110" width="255" height="130" rx="6" fill="#1e293b" stroke="#334155" stroke-width="1.4" filter="url(#softGlow)"/>
+    <path d="M 1170 116 Q 1170 110 1176 110 L 1419 110 Q 1425 110 1425 116 L 1425 142 L 1170 142 Z" fill="#475569"/>
+    <text x="1180" y="130" font-size="11.5" font-weight="700" fill="#ffffff" letter-spacing="0.1">app_notifications</text>
+    <rect x="1374" y="117" width="43" height="14" rx="3" fill="rgba(0,0,0,0.22)"/>
+    <text x="1395.5" y="127" font-size="8" font-weight="600" fill="#ffffff" text-anchor="middle">5 attrs</text>
+    <rect x="1176" y="145" width="17" height="11" rx="2" fill="#f59e0b" opacity="0.22"/>
+    <text x="1184.5" y="154" font-size="7" font-weight="800" fill="#fbbf24" text-anchor="middle">PK</text>
+    <text x="1198" y="154" font-size="8.5" font-weight="600" fill="#f8fafc">id</text>
+    <text x="1417" y="154" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <rect x="1171" y="160" width="253" height="18" fill="rgba(255,255,255,0.02)"/>
+    <rect x="1176" y="163" width="17" height="11" rx="2" fill="#818cf8" opacity="0.22"/>
+    <text x="1184.5" y="172" font-size="7" font-weight="800" fill="#a5b4fc" text-anchor="middle">FK</text>
+    <text x="1198" y="172" font-size="8.5" font-weight="600" fill="#e2e8f0">user_id</text>
+    <text x="1417" y="172" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <text x="1180" y="190" font-size="8.5" font-weight="400" fill="#94a3b8">type</text>
+    <text x="1417" y="190" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(255)</text>
+    <rect x="1171" y="196" width="253" height="18" fill="rgba(255,255,255,0.02)"/>
+    <text x="1180" y="208" font-size="8.5" font-weight="400" fill="#94a3b8">title</text>
+    <text x="1417" y="208" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(255)</text>
+    <text x="1180" y="226" font-size="8.5" font-weight="400" fill="#94a3b8">read_at</text>
+    <text x="1417" y="226" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">timestamp</text>
+  </g>
+  <!-- Entity: evaluation_templates -->
+  <g id="entity_evaluation_templates" class="entity-card" data-domain="eval">
+    <rect x="1170" y="310" width="255" height="130" rx="6" fill="#1e293b" stroke="#b45309" stroke-width="1.4" filter="url(#softGlow)"/>
+    <path d="M 1170 316 Q 1170 310 1176 310 L 1419 310 Q 1425 310 1425 316 L 1425 342 L 1170 342 Z" fill="#d97706"/>
+    <text x="1180" y="330" font-size="11.5" font-weight="700" fill="#ffffff" letter-spacing="0.1">evaluation_templates</text>
+    <rect x="1374" y="317" width="43" height="14" rx="3" fill="rgba(0,0,0,0.22)"/>
+    <text x="1395.5" y="327" font-size="8" font-weight="600" fill="#ffffff" text-anchor="middle">5 attrs</text>
+    <rect x="1176" y="345" width="17" height="11" rx="2" fill="#f59e0b" opacity="0.22"/>
+    <text x="1184.5" y="354" font-size="7" font-weight="800" fill="#fbbf24" text-anchor="middle">PK</text>
+    <text x="1198" y="354" font-size="8.5" font-weight="600" fill="#f8fafc">id</text>
+    <text x="1417" y="354" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <rect x="1171" y="360" width="253" height="18" fill="rgba(255,255,255,0.02)"/>
+    <rect x="1176" y="363" width="17" height="11" rx="2" fill="#818cf8" opacity="0.22"/>
+    <text x="1184.5" y="372" font-size="7" font-weight="800" fill="#a5b4fc" text-anchor="middle">FK</text>
+    <text x="1198" y="372" font-size="8.5" font-weight="600" fill="#e2e8f0">supervisor_id</text>
+    <text x="1417" y="372" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <text x="1180" y="390" font-size="8.5" font-weight="400" fill="#94a3b8">program</text>
+    <text x="1417" y="390" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(50)</text>
+    <rect x="1171" y="396" width="253" height="18" fill="rgba(255,255,255,0.02)"/>
+    <text x="1180" y="408" font-size="8.5" font-weight="400" fill="#94a3b8">title</text>
+    <text x="1417" y="408" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(255)</text>
+    <text x="1180" y="426" font-size="8.5" font-weight="400" fill="#94a3b8">is_active</text>
+    <text x="1417" y="426" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bool</text>
+  </g>
+  <!-- Entity: evaluation_questions -->
+  <g id="entity_evaluation_questions" class="entity-card" data-domain="eval">
+    <rect x="1170" y="500" width="255" height="130" rx="6" fill="#1e293b" stroke="#b45309" stroke-width="1.4" filter="url(#softGlow)"/>
+    <path d="M 1170 506 Q 1170 500 1176 500 L 1419 500 Q 1425 500 1425 506 L 1425 532 L 1170 532 Z" fill="#d97706"/>
+    <text x="1180" y="520" font-size="11.5" font-weight="700" fill="#ffffff" letter-spacing="0.1">evaluation_questions</text>
+    <rect x="1374" y="507" width="43" height="14" rx="3" fill="rgba(0,0,0,0.22)"/>
+    <text x="1395.5" y="517" font-size="8" font-weight="600" fill="#ffffff" text-anchor="middle">5 attrs</text>
+    <rect x="1176" y="535" width="17" height="11" rx="2" fill="#f59e0b" opacity="0.22"/>
+    <text x="1184.5" y="544" font-size="7" font-weight="800" fill="#fbbf24" text-anchor="middle">PK</text>
+    <text x="1198" y="544" font-size="8.5" font-weight="600" fill="#f8fafc">id</text>
+    <text x="1417" y="544" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <rect x="1171" y="550" width="253" height="18" fill="rgba(255,255,255,0.02)"/>
+    <rect x="1176" y="553" width="17" height="11" rx="2" fill="#818cf8" opacity="0.22"/>
+    <text x="1184.5" y="562" font-size="7" font-weight="800" fill="#a5b4fc" text-anchor="middle">FK</text>
+    <text x="1198" y="562" font-size="8.5" font-weight="600" fill="#e2e8f0">template_id</text>
+    <text x="1417" y="562" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <text x="1180" y="580" font-size="8.5" font-weight="400" fill="#94a3b8">category</text>
+    <text x="1417" y="580" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(100)</text>
+    <rect x="1171" y="586" width="253" height="18" fill="rgba(255,255,255,0.02)"/>
+    <text x="1180" y="598" font-size="8.5" font-weight="400" fill="#94a3b8">question_text</text>
+    <text x="1417" y="598" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">text</text>
+    <text x="1180" y="616" font-size="8.5" font-weight="400" fill="#94a3b8">question_type</text>
+    <text x="1417" y="616" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(30)</text>
+  </g>
+  <!-- Entity: student_evaluations -->
+  <g id="entity_student_evaluations" class="entity-card" data-domain="eval">
+    <rect x="1170" y="690" width="255" height="166" rx="6" fill="#1e293b" stroke="#b45309" stroke-width="1.4" filter="url(#softGlow)"/>
+    <path d="M 1170 696 Q 1170 690 1176 690 L 1419 690 Q 1425 690 1425 696 L 1425 722 L 1170 722 Z" fill="#d97706"/>
+    <text x="1180" y="710" font-size="11.5" font-weight="700" fill="#ffffff" letter-spacing="0.1">student_evaluations</text>
+    <rect x="1374" y="697" width="43" height="14" rx="3" fill="rgba(0,0,0,0.22)"/>
+    <text x="1395.5" y="707" font-size="8" font-weight="600" fill="#ffffff" text-anchor="middle">7 attrs</text>
+    <rect x="1176" y="725" width="17" height="11" rx="2" fill="#f59e0b" opacity="0.22"/>
+    <text x="1184.5" y="734" font-size="7" font-weight="800" fill="#fbbf24" text-anchor="middle">PK</text>
+    <text x="1198" y="734" font-size="8.5" font-weight="600" fill="#f8fafc">id</text>
+    <text x="1417" y="734" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <rect x="1171" y="740" width="253" height="18" fill="rgba(255,255,255,0.02)"/>
+    <rect x="1176" y="743" width="17" height="11" rx="2" fill="#818cf8" opacity="0.22"/>
+    <text x="1184.5" y="752" font-size="7" font-weight="800" fill="#a5b4fc" text-anchor="middle">FK</text>
+    <text x="1198" y="752" font-size="8.5" font-weight="600" fill="#e2e8f0">template_id</text>
+    <text x="1417" y="752" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <rect x="1176" y="761" width="17" height="11" rx="2" fill="#818cf8" opacity="0.22"/>
+    <text x="1184.5" y="770" font-size="7" font-weight="800" fill="#a5b4fc" text-anchor="middle">FK</text>
+    <text x="1198" y="770" font-size="8.5" font-weight="600" fill="#e2e8f0">student_user_id</text>
+    <text x="1417" y="770" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <rect x="1171" y="776" width="253" height="18" fill="rgba(255,255,255,0.02)"/>
+    <rect x="1176" y="779" width="17" height="11" rx="2" fill="#818cf8" opacity="0.22"/>
+    <text x="1184.5" y="788" font-size="7" font-weight="800" fill="#a5b4fc" text-anchor="middle">FK</text>
+    <text x="1198" y="788" font-size="8.5" font-weight="600" fill="#e2e8f0">company_user_id</text>
+    <text x="1417" y="788" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <text x="1180" y="806" font-size="8.5" font-weight="400" fill="#94a3b8">overall_score</text>
+    <text x="1417" y="806" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">decimal(5,2)</text>
+    <rect x="1171" y="812" width="253" height="18" fill="rgba(255,255,255,0.02)"/>
+    <text x="1180" y="824" font-size="8.5" font-weight="400" fill="#94a3b8">recommendation</text>
+    <text x="1417" y="824" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(100)</text>
+    <text x="1180" y="842" font-size="8.5" font-weight="400" fill="#94a3b8">status</text>
+    <text x="1417" y="842" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(30)</text>
+  </g>
+  <!-- Entity: student_evaluation_answers -->
+  <g id="entity_student_evaluation_answers" class="entity-card" data-domain="eval">
+    <rect x="1170" y="895" width="255" height="130" rx="6" fill="#1e293b" stroke="#b45309" stroke-width="1.4" filter="url(#softGlow)"/>
+    <path d="M 1170 901 Q 1170 895 1176 895 L 1419 895 Q 1425 895 1425 901 L 1425 927 L 1170 927 Z" fill="#d97706"/>
+    <text x="1180" y="915" font-size="11.5" font-weight="700" fill="#ffffff" letter-spacing="0.1">student_eval_answers</text>
+    <rect x="1374" y="902" width="43" height="14" rx="3" fill="rgba(0,0,0,0.22)"/>
+    <text x="1395.5" y="912" font-size="8" font-weight="600" fill="#ffffff" text-anchor="middle">5 attrs</text>
+    <rect x="1176" y="930" width="17" height="11" rx="2" fill="#f59e0b" opacity="0.22"/>
+    <text x="1184.5" y="939" font-size="7" font-weight="800" fill="#fbbf24" text-anchor="middle">PK</text>
+    <text x="1198" y="939" font-size="8.5" font-weight="600" fill="#f8fafc">id</text>
+    <text x="1417" y="939" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <rect x="1171" y="945" width="253" height="18" fill="rgba(255,255,255,0.02)"/>
+    <rect x="1176" y="948" width="17" height="11" rx="2" fill="#818cf8" opacity="0.22"/>
+    <text x="1184.5" y="957" font-size="7" font-weight="800" fill="#a5b4fc" text-anchor="middle">FK</text>
+    <text x="1198" y="957" font-size="8.5" font-weight="600" fill="#e2e8f0">student_evaluation_id</text>
+    <text x="1417" y="957" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <rect x="1176" y="966" width="17" height="11" rx="2" fill="#818cf8" opacity="0.22"/>
+    <text x="1184.5" y="975" font-size="7" font-weight="800" fill="#a5b4fc" text-anchor="middle">FK</text>
+    <text x="1198" y="975" font-size="8.5" font-weight="600" fill="#e2e8f0">evaluation_question_id</text>
+    <text x="1417" y="975" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <rect x="1171" y="981" width="253" height="18" fill="rgba(255,255,255,0.02)"/>
+    <text x="1180" y="993" font-size="8.5" font-weight="400" fill="#94a3b8">rating_value</text>
+    <text x="1417" y="993" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">int</text>
+    <text x="1180" y="1011" font-size="8.5" font-weight="400" fill="#94a3b8">text_value</text>
+    <text x="1417" y="1011" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">text</text>
+  </g>
+  <!-- Entity: jobseeker_profiles -->
+  <g id="entity_jobseeker_profiles" class="entity-card" data-domain="profile">
+    <rect x="1455" y="110" width="255" height="148" rx="6" fill="#1e293b" stroke="#0369a1" stroke-width="1.4" filter="url(#softGlow)"/>
+    <path d="M 1455 116 Q 1455 110 1461 110 L 1704 110 Q 1710 110 1710 116 L 1710 142 L 1455 142 Z" fill="#0284c7"/>
+    <text x="1465" y="130" font-size="11.5" font-weight="700" fill="#ffffff" letter-spacing="0.1">jobseeker_profiles</text>
+    <rect x="1659" y="117" width="43" height="14" rx="3" fill="rgba(0,0,0,0.22)"/>
+    <text x="1680.5" y="127" font-size="8" font-weight="600" fill="#ffffff" text-anchor="middle">6 attrs</text>
+    <rect x="1461" y="145" width="17" height="11" rx="2" fill="#f59e0b" opacity="0.22"/>
+    <text x="1469.5" y="154" font-size="7" font-weight="800" fill="#fbbf24" text-anchor="middle">PK</text>
+    <text x="1483" y="154" font-size="8.5" font-weight="600" fill="#f8fafc">id</text>
+    <text x="1702" y="154" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <rect x="1456" y="160" width="253" height="18" fill="rgba(255,255,255,0.02)"/>
+    <rect x="1461" y="163" width="17" height="11" rx="2" fill="#818cf8" opacity="0.22"/>
+    <text x="1469.5" y="172" font-size="7" font-weight="800" fill="#a5b4fc" text-anchor="middle">FK</text>
+    <text x="1483" y="172" font-size="8.5" font-weight="600" fill="#e2e8f0">user_id</text>
+    <text x="1702" y="172" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <text x="1465" y="190" font-size="8.5" font-weight="400" fill="#94a3b8">desired_job_title</text>
+    <text x="1702" y="190" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(255)</text>
+    <rect x="1456" y="196" width="253" height="18" fill="rgba(255,255,255,0.02)"/>
+    <text x="1465" y="208" font-size="8.5" font-weight="400" fill="#94a3b8">work_preference</text>
+    <text x="1702" y="208" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(255)</text>
+    <text x="1465" y="226" font-size="8.5" font-weight="400" fill="#94a3b8">years_of_experience</text>
+    <text x="1702" y="226" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">int</text>
+    <rect x="1456" y="232" width="253" height="18" fill="rgba(255,255,255,0.02)"/>
+    <text x="1465" y="244" font-size="8.5" font-weight="400" fill="#94a3b8">profile_completed</text>
+    <text x="1702" y="244" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bool</text>
+  </g>
+  <!-- Entity: graduate_profiles -->
+  <g id="entity_graduate_profiles" class="entity-card" data-domain="profile">
+    <rect x="1455" y="310" width="255" height="148" rx="6" fill="#1e293b" stroke="#0369a1" stroke-width="1.4" filter="url(#softGlow)"/>
+    <path d="M 1455 316 Q 1455 310 1461 310 L 1704 310 Q 1710 310 1710 316 L 1710 342 L 1455 342 Z" fill="#0284c7"/>
+    <text x="1465" y="330" font-size="11.5" font-weight="700" fill="#ffffff" letter-spacing="0.1">graduate_profiles</text>
+    <rect x="1659" y="317" width="43" height="14" rx="3" fill="rgba(0,0,0,0.22)"/>
+    <text x="1680.5" y="327" font-size="8" font-weight="600" fill="#ffffff" text-anchor="middle">6 attrs</text>
+    <rect x="1461" y="345" width="17" height="11" rx="2" fill="#f59e0b" opacity="0.22"/>
+    <text x="1469.5" y="354" font-size="7" font-weight="800" fill="#fbbf24" text-anchor="middle">PK</text>
+    <text x="1483" y="354" font-size="8.5" font-weight="600" fill="#f8fafc">id</text>
+    <text x="1702" y="354" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <rect x="1456" y="360" width="253" height="18" fill="rgba(255,255,255,0.02)"/>
+    <rect x="1461" y="363" width="17" height="11" rx="2" fill="#818cf8" opacity="0.22"/>
+    <text x="1469.5" y="372" font-size="7" font-weight="800" fill="#a5b4fc" text-anchor="middle">FK</text>
+    <text x="1483" y="372" font-size="8.5" font-weight="600" fill="#e2e8f0">user_id</text>
+    <text x="1702" y="372" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <text x="1465" y="390" font-size="8.5" font-weight="400" fill="#94a3b8">year_graduated</text>
+    <text x="1702" y="390" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(4)</text>
+    <rect x="1456" y="396" width="253" height="18" fill="rgba(255,255,255,0.02)"/>
+    <text x="1465" y="408" font-size="8.5" font-weight="400" fill="#94a3b8">campus</text>
+    <text x="1702" y="408" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(100)</text>
+    <text x="1465" y="426" font-size="8.5" font-weight="400" fill="#94a3b8">course</text>
+    <text x="1702" y="426" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(100)</text>
+    <rect x="1456" y="432" width="253" height="18" fill="rgba(255,255,255,0.02)"/>
+    <text x="1465" y="444" font-size="8.5" font-weight="400" fill="#94a3b8">employment_status</text>
+    <text x="1702" y="444" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(50)</text>
+  </g>
+  <!-- Entity: job_listings -->
+  <g id="entity_job_listings" class="entity-card" data-domain="job">
+    <rect x="1455" y="500" width="255" height="166" rx="6" fill="#1e293b" stroke="#be185d" stroke-width="1.4" filter="url(#softGlow)"/>
+    <path d="M 1455 506 Q 1455 500 1461 500 L 1704 500 Q 1710 500 1710 506 L 1710 532 L 1455 532 Z" fill="#db2777"/>
+    <text x="1465" y="520" font-size="11.5" font-weight="700" fill="#ffffff" letter-spacing="0.1">job_listings</text>
+    <rect x="1659" y="507" width="43" height="14" rx="3" fill="rgba(0,0,0,0.22)"/>
+    <text x="1680.5" y="517" font-size="8" font-weight="600" fill="#ffffff" text-anchor="middle">7 attrs</text>
+    <rect x="1461" y="535" width="17" height="11" rx="2" fill="#f59e0b" opacity="0.22"/>
+    <text x="1469.5" y="544" font-size="7" font-weight="800" fill="#fbbf24" text-anchor="middle">PK</text>
+    <text x="1483" y="544" font-size="8.5" font-weight="600" fill="#f8fafc">id</text>
+    <text x="1702" y="544" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <rect x="1456" y="550" width="253" height="18" fill="rgba(255,255,255,0.02)"/>
+    <rect x="1461" y="553" width="17" height="11" rx="2" fill="#818cf8" opacity="0.22"/>
+    <text x="1469.5" y="562" font-size="7" font-weight="800" fill="#a5b4fc" text-anchor="middle">FK</text>
+    <text x="1483" y="562" font-size="8.5" font-weight="600" fill="#e2e8f0">company_user_id</text>
+    <text x="1702" y="562" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <text x="1465" y="580" font-size="8.5" font-weight="400" fill="#94a3b8">title</text>
+    <text x="1702" y="580" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(255)</text>
+    <rect x="1456" y="586" width="253" height="18" fill="rgba(255,255,255,0.02)"/>
+    <text x="1465" y="598" font-size="8.5" font-weight="400" fill="#94a3b8">employment_type</text>
+    <text x="1702" y="598" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(50)</text>
+    <text x="1465" y="616" font-size="8.5" font-weight="400" fill="#94a3b8">salary_range</text>
+    <text x="1702" y="616" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(100)</text>
+    <rect x="1456" y="622" width="253" height="18" fill="rgba(255,255,255,0.02)"/>
+    <text x="1465" y="634" font-size="8.5" font-weight="400" fill="#94a3b8">experience_level</text>
+    <text x="1702" y="634" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(50)</text>
+    <text x="1465" y="652" font-size="8.5" font-weight="400" fill="#94a3b8">status</text>
+    <text x="1702" y="652" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(50)</text>
+  </g>
+  <!-- Entity: job_applications -->
+  <g id="entity_job_applications" class="entity-card" data-domain="job">
+    <rect x="1455" y="705" width="255" height="148" rx="6" fill="#1e293b" stroke="#be185d" stroke-width="1.4" filter="url(#softGlow)"/>
+    <path d="M 1455 711 Q 1455 705 1461 705 L 1704 705 Q 1710 705 1710 711 L 1710 737 L 1455 737 Z" fill="#db2777"/>
+    <text x="1465" y="725" font-size="11.5" font-weight="700" fill="#ffffff" letter-spacing="0.1">job_applications</text>
+    <rect x="1659" y="712" width="43" height="14" rx="3" fill="rgba(0,0,0,0.22)"/>
+    <text x="1680.5" y="722" font-size="8" font-weight="600" fill="#ffffff" text-anchor="middle">6 attrs</text>
+    <rect x="1461" y="740" width="17" height="11" rx="2" fill="#f59e0b" opacity="0.22"/>
+    <text x="1469.5" y="749" font-size="7" font-weight="800" fill="#fbbf24" text-anchor="middle">PK</text>
+    <text x="1483" y="749" font-size="8.5" font-weight="600" fill="#f8fafc">id</text>
+    <text x="1702" y="749" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <rect x="1456" y="755" width="253" height="18" fill="rgba(255,255,255,0.02)"/>
+    <rect x="1461" y="758" width="17" height="11" rx="2" fill="#818cf8" opacity="0.22"/>
+    <text x="1469.5" y="767" font-size="7" font-weight="800" fill="#a5b4fc" text-anchor="middle">FK</text>
+    <text x="1483" y="767" font-size="8.5" font-weight="600" fill="#e2e8f0">job_listing_id</text>
+    <text x="1702" y="767" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <rect x="1461" y="776" width="17" height="11" rx="2" fill="#818cf8" opacity="0.22"/>
+    <text x="1469.5" y="785" font-size="7" font-weight="800" fill="#a5b4fc" text-anchor="middle">FK</text>
+    <text x="1483" y="785" font-size="8.5" font-weight="600" fill="#e2e8f0">applicant_user_id</text>
+    <text x="1702" y="785" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <rect x="1456" y="791" width="253" height="18" fill="rgba(255,255,255,0.02)"/>
+    <text x="1465" y="803" font-size="8.5" font-weight="400" fill="#94a3b8">match_score</text>
+    <text x="1702" y="803" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">decimal(5,2)</text>
+    <text x="1465" y="821" font-size="8.5" font-weight="400" fill="#94a3b8">status</text>
+    <text x="1702" y="821" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(50)</text>
+    <rect x="1456" y="827" width="253" height="18" fill="rgba(255,255,255,0.02)"/>
+    <text x="1465" y="839" font-size="8.5" font-weight="400" fill="#94a3b8">offer_decision</text>
+    <text x="1702" y="839" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(50)</text>
+  </g>
+  <!-- Entity: interviews -->
+  <g id="entity_interviews" class="entity-card" data-domain="job">
+    <rect x="1455" y="895" width="255" height="148" rx="6" fill="#1e293b" stroke="#be185d" stroke-width="1.4" filter="url(#softGlow)"/>
+    <path d="M 1455 901 Q 1455 895 1461 895 L 1704 895 Q 1710 895 1710 901 L 1710 927 L 1455 927 Z" fill="#db2777"/>
+    <text x="1465" y="915" font-size="11.5" font-weight="700" fill="#ffffff" letter-spacing="0.1">interviews</text>
+    <rect x="1659" y="902" width="43" height="14" rx="3" fill="rgba(0,0,0,0.22)"/>
+    <text x="1680.5" y="912" font-size="8" font-weight="600" fill="#ffffff" text-anchor="middle">6 attrs</text>
+    <rect x="1461" y="930" width="17" height="11" rx="2" fill="#f59e0b" opacity="0.22"/>
+    <text x="1469.5" y="939" font-size="7" font-weight="800" fill="#fbbf24" text-anchor="middle">PK</text>
+    <text x="1483" y="939" font-size="8.5" font-weight="600" fill="#f8fafc">id</text>
+    <text x="1702" y="939" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <rect x="1456" y="945" width="253" height="18" fill="rgba(255,255,255,0.02)"/>
+    <rect x="1461" y="948" width="17" height="11" rx="2" fill="#818cf8" opacity="0.22"/>
+    <text x="1469.5" y="957" font-size="7" font-weight="800" fill="#a5b4fc" text-anchor="middle">FK</text>
+    <text x="1483" y="957" font-size="8.5" font-weight="600" fill="#e2e8f0">job_application_id</text>
+    <text x="1702" y="957" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <rect x="1461" y="966" width="17" height="11" rx="2" fill="#818cf8" opacity="0.22"/>
+    <text x="1469.5" y="975" font-size="7" font-weight="800" fill="#a5b4fc" text-anchor="middle">FK</text>
+    <text x="1483" y="975" font-size="8.5" font-weight="600" fill="#e2e8f0">company_user_id</text>
+    <text x="1702" y="975" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">bigint</text>
+    <rect x="1456" y="981" width="253" height="18" fill="rgba(255,255,255,0.02)"/>
+    <text x="1465" y="993" font-size="8.5" font-weight="400" fill="#94a3b8">type</text>
+    <text x="1702" y="993" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(50)</text>
+    <text x="1465" y="1011" font-size="8.5" font-weight="400" fill="#94a3b8">scheduled_date</text>
+    <text x="1702" y="1011" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">date</text>
+    <rect x="1456" y="1017" width="253" height="18" fill="rgba(255,255,255,0.02)"/>
+    <text x="1465" y="1029" font-size="8.5" font-weight="400" fill="#94a3b8">status</text>
+    <text x="1702" y="1029" font-size="7.5" font-weight="400" fill="#64748b" text-anchor="end">varchar(50)</text>
+  </g>
+</g>
+<g id="diagramFooter">
+  <rect x="40" y="1018" width="1670" height="30" rx="6" fill="#1e293b" stroke="#334155" stroke-width="0.9"/>
+  <text x="55" y="1037" font-size="9" font-weight="500" fill="#94a3b8">NOTATION:   <tspan fill="#fbbf24" font-weight="700">[PK]</tspan> Primary Key   •   <tspan fill="#a5b4fc" font-weight="700">[FK]</tspan> Foreign Key   •   <tspan fill="#34d399" font-weight="700">[UQ]</tspan> Unique   •   Crow&#39;s Foot: 1 : 1 and 1 : N Cardinality   •   Uncluttered Conceptual Schema</text>
+  <text x="1695" y="1037" font-size="9" font-weight="500" fill="#64748b" text-anchor="end">Carlos Hilado Memorial State University &#169; 2026</text>
+</g>
+</svg>

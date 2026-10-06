@@ -1,5 +1,5 @@
 import { icon } from '../components/icons.js';
-import { apiFetch, apiGet, apiPost, apiPut } from '../api/client.js';
+import { apiFetch, apiGet, apiPost, apiPut, resolveStorageUrl } from '../api/client.js';
 import { openSetOjtScheduleModal } from '../components/ojt-schedule-modal.js';
 import { getState } from '../store.js';
 import { showPostingRestrictedModal, openMoaRequestModal } from '../components/moa-modal.js';
@@ -1547,7 +1547,7 @@ function applicantCard(s, state) {
           ${icon('fileCheck', 14)} Endorsement letter uploaded${endorsedAt ? ` on ${endorsedAt}` : ''}.
         </span>
         ${endorsementLetterUrl ? `
-          <a href="${endorsementLetterUrl}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;font-size:0.76rem;color:rgb(139,92,246);text-decoration:underline;font-weight:600;">
+          <a href="${resolveStorageUrl(endorsementLetterUrl)}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;font-size:0.76rem;color:rgb(139,92,246);text-decoration:underline;font-weight:600;">
             ${icon('externalLink', 12)} View Endorsement Letter PDF
           </a>` : ''}
       </div>`;

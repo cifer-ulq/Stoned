@@ -18,10 +18,13 @@ use Illuminate\Support\Facades\Route;
 
 // ── Notifications (shared across all portals) ─────────────────────────────
 Route::middleware('auth:sanctum')->prefix('notifications')->group(function () {
-    Route::get('/',           [NotificationController::class, 'index']);
-    Route::get('/unread-count', [NotificationController::class, 'unreadCount']);
-    Route::patch('/read-all', [NotificationController::class, 'markAllRead']);
-    Route::patch('/{id}/read',[NotificationController::class, 'markRead']);
+    Route::get('/',              [NotificationController::class, 'index']);
+    Route::get('/sync',          [NotificationController::class, 'sync']);
+    Route::get('/unread-count',   [NotificationController::class, 'unreadCount']);
+    Route::patch('/read-all',    [NotificationController::class, 'markAllRead']);
+    Route::delete('/clear-all',  [NotificationController::class, 'clearAll']);
+    Route::patch('/{id}/read',   [NotificationController::class, 'markRead']);
+    Route::delete('/{id}',       [NotificationController::class, 'destroy']);
 });
 
 Route::prefix('auth')->group(function () {
@@ -196,6 +199,10 @@ Route::middleware('auth:sanctum')->prefix('student')->group(function () {
 
     // OJT Evaluation (Student View)
     Route::get('evaluation',            [EvaluationController::class, 'studentEvaluation']);
+
+    // Alumni PEO Survey & Self-Assessment
+    Route::get('peo-survey',            [StudentController::class, 'getPeoSurvey']);
+    Route::post('peo-survey',           [StudentController::class, 'submitPeoSurvey']);
 });
 
 // ── Jobseeker routes ──────────────────────────────────────────────────────────
@@ -294,6 +301,7 @@ Route::middleware('auth:sanctum')->prefix('admin')->group(function () {
     Route::delete('companies/{id}',                [AdminController::class, 'deleteCompany']);
     Route::get('jobs',                             [AdminController::class, 'listJobs']);
     Route::get('alumni-analytics',                 [AdminController::class, 'alumniAnalytics']);
+    Route::get('peo-analytics',                    [AdminController::class, 'peoAnalytics']);
     Route::get('skills-matching',                  [AdminController::class, 'skillsMatching']);
 
     // Supervisors
@@ -303,4 +311,7 @@ Route::middleware('auth:sanctum')->prefix('admin')->group(function () {
 
     // OJT Analytics
     Route::get('ojt-analytics',                    [AdminController::class, 'ojtAnalytics']);
+
+    // Notifications & Broadcast
+    Route::post('notifications/broadcast',         [NotificationController::class, 'broadcastToStudents']);
 });

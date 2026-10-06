@@ -10,7 +10,7 @@ const MAX_PEOPLE = 7;
 export function createRightSidebar() {
   const user = getState('user');
   const isAlumni = user.is_alumni || user.status === 'alumni' || user.rawRole === 'graduate' || user.role?.toLowerCase().includes('graduate') || user.role?.toLowerCase().includes('alumni');
-  const isOJT = !isAlumni && user.status === 'active_ojt';
+  const isOJT = !isAlumni && (user.is_active_ojt === true || user.status === 'active_ojt');
 
   const sidebar = document.createElement('aside');
   sidebar.className = 'sidebar-right';
@@ -19,7 +19,7 @@ export function createRightSidebar() {
   sidebar.innerHTML = `
     <!-- OJT / Status Widget -->
     <div class="widget" id="status-widget">
-      <h4 class="widget__title">${isOJT ? 'OJT Progress' : 'Alumni Status'}</h4>
+      <h4 class="widget__title">${isAlumni ? 'Alumni Status' : 'OJT Progress'}</h4>
       <div class="widget__content" id="ojt-widget-content">
         <div class="skeleton skeleton--text"></div>
         <div class="skeleton skeleton--text-sm"></div>
@@ -47,7 +47,7 @@ export function createRightSidebar() {
     </div>
   `;
 
-  loadWidgetData(sidebar, isOJT);
+  loadWidgetData(sidebar, isAlumni);
 
   return sidebar;
 }
@@ -267,10 +267,8 @@ function renderPersonRow(s) {
 }
 
 /* ── Main loader ── */
-async function loadWidgetData(sidebar, isOJT) {
-  if (isOJT) {
-    loadOjtProgress(sidebar);
-  } else {
+async function loadWidgetData(sidebar, isAlumni) {
+  if (isAlumni) {
     const user = getState('user');
     const gradYear = user.graduation_year || '';
     const honors   = user.honors || '';
@@ -281,6 +279,8 @@ async function loadWidgetData(sidebar, isOJT) {
       </div>
       ${detail ? `<p class="text-xs text-secondary mt-2">${detail}</p>` : ''}
     `;
+  } else {
+    loadOjtProgress(sidebar);
   }
 
   loadUpcoming(sidebar);

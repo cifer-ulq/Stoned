@@ -156,12 +156,12 @@ function showModal(c, container, companies, onUpdateCallback) {
               <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
                 <strong style="color:#92400e;font-size:var(--text-sm);">MOA Partnership Agreement Requested</strong>
                 <span style="background:#fef3c7;color:#b45309;font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:4px;border:1px solid #fde68a;">
-                  Action Required
+                  Action Required: Send MOA
                 </span>
               </div>
               <p style="margin:4px 0 0;font-size:var(--text-xs);color:#b45309;line-height:1.5;">
-                This self-registered company completed their profile and is requesting MOA establishment with CHMSU CIER.
-                Upload their signed MOA below to approve their partnership and unlock OJT and Job posting capabilities.
+                This self-registered company completed their profile and requested an official Memorandum of Agreement from CHMSU CIER.
+                Upload and send their approved MOA below to activate their partnership and unlock OJT and Job posting capabilities.
               </p>
               ${c.moaRequestNotes ? `
                 <div style="margin-top:8px;padding:8px 12px;background:#ffffff;border-radius:6px;border:1px solid #fef08a;font-size:var(--text-xs);color:#78350f;">
@@ -264,7 +264,7 @@ function showModal(c, container, companies, onUpdateCallback) {
           <!-- Upload / Update MOA Form -->
           <form id="form-upload-moa" style="background:var(--bg-primary);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:14px;">
             <div style="font-size:var(--text-xs);font-weight:700;color:var(--text-primary);margin-bottom:10px;display:flex;align-items:center;gap:6px;">
-              ${icon('upload-cloud', 14)} ${c.moaFileUrl ? 'Update / Renew MOA Agreement' : 'Upload & Approve MOA Partnership'}
+              ${icon('upload-cloud', 14)} ${c.moaStatus === 'Requested' ? 'Upload & Send MOA Agreement' : (c.moaFileUrl ? 'Update / Renew MOA Agreement' : 'Upload & Approve MOA Partnership')}
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
               <div>
@@ -282,7 +282,7 @@ function showModal(c, container, companies, onUpdateCallback) {
             </div>
             <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;">
               <button type="submit" class="btn btn--primary btn--sm" id="btn-submit-moa" style="background:#005930;border-color:#005930;gap:6px;font-weight:600;">
-                ${icon('check-circle', 14)} <span>Approve &amp; Activate MOA</span>
+                ${icon('send', 14)} <span>${c.moaStatus === 'Requested' ? 'Send & Activate MOA' : 'Approve & Activate MOA'}</span>
               </button>
             </div>
           </form>
@@ -1228,17 +1228,14 @@ export default async function CompaniesPage(container) {
                     <td style="text-align:right;">
                       <div class="cp-actions-cell">
                         ${c.moaStatus === 'Requested' ? `
-                          <button class="cp-action-btn cp-action-btn--primary btn-moa-req" data-id="${c.id}" style="background:#005930;border-color:#005930;color:#fff;font-size:0.72rem;padding:0 8px;gap:4px;" title="Review & Approve MOA Request">
-                            ${icon('file-text', 12)} <span>Review MOA</span>
+                          <button class="cp-action-btn cp-action-btn--primary btn-moa-req" data-id="${c.id}" style="background:#005930;border-color:#005930;color:#fff;font-size:0.72rem;padding:0 8px;gap:4px;" title="Send MOA to Partner Company">
+                            ${icon('send', 12)} <span>Send MOA</span>
                           </button>
                         ` : ''}
                         <button class="cp-action-btn cp-action-btn--primary btn-view" data-id="${c.id}" title="View Company Profile">
                           ${icon('eye', 13)} <span>View</span>
                         </button>
                         ${c.status === 'Pending' ? `
-                          <button class="cp-action-btn btn-send-invite" data-id="${c.id}" data-name="${c.name}" title="Send Invitation Email">
-                            ${icon('send', 13)}
-                          </button>
                           <button class="cp-action-btn cp-action-btn--danger btn-del" data-id="${c.id}" data-name="${c.name}" title="Delete Pending Company">
                             ${icon('trash-2', 13)}
                           </button>
@@ -1329,17 +1326,14 @@ export default async function CompaniesPage(container) {
               <!-- Card Actions -->
               <div class="cp-card__actions">
                 ${c.moaStatus === 'Requested' ? `
-                  <button class="cp-action-btn cp-action-btn--primary btn-moa-req" data-id="${c.id}" style="background:#005930;border-color:#005930;color:#fff;font-size:0.75rem;padding:0 8px;gap:4px;" title="Review & Approve MOA">
-                    ${icon('file-text', 12)} MOA
+                  <button class="cp-action-btn cp-action-btn--primary btn-moa-req" data-id="${c.id}" style="background:#005930;border-color:#005930;color:#fff;font-size:0.75rem;padding:0 8px;gap:4px;" title="Send MOA to Partner Company">
+                    ${icon('send', 12)} Send MOA
                   </button>
                 ` : ''}
                 <button class="cp-action-btn cp-action-btn--primary btn-view" data-id="${c.id}" style="flex:1;">
                   ${icon('eye', 13)} View Details
                 </button>
                 ${c.status === 'Pending' ? `
-                  <button class="cp-action-btn btn-send-invite" data-id="${c.id}" data-name="${c.name}" title="Send Invitation Email" style="flex-shrink:0;">
-                    ${icon('send', 13)}
-                  </button>
                   <button class="cp-action-btn cp-action-btn--danger btn-del" data-id="${c.id}" data-name="${c.name}" title="Delete Pending" style="flex-shrink:0;">
                     ${icon('trash-2', 13)}
                   </button>
@@ -1381,27 +1375,6 @@ export default async function CompaniesPage(container) {
             renderTabs();
             applyFilters();
           });
-        }
-      });
-    });
-
-    // Send Invitation Email Click
-    contentArea.querySelectorAll('.btn-send-invite').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const id = btn.dataset.id;
-        const name = btn.dataset.name;
-        btn.disabled = true;
-        btn.innerHTML = `<span class="spinner-sm"></span>`;
-
-        try {
-          const res = await apiPost(`/admin/companies/${id}/send-invitation`);
-          showToast(res?.message || `Invitation email sent to ${name}!`, 'success');
-        } catch {
-          showToast('Failed to send invitation email.', 'error');
-        } finally {
-          btn.disabled = false;
-          btn.innerHTML = `${icon('send', 13)}`;
-          renderIcons(btn);
         }
       });
     });

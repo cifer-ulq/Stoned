@@ -4,6 +4,7 @@ import {
   getCached,
   setCache,
   hasCached,
+  isFresh,
   invalidateCache,
   clearCache,
   hashData,
@@ -14,6 +15,7 @@ export {
   getCached,
   setCache,
   hasCached,
+  isFresh,
   invalidateCache,
   clearCache,
   hashData,
@@ -158,6 +160,33 @@ export async function apiGetCached(path, { onUpdate, force = false, ttl } = {}) 
   }
 
   return await fetchPromise;
+}
+
+/**
+ * Revalidate an endpoint in background:
+ * Checks if server response differs from cached data.
+ * Returns { changed: boolean, data: freshData, oldData }
+ */
+export async function revalidateEndpoint(path) {
+  if (_redirecting) return { changed: false, data: null };
+  const oldCached = getCached(path);
+  try {
+    const freshData = await apiRequest('GET', path);
+    if (!freshData) return { changed: false, data: null };
+
+    const freshHash = hashData(freshData);
+    const changed = !oldCached || oldCached.hash !== freshHash;
+
+    setCache(path, freshData);
+
+    return {
+      changed,
+      data: freshData,
+      oldData: oldCached?.data ?? null,
+    };
+  } catch {
+    return { changed: false, data: oldCached?.data ?? null };
+  }
 }
 
 /* ── Multipart (file upload) ── */

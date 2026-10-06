@@ -16,6 +16,7 @@ use App\Models\JobListing;
 use App\Models\JobApplication;
 use App\Models\AppNotification;
 use App\Models\StudentEvaluation;
+use App\Services\PeoAnalyticsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -909,6 +910,8 @@ class AdminController extends Controller
                         'year_graduated'   => $batchYear,
                         'completed_hours'  => $completedHours,
                         'evaluation_score' => $evalScore,
+                        'role'             => 'graduate',
+                        'status'           => 'alumni',
                     ]
                 );
 
@@ -1054,6 +1057,10 @@ class AdminController extends Controller
     {
         $this->requireAdmin($request);
 
+        $batchParam   = $request->query('batch');
+        $sectionParam = $request->query('section');
+        $courseParam  = $request->query('course');
+
         // Eager-load graduate profile + experiences for all graduate users
         $graduates = User::where('role', 'graduate')
             ->with([
@@ -1196,6 +1203,10 @@ class AdminController extends Controller
         $totalAlumni = array_sum(array_column($batchesOut, 'total'));
         $totalInPath = array_sum(array_column($batchesOut, 'inPath'));
 
+        // Calculate PEO Program Educational Objectives Analytics
+        $peoService = new PeoAnalyticsService();
+        $peoData    = $peoService->getPeoAnalytics($batchParam, $courseParam, null, $sectionParam);
+
         return response()->json([
             'batches' => $batchesOut,
             'overall' => [
@@ -1206,7 +1217,21 @@ class AdminController extends Controller
                     ? (int) round(($totalInPath / $totalAlumni) * 100)
                     : 0,
             ],
+            'peo'     => $peoData,
         ]);
+    }
+
+    /* ── GET /api/admin/peo-analytics ── */
+    public function peoAnalytics(Request $request)
+    {
+        $this->requireAdmin($request);
+
+        $peoService   = new PeoAnalyticsService();
+        $batchParam   = $request->query('batch');
+        $sectionParam = $request->query('section');
+        $courseParam  = $request->query('course');
+
+        return response()->json($peoService->getPeoAnalytics($batchParam, $courseParam, null, $sectionParam));
     }
 
     /* ── Helper: extract baseline graduation year e.g. "2026-2027" -> 2026, "2020" -> 2020 ── */

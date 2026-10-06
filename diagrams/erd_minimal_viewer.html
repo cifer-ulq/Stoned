@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CHMSU HireMe — Minimal Research ERD (Paper & Thesis Edition)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --panel: #ffffff;
+      --border: #cbd5e1;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --primary: #0284c7;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+    .header {
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      z-index: 20;
+    }
+    .title-box h1 {
+      font-size: 15px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .title-box p {
+      font-size: 11.5px;
+      color: var(--text-muted);
+    }
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: #ffffff;
+      color: #334155;
+      transition: all 0.15s ease;
+    }
+    .btn:hover { background: #f1f5f9; color: #0f172a; }
+    .btn-primary { background: #0284c7; border-color: #0284c7; color: #ffffff; }
+    .btn-primary:hover { background: #0369a1; }
+    .btn-success { background: #059669; border-color: #059669; color: #ffffff; }
+    .btn-success:hover { background: #047857; }
+    .toggle-group {
+      display: flex;
+      background: #e2e8f0;
+      padding: 3px;
+      border-radius: 6px;
+      gap: 2px;
+    }
+    .toggle-btn {
+      padding: 5px 12px;
+      border-radius: 4px;
+      border: none;
+      background: transparent;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: #475569;
+      cursor: pointer;
+      transition: 0.15s;
+    }
+    .toggle-btn.active {
+      background: #ffffff;
+      color: #0f172a;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+    }
+    .viewport {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      cursor: grab;
+      background: #ffffff;
+      background-image: radial-gradient(#e2e8f0 1px, transparent 1px);
+      background-size: 20px 20px;
+    }
+    .viewport:active { cursor: grabbing; }
+    #svgContainer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      transform-origin: 0 0;
+      transition: transform 0.05s ease-out;
+    }
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #0f172a;
+      color: #ffffff;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 12.5px;
+      font-weight: 600;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+      display: none;
+      z-index: 50;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="header">
+    <div class="title-box">
+      <h1>CHMSU HireMe — Academic Minimal ERD</h1>
+      <p>Clean Crow's Foot Entity-Relationship Diagram for Thesis Paper &amp; Data Dictionary</p>
+    </div>
+
+    <!-- Toggle between 12 Entities and 16 Entities -->
+    <div class="toggle-group">
+      <button class="toggle-btn active" id="btn12" onclick="switchMode('12')">12 Core Entities (Minimal)</button>
+      <button class="toggle-btn" id="btn16" onclick="switchMode('16')">16 Entities (Extended Portfolio)</button>
+    </div>
+
+    <div class="actions">
+      <button class="btn" onclick="zoomIn()">Zoom +</button>
+      <button class="btn" onclick="zoomOut()">Zoom −</button>
+      <button class="btn" onclick="resetZoom()">Reset</button>
+      <button class="btn" onclick="downloadSVG()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download SVG
+      </button>
+      <button class="btn btn-success" onclick="exportPNG(3)" title="Ultra-High 300 DPI resolution for Thesis / Word documents">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        Export 300 DPI PNG (Print Ready)
+      </button>
+    </div>
+  </header>
+
+  <main class="viewport" id="viewport">
+    <div id="svgContainer"></div>
+  </main>
+
+  <div class="toast" id="toast">Ready</div>
+
+  <script>
+    let currentMode = '12';
+    let scale = 0.85;
+    let panX = 40, panY = 20;
+    let isDragging = false, startX = 0, startY = 0;
+
+    const viewport = document.getElementById('viewport');
+    const container = document.getElementById('svgContainer');
+
+    function loadSVG(file) {
+      fetch(file)
+        .then(r => r.text())
+        .then(svgText => {
+          container.innerHTML = svgText;
+          updateTransform();
+        });
+    }
+
+    function switchMode(mode) {
+      currentMode = mode;
+      document.getElementById('btn12').classList.toggle('active', mode === '12');
+      document.getElementById('btn16').classList.toggle('active', mode === '16');
+      loadSVG(mode === '12' ? 'erd_minimal_12.svg' : 'erd_screenshot_matched.svg');
+      showToast(mode === '12' ? 'Switched to 12 Core Entities' : 'Switched to 16 Extended Entities');
+    }
+
+    function updateTransform() {
+      container.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+    }
+
+    viewport.addEventListener('mousedown', e => {
+      if (e.target.closest('button')) return;
+      isDragging = true;
+      startX = e.clientX - panX;
+      startY = e.clientY - panY;
+    });
+
+    window.addEventListener('mousemove', e => {
+      if (!isDragging) return;
+      panX = e.clientX - startX;
+      panY = e.clientY - startY;
+      updateTransform();
+    });
+
+    window.addEventListener('mouseup', () => { isDragging = false; });
+
+    viewport.addEventListener('wheel', e => {
+      e.preventDefault();
+      const zoom = e.deltaY < 0 ? 1.1 : 0.9;
+      const newScale = Math.min(Math.max(scale * zoom, 0.3), 3.0);
+      const mouseX = e.clientX - panX;
+      const mouseY = e.clientY - panY;
+      panX -= (mouseX * (newScale / scale - 1));
+      panY -= (mouseY * (newScale / scale - 1));
+      scale = newScale;
+      updateTransform();
+    });
+
+    function zoomIn() { scale = Math.min(scale * 1.25, 3.0); updateTransform(); }
+    function zoomOut() { scale = Math.max(scale * 0.8, 0.3); updateTransform(); }
+    function resetZoom() { scale = 0.85; panX = 40; panY = 20; updateTransform(); }
+
+    function downloadSVG() {
+      const svgEl = container.querySelector('svg');
+      if (!svgEl) return;
+      const serializer = new XMLSerializer();
+      const blob = new Blob([serializer.serializeToString(svgEl)], { type: 'image/svg+xml;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = currentMode === '12' ? 'CHMSU_HireMe_ERD_12_Entities.svg' : 'CHMSU_HireMe_ERD_16_Entities.svg';
+      a.click();
+      URL.revokeObjectURL(a.href);
+      showToast('SVG vector diagram downloaded!');
+    }
+
+    function exportPNG(pixelRatio = 3) {
+      const svgEl = container.querySelector('svg');
+      if (!svgEl) return;
+      showToast('Generating 300 DPI Print-Ready PNG...');
+      
+      const serializer = new XMLSerializer();
+      const svgStr = serializer.serializeToString(svgEl);
+      const svgBlob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(svgBlob);
+      
+      const img = new Image();
+      img.onload = function() {
+        const baseW = 1420;
+        const baseH = 940;
+        const canvas = document.createElement('canvas');
+        canvas.width = baseW * pixelRatio;
+        canvas.height = baseH * pixelRatio;
+        const ctx = canvas.getContext('2d');
+        
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.scale(pixelRatio, pixelRatio);
+        ctx.drawImage(img, 0, 0, baseW, baseH);
+        
+        canvas.toBlob(function(blob) {
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = currentMode === '12' ? 'CHMSU_HireMe_ERD_12_Core_300DPI.png' : 'CHMSU_HireMe_ERD_16_Entities_300DPI.png';
+          a.click();
+          URL.revokeObjectURL(a.href);
+          showToast('300 DPI PNG downloaded successfully!');
+        }, 'image/png');
+      };
+      img.src = url;
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.style.display = 'block';
+      setTimeout(() => { t.style.display = 'none'; }, 3000);
+    }
+
+    // Initial load
+    switchMode('12');
+  </script>
+</body>
+</html>

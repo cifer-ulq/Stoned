@@ -8,12 +8,17 @@ import { navigate } from '../router.js';
 
 /* ── Type → display config ─────────────────────────────────────── */
 const typeConfig = {
-  application_reviewed: { ic: 'eye',          color: '#3B82F6', bg: 'rgba(59,130,246,.12)', route: '/applications' },
-  interview_scheduled:  { ic: 'video',         color: '#D97706', bg: 'rgba(217,119,6,.12)',  route: '/interview'    },
-  application_offered:  { ic: 'award',         color: '#16A34A', bg: 'rgba(22,163,74,.12)',  route: '/applications' },
-  application_rejected: { ic: 'alertCircle',   color: '#6B7280', bg: 'rgba(107,114,128,.1)', route: '/applications' },
+  application_reviewed:     { ic: 'eye',          color: '#3B82F6', bg: 'rgba(59,130,246,.12)', route: '/applications' },
+  interview_scheduled:      { ic: 'video',        color: '#D97706', bg: 'rgba(217,119,6,.12)',  route: '/interview'    },
+  application_offered:      { ic: 'award',        color: '#16A34A', bg: 'rgba(22,163,74,.12)',  route: '/applications' },
+  application_rejected:     { ic: 'alertCircle',  color: '#6B7280', bg: 'rgba(107,114,128,.1)', route: '/applications' },
+  admin_broadcast:          { ic: 'bell',         color: '#005930', bg: 'rgba(0,89,48,.12)',    route: '/home'         },
+  announcement:             { ic: 'bell',         color: '#005930', bg: 'rgba(0,89,48,.12)',    route: '/home'         },
+  graduation_promotion:     { ic: 'award',        color: '#10B981', bg: 'rgba(16,185,129,.12)', route: '/portfolio'    },
+  alumni_registration:      { ic: 'award',        color: '#4F46E5', bg: 'rgba(79,70,229,.12)',  route: '/portfolio'    },
+  ojt_evaluation_completed: { ic: 'award',        color: '#10B981', bg: 'rgba(16,185,129,.12)', route: '/portfolio'    },
 };
-function cfg(type) { return typeConfig[type] || { ic: 'bell', color: '#6366F1', bg: 'rgba(99,102,241,.1)', route: '/applications' }; }
+function cfg(type) { return typeConfig[type] || { ic: 'bell', color: '#005930', bg: 'rgba(0,89,48,.1)', route: '/home' }; }
 
 /* ── Toast ──────────────────────────────────────────────────────── */
 function showToast(notif) {
@@ -70,8 +75,9 @@ function renderList(notifications, listEl) {
 
   listEl.innerHTML = notifications.map(n => {
     const c = cfg(n.type);
+    const targetRoute = n.data?.route || c.route;
     return `
-      <button class="notif-item${n.is_read ? '' : ' notif-item--unread'}" data-id="${n.id}" data-route="${c.route}">
+      <button class="notif-item${n.is_read ? '' : ' notif-item--unread'}" data-id="${n.id}" data-route="${targetRoute}">
         <div class="notif-item__icon" style="background:${c.bg};color:${c.color}">${icon(c.ic, 14)}</div>
         <div class="notif-item__body">
           <div class="notif-item__title">${n.title}</div>
@@ -164,40 +170,88 @@ export function initNotifications(nav) {
     notifications = data.data;
     const unreadCount = notifications.filter(n => !n.is_read).length;
 
-    // Show toasts only for new notifications after first load
-    if (lastUnread >= 0 && unreadCount > lastUnread) {
-      const newOnes = notifications.filter(n => !n.is_read).slice(0, unreadCount - lastUnread);
-      newOnes.forEach(n => showToast(n));
-    }
-
     lastUnread = unreadCount;
     updateBadge(badgeEl, unreadCount);
     renderList(notifications, listEl);
   }
 
-  /* ── Poll for unread count every 30 s ── */
-  async function pollCount() {
-    const data = await apiGet('/notifications/unread-count').catch(() => null);
-    if (!data) return;
+  /* ── Fast Delta Sync Engine ── */
+  let latestId = null;
+  let isSyncing = false;
+  let pollTimer = null;
 
-    const count = data.count ?? 0;
-    if (lastUnread >= 0 && count > lastUnread) {
-      // New notifications arrived — load full list to get content for toasts
-      await loadNotifications();
-    } else {
-      lastUnread = count;
+  const notifChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('hireme_notif_bus') : null;
+  if (notifChannel) {
+    notifChannel.onmessage = (e) => {
+      const msg = e.data;
+      if (msg?.type === 'SYNC_COUNT') {
+        updateBadge(badgeEl, msg.count);
+      } else if (msg?.type === 'NOTIF_READ') {
+        syncNotifications();
+      }
+    };
+  }
+
+  async function syncNotifications() {
+    if (isSyncing) return;
+    isSyncing = true;
+    try {
+      const url = latestId !== null
+        ? `/notifications/sync?since_id=${latestId}`
+        : '/notifications/sync';
+
+      const res = await apiGet(url).catch(() => null);
+      if (!res || !res.success) return;
+
+      const count = res.unread_count ?? 0;
       updateBadge(badgeEl, count);
+
+      if (latestId === null) {
+        latestId = res.latest_id ?? 0;
+        lastUnread = count;
+        return;
+      }
+
+      latestId = Math.max(latestId, res.latest_id ?? latestId);
+
+      const newNotifs = Array.isArray(res.new_notifications) ? res.new_notifications : [];
+      if (newNotifs.length > 0) {
+        newNotifs.forEach(n => showToast(n));
+        window.dispatchEvent(new CustomEvent('hireme:notification-received', { detail: newNotifs }));
+        notifChannel?.postMessage({ type: 'SYNC_COUNT', count, latestId });
+        if (panelOpen) {
+          loadNotifications();
+        }
+      }
+      lastUnread = count;
+    } finally {
+      isSyncing = false;
     }
   }
 
-  // Initial silent badge load (no toasts on first load)
-  apiGet('/notifications/unread-count').then(data => {
-    if (data) {
-      lastUnread = data.count ?? 0;
-      updateBadge(badgeEl, lastUnread);
-    }
-  }).catch(() => {});
+  function scheduleNextPoll(delay = 4000) {
+    clearTimeout(pollTimer);
+    pollTimer = setTimeout(async () => {
+      await syncNotifications();
+      const nextDelay = document.hidden ? 30000 : 4000;
+      scheduleNextPoll(nextDelay);
+    }, delay);
+  }
 
-  // Start polling
-  setInterval(pollCount, 30_000);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      syncNotifications();
+      scheduleNextPoll(4000);
+    } else {
+      scheduleNextPoll(30000);
+    }
+  });
+
+  window.addEventListener('focus', () => {
+    syncNotifications();
+  });
+
+  // Initial sync & start adaptive polling
+  syncNotifications();
+  scheduleNextPoll(4000);
 }

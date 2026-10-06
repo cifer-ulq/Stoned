@@ -125,18 +125,18 @@ function normalizePosting(p, studentSkills = []) {
 // ── State labels ──────────────────────────────────────────────────────────────
 const STATUS_META = {
   browsing:              { label: 'No Active OJT',          color: 'var(--text-tertiary)',  bg: 'var(--bg-tertiary)' },
-  applied:               { label: 'Applied',                color: 'var(--color-info)',     bg: 'var(--color-info-bg)' },
-  interested:            { label: 'Applied',                color: 'var(--color-info)',     bg: 'var(--color-info-bg)' },
-  company_reviewed:      { label: 'Reviewed by Company',    color: '#D97706',               bg: 'rgba(217,119,6,0.1)' },
-  endorsement_requested: { label: 'Endorsement Requested',  color: '#8B5CF6',               bg: 'rgba(139,92,246,0.1)' },
-  endorsed:              { label: 'Endorsed',               color: 'var(--color-warning)',  bg: 'var(--color-warning-bg)' },
-  interview_scheduled:   { label: 'Interview Scheduled',    color: '#059669',               bg: 'rgba(5,150,105,0.1)' },
-  company_accepted:      { label: 'Accepted by Company',    color: '#059669',               bg: 'rgba(5,150,105,0.1)' },
-  accepted:              { label: 'OJT Approved',           color: 'var(--color-success)',  bg: 'var(--color-success-bg)' },
-  confirmed:             { label: 'Confirmed',              color: '#9B59B6',               bg: 'rgba(155,89,182,0.12)' },
-  ojt_confirmed:         { label: 'OJT Confirmed',          color: '#8B5CF6',               bg: 'rgba(139,92,246,0.1)' },
-  ojt_started:           { label: 'OJT Started',            color: 'var(--color-success)',  bg: 'var(--color-success-bg)' },
-  active:                { label: 'Active OJT',             color: 'var(--color-success)',  bg: 'var(--color-success-bg)' },
+  applied:               { label: 'Applied',                color: '#10B981',               bg: 'rgba(16,185,129,0.1)' },
+  interested:            { label: 'Applied',                color: '#10B981',               bg: 'rgba(16,185,129,0.1)' },
+  company_reviewed:      { label: 'Reviewed by Company',    color: '#10B981',               bg: 'rgba(16,185,129,0.1)' },
+  endorsement_requested: { label: 'Endorsement Requested',  color: '#10B981',               bg: 'rgba(16,185,129,0.1)' },
+  endorsed:              { label: 'Endorsed',               color: '#10B981',               bg: 'rgba(16,185,129,0.1)' },
+  interview_scheduled:   { label: 'Interview Scheduled',    color: '#10B981',               bg: 'rgba(16,185,129,0.1)' },
+  company_accepted:      { label: 'Accepted by Company',    color: '#10B981',               bg: 'rgba(16,185,129,0.1)' },
+  accepted:              { label: 'OJT Approved',           color: '#10B981',               bg: 'rgba(16,185,129,0.1)' },
+  confirmed:             { label: 'Confirmed',              color: '#10B981',               bg: 'rgba(16,185,129,0.1)' },
+  ojt_confirmed:         { label: 'OJT Confirmed',          color: '#10B981',               bg: 'rgba(16,185,129,0.1)' },
+  ojt_started:           { label: 'OJT Started',            color: '#10B981',               bg: 'rgba(16,185,129,0.1)' },
+  active:                { label: 'Active OJT',             color: '#10B981',               bg: 'rgba(16,185,129,0.1)' },
   completed:             { label: 'Completed',              color: 'var(--color-accent)',   bg: 'var(--color-accent-bg)' },
   incomplete:            { label: 'Incomplete',             color: 'var(--color-error)',    bg: 'var(--color-error-bg)' },
 };
@@ -209,13 +209,22 @@ export async function renderOJT(container) {
     <div class="skeleton skeleton--card" style="height:300px;"></div>
   `;
 
-  // Fetch employment status to know whether to gate apply buttons
+  // Fetch employment status to know whether to gate apply buttons (fresh live check)
   let empStatus = null;
   try {
-    empStatus = await apiGet('/student/employment-status');
+    empStatus = await apiGet('/student/employment-status', { forceRefresh: true });
   } catch { /* non-blocking */ }
 
   await renderBrowsingState(container, empStatus);
+
+  // ── Reactive Real-Time Event Listener (Zero Hard Refresh) ──
+  const handleOjtRefresh = () => {
+    if (window.location.hash.includes('ojt') && document.body.contains(container)) {
+      renderBrowsingState(container, null);
+    }
+  };
+  window.addEventListener('hireme:requirements-updated', handleOjtRefresh);
+  window.addEventListener('hireme:ojt-updated', handleOjtRefresh);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -224,8 +233,8 @@ export async function renderOJT(container) {
 async function renderBrowsingState(container, empStatus = null) {
   const [eligRes, empRes, myInterestsRes, portfolioRes] = await Promise.all([
     apiFetch('ojt/eligibility').catch(() => ({ data: { status: 'eligible' } })),
-    empStatus ? Promise.resolve(empStatus) : apiGet('/student/employment-status').catch(() => null),
-    apiGet('/ojt/my-interests').catch(() => null),
+    empStatus ? Promise.resolve(empStatus) : apiGet('/student/employment-status', { forceRefresh: true }).catch(() => null),
+    apiGet('/ojt/my-interests', { forceRefresh: true }).catch(() => null),
     apiGet('/student/portfolio').catch(() => null),
   ]);
   const elig = eligRes?.data || { status: 'eligible' };
@@ -327,38 +336,38 @@ async function renderBrowsingState(container, empStatus = null) {
                 background:${reqStatus === 'needs_revision' ? 'linear-gradient(135deg,#fef2f2,#fee2e2)' : reqStatus === 'submitted' ? 'linear-gradient(135deg,#eff6ff,#dbeafe)' : 'linear-gradient(135deg,#fffbeb,#fef3c7)'};
                 border:1.5px solid ${reqStatus === 'needs_revision' ? '#ef4444' : reqStatus === 'submitted' ? '#3b82f6' : '#f59e0b'};border-radius:14px;margin-bottom:16px;box-shadow:0 2px 10px rgba(0,0,0,0.04);flex-wrap:wrap;">
       <div style="display:flex;align-items:flex-start;gap:14px;min-width:0;flex:1;">
-        <span style="color:${reqStatus === 'needs_revision' ? '#b91c1c' : reqStatus === 'submitted' ? '#1d4ed8' : '#b45309'};flex-shrink:0;margin-top:2px;">
-          ${icon(reqStatus === 'submitted' ? 'clock' : 'alertTriangle', 24)}
+        <span style="color:${reqStatus === 'needs_revision' ? '#b91c1c' : reqStatus === 'submitted' ? '#1d4ed8' : reqStatus === 'pending' ? '#b45309' : '#475569'};flex-shrink:0;margin-top:2px;">
+          ${icon(reqStatus === 'submitted' ? 'clock' : reqStatus === 'unassigned' ? 'info' : 'alertTriangle', 24)}
         </span>
         <div>
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-            <strong style="font-size:.95rem;color:${reqStatus === 'needs_revision' ? '#991b1b' : reqStatus === 'submitted' ? '#1e40af' : '#92400e'};">
+            <strong style="font-size:.95rem;color:${reqStatus === 'needs_revision' ? '#991b1b' : reqStatus === 'submitted' ? '#1e40af' : reqStatus === 'pending' ? '#92400e' : '#334155'};">
               ${reqStatus === 'submitted'
                 ? 'OJT Requirements Under Review &mdash; Verification Pending'
                 : reqStatus === 'needs_revision'
                 ? 'OJT Requirements Revision Requested'
                 : reqStatus === 'pending'
                 ? 'Pre-Deployment OJT Requirements Required Before Applying'
-                : 'OJT Pre-Deployment Requirements Needed'}
+                : 'OJT Requirements Not Yet Assigned'}
             </strong>
-            <span style="padding:2px 8px;border-radius:99px;font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;background:${reqStatus === 'needs_revision' ? '#fee2e2;color:#b91c1c;border:1px solid #fca5a5;' : reqStatus === 'submitted' ? '#dbeafe;color:#1e40af;border:1px solid #93c5fd;' : '#fef3c7;color:#92400e;border:1px solid #fcd34d;'}">
-              ${reqStatus === 'submitted' ? 'Under Review' : reqStatus === 'needs_revision' ? 'Revision Needed' : 'Submission Required'}
+            <span style="padding:2px 8px;border-radius:99px;font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;background:${reqStatus === 'needs_revision' ? '#fee2e2;color:#b91c1c;border:1px solid #fca5a5;' : reqStatus === 'submitted' ? '#dbeafe;color:#1e40af;border:1px solid #93c5fd;' : reqStatus === 'pending' ? '#fef3c7;color:#92400e;border:1px solid #fcd34d;' : '#f1f5f9;color:#475569;border:1px solid #cbd5e1;'}">
+              ${reqStatus === 'submitted' ? 'Under Review' : reqStatus === 'needs_revision' ? 'Revision Needed' : reqStatus === 'pending' ? 'Submission Required' : 'Not Assigned'}
             </span>
           </div>
-          <p style="margin:4px 0 0;font-size:.84rem;color:${reqStatus === 'needs_revision' ? '#7f1d1d' : reqStatus === 'submitted' ? '#1e3a8a' : '#78350f'};line-height:1.5;">
+          <p style="margin:4px 0 0;font-size:.84rem;color:${reqStatus === 'needs_revision' ? '#7f1d1d' : reqStatus === 'submitted' ? '#1e3a8a' : reqStatus === 'pending' ? '#78350f' : '#475569'};line-height:1.5;">
             ${reqStatus === 'submitted'
               ? `You have submitted your requirements Google Drive folder for <strong>"${escapeHtml(ojtReqs?.title || 'Document Packet')}"</strong>. Your OJT Coordinator (${ojtReqs?.supervisor_name ? 'Prof. ' + escapeHtml(ojtReqs.supervisor_name) : 'Coordinator'}) must verify and approve your packet before you can apply to host companies.`
               : reqStatus === 'needs_revision'
               ? `Your OJT Coordinator requested changes to your requirements packet: <em>"${escapeHtml(ojtReqs?.remarks || 'Please update your uploaded documents.')}"</em> Please update your Google Drive link in your Portfolio.`
               : reqStatus === 'pending'
               ? `Your OJT Coordinator has assigned <strong>"${escapeHtml(ojtReqs?.title || 'Pre-Deployment OJT Document Packet')}"</strong>. You must upload your signed documents (Waiver, Medical, COR, etc.) to Google Drive, submit the link in your <strong>Portfolio</strong>, and receive coordinator verification before applying for OJT slots.`
-              : 'Before applying for any OJT slot, you must complete your pre-deployment document packet and have it verified by your OJT Coordinator.'}
+              : 'Your OJT Coordinator has not assigned your pre-deployment requirements checklist yet. Once your coordinator assigns your packet, you can view the required documents and submit your Drive folder in your Portfolio.'}
           </p>
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;margin-left:auto;align-self:center;">
-        <a href="#portfolio" class="btn btn--sm" style="background:${reqStatus === 'needs_revision' ? '#dc2626;color:#fff;' : reqStatus === 'submitted' ? '#2563eb;color:#fff;' : '#d97706;color:#fff;'}font-weight:700;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 6px rgba(0,0,0,0.12);text-decoration:none;padding:0 14px;height:34px;border-radius:8px;">
-          ${icon('folder', 14)} <span>${reqStatus === 'submitted' ? 'View Status in Portfolio' : 'Go to Portfolio &amp; Submit'}</span>
+        <a href="#portfolio" class="btn btn--sm" style="background:${reqStatus === 'needs_revision' ? '#dc2626;color:#fff;' : reqStatus === 'submitted' ? '#2563eb;color:#fff;' : reqStatus === 'pending' ? '#d97706;color:#fff;' : '#475569;color:#fff;'}font-weight:700;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 6px rgba(0,0,0,0.12);text-decoration:none;padding:0 14px;height:34px;border-radius:8px;">
+          ${icon('folder', 14)} <span>${reqStatus === 'submitted' ? 'View Status in Portfolio' : reqStatus === 'pending' ? 'Go to Portfolio &amp; Submit' : 'View Portfolio'}</span>
         </a>
       </div>
     </div>` : ''}
@@ -706,6 +715,17 @@ async function renderBrowsingState(container, empStatus = null) {
         if (isHired) {
           showToast(`You are currently employed${hiredJob ? ` (${hiredJob.title} at ${hiredJob.company})` : ''}. You cannot apply for OJT while employed.`, 'error');
           return;
+        }
+        if (!isReqVerified) {
+          btn.disabled = true;
+          try {
+            const freshEmp = await apiGet('/student/employment-status', { forceRefresh: true });
+            if (freshEmp?.ojt_requirements?.is_verified) {
+              isReqVerified = true;
+              ojtReqs = freshEmp.ojt_requirements;
+            }
+          } catch (_) {}
+          btn.disabled = false;
         }
         if (!isReqVerified) {
           showRequirementsRequiredModal(ojtReqs);
@@ -1066,14 +1086,16 @@ async function renderBrowsingState(container, empStatus = null) {
             ${icon('alertTriangle', 12)} OJT Requirements Verification Required
           </div>
           <h3 style="font-size:1.22rem; font-weight:800; margin-bottom:8px; color:var(--text-primary);">
-            ${isSubmitted ? 'Requirements Awaiting Approval' : isRevision ? 'Requirements Need Revision' : 'Submit Requirements First'}
+            ${isSubmitted ? 'Requirements Awaiting Approval' : isRevision ? 'Requirements Need Revision' : st === 'pending' ? 'Submit Requirements First' : 'Requirements Not Yet Assigned'}
           </h3>
           <p class="text-sm text-secondary" style="line-height:1.6; margin-bottom:18px;">
             ${isSubmitted
               ? `Your submission for <strong>"${escapeHtml(title)}"</strong> has been received and is currently under review by your OJT Coordinator. Once verified, you will be able to apply for this slot.`
               : isRevision
               ? `Your coordinator requested changes to your documents: <em>"${escapeHtml(reqs?.remarks || 'See feedback in your portfolio')}"</em>. Please update your Drive link in your Portfolio.`
-              : `Before applying for any OJT position, your OJT Coordinator requires you to submit your <strong>"${escapeHtml(title)}"</strong> (Waiver, Medical Cert, COR, etc.) and receive coordinator verification.`}
+              : st === 'pending'
+              ? `Before applying for any OJT position, your OJT Coordinator requires you to submit your <strong>"${escapeHtml(title)}"</strong> (Waiver, Medical Cert, COR, etc.) and receive coordinator verification.`
+              : `Your OJT Coordinator has not assigned your pre-deployment requirements packet yet. Please contact your coordinator to assign your requirements checklist.`}
           </p>
           <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
             <button class="btn btn--outline" id="req-modal-cancel" style="padding:0 18px; height:38px; border-radius:8px;">Dismiss</button>
@@ -1091,7 +1113,16 @@ async function renderBrowsingState(container, empStatus = null) {
     bd.querySelector('#req-modal-portfolio').addEventListener('click', () => bd.remove());
   }
 
-  function showApplyConfirm(slot) {
+  async function showApplyConfirm(slot) {
+    if (!isReqVerified) {
+      try {
+        const freshEmp = await apiGet('/student/employment-status', { forceRefresh: true });
+        if (freshEmp?.ojt_requirements?.is_verified) {
+          isReqVerified = true;
+          ojtReqs = freshEmp.ojt_requirements;
+        }
+      } catch (_) {}
+    }
     if (!isReqVerified) {
       showRequirementsRequiredModal(ojtReqs);
       return;

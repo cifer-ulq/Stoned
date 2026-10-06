@@ -2,111 +2,11 @@ import { icon, renderIcons } from '../components/icons.js';
 import { apiGet, apiGetCached, getCached } from '../api/client.js';
 import { openAlumniImportModal } from '../components/alumni-import-modal.js';
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-   STATIC DATA  (replace with real API calls later)
-   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ─────────────────────────────────────────────────────────────
+   HELPERS & SVG GRAPH GENERATORS (ORIGINAL CAREER PATH)
+   ───────────────────────────────────────────────────────────── */
 
-const BATCHES = [
-  {
-    id: 'b2021', label: '2021 â€“ 2022', course: 'BSIT', campus: 'Alijis Campus',
-    total: 112, inPath: 90, notInPath: 22,
-    topRoles: ['Software Developer', 'Web Developer', 'IT Support', 'Systems Analyst', 'Network Engineer'],
-    topRoleCounts: [34, 26, 14, 10, 6],
-    trend: [38, 52, 67, 78, 84, 90],
-    trendLabels: ['2022', '2023', '2024', '2025', '2026 (est.)'],
-    notInPathRoles: ['Sales Associate', 'Call Center Agent', 'Admin Staff'],
-    notInPathCounts: [9, 8, 5],
-    students: [
-      { name: 'Jermaine La Marcole', section: 'A', role: 'Full Stack Developer',      employer: 'TikTok',          inPath: true  },
-      { name: 'Maria Santos',        section: 'A', role: 'Web Developer',             employer: 'Accenture',       inPath: true  },
-      { name: 'Carlo Reyes',         section: 'B', role: 'IT Support Specialist',     employer: 'Concentrix',      inPath: true  },
-      { name: 'Ana Villanueva',      section: 'B', role: 'Systems Analyst',           employer: 'BDO Unibank',     inPath: true  },
-      { name: 'Ryan Torres',         section: 'C', role: 'Network Engineer',          employer: 'PLDT',            inPath: true  },
-      { name: 'Liza Maglalang',      section: 'C', role: 'Frontend Developer',        employer: 'Freelance',       inPath: true  },
-      { name: 'Mark Evangelista',    section: 'D', role: 'Software Engineer',         employer: 'Exist Global',    inPath: true  },
-      { name: 'Jenny Cruz',          section: 'D', role: 'QA Engineer',               employer: 'Cloudstaff',      inPath: true  },
-      { name: 'Paolo Aquino',        section: 'A', role: 'Sales Associate',           employer: 'SM Hypermarket',  inPath: false },
-      { name: 'Rose Dela PeÃ±a',      section: 'B', role: 'Call Center Agent',         employer: 'Teleperformance', inPath: false },
-      { name: 'Kevin Soriano',       section: 'C', role: 'Admin Staff',               employer: 'City Hall',       inPath: false },
-      { name: 'Trisha Hernandez',    section: 'D', role: 'Call Center Agent',         employer: 'Sutherland',      inPath: false },
-    ],
-  },
-  {
-    id: 'b2022', label: '2022 â€“ 2023', course: 'BSIT', campus: 'Alijis Campus',
-    total: 98, inPath: 71, notInPath: 27,
-    topRoles: ['Frontend Developer', 'QA Tester', 'IT Support', 'Database Admin', 'Mobile Dev'],
-    topRoleCounts: [22, 18, 15, 10, 6],
-    trend: [30, 48, 60, 71],
-    trendLabels: ['2023', '2024', '2025', '2026 (est.)'],
-    notInPathRoles: ['Call Center Agent', 'Sales Representative', 'Cashier'],
-    notInPathCounts: [12, 10, 5],
-    students: [
-      { name: 'Luis Ferrer',         section: 'A', role: 'Frontend Developer',        employer: 'Freelance',       inPath: true  },
-      { name: 'Camille Bautista',    section: 'A', role: 'QA Tester',                 employer: 'TaskUs',          inPath: true  },
-      { name: 'Bernard Lim',         section: 'B', role: 'Database Administrator',    employer: 'UnionBank',       inPath: true  },
-      { name: 'Patricia Gomez',      section: 'B', role: 'IT Support',                employer: 'SM Group',        inPath: true  },
-      { name: 'Jerome Castillo',     section: 'C', role: 'Mobile Developer',          employer: 'Sari-Sari Tech',  inPath: true  },
-      { name: 'Alyssa Navarro',      section: 'C', role: 'Call Center Agent',         employer: 'TTEC',            inPath: false },
-      { name: 'Francis Padilla',     section: 'D', role: 'Sales Representative',      employer: 'Jollibee Corp',   inPath: false },
-      { name: 'Sheila Domingo',      section: 'D', role: 'Cashier',                   employer: 'Robinsons',       inPath: false },
-    ],
-  },
-  {
-    id: 'b2023', label: '2023 â€“ 2024', course: 'BSIT', campus: 'Talisay Campus',
-    total: 134, inPath: 87, notInPath: 47,
-    topRoles: ['Software Engineer', 'IT Support', 'Web Developer', 'Systems Analyst', 'DevOps'],
-    topRoleCounts: [30, 24, 18, 9, 6],
-    trend: [25, 44, 65, 87],
-    trendLabels: ['2024', '2025', '2026 (est.)'],
-    notInPathRoles: ['BPO Agent', 'Admin Staff', 'Store Crew'],
-    notInPathCounts: [20, 18, 9],
-    students: [
-      { name: 'Danielle Cruz',       section: 'A', role: 'Software Engineer',         employer: 'Exist Global',    inPath: true  },
-      { name: 'Marco Villanueva',    section: 'A', role: 'IT Support',                employer: 'Citco',           inPath: true  },
-      { name: 'Sofia Ramos',         section: 'B', role: 'Web Developer',             employer: 'Freelance',       inPath: true  },
-      { name: 'Nathan Tan',          section: 'B', role: 'DevOps Engineer',           employer: 'Pointwest Tech',  inPath: true  },
-      { name: 'Isabela Morales',     section: 'C', role: 'Systems Analyst',           employer: 'Metrobank',       inPath: true  },
-      { name: 'Gian Dela Cruz',      section: 'C', role: 'BPO Agent',                 employer: 'Convergys',       inPath: false },
-      { name: 'Carmela Santos',      section: 'D', role: 'Admin Staff',               employer: 'Bacolod City Hall',inPath: false },
-      { name: 'Rodel Mercado',       section: 'D', role: 'Store Crew',                employer: 'Puregold',        inPath: false },
-    ],
-  },
-  {
-    id: 'b2024', label: '2024 â€“ 2025', course: 'BSCS', campus: 'Fortune Towne Campus',
-    total: 88, inPath: 44, notInPath: 44,
-    topRoles: ['Junior Developer', 'IT Intern', 'Tech Support', 'Data Analyst'],
-    topRoleCounts: [18, 14, 8, 4],
-    trend: [20, 50],
-    trendLabels: ['2025', '2026 (est.)'],
-    notInPathRoles: ['Call Center Agent', 'Sales', 'Unemployed'],
-    notInPathCounts: [20, 14, 10],
-    students: [
-      { name: 'Kyla Reyes',          section: 'A', role: 'Junior Developer',          employer: 'Sari-Sari Tech',  inPath: true  },
-      { name: 'Aldrin Macaraeg',     section: 'A', role: 'IT Intern',                 employer: 'Smart Comms',     inPath: true  },
-      { name: 'Bianca Laguardia',    section: 'B', role: 'Data Analyst',              employer: 'UnionBank',       inPath: true  },
-      { name: 'Nico Fabian',         section: 'B', role: 'Tech Support',              employer: 'Globe Telecom',   inPath: true  },
-      { name: 'Hanna Espinosa',      section: 'C', role: 'Call Center Agent',         employer: 'Teleperformance', inPath: false },
-      { name: 'Elmer Santiago',      section: 'C', role: 'Sales',                     employer: 'LBC Express',     inPath: false },
-      { name: 'Tricia Buenaventura', section: 'D', role: 'Unemployed',                employer: 'â€”',               inPath: false },
-      { name: 'Josef Magbanua',      section: 'D', role: 'Call Center Agent',         employer: 'TTEC',            inPath: false },
-    ],
-  },
-];
-
-/* Overall summary across all batches */
-const OVERALL = {
-  totalAlumni: BATCHES.reduce((s, b) => s + b.total, 0),
-  inPath:      BATCHES.reduce((s, b) => s + b.inPath, 0),
-  batchCount:  BATCHES.length,
-  avgRate: 0,
-};
-OVERALL.avgRate = Math.round((OVERALL.inPath / OVERALL.totalAlumni) * 100);
-
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-   HELPERS
-   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-
-function pct(n, total) { return Math.round((n / total) * 100); }
+function pct(n, total) { return total > 0 ? Math.round((n / total) * 100) : 0; }
 
 function barChart(labels, values, max, color = '#6366F1') {
   return labels.map((lbl, i) => {
@@ -135,7 +35,7 @@ function sparkline(values, width = 600, height = 72, color = '#6366F1') {
   const ptsStr   = pts.map(p => `${p.x},${p.y}`).join(' ');
   const lastPt   = pts[pts.length - 1];
   const areaPath = `M0,${pts[0].y} L${ptsStr.replace(/^\S+/, '')} L${lastPt.x},${height} L0,${height} Z`;
-  const uid      = values.join('').replace(/\./g, '');
+  const uid      = values.join('').replace(/\./g, '') + Math.floor(Math.random() * 1000);
   const dots     = pts.map((p, i) => {
     const isLast  = i === pts.length - 1;
     const leftPct = ((i / (pts.length - 1)) * 100).toFixed(2);
@@ -172,9 +72,9 @@ function donut(inPct, size = 80, strokeW = 10, colorIn = '#6366F1', colorOut = '
 }
 
 /* ─────────────────────────────────────────────────────────────
-   STUDENT TABLE  (paginated – PAGE_SIZE rows per page)
+   ORIGINAL STUDENT TABLE (PAGINATED IN BATCH PANEL)
    ───────────────────────────────────────────────────────────── */
-const PAGE_SIZE = 12;
+const PAGE_SIZE = 10;
 
 function studentTableRows(students, page) {
   const start = page * PAGE_SIZE;
@@ -254,10 +154,9 @@ function studentTable(students, course, batch, batchId, page = 0) {
     </div>`;
 }
 
-
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-   COLLAPSIBLE BATCH PANEL
-   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ─────────────────────────────────────────────────────────────
+   ORIGINAL COLLAPSIBLE BATCH PANEL (UNTOUCHED)
+   ───────────────────────────────────────────────────────────── */
 function renderBatchPanel(b) {
   const inPct  = pct(b.inPath, b.total);
   const outPct = 100 - inPct;
@@ -280,8 +179,6 @@ function renderBatchPanel(b) {
 
   return `
     <div class="an-panel" id="${b.id}" data-campus="${b.campus}" data-course="${b.course}" data-status="${inPct >= 70 ? 'good' : inPct >= 50 ? 'mid' : 'low'}">
-
-      <!-- â”€â”€ Collapse Header (always visible) â”€â”€ -->
       <button class="an-panel__trigger" aria-expanded="false" aria-controls="${b.id}-body">
         <div class="an-panel__trigger-left">
           <span class="an-panel__chevron">${icon('chevronRight', 16)}</span>
@@ -292,7 +189,6 @@ function renderBatchPanel(b) {
           </div>
         </div>
         <div class="an-panel__trigger-right">
-          <!-- Mini inline bar -->
           <div class="an-panel__mini-bar">
             <div class="an-panel__mini-fill" style="width:${inPct}%;background:${color}"></div>
           </div>
@@ -303,11 +199,8 @@ function renderBatchPanel(b) {
         </div>
       </button>
 
-      <!-- â”€â”€ Collapse Body â”€â”€ -->
       <div class="an-panel__body" id="${b.id}-body">
         <div class="an-panel__body-inner">
-
-          <!-- Stats row -->
           <div class="an-stats-row">
             <div class="an-donut-wrap">
               <div class="an-donut-chart">
@@ -329,7 +222,6 @@ function renderBatchPanel(b) {
             </div>
           </div>
 
-          <!-- Detail grid -->
           <div class="an-detail-grid">
             <div class="an-detail-col">
               <p class="an-section-label">${icon('checkCircle', 12)} Top IT Roles Held</p>
@@ -349,126 +241,20 @@ function renderBatchPanel(b) {
             </div>
           </div>
 
-          <!-- Student table -->
           ${studentTable(b.students, b.course, b.label, b.id)}
-
         </div>
       </div>
     </div>`;
 }
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-   MAIN EXPORT
-   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-function _OLD_AnalyticsPage(container) {
-  container.innerHTML = `
-    <div class="page-header">
-      <h1 class="page-header__title">${icon('award', 22)} Alumni Tracker</h1>
-      <p class="page-header__subtitle">Track whether graduates are following their IT career path by batch and course</p>
-    </div>
-
-    <!-- KPI strip -->
-    <div class="an-kpi-strip">
-      <div class="an-kpi">
-        <span class="an-kpi__icon" style="background:rgba(99,102,241,.1);color:#6366F1">${icon('users', 18)}</span>
-        <div><p class="an-kpi__val">${OVERALL.totalAlumni}</p><p class="an-kpi__label">Total Alumni Tracked</p></div>
-      </div>
-      <div class="an-kpi">
-        <span class="an-kpi__icon" style="background:rgba(16,185,129,.1);color:#10B981">${icon('check-circle', 18)}</span>
-        <div><p class="an-kpi__val">${OVERALL.inPath}</p><p class="an-kpi__label">In IT Career Path</p></div>
-      </div>
-      <div class="an-kpi">
-        <span class="an-kpi__icon" style="background:rgba(99,102,241,.1);color:#6366F1">${icon('target', 18)}</span>
-        <div><p class="an-kpi__val">${OVERALL.avgRate}%</p><p class="an-kpi__label">Overall In-Path Rate</p></div>
-      </div>
-      <div class="an-kpi">
-        <span class="an-kpi__icon" style="background:rgba(245,158,11,.1);color:#F59E0B">${icon('book-open', 18)}</span>
-        <div><p class="an-kpi__val">${OVERALL.batchCount}</p><p class="an-kpi__label">Batches Analysed</p></div>
-      </div>
-    </div>
-
-    <!-- Filter bar -->
-    <div class="toolbar" style="margin-bottom:var(--space-5)">
-      <div class="toolbar__left">
-        <select class="form-select an-filter" id="filter-campus" style="width:auto;padding:7px 32px 7px 10px;">
-          <option value="">All Campuses</option>
-          <option>Alijis Campus</option><option>Talisay Campus</option><option>Fortune Towne Campus</option>
-        </select>
-        <select class="form-select an-filter" id="filter-course" style="width:auto;padding:7px 32px 7px 10px;">
-          <option value="">All Courses</option>
-          <option>BSIT</option><option>BSCS</option>
-        </select>
-        <select class="form-select an-filter" id="filter-status" style="width:auto;padding:7px 32px 7px 10px;">
-          <option value="">All Status</option>
-          <option value="good">On Track (&ge;70%)</option>
-          <option value="mid">Moderate (50-69%)</option>
-          <option value="low">Low In-Path (&lt;50%)</option>
-        </select>
-      </div>
-      <div class="toolbar__right">
-        <span class="an-note">${icon('alertCircle', 13)} Static demo data â€” live data coming soon</span>
-      </div>
-    </div>
-
-    <!-- Batch panels -->
-    <div class="an-batch-list" id="an-batch-list">
-      ${BATCHES.map(renderBatchPanel).join('')}
-    </div>
-  `;
-
-  renderIcons();
-
-  /* â”€â”€ Collapse toggle â”€â”€ */
-  container.querySelectorAll('.an-panel__trigger').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const expanded = btn.getAttribute('aria-expanded') === 'true';
-      btn.setAttribute('aria-expanded', String(!expanded));
-      const panel = btn.closest('.an-panel');
-      panel.classList.toggle('an-panel--open', !expanded);
-    });
-  });
-
-  /* â”€â”€ Filter logic â”€â”€ */
-  function applyFilters() {
-    const campus = container.querySelector('#filter-campus').value;
-    const course = container.querySelector('#filter-course').value;
-    const status = container.querySelector('#filter-status').value;
-    container.querySelectorAll('.an-panel').forEach(el => {
-      const match =
-        (!campus || el.dataset.campus === campus) &&
-        (!course || el.dataset.course === course) &&
-        (!status || el.dataset.status === status);
-      el.style.display = match ? '' : 'none';
-    });
-  }
-  container.querySelectorAll('.an-filter').forEach(sel => sel.addEventListener('change', applyFilters));
-
-  /* -- Pagination -- */
-  container.querySelector('#an-batch-list').addEventListener('click', e => {
-    const pgBtn = e.target.closest('.an-pg-btn');
-    if (!pgBtn || pgBtn.disabled) return;
-    const page = parseInt(pgBtn.dataset.page, 10);
-    const section = pgBtn.closest('.an-student-section');
-    const batchId = section.dataset.batchId;
-    const batch = BATCHES.find(b => b.id === batchId);
-    if (!batch) return;
-    const tmp = document.createElement('div');
-    tmp.innerHTML = studentTable(batch.students, batch.course, batch.label, batch.id, page);
-    section.replaceWith(tmp.firstElementChild);
-    renderIcons();
-  });
-}
-/* ── REPLACED BELOW: all new dynamic helpers live here ── */
-
-/* ── Build KPI strip HTML ── */
-function renderKpiStrip(overall) {
+function renderCareerKpiStrip(overall) {
   return `
     <div class="an-kpi">
       <span class="an-kpi__icon" style="background:rgba(99,102,241,.1);color:#6366F1">${icon('users', 18)}</span>
       <div><p class="an-kpi__val">${overall.totalAlumni}</p><p class="an-kpi__label">Total Alumni Tracked</p></div>
     </div>
     <div class="an-kpi">
-      <span class="an-kpi__icon" style="background:rgba(16,185,129,.1);color:#10B981">${icon('check-circle', 18)}</span>
+      <span class="an-kpi__icon" style="background:rgba(16,185,129,.1);color:#10B981">${icon('checkCircle', 18)}</span>
       <div><p class="an-kpi__val">${overall.inPath}</p><p class="an-kpi__label">In IT Career Path</p></div>
     </div>
     <div class="an-kpi">
@@ -476,27 +262,20 @@ function renderKpiStrip(overall) {
       <div><p class="an-kpi__val">${overall.avgRate}%</p><p class="an-kpi__label">Overall In-Path Rate</p></div>
     </div>
     <div class="an-kpi">
-      <span class="an-kpi__icon" style="background:rgba(245,158,11,.1);color:#F59E0B">${icon('book-open', 18)}</span>
+      <span class="an-kpi__icon" style="background:rgba(245,158,11,.1);color:#F59E0B">${icon('bookOpen', 18)}</span>
       <div><p class="an-kpi__val">${overall.batchCount}</p><p class="an-kpi__label">Batches Analysed</p></div>
     </div>`;
 }
 
-/* ── Build dynamic <option> list from unique batch field values ── */
 function buildFilterOptions(batches, field) {
   return [...new Set(batches.map(b => b[field]).filter(Boolean))].sort()
     .map(v => `<option value="${v}">${v}</option>`).join('');
 }
 
-/* ── Full page render once data is loaded ── */
-function renderAnalytics(container, batches, overall, onImportSuccess) {
-  container.innerHTML = `
-    <div class="page-header">
-      <h1 class="page-header__title">${icon('award', 22)} Alumni Tracker</h1>
-      <p class="page-header__subtitle">Track whether graduates are following their IT career path by batch and course</p>
-    </div>
-
+function renderCareerView(batches, overall) {
+  return `
     <div class="an-kpi-strip">
-      ${renderKpiStrip(overall)}
+      ${renderCareerKpiStrip(overall)}
     </div>
 
     <div class="toolbar" style="margin-bottom:var(--space-5)">
@@ -522,9 +301,6 @@ function renderAnalytics(container, batches, overall, onImportSuccess) {
           ${overall.totalAlumni} graduate${overall.totalAlumni !== 1 ? 's' : ''} &middot;
           ${overall.batchCount} batch${overall.batchCount !== 1 ? 'es' : ''}
         </span>
-        <button class="btn btn--primary btn--sm" id="btn-batch-alumni" style="display:inline-flex;align-items:center;gap:6px;">
-          ${icon('upload', 14)} Batch Register Alumni
-        </button>
       </div>
     </div>
 
@@ -534,17 +310,11 @@ function renderAnalytics(container, batches, overall, onImportSuccess) {
         : `<div style="padding:64px;text-align:center;color:var(--text-secondary)">
              ${icon('users', 40)}<p style="margin-top:12px">No graduate records found.</p>
            </div>`}
-    </div>`;
+    </div>
+  `;
+}
 
-  renderIcons();
-
-  /* Batch Register Alumni button */
-  container.querySelector('#btn-batch-alumni')?.addEventListener('click', () => {
-    openAlumniImportModal(() => {
-      if (typeof onImportSuccess === 'function') onImportSuccess();
-    });
-  });
-
+function setupCareerViewListeners(container, batches) {
   /* Collapse toggle */
   container.querySelectorAll('.an-panel__trigger').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -554,11 +324,11 @@ function renderAnalytics(container, batches, overall, onImportSuccess) {
     });
   });
 
-  /* Filter */
+  /* Original Filter */
   function applyFilters() {
-    const campus = container.querySelector('#filter-campus').value;
-    const course = container.querySelector('#filter-course').value;
-    const status = container.querySelector('#filter-status').value;
+    const campus = container.querySelector('#filter-campus')?.value;
+    const course = container.querySelector('#filter-course')?.value;
+    const status = container.querySelector('#filter-status')?.value;
     container.querySelectorAll('.an-panel').forEach(el => {
       const match =
         (!campus || el.dataset.campus === campus) &&
@@ -569,8 +339,8 @@ function renderAnalytics(container, batches, overall, onImportSuccess) {
   }
   container.querySelectorAll('.an-filter').forEach(sel => sel.addEventListener('change', applyFilters));
 
-  /* Pagination */
-  container.querySelector('#an-batch-list').addEventListener('click', e => {
+  /* Original Pagination */
+  container.querySelector('#an-batch-list')?.addEventListener('click', e => {
     const pgBtn = e.target.closest('.an-pg-btn');
     if (!pgBtn || pgBtn.disabled) return;
     const page    = parseInt(pgBtn.dataset.page, 10);
@@ -585,17 +355,909 @@ function renderAnalytics(container, batches, overall, onImportSuccess) {
   });
 }
 
-/* ── Main export ── */
+/* ─────────────────────────────────────────────────────────────
+   REDESIGNED 3 PEO ANALYTICS (CIRCULAR GAUGES, TOP FILTER, PAGINATION)
+   ───────────────────────────────────────────────────────────── */
+
+function renderRadialGauge(attainmentPct, size = 90, strokeW = 8, color = '#005930') {
+  const r = (size - strokeW) / 2;
+  const circ = 2 * Math.PI * r;
+  const clamped = Math.min(100, Math.max(0, attainmentPct));
+  const dashIn = (clamped / 100) * circ;
+  const cx = size / 2, cy = size / 2;
+
+  return `
+    <div class="peo-radial-wrap">
+      <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="transform:rotate(-90deg)">
+        <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--bg-secondary)" stroke-width="${strokeW}"/>
+        <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="${strokeW}"
+          stroke-dasharray="${dashIn.toFixed(2)} ${(circ - dashIn).toFixed(2)}" stroke-linecap="round"/>
+      </svg>
+      <div class="peo-radial-center">
+        <span class="peo-radial-pct" style="color:${color}">${attainmentPct}%</span>
+        <span class="peo-radial-sub">Attained</span>
+      </div>
+    </div>
+  `;
+}
+
+function renderPeoTriad(peoData) {
+  if (!peoData || !peoData.peo_objectives || peoData.peo_objectives.length === 0) {
+    return `<div style="padding:48px;text-align:center;color:var(--text-secondary)">No PEO telemetry available for this cohort selection.</div>`;
+  }
+
+  const pillars = peoData.pillars || {};
+  const align = pillars.alignment || {};
+  const prog  = pillars.progression || {};
+  const skill = pillars.skill_relevancy || {};
+
+  const peo1 = peoData.peo_objectives.find(o => o.code === 'PEO 1') || peoData.peo_objectives[0];
+  const peo2 = peoData.peo_objectives.find(o => o.code === 'PEO 2') || peoData.peo_objectives[1];
+  const peo3 = peoData.peo_objectives.find(o => o.code === 'PEO 3') || peoData.peo_objectives[2];
+
+  function getCardColor(pctVal, benchVal) {
+    if (pctVal >= benchVal) return '#005930';
+    if (pctVal >= benchVal - 10) return '#D97706';
+    return '#EF4444';
+  }
+
+  function getBadgeClass(status) {
+    const s = (status || '').toLowerCase();
+    if (s.includes('achieved')) return 'peo-triad-card__badge--achieved';
+    if (s.includes('approach')) return 'peo-triad-card__badge--approaching';
+    return 'peo-triad-card__badge--needs-intervention';
+  }
+
+  function renderDeltaTag(actual, target) {
+    const diff = (actual - target).toFixed(1);
+    if (diff >= 0) {
+      return `<span class="peo-variance-tag" style="color:#005930">${icon('trendingUp', 12)} +${diff}% Above Target</span>`;
+    }
+    return `<span class="peo-variance-tag" style="color:#EF4444">${icon('trendingDown', 12)} ${diff}% Below Target</span>`;
+  }
+
+  const c1Color = getCardColor(peo1.attainment_pct, peo1.target_benchmark);
+  const topSectors = (align.sectors || []).slice(0, 3).map(s => `
+    <div class="peo-submetric-row">
+      <span class="peo-submetric-label">${icon('chevronRight', 11)} ${s.name}</span>
+      <span class="peo-submetric-val">${s.pct}% <span style="font-size:0.65rem;color:var(--text-tertiary);">(${s.count})</span></span>
+    </div>
+  `).join('') || '<div class="peo-submetric-row"><span class="peo-submetric-label">Aggregating role taxonomy...</span></div>';
+
+  const c2Color = getCardColor(peo2.attainment_pct, peo2.target_benchmark);
+
+  const c3Color = getCardColor(peo3.attainment_pct, peo3.target_benchmark);
+  const strengthsPills = (skill.curriculum_strengths || []).slice(0, 3).map(cs => `
+    <span class="peo-tag-pill" style="border:1px solid rgba(0,89,48,0.25);color:#005930;background:rgba(0,89,48,0.06);">
+      ${cs.skill} &middot; ${cs.coverage_pct}%
+    </span>
+  `).join('') || '<span style="font-size:0.7rem;color:var(--text-tertiary);">Analyzing job market skills...</span>';
+
+  const gapPills = (skill.emerging_gap_skills || []).slice(0, 2).map(g => `
+    <span class="peo-tag-pill" style="border:1px solid rgba(217,119,6,0.25);color:#D97706;background:rgba(245,158,11,0.06);">
+      ${g.skill}
+    </span>
+  `).join('') || '<span style="font-size:0.7rem;color:var(--text-tertiary);">Curriculum aligned with postings</span>';
+
+  return `
+    <div class="peo-triad-grid">
+      <!-- PEO 1: Employment Alignment -->
+      <div class="peo-triad-card">
+        <div>
+          <div class="peo-triad-card__top">
+            <span class="peo-triad-card__code">${icon('briefcase', 14)} PEO 1</span>
+            <span class="peo-triad-card__badge ${getBadgeClass(peo1.status)}">${peo1.status}</span>
+          </div>
+
+          <h3 class="peo-triad-title">Employment Alignment</h3>
+
+          <div class="peo-gauge-section">
+            ${renderRadialGauge(peo1.attainment_pct, 90, 8, c1Color)}
+            <div class="peo-gauge-meta">
+              <div class="peo-gauge-score">
+                ${peo1.avg_score} <span class="peo-gauge-score-sub">/ 5.00 Rating</span>
+              </div>
+              <div style="font-size:0.75rem;color:var(--text-secondary);">
+                Target Benchmark: <strong>${peo1.target_benchmark}%</strong>
+              </div>
+              ${renderDeltaTag(peo1.attainment_pct, peo1.target_benchmark)}
+            </div>
+          </div>
+
+          <p class="peo-triad-question">
+            &ldquo;What percentage of graduates are working in jobs that align with their degree's educational objectives?&rdquo;
+          </p>
+
+          <div class="peo-submetrics-list">
+            <div class="peo-submetric-row">
+              <span class="peo-submetric-label">${icon('checkCircle', 12)} Core IT Degree Roles</span>
+              <span class="peo-submetric-val" style="color:#005930">${align.aligned_count || 0} (${align.rate || 0}%)</span>
+            </div>
+            <div class="peo-submetric-row">
+              <span class="peo-submetric-label">${icon('alertCircle', 12)} Non-IT / Adjacent Field</span>
+              <span class="peo-submetric-val">${(align.adjacent_count || 0) + (align.unrelated_count || 0)}</span>
+            </div>
+            <div style="font-size:0.68rem;font-weight:600;color:var(--text-tertiary);text-transform:uppercase;margin-top:4px;">
+              Top Employment Sectors:
+            </div>
+            ${topSectors}
+          </div>
+        </div>
+
+        <div class="peo-meter-wrap">
+          <div class="peo-meter-header">
+            <span style="font-weight:600;color:var(--text-primary);">${peo1.alumni_meeting_benchmark} / ${peo1.alumni_assessed} Met Standard</span>
+            <span class="peo-meter-bench">${peo1.meeting_benchmark_pct}% Compliance</span>
+          </div>
+          <div class="peo-meter-track">
+            <div class="peo-meter-target-line" style="left:${peo1.target_benchmark}%" title="Target Benchmark (${peo1.target_benchmark}%)"></div>
+            <div class="peo-meter-fill" style="width:${Math.min(100, peo1.attainment_pct)}%;background:${c1Color}"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PEO 2: Career Progression -->
+      <div class="peo-triad-card">
+        <div>
+          <div class="peo-triad-card__top">
+            <span class="peo-triad-card__code">${icon('trendingUp', 14)} PEO 2</span>
+            <span class="peo-triad-card__badge ${getBadgeClass(peo2.status)}">${peo2.status}</span>
+          </div>
+
+          <h3 class="peo-triad-title">Career Progression</h3>
+
+          <div class="peo-gauge-section">
+            ${renderRadialGauge(peo2.attainment_pct, 90, 8, c2Color)}
+            <div class="peo-gauge-meta">
+              <div class="peo-gauge-score">
+                ${peo2.avg_score} <span class="peo-gauge-score-sub">/ 5.00 Rating</span>
+              </div>
+              <div style="font-size:0.75rem;color:var(--text-secondary);">
+                Target Benchmark: <strong>${peo2.target_benchmark}%</strong>
+              </div>
+              ${renderDeltaTag(peo2.attainment_pct, peo2.target_benchmark)}
+            </div>
+          </div>
+
+          <p class="peo-triad-question">
+            &ldquo;Are alumni achieving leadership roles, starting businesses, or passing board exams within 3–5 years of graduating?&rdquo;
+          </p>
+
+          <div class="peo-submetrics-list">
+            <div class="peo-submetric-row">
+              <span class="peo-submetric-label">${icon('award', 12)} Senior &amp; Leadership Roles</span>
+              <span class="peo-submetric-val">${prog.leadership_count || 0} (${prog.leadership_rate || 0}%)</span>
+            </div>
+            <div class="peo-submetric-row">
+              <span class="peo-submetric-label">${icon('fileText', 12)} Industry &amp; Board Credentials</span>
+              <span class="peo-submetric-val">${prog.certification_count || 0} (${prog.certification_rate || 0}%)</span>
+            </div>
+            <div class="peo-submetric-row">
+              <span class="peo-submetric-label">${icon('zap', 12)} Founders &amp; Entrepreneurs</span>
+              <span class="peo-submetric-val">${prog.entrepreneurship_count || 0} (${prog.entrepreneurship_rate || 0}%)</span>
+            </div>
+            <div class="peo-submetric-row">
+              <span class="peo-submetric-label">${icon('bookOpen', 12)} Post-Graduate Studies</span>
+              <span class="peo-submetric-val">${prog.postgrad_count || 0} (${prog.postgrad_rate || 0}%)</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="peo-meter-wrap">
+          <div class="peo-meter-header">
+            <span style="font-weight:600;color:var(--text-primary);">${peo2.alumni_meeting_benchmark} / ${peo2.alumni_assessed} Met Standard</span>
+            <span class="peo-meter-bench">${peo2.meeting_benchmark_pct}% Compliance</span>
+          </div>
+          <div class="peo-meter-track">
+            <div class="peo-meter-target-line" style="left:${peo2.target_benchmark}%" title="Target Benchmark (${peo2.target_benchmark}%)"></div>
+            <div class="peo-meter-fill" style="width:${Math.min(100, peo2.attainment_pct)}%;background:${c2Color}"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PEO 3: Skill Relevancy -->
+      <div class="peo-triad-card">
+        <div>
+          <div class="peo-triad-card__top">
+            <span class="peo-triad-card__code">${icon('target', 14)} PEO 3</span>
+            <span class="peo-triad-card__badge ${getBadgeClass(peo3.status)}">${peo3.status}</span>
+          </div>
+
+          <h3 class="peo-triad-title">Skill Relevancy</h3>
+
+          <div class="peo-gauge-section">
+            ${renderRadialGauge(peo3.attainment_pct, 90, 8, c3Color)}
+            <div class="peo-gauge-meta">
+              <div class="peo-gauge-score">
+                ${peo3.avg_score} <span class="peo-gauge-score-sub">/ 5.00 Rating</span>
+              </div>
+              <div style="font-size:0.75rem;color:var(--text-secondary);">
+                Target Benchmark: <strong>${peo3.target_benchmark}%</strong>
+              </div>
+              ${renderDeltaTag(peo3.attainment_pct, peo3.target_benchmark)}
+            </div>
+          </div>
+
+          <p class="peo-triad-question">
+            &ldquo;How well did the academic program prepare them for the industry's actual requirements?&rdquo;
+          </p>
+
+          <div class="peo-submetrics-list">
+            <div class="peo-submetric-row">
+              <span class="peo-submetric-label">${icon('cpu', 12)} Employer Postings Coverage</span>
+              <span class="peo-submetric-val" style="color:#005930">${skill.relevancy_score || 0}%</span>
+            </div>
+            <div style="margin-top:4px;">
+              <div style="font-size:0.68rem;font-weight:600;color:var(--text-tertiary);text-transform:uppercase;margin-bottom:4px;">
+                Verified Curriculum Strengths:
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;">
+                ${strengthsPills}
+              </div>
+            </div>
+            <div>
+              <div style="font-size:0.68rem;font-weight:600;color:var(--text-tertiary);text-transform:uppercase;margin-bottom:4px;">
+                Emerging Market Skills:
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:4px;">
+                ${gapPills}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="peo-meter-wrap">
+          <div class="peo-meter-header">
+            <span style="font-weight:600;color:var(--text-primary);">${peo3.alumni_meeting_benchmark} / ${peo3.alumni_assessed} Met Standard</span>
+            <span class="peo-meter-bench">${peo3.meeting_benchmark_pct}% Compliance</span>
+          </div>
+          <div class="peo-meter-track">
+            <div class="peo-meter-target-line" style="left:${peo3.target_benchmark}%" title="Target Benchmark (${peo3.target_benchmark}%)"></div>
+            <div class="peo-meter-fill" style="width:${Math.min(100, peo3.attainment_pct)}%;background:${c3Color}"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderCqiInsights(peoData) {
+  const strengthsHtml = (peoData.strengths || []).map(s => `
+    <li class="peo-insight-item">
+      <span style="color:#005930">${icon('checkCircle', 14)}</span>
+      <span>${s}</span>
+    </li>
+  `).join('') || `<li class="peo-insight-item"><span>Collating baseline accreditation telemetry.</span></li>`;
+
+  const interventionsHtml = (peoData.interventions || []).map(item => `
+    <li class="peo-insight-item">
+      <span style="color:#D97706">${icon('alertTriangle', 14)}</span>
+      <span>${item}</span>
+    </li>
+  `).join('') || `<li class="peo-insight-item"><span style="color:#005930">${icon('check', 14)} All 3 Program Educational Objectives meet or exceed CHED/PACUCOA target benchmarks.</span></li>`;
+
+  return `
+    <div class="peo-insights-box">
+      <div class="peo-insight-col">
+        <h4 style="color:#005930">${icon('award', 16)} Program Strengths (Accreditation Ready)</h4>
+        <ul class="peo-insight-list">
+          ${strengthsHtml}
+        </ul>
+      </div>
+      <div class="peo-insight-col">
+        <h4 style="color:#D97706">${icon('trendingUp', 16)} Continuous Quality Improvement (CQI Action Plan)</h4>
+        <ul class="peo-insight-list">
+          ${interventionsHtml}
+        </ul>
+      </div>
+    </div>
+  `;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   PAGINATED ALUMNI EVALUATION MATRIX TABLE & MODAL
+   ───────────────────────────────────────────────────────────── */
+let _tableSearch = '';
+let _tablePage = 0;
+let _tablePageSize = 10;
+let _tableStatusFilter = '';
+
+function renderAlumniMatrixTable(drilldown) {
+  const list = drilldown || [];
+
+  const filtered = list.filter(a => {
+    if (_tableSearch) {
+      const q = _tableSearch.toLowerCase();
+      const matchName = (a.name || '').toLowerCase().includes(q);
+      const matchRole = (a.current_role || '').toLowerCase().includes(q);
+      const matchEmp  = (a.employer || '').toLowerCase().includes(q);
+      const matchSec  = (a.section || '').toLowerCase().includes(q);
+      if (!matchName && !matchRole && !matchEmp && !matchSec) return false;
+    }
+
+    if (_tableStatusFilter) {
+      const p1Met = a.peo_scores['PEO 1']?.is_met;
+      const p2Met = a.peo_scores['PEO 2']?.is_met;
+      const p3Met = a.peo_scores['PEO 3']?.is_met;
+      const metCount = (p1Met ? 1 : 0) + (p2Met ? 1 : 0) + (p3Met ? 1 : 0);
+
+      if (_tableStatusFilter === 'good' && metCount < 3) return false;
+      if (_tableStatusFilter === 'mid'  && (metCount === 3 || metCount === 0)) return false;
+      if (_tableStatusFilter === 'low'  && metCount > 0) return false;
+    }
+
+    return true;
+  });
+
+  const totalCount = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / _tablePageSize));
+  if (_tablePage >= totalPages) _tablePage = totalPages - 1;
+  if (_tablePage < 0) _tablePage = 0;
+
+  const startIdx = _tablePage * _tablePageSize;
+  const endIdx = Math.min(startIdx + _tablePageSize, totalCount);
+  const pageItems = filtered.slice(startIdx, endIdx);
+
+  const rowsHtml = pageItems.map((a, idx) => {
+    const p1 = a.peo_scores['PEO 1'] || { score: '—', is_met: false, evidence: '' };
+    const p2 = a.peo_scores['PEO 2'] || { score: '—', is_met: false, evidence: '' };
+    const p3 = a.peo_scores['PEO 3'] || { score: '—', is_met: false, evidence: '' };
+
+    const metCount = (p1.is_met ? 1 : 0) + (p2.is_met ? 1 : 0) + (p3.is_met ? 1 : 0);
+    const overallBadge = metCount === 3
+      ? `<span class="badge" style="background:rgba(0,89,48,0.1);color:#005930;font-weight:600;font-size:0.68rem;">3/3 Achieved</span>`
+      : (metCount >= 1
+        ? `<span class="badge" style="background:rgba(245,158,11,0.12);color:#D97706;font-weight:600;font-size:0.68rem;">${metCount}/3 Progressing</span>`
+        : `<span class="badge" style="background:rgba(239,68,68,0.12);color:#EF4444;font-weight:600;font-size:0.68rem;">Under Review</span>`);
+
+    return `
+      <tr class="an-tbl-row">
+        <td class="an-tbl-td an-tbl-td--num">${startIdx + idx + 1}</td>
+        <td class="an-tbl-td">
+          <div class="an-tbl-name">
+            <div class="an-tbl-avatar">${(a.name || 'Alum').split(' ').map(w => w[0]).slice(0, 2).join('')}</div>
+            <div>
+              <div style="font-weight:600;color:var(--text-primary);">${a.name}</div>
+              <div style="font-size:0.68rem;color:var(--text-tertiary);">${a.current_role} &middot; <strong>${a.employer}</strong></div>
+            </div>
+          </div>
+        </td>
+        <td class="an-tbl-td"><span class="an-tbl-section">${a.batch}</span></td>
+        <td class="an-tbl-td"><span class="an-tbl-section">Sec ${a.section}</span></td>
+        <td class="an-tbl-td">
+          <span class="peo-alumni-cell-score ${p1.is_met ? 'peo-alumni-cell-score--met' : 'peo-alumni-cell-score--unmet'}" title="${p1.evidence || ''}">
+            ${p1.score} ${p1.is_met ? icon('check', 11) : ''}
+          </span>
+        </td>
+        <td class="an-tbl-td">
+          <span class="peo-alumni-cell-score ${p2.is_met ? 'peo-alumni-cell-score--met' : 'peo-alumni-cell-score--unmet'}" title="${p2.evidence || ''}">
+            ${p2.score} ${p2.is_met ? icon('check', 11) : ''}
+          </span>
+        </td>
+        <td class="an-tbl-td">
+          <span class="peo-alumni-cell-score ${p3.is_met ? 'peo-alumni-cell-score--met' : 'peo-alumni-cell-score--unmet'}" title="${p3.evidence || ''}">
+            ${p3.score} ${p3.is_met ? icon('check', 11) : ''}
+          </span>
+        </td>
+        <td class="an-tbl-td">${overallBadge}</td>
+        <td class="an-tbl-td" style="text-align:right;">
+          <button class="btn btn--outline btn--sm btn-inspect-alumni" data-alumni-id="${a.id}" style="padding:4px 8px;font-size:0.7rem;display:inline-flex;align-items:center;gap:4px;">
+            ${icon('eye', 12)} Evidence
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  const pageButtons = [];
+  const maxButtons = 5;
+  let startPage = Math.max(0, _tablePage - Math.floor(maxButtons / 2));
+  let endPage = Math.min(totalPages, startPage + maxButtons);
+  if (endPage - startPage < maxButtons) {
+    startPage = Math.max(0, endPage - maxButtons);
+  }
+
+  for (let p = startPage; p < endPage; p++) {
+    pageButtons.push(`
+      <button class="peo-pg-btn ${p === _tablePage ? 'peo-pg-btn--active' : ''}" data-page="${p}">
+        ${p + 1}
+      </button>
+    `);
+  }
+
+  return `
+    <div class="peo-table-card" id="peo-matrix-container">
+      <div class="peo-table-toolbar">
+        <div class="peo-table-title">
+          ${icon('clipboardCheck', 16)} Individual Graduate PEO Evaluation Matrix
+          <span class="badge badge--neutral" style="font-size:0.7rem;margin-left:6px;">${totalCount} In Cohort</span>
+        </div>
+        <div class="peo-table-actions">
+          <div class="peo-search-box" style="min-width:200px;">
+            ${icon('search', 13)}
+            <input type="text" id="alumni-table-search" class="peo-search-input"
+              placeholder="Search graduate name, employer, role..." value="${_tableSearch.replace(/"/g, '&quot;')}" />
+          </div>
+          <select id="alumni-page-size" class="peo-filter-select" style="padding:5px 24px 5px 8px;">
+            <option value="10" ${_tablePageSize === 10 ? 'selected' : ''}>10 per page</option>
+            <option value="25" ${_tablePageSize === 25 ? 'selected' : ''}>25 per page</option>
+            <option value="50" ${_tablePageSize === 50 ? 'selected' : ''}>50 per page</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="an-tbl-wrap">
+        <table class="an-tbl">
+          <thead>
+            <tr>
+              <th class="an-tbl-th an-tbl-th--num">#</th>
+              <th class="an-tbl-th">Graduate &amp; Verified Role</th>
+              <th class="an-tbl-th">Batch</th>
+              <th class="an-tbl-th">Section</th>
+              <th class="an-tbl-th" title="PEO 1: Degree Employment Alignment">PEO 1 Alignment</th>
+              <th class="an-tbl-th" title="PEO 2: Career Mobility, Leadership & Certifications">PEO 2 Progression</th>
+              <th class="an-tbl-th" title="PEO 3: Industry Skill & Project Relevancy">PEO 3 Relevancy</th>
+              <th class="an-tbl-th">Accreditation Status</th>
+              <th class="an-tbl-th" style="text-align:right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml || `<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--text-secondary);">No graduates match the active filter and search query.</td></tr>`}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="peo-pagination">
+        <div class="peo-pagination-info">
+          ${totalCount > 0
+            ? `Showing <strong>${startIdx + 1}–${endIdx}</strong> of <strong>${totalCount}</strong> graduates`
+            : 'No matching records'}
+        </div>
+        <div class="peo-pagination-btns">
+          <button class="peo-pg-btn" id="btn-pg-prev" ${_tablePage === 0 ? 'disabled' : ''} title="Previous Page">
+            ${icon('chevronLeft', 13)}
+          </button>
+          ${pageButtons.join('')}
+          <button class="peo-pg-btn" id="btn-pg-next" ${_tablePage >= totalPages - 1 ? 'disabled' : ''} title="Next Page">
+            ${icon('chevronRight', 13)}
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function openEvidenceModal(alumni) {
+  let modal = document.getElementById('peo-evidence-modal');
+  if (modal) modal.remove();
+
+  modal = document.createElement('div');
+  modal.id = 'peo-evidence-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px;backdrop-filter:blur(2px);';
+
+  const p1 = alumni.peo_scores['PEO 1'] || {};
+  const p2 = alumni.peo_scores['PEO 2'] || {};
+  const p3 = alumni.peo_scores['PEO 3'] || {};
+
+  modal.innerHTML = `
+    <div style="background:var(--bg-elevated);border-radius:var(--radius-2xl);max-width:620px;width:100%;max-height:90vh;display:flex;flex-direction:column;box-shadow:var(--shadow-xl);border:1px solid var(--border-default);overflow:hidden;">
+      <div style="padding:var(--space-4) var(--space-5);border-bottom:1px solid var(--border-default);display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <h3 style="font-size:var(--text-base);font-weight:700;color:var(--text-primary);margin:0;">
+            ${alumni.name}
+          </h3>
+          <p style="font-size:var(--text-xs);color:var(--text-secondary);margin:2px 0 0 0;">
+            Batch ${alumni.batch} &middot; Section ${alumni.section} &middot; ${alumni.course}
+          </p>
+        </div>
+        <button id="modal-close-btn" style="background:none;border:none;cursor:pointer;color:var(--text-tertiary);">${icon('x', 20)}</button>
+      </div>
+
+      <div style="padding:var(--space-5);overflow-y:auto;display:flex;flex-direction:column;gap:var(--space-4);">
+        <div style="background:var(--bg-secondary);padding:var(--space-3) var(--space-4);border-radius:var(--radius-lg);border:1px solid var(--border-default);">
+          <div style="font-size:0.72rem;font-weight:600;color:var(--text-tertiary);text-transform:uppercase;">Current Position</div>
+          <div style="font-size:0.88rem;font-weight:700;color:var(--text-primary);margin-top:2px;">${alumni.current_role}</div>
+          <div style="font-size:0.75rem;color:var(--text-secondary);">${alumni.employer}</div>
+        </div>
+
+        <div style="border:1px solid var(--border-default);border-radius:var(--radius-lg);padding:var(--space-4);">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <span style="font-weight:700;font-size:0.8rem;color:var(--color-primary);">PEO 1: Employment Alignment</span>
+            <span class="peo-alumni-cell-score ${p1.is_met ? 'peo-alumni-cell-score--met' : 'peo-alumni-cell-score--unmet'}">
+              Score: ${p1.score || 0} / 5.00 ${p1.is_met ? '(Met Target)' : '(Approaching)'}
+            </span>
+          </div>
+          <p style="font-size:0.74rem;color:var(--text-secondary);line-height:1.4;margin:0;">
+            ${p1.evidence || 'Evaluated based on post-graduation IT industry role and taxonomy match.'}
+          </p>
+        </div>
+
+        <div style="border:1px solid var(--border-default);border-radius:var(--radius-lg);padding:var(--space-4);">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <span style="font-weight:700;font-size:0.8rem;color:var(--color-primary);">PEO 2: Career Progression</span>
+            <span class="peo-alumni-cell-score ${p2.is_met ? 'peo-alumni-cell-score--met' : 'peo-alumni-cell-score--unmet'}">
+              Score: ${p2.score || 0} / 5.00 ${p2.is_met ? '(Met Target)' : '(Approaching)'}
+            </span>
+          </div>
+          <p style="font-size:0.74rem;color:var(--text-secondary);line-height:1.4;margin:0;">
+            ${p2.evidence || 'Evaluated based on 3-5 year leadership mobility, board examinations, and achievements.'}
+          </p>
+        </div>
+
+        <div style="border:1px solid var(--border-default);border-radius:var(--radius-lg);padding:var(--space-4);">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <span style="font-weight:700;font-size:0.8rem;color:var(--color-primary);">PEO 3: Skill Relevancy</span>
+            <span class="peo-alumni-cell-score ${p3.is_met ? 'peo-alumni-cell-score--met' : 'peo-alumni-cell-score--unmet'}">
+              Score: ${p3.score || 0} / 5.00 ${p3.is_met ? '(Met Target)' : '(Approaching)'}
+            </span>
+          </div>
+          <p style="font-size:0.74rem;color:var(--text-secondary);line-height:1.4;margin:0;">
+            ${p3.evidence || 'Evaluated based on candidate portfolio technical competencies matched against active employer job requirements.'}
+          </p>
+        </div>
+      </div>
+
+      <div style="padding:var(--space-3) var(--space-5);border-top:1px solid var(--border-default);display:flex;justify-content:flex-end;background:var(--bg-primary);">
+        <button class="btn btn--secondary btn--sm" id="modal-ok-btn">Close</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+  renderIcons();
+
+  const close = () => modal.remove();
+  modal.querySelector('#modal-close-btn')?.addEventListener('click', close);
+  modal.querySelector('#modal-ok-btn')?.addEventListener('click', close);
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) close();
+  });
+}
+
+function refreshTableView(container, drilldown) {
+  const tableContainer = container.querySelector('#peo-matrix-container');
+  if (tableContainer) {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = renderAlumniMatrixTable(drilldown);
+    tableContainer.replaceWith(tmp.firstElementChild);
+    setupTableEvents(container, drilldown);
+    renderIcons();
+  }
+}
+
+function setupTableEvents(container, drilldown) {
+  const searchInput = container.querySelector('#alumni-table-search');
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      _tableSearch = e.target.value.trim();
+      _tablePage = 0;
+      refreshTableView(container, drilldown);
+    });
+  }
+
+  const pageSizeSelect = container.querySelector('#alumni-page-size');
+  if (pageSizeSelect) {
+    pageSizeSelect.addEventListener('change', (e) => {
+      _tablePageSize = parseInt(e.target.value, 10);
+      _tablePage = 0;
+      refreshTableView(container, drilldown);
+    });
+  }
+
+  container.querySelector('#btn-pg-prev')?.addEventListener('click', () => {
+    if (_tablePage > 0) {
+      _tablePage--;
+      refreshTableView(container, drilldown);
+    }
+  });
+
+  container.querySelector('#btn-pg-next')?.addEventListener('click', () => {
+    _tablePage++;
+    refreshTableView(container, drilldown);
+  });
+
+  container.querySelectorAll('.peo-pg-btn[data-page]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      _tablePage = parseInt(btn.dataset.page, 10);
+      refreshTableView(container, drilldown);
+    });
+  });
+
+  container.querySelectorAll('.btn-inspect-alumni').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const alumniId = parseInt(btn.dataset.alumniId, 10);
+      const target = drilldown.find(a => a.id === alumniId);
+      if (target) {
+        openEvidenceModal(target);
+      }
+    });
+  });
+}
+
+/* ─────────────────────────────────────────────────────────────
+   PAGE RENDERER (CAREER PATH & BATCH TRENDS + REDESIGNED 3 PEO)
+   ───────────────────────────────────────────────────────────── */
+let _currentTab = 'peo'; // 'peo' | 'career'
+
+function renderAnalytics(container, batches, overall, peoData, onImportSuccess, onPeoFilterChange) {
+  const available = peoData?.available_filters || {};
+  const batchList   = available.batches || [];
+  const sectionList = available.sections || [];
+  const courseList  = available.courses || [];
+
+  const curBatch   = peoData?.filter?.batch !== 'All Batches' ? (peoData?.filter?.batch || '') : '';
+  const curSection = peoData?.filter?.section !== 'All Sections' ? (peoData?.filter?.section || '') : '';
+  const curCourse  = peoData?.filter?.course !== 'All Programs' ? (peoData?.filter?.course || '') : '';
+
+  const activeChips = [];
+  if (curBatch) activeChips.push(`<span class="peo-filter-chip">Batch: ${curBatch} <span class="peo-filter-chip__clear" data-clear="batch">&times;</span></span>`);
+  if (curSection) activeChips.push(`<span class="peo-filter-chip">Section: ${curSection} <span class="peo-filter-chip__clear" data-clear="section">&times;</span></span>`);
+  if (curCourse) activeChips.push(`<span class="peo-filter-chip">Course: ${curCourse} <span class="peo-filter-chip__clear" data-clear="course">&times;</span></span>`);
+  if (_tableStatusFilter) {
+    const statusLabels = { good: 'Achieved (≥70%)', mid: 'Approaching (50-69%)', low: 'Needs Intervention (<50%)' };
+    activeChips.push(`<span class="peo-filter-chip">Benchmark: ${statusLabels[_tableStatusFilter] || _tableStatusFilter} <span class="peo-filter-chip__clear" data-clear="status">&times;</span></span>`);
+  }
+
+  container.innerHTML = `
+    <!-- Top Executive Header -->
+    <div class="page-header" style="margin-bottom:var(--space-4);">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;">
+        <div>
+          <h1 class="page-header__title" style="display:flex;align-items:center;gap:10px;">
+            ${icon('award', 24)} Alumni Tracker &amp; Outcomes
+          </h1>
+          <p class="page-header__subtitle">
+            Longitudinal graduate outcomes &amp; Program Educational Objectives (PEO) attainment assessment
+          </p>
+        </div>
+        <div style="display:flex;gap:10px;">
+          <button class="btn btn--primary btn--sm" id="btn-batch-alumni" style="display:inline-flex;align-items:center;gap:6px;">
+            ${icon('upload', 14)} Batch Register Alumni
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Segmented View Tabs (Separating PEO Analytics from Original Career Path) -->
+    <div class="peo-view-tabs" id="analytics-tabs" style="margin-bottom:var(--space-5);">
+      <button class="peo-tab-btn ${_currentTab === 'peo' ? 'peo-tab-btn--active' : ''}" data-tab="peo">
+        ${icon('target', 14)} 3-Pillar PEO Analytics
+      </button>
+      <button class="peo-tab-btn ${_currentTab === 'career' ? 'peo-tab-btn--active' : ''}" data-tab="career">
+        ${icon('briefcase', 14)} Career Path &amp; Batch Trends
+      </button>
+    </div>
+
+    <!-- Main Dynamic Content Container -->
+    <div id="analytics-view-content">
+      ${_currentTab === 'peo' ? `
+        <!-- Top Cohort & Database Filter Control Center for PEO Analytics -->
+        <div class="peo-filter-card">
+          <div class="peo-filter-row-top">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-weight:700;font-size:var(--text-xs);text-transform:uppercase;color:var(--text-secondary);letter-spacing:0.05em;">
+                ${icon('filter', 13)} PEO Cohort Filters
+              </span>
+            </div>
+            <div class="peo-filter-controls">
+              <select class="peo-filter-select" id="peo-filter-course" title="Filter by Course">
+                <option value="">All Programs / Courses</option>
+                ${courseList.map(c => `<option value="${c}" ${curCourse === c ? 'selected' : ''}>${c}</option>`).join('')}
+              </select>
+              <select class="peo-filter-select" id="peo-filter-batch" title="Filter by Batch">
+                <option value="">All Batches</option>
+                ${batchList.map(b => `<option value="${b}" ${curBatch === b ? 'selected' : ''}>Batch ${b}</option>`).join('')}
+              </select>
+              <select class="peo-filter-select" id="peo-filter-section" title="Filter by Section">
+                <option value="">All Sections</option>
+                ${sectionList.map(s => `<option value="${s}" ${curSection === s ? 'selected' : ''}>Section ${s}</option>`).join('')}
+              </select>
+              <select class="peo-filter-select" id="peo-filter-status" title="Filter by Benchmark Compliance">
+                <option value="" ${_tableStatusFilter === '' ? 'selected' : ''}>All Attainment Levels</option>
+                <option value="good" ${_tableStatusFilter === 'good' ? 'selected' : ''}>Achieved (≥70%)</option>
+                <option value="mid" ${_tableStatusFilter === 'mid' ? 'selected' : ''}>Approaching (50-69%)</option>
+                <option value="low" ${_tableStatusFilter === 'low' ? 'selected' : ''}>Needs Intervention (&lt;50%)</option>
+              </select>
+              <button class="btn btn--outline btn--sm" id="btn-peo-reset-filters" style="padding:6px 10px;font-size:0.75rem;">
+                ${icon('refreshCw', 12)} Reset
+              </button>
+            </div>
+          </div>
+
+          <div class="peo-filter-row-bottom">
+            <div class="peo-filter-summary">
+              <span>Active Scope: <strong>${peoData?.total_alumni || (peoData?.alumni_drilldown || []).length}</strong> Registered Graduate${peoData?.total_alumni !== 1 ? 's' : ''}</span>
+              ${activeChips.length ? activeChips.join('') : '<span style="color:var(--text-tertiary);font-size:0.72rem;">(Unfiltered Institutional Overview)</span>'}
+            </div>
+            <div style="font-size:0.72rem;color:var(--text-tertiary);">
+              Database-driven PEO tracer filters
+            </div>
+          </div>
+        </div>
+
+        <!-- 3 PEO Core Accreditation Triad Grid (Replacing Spider Graph) -->
+        ${renderPeoTriad(peoData)}
+
+        <!-- CQI Accreditation Insights -->
+        ${renderCqiInsights(peoData)}
+
+        <!-- Paginated Graduate Evaluation Table -->
+        ${renderAlumniMatrixTable(peoData?.alumni_drilldown || [])}
+      ` : renderCareerView(batches, overall)}
+    </div>
+  `;
+
+  renderIcons();
+
+  // Batch register modal
+  container.querySelector('#btn-batch-alumni')?.addEventListener('click', () => {
+    openAlumniImportModal(() => {
+      if (typeof onImportSuccess === 'function') onImportSuccess();
+    });
+  });
+
+  // Tab switcher
+  container.querySelector('#analytics-tabs')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('.peo-tab-btn');
+    if (!btn) return;
+    _currentTab = btn.dataset.tab;
+    container.querySelectorAll('.peo-tab-btn').forEach(b => b.classList.remove('peo-tab-btn--active'));
+    btn.classList.add('peo-tab-btn--active');
+
+    const viewWrap = container.querySelector('#analytics-view-content');
+    if (_currentTab === 'peo') {
+      viewWrap.innerHTML = `
+        <div class="peo-filter-card">
+          <div class="peo-filter-row-top">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-weight:700;font-size:var(--text-xs);text-transform:uppercase;color:var(--text-secondary);letter-spacing:0.05em;">
+                ${icon('filter', 13)} PEO Cohort Filters
+              </span>
+            </div>
+            <div class="peo-filter-controls">
+              <select class="peo-filter-select" id="peo-filter-course" title="Filter by Course">
+                <option value="">All Programs / Courses</option>
+                ${courseList.map(c => `<option value="${c}" ${curCourse === c ? 'selected' : ''}>${c}</option>`).join('')}
+              </select>
+              <select class="peo-filter-select" id="peo-filter-batch" title="Filter by Batch">
+                <option value="">All Batches</option>
+                ${batchList.map(b => `<option value="${b}" ${curBatch === b ? 'selected' : ''}>Batch ${b}</option>`).join('')}
+              </select>
+              <select class="peo-filter-select" id="peo-filter-section" title="Filter by Section">
+                <option value="">All Sections</option>
+                ${sectionList.map(s => `<option value="${s}" ${curSection === s ? 'selected' : ''}>Section ${s}</option>`).join('')}
+              </select>
+              <select class="peo-filter-select" id="peo-filter-status" title="Filter by Benchmark Compliance">
+                <option value="" ${_tableStatusFilter === '' ? 'selected' : ''}>All Attainment Levels</option>
+                <option value="good" ${_tableStatusFilter === 'good' ? 'selected' : ''}>Achieved (≥70%)</option>
+                <option value="mid" ${_tableStatusFilter === 'mid' ? 'selected' : ''}>Approaching (50-69%)</option>
+                <option value="low" ${_tableStatusFilter === 'low' ? 'selected' : ''}>Needs Intervention (&lt;50%)</option>
+              </select>
+              <button class="btn btn--outline btn--sm" id="btn-peo-reset-filters" style="padding:6px 10px;font-size:0.75rem;">
+                ${icon('refreshCw', 12)} Reset
+              </button>
+            </div>
+          </div>
+
+          <div class="peo-filter-row-bottom">
+            <div class="peo-filter-summary">
+              <span>Active Scope: <strong>${peoData?.total_alumni || (peoData?.alumni_drilldown || []).length}</strong> Registered Graduate${peoData?.total_alumni !== 1 ? 's' : ''}</span>
+              ${activeChips.length ? activeChips.join('') : '<span style="color:var(--text-tertiary);font-size:0.72rem;">(Unfiltered Institutional Overview)</span>'}
+            </div>
+            <div style="font-size:0.72rem;color:var(--text-tertiary);">
+              Database-driven PEO tracer filters
+            </div>
+          </div>
+        </div>
+
+        ${renderPeoTriad(peoData)}
+        ${renderCqiInsights(peoData)}
+        ${renderAlumniMatrixTable(peoData?.alumni_drilldown || [])}
+      `;
+      setupPeoListeners(container, peoData, onPeoFilterChange);
+    } else {
+      viewWrap.innerHTML = renderCareerView(batches, overall);
+      setupCareerViewListeners(container, batches);
+    }
+    renderIcons();
+  });
+
+  if (_currentTab === 'peo') {
+    setupPeoListeners(container, peoData, onPeoFilterChange);
+  } else {
+    setupCareerViewListeners(container, batches);
+  }
+}
+
+function setupPeoListeners(container, peoData, onPeoFilterChange) {
+  function triggerPeoFilter() {
+    const batchVal   = container.querySelector('#peo-filter-batch')?.value || '';
+    const sectionVal = container.querySelector('#peo-filter-section')?.value || '';
+    const courseVal  = container.querySelector('#peo-filter-course')?.value || '';
+    const statusVal  = container.querySelector('#peo-filter-status')?.value || '';
+
+    _tableStatusFilter = statusVal;
+    _tablePage = 0;
+
+    if (typeof onPeoFilterChange === 'function') {
+      onPeoFilterChange({
+        batch: batchVal,
+        section: sectionVal,
+        course: courseVal,
+      });
+    }
+  }
+
+  container.querySelector('#peo-filter-batch')?.addEventListener('change', triggerPeoFilter);
+  container.querySelector('#peo-filter-section')?.addEventListener('change', triggerPeoFilter);
+  container.querySelector('#peo-filter-course')?.addEventListener('change', triggerPeoFilter);
+  container.querySelector('#peo-filter-status')?.addEventListener('change', () => {
+    _tableStatusFilter = container.querySelector('#peo-filter-status')?.value || '';
+    _tablePage = 0;
+    refreshTableView(container, peoData?.alumni_drilldown || []);
+  });
+
+  container.querySelector('#btn-peo-reset-filters')?.addEventListener('click', () => {
+    _tableSearch = '';
+    _tableStatusFilter = '';
+    _tablePage = 0;
+    if (typeof onPeoFilterChange === 'function') {
+      onPeoFilterChange({ batch: '', section: '', course: '' });
+    }
+  });
+
+  container.querySelectorAll('.peo-filter-chip__clear').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const type = chip.dataset.clear;
+      if (type === 'batch') container.querySelector('#peo-filter-batch').value = '';
+      if (type === 'section') container.querySelector('#peo-filter-section').value = '';
+      if (type === 'course') container.querySelector('#peo-filter-course').value = '';
+      if (type === 'status') {
+        _tableStatusFilter = '';
+        if (container.querySelector('#peo-filter-status')) {
+          container.querySelector('#peo-filter-status').value = '';
+        }
+      }
+      triggerPeoFilter();
+    });
+  });
+
+  setupTableEvents(container, peoData?.alumni_drilldown || []);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   MAIN PAGE EXPORT & CONTROLLER
+   ───────────────────────────────────────────────────────────── */
 export default function AnalyticsPage(container) {
+  let activePeoFilters = { batch: '', section: '', course: '' };
+  let currentBatches = [];
+  let currentOverall = { totalAlumni: 0, inPath: 0, batchCount: 0, avgRate: 0 };
+  let currentPeoData = null;
+
   const cached = getCached('/admin/alumni-analytics');
 
   if (cached?.data?.batches) {
-    renderAnalytics(container, cached.data.batches, cached.data.overall, () => load(true));
+    currentBatches = cached.data.batches;
+    currentOverall = cached.data.overall;
+    currentPeoData = cached.data.peo;
+    renderAnalytics(
+      container,
+      currentBatches,
+      currentOverall,
+      currentPeoData,
+      () => load(true),
+      (newFilters) => {
+        activePeoFilters = newFilters;
+        loadPeoOnly();
+      }
+    );
   } else {
     container.innerHTML = `
       <div class="page-header">
-        <h1 class="page-header__title">${icon('award', 22)} Alumni Tracker</h1>
-        <p class="page-header__subtitle">Track whether graduates are following their IT career path by batch and course</p>
+        <h1 class="page-header__title" style="display:flex;align-items:center;gap:10px;">
+          ${icon('award', 24)} Alumni Tracker &amp; Outcomes
+        </h1>
+        <p class="page-header__subtitle">Loading graduate outcomes and analytics...</p>
       </div>
       <div style="display:flex;align-items:center;gap:10px;padding:48px 24px;color:var(--text-secondary)">
         ${icon('loader', 20)} Loading analytics data...
@@ -603,6 +1265,7 @@ export default function AnalyticsPage(container) {
     renderIcons();
   }
 
+  // Load initial data
   async function load(force = false) {
     try {
       const data = await apiGetCached('/admin/alumni-analytics', {
@@ -610,13 +1273,39 @@ export default function AnalyticsPage(container) {
         onUpdate: (fresh) => {
           if (!container.isConnected) return;
           if (fresh?.batches) {
-            renderAnalytics(container, fresh.batches, fresh.overall, () => load(true));
+            currentBatches = fresh.batches;
+            currentOverall = fresh.overall;
+            currentPeoData = fresh.peo;
+            renderAnalytics(
+              container,
+              currentBatches,
+              currentOverall,
+              currentPeoData,
+              () => load(true),
+              (newFilters) => {
+                activePeoFilters = newFilters;
+                loadPeoOnly();
+              }
+            );
           }
         },
       });
 
       if (data?.batches && !cached) {
-        renderAnalytics(container, data.batches, data.overall, () => load(true));
+        currentBatches = data.batches;
+        currentOverall = data.overall;
+        currentPeoData = data.peo;
+        renderAnalytics(
+          container,
+          currentBatches,
+          currentOverall,
+          currentPeoData,
+          () => load(true),
+          (newFilters) => {
+            activePeoFilters = newFilters;
+            loadPeoOnly();
+          }
+        );
       }
     } catch (_err) {
       if (!cached) {
@@ -634,6 +1323,35 @@ export default function AnalyticsPage(container) {
     }
   }
 
+  // Load PEO with specific filters without touching Career Path data
+  async function loadPeoOnly() {
+    try {
+      const queryParams = new URLSearchParams();
+      if (activePeoFilters.batch)   queryParams.set('batch', activePeoFilters.batch);
+      if (activePeoFilters.section) queryParams.set('section', activePeoFilters.section);
+      if (activePeoFilters.course)  queryParams.set('course', activePeoFilters.course);
+
+      const url = `/admin/peo-analytics${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+      const peoData = await apiGet(url);
+
+      if (peoData) {
+        currentPeoData = peoData;
+        renderAnalytics(
+          container,
+          currentBatches,
+          currentOverall,
+          currentPeoData,
+          () => load(true),
+          (newFilters) => {
+            activePeoFilters = newFilters;
+            loadPeoOnly();
+          }
+        );
+      }
+    } catch (err) {
+      console.error('Failed to update PEO analytics:', err);
+    }
+  }
+
   load();
 }
-

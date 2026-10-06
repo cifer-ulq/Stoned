@@ -2,6 +2,7 @@ import { apiGet, apiGetCached, getCached, apiPost, storageUrl } from '../api/cli
 import { icon, renderIcons } from '../components/icons.js';
 import { openStudentImportModal } from '../components/student-import-modal.js';
 import { openAlumniImportModal } from '../components/alumni-import-modal.js';
+import { openBroadcastModal } from '../components/broadcast-modal.js';
 
 const STATUS_COLORS = {
   'Active OJT': 'success',
@@ -566,6 +567,9 @@ export default async function StudentsPage(container) {
       </div>
       <div class="toolbar__right" style="display:flex;align-items:center;gap:8px;">
         <span id="student-count" style="font-size:var(--text-sm);color:var(--text-tertiary);"></span>
+        <button class="btn btn--outline btn--sm" id="broadcast-students-btn" style="display:inline-flex;align-items:center;gap:6px;">
+          ${icon('bell', 13)} Broadcast Notice
+        </button>
         <button class="btn btn--outline btn--sm" id="import-alumni-btn" style="display:inline-flex;align-items:center;gap:6px;">
           ${icon('award', 13)} Register Alumni
         </button>
@@ -814,6 +818,16 @@ export default async function StudentsPage(container) {
         fetchAndRender(true);
       },
       container,
+    });
+  });
+
+  /* ── Broadcast button ── */
+  container.querySelector('#broadcast-students-btn')?.addEventListener('click', () => {
+    openBroadcastModal({
+      container,
+      onSuccess: () => {
+        // Broadcast dispatched successfully
+      },
     });
   });
 

@@ -3,7 +3,7 @@
  * Data sourced entirely from the real API.
  */
 import { icon } from '../components/icons.js';
-import { apiGet, apiPost, apiPatch } from '../api/client.js';
+import { apiGet, apiPost, apiPatch, resolveStorageUrl } from '../api/client.js';
 import { openSetOjtScheduleModal } from '../components/ojt-schedule-modal.js';
 
 const STATUS_LABELS = {
@@ -14,6 +14,11 @@ const STATUS_LABELS = {
   offered:   'Offered / Accepted',
   rejected:  'Rejected',
 };
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+}
 
 /** Safely coerce a DB value that should be an array */
 function parseJsonArray(val) {
@@ -64,6 +69,9 @@ export function getMatchRecommendation(score) {
    MAIN RENDER
    ══════════════════════════════════════════════════ */
 export async function renderApplicants(container) {
+  if (typeof container._cleanup === 'function') {
+    container._cleanup();
+  }
   container.innerHTML = `
     <section class="co-hero fade-in" style="padding:20px 0 12px;">
       <div class="co-hero__content">
@@ -151,6 +159,27 @@ export async function renderApplicants(container) {
   container.querySelector('#applicant-search').addEventListener('input', e => {
     applyFilters(container, allApps, activeCategory, activeStatus, e.target.value);
   });
+
+  // Auto-refresh when returning to tab or receiving real-time applicant notification
+  const reloadPipeline = () => {
+    if (document.body.contains(container)) {
+      apiGet('/company/applications').then(res => {
+        if (res && res.success && Array.isArray(res.data)) {
+          allApps = res.data;
+          updateCategoryCounts(container, allApps);
+          updatePipelineCounts(container, allApps, activeCategory);
+          applyFilters(container, allApps, activeCategory, activeStatus, container.querySelector('#applicant-search')?.value || '');
+        }
+      });
+    }
+  };
+  const cleanup = () => {
+    window.removeEventListener('focus', reloadPipeline);
+    window.removeEventListener('hireme:applicants-refresh', reloadPipeline);
+  };
+  container._cleanup = cleanup;
+  window.addEventListener('focus', reloadPipeline);
+  window.addEventListener('hireme:applicants-refresh', reloadPipeline);
 }
 
 /* ══════════════════════════════════════════════════
@@ -258,10 +287,26 @@ function renderCards(container, apps, allApps) {
 
     if (isOjt) {
       const raw = a.raw_status || 'interested';
+      const isViewed = !!a.resume_viewed;
+
       if (raw === 'interested') {
-        statusBadge = 'New Applicant';
-        statusClass = 'applied';
-        primaryBtn = `<button class="ap-btn ap-btn--primary ap-btn-ojt-review" data-id="${id}" title="Review candidate portfolio & application">${icon('userCheck', 14)} Review Application</button>`;
+        if (!isViewed) {
+          statusBadge = 'Pending Review';
+          statusClass = 'applied';
+          ojtNotice = `
+            <div class="ap-ojt-notice" style="margin:10px 0 6px;padding:8px 12px;background:rgba(245,158,11,0.08);border-left:3px solid #f59e0b;border-radius:4px;font-size:0.75rem;color:#b45309;line-height:1.4;">
+              ${icon('alertCircle', 13)} <strong>Profile Unreviewed</strong> &bull; Review candidate portfolio & requirements before making screening decisions.
+            </div>`;
+          primaryBtn = `<button class="ap-btn ap-btn--primary ap-btn-view-profile" data-id="${id}" style="background:#005930;border-color:#005930;" title="Inspect student portfolio & application">${icon('userCheck', 14)} View & Review Profile</button>`;
+        } else {
+          statusBadge = 'Profile Inspected';
+          statusClass = 'applied';
+          ojtNotice = `
+            <div class="ap-ojt-notice" style="margin:10px 0 6px;padding:8px 12px;background:rgba(16,185,129,0.08);border-left:3px solid #10b981;border-radius:4px;font-size:0.75rem;color:#065f46;line-height:1.4;">
+              ${icon('checkCircle', 13)} <strong>Profile Inspected</strong> &bull; Submit review note to proceed with coordinator endorsement.
+            </div>`;
+          primaryBtn = `<button class="ap-btn ap-btn--primary ap-btn-ojt-review" data-id="${id}" style="background:#005930;border-color:#005930;" title="Review candidate portfolio & application">${icon('fileText', 14)} Submit Review Note</button>`;
+        }
       } else if (raw === 'company_reviewed') {
         statusBadge = 'Reviewed';
         statusClass = 'reviewed';
@@ -285,7 +330,7 @@ function renderCards(container, apps, allApps) {
           <div class="ap-ojt-notice" style="margin:10px 0 6px;padding:8px 12px;background:rgba(16,185,129,0.08);border-left:3px solid #10b981;border-radius:4px;font-size:0.75rem;color:#065f46;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
             <span>${icon('checkCircle', 13)} <strong>Endorsement Letter Received</strong></span>
             ${a.endorsement_letter_url ? `
-              <a href="${a.endorsement_letter_url}" target="_blank" rel="noopener" style="color:#005930;font-weight:700;text-decoration:underline;display:inline-flex;align-items:center;gap:4px;">
+              <a href="${resolveStorageUrl(a.endorsement_letter_url)}" target="_blank" rel="noopener" class="btn-view-endorsement-pdf" data-url="${resolveStorageUrl(a.endorsement_letter_url)}" data-name="${escapeHtml(a.applicant?.name || 'Student')}" style="color:#005930;font-weight:700;text-decoration:underline;display:inline-flex;align-items:center;gap:4px;cursor:pointer;">
                 ${icon('externalLink', 11)} View Letter PDF
               </a>` : ''}
           </div>`;
@@ -343,8 +388,17 @@ function renderCards(container, apps, allApps) {
       }
     } else {
       // Regular Job Applicant
+      const isViewed = a.status !== 'applied' || !!a.resume_viewed;
       if (a.status === 'applied') {
-        primaryBtn = `<button class="ap-btn ap-btn--primary ap-btn-review" data-id="${id}">${icon('fileText', 14)} Review Application</button>`;
+        if (!isViewed) {
+          statusBadge = 'Pending Review';
+          statusClass = 'applied';
+          primaryBtn = `<button class="ap-btn ap-btn--primary ap-btn-view-profile" data-id="${id}" style="background:#005930;border-color:#005930;" title="Review candidate resume & credentials">${icon('userCheck', 14)} View & Review Profile</button>`;
+        } else {
+          statusBadge = 'Reviewed';
+          statusClass = 'reviewed';
+          primaryBtn = `<button class="ap-btn ap-btn--primary ap-btn-status" data-action="interview" data-id="${id}">${icon('video', 14)} Schedule Interview</button>`;
+        }
       } else if (a.status === 'reviewed') {
         primaryBtn = `<button class="ap-btn ap-btn--primary ap-btn-status" data-action="interview" data-id="${id}">${icon('video', 14)} Schedule Interview</button>`;
       } else if (a.status === 'interview') {
@@ -361,9 +415,10 @@ function renderCards(container, apps, allApps) {
       }
     }
 
+    const isViewed = isOjt ? !!a.resume_viewed : (a.status !== 'applied' || !!a.resume_viewed);
     const showReject = isOjt
-      ? !['rejected', 'ojt_confirmed', 'ojt_started'].includes(a.raw_status)
-      : a.status !== 'rejected' && a.status !== 'offered';
+      ? (!['rejected', 'ojt_confirmed', 'ojt_started'].includes(a.raw_status) && (a.raw_status !== 'interested' || isViewed))
+      : (a.status !== 'rejected' && a.status !== 'offered' && (a.status !== 'applied' || isViewed));
 
     return `
       <div class="ap-card ap-card--${isOjt ? 'ojt' : 'job'}" data-id="${a.id}">
@@ -442,19 +497,29 @@ function renderCards(container, apps, allApps) {
               ? (isOjt
                   ? `<button class="ap-btn ap-btn--ghost-danger ap-btn-ojt-reject" data-id="${id}" title="Decline applicant">${icon('x', 13)} Decline</button>`
                   : `<button class="ap-btn ap-btn--ghost-danger ap-btn-status" data-action="rejected" data-id="${id}" title="Reject candidate">${icon('x', 13)} Reject</button>`)
-              : `<button class="ap-btn ap-btn--ghost ap-btn-status" disabled style="opacity:0.4;cursor:default;">${icon('x', 13)} Closed</button>`
+              : (!isViewed
+                  ? `<button class="ap-btn ap-btn--ghost ap-btn-view-profile" data-id="${id}" title="Inspect candidate profile first">${icon('eye', 13)} Inspect Profile</button>`
+                  : `<button class="ap-btn ap-btn--ghost ap-btn-status" disabled style="opacity:0.4;cursor:default;">${icon('x', 13)} Closed</button>`)
             }
             <button type="button" class="ap-btn ap-btn--ghost ap-btn-chat" data-id="${id}" onclick="event.stopPropagation(); window.openChat && window.openChat('${chatKey}')" title="Message candidate">
               ${icon('messageSquare', 13)} Chat
             </button>
-            <button class="ap-btn ap-btn--ghost ap-btn-profile" data-id="${id}" title="View full candidate profile in new tab">
-              ${icon('user', 13)} Profile
+            <button class="ap-btn ap-btn--ghost ap-btn-profile" data-id="${id}" title="View full candidate portfolio in new tab">
+              ${icon('externalLink', 13)} Portfolio
             </button>
           </div>
         </div>
 
       </div>`;
   }).join('');
+
+  // Wire View & Review Profile buttons (open resume modal + mark viewed)
+  grid.querySelectorAll('.ap-btn-view-profile').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const app = allApps.find(a => String(a.id) === btn.dataset.id);
+      if (app) showResumeModal(app, allApps, container, app.category === 'job' ? 'reviewed' : null);
+    });
+  });
 
   // Wire Job Review buttons (open resume + mark reviewed)
   grid.querySelectorAll('.ap-btn-review').forEach(btn => {
@@ -477,6 +542,17 @@ function renderCards(container, apps, allApps) {
     btn.addEventListener('click', () => {
       const app = allApps.find(a => String(a.id) === btn.dataset.id);
       if (app) showOjtRequestEndorsementModal(app, allApps, container, null);
+    });
+  });
+
+  // Wire View Endorsement Letter PDF buttons (opens PDF preview modal)
+  grid.querySelectorAll('.btn-view-endorsement-pdf').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const url = btn.dataset.url;
+      const name = btn.dataset.name;
+      if (url) openEndorsementLetterModal(url, name);
     });
   });
 
@@ -538,13 +614,32 @@ function renderCards(container, apps, allApps) {
     });
   });
 
-  // Wire Profile buttons (open full profile in a new tab)
+  // Wire Profile buttons (open full profile in a new tab + mark viewed in background)
   grid.querySelectorAll('.ap-btn-profile').forEach(btn => {
     btn.addEventListener('click', () => {
       const app = allApps.find(a => String(a.id) === btn.dataset.id);
       if (!app) return;
       const studentUserId = app.applicant?.id;
       if (!studentUserId) return;
+
+      // Mark viewed in background
+      if (app.category === 'ojt') {
+        const slotId = app.job?.id || app.posting_id;
+        const interestId = app.raw_id;
+        if (slotId && interestId && !app.resume_viewed) {
+          apiPost(`/company/ojt-postings/${slotId}/mark-viewed/${interestId}`, {}).then(() => {
+            app.resume_viewed = true;
+            refreshApplicantUI(container, allApps);
+          });
+        }
+      } else if (app.status === 'applied') {
+        apiPatch(`/company/applications/${app.id}/status`, { status: 'reviewed' }).then(() => {
+          app.status = 'reviewed';
+          app.status_label = 'Reviewed';
+          app.resume_viewed = true;
+          refreshApplicantUI(container, allApps);
+        });
+      }
 
       let profileUrl;
       if (app.category === 'ojt') {
@@ -584,6 +679,13 @@ function isInterviewPast(a) {
    ══════════════════════════════════════════════════ */
 
 function showOjtReviewModal(app, allApps, container, parentBackdrop) {
+  // Guard: Candidate profile must be inspected first
+  if (!app.resume_viewed) {
+    showToast('Please review the candidate\'s profile before submitting a review note.', 'warning');
+    showResumeModal(app, allApps, container, null);
+    return;
+  }
+
   const modal = document.createElement('div');
   modal.className = 'modal-backdrop modal-backdrop--visible';
   modal.style.zIndex = '10002';
@@ -662,6 +764,52 @@ function showOjtReviewModal(app, allApps, container, parentBackdrop) {
       submitBtn.disabled = false;
       submitBtn.innerHTML = `${icon('checkCircle', 14)} Confirm Review`;
     }
+  });
+}
+
+function openEndorsementLetterModal(url, studentName) {
+  const fullUrl = resolveStorageUrl(url);
+  if (!fullUrl) return;
+
+  const modal = document.createElement('div');
+  modal.className = 'modal-backdrop modal-backdrop--visible';
+  modal.style.zIndex = '10005';
+  modal.innerHTML = `
+    <div class="modal modal--visible" style="max-width:900px;width:95vw;height:88vh;display:flex;flex-direction:column;padding:0;overflow:hidden;border-radius:12px;box-shadow:var(--shadow-xl, 0 20px 25px -5px rgba(0,0,0,0.2));">
+      <div class="modal__header" style="padding:14px 20px;border-bottom:1px solid var(--border-color, #e2e8f0);display:flex;align-items:center;justify-content:space-between;background:var(--bg-card, #ffffff);flex-shrink:0;">
+        <div style="display:flex;align-items:center;gap:12px;min-width:0;">
+          <div style="width:38px;height:38px;border-radius:8px;background:rgba(0,89,48,0.1);color:#005930;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            ${icon('fileText', 20)}
+          </div>
+          <div style="min-width:0;">
+            <h3 class="modal__title" style="margin:0;font-size:1.05rem;font-weight:700;line-height:1.2;">Official Endorsement Letter</h3>
+            <p style="font-size:0.75rem;color:var(--text-secondary, #64748b);margin:2px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${studentName ? `Issued for ${escapeHtml(studentName)}` : 'Candidate Endorsement Document'}</p>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+          <a href="${fullUrl}" target="_blank" rel="noopener" class="btn btn--outline" style="font-size:0.75rem;padding:6px 12px;text-decoration:none;display:inline-flex;align-items:center;gap:5px;color:var(--text-primary);">
+            ${icon('externalLink', 12)} Open in New Tab
+          </a>
+          <a href="${fullUrl}" download class="btn btn--outline" style="font-size:0.75rem;padding:6px 12px;text-decoration:none;display:inline-flex;align-items:center;gap:5px;color:var(--text-primary);">
+            ${icon('download', 12)} Download PDF
+          </a>
+          <button class="modal__close btn-close-endorsement-modal" style="background:none;border:none;cursor:pointer;padding:6px;color:var(--text-muted, #94a3b8);display:flex;align-items:center;justify-content:center;border-radius:6px;">
+            ${icon('x', 20)}
+          </button>
+        </div>
+      </div>
+      <div class="modal__body" style="flex:1;padding:0;background:#525659;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;">
+        <iframe src="${fullUrl}" style="width:100%;height:100%;border:none;" title="Endorsement Letter Preview"></iframe>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  const close = () => modal.remove();
+  modal.querySelector('.btn-close-endorsement-modal').addEventListener('click', close);
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) close();
   });
 }
 
@@ -1432,15 +1580,31 @@ function openOfferModal(app, allApps, container, parentBackdrop) {
 async function showResumeModal(app, allApps, container, newStatus) {
   const isOjt = app.category === 'ojt';
 
-  // Fire status update in background if reviewing (regular jobs only - OJT requires note)
-  if (!isOjt && newStatus && app.status !== newStatus) {
-    apiPatch(`/company/applications/${app.id}/status`, { status: newStatus }).then(res => {
-      if (res && res.success) {
-        app.status = newStatus;
-        app.status_label = ucfirst(newStatus);
-        refreshApplicantUI(container, allApps);
-      }
-    });
+  // Mark candidate profile as inspected in background
+  if (isOjt) {
+    const slotId = app.job?.id || app.posting_id;
+    const interestId = app.raw_id;
+    if (slotId && interestId && !app.resume_viewed) {
+      apiPost(`/company/ojt-postings/${slotId}/mark-viewed/${interestId}`, {}).then(res => {
+        if (res?.success !== false) {
+          app.resume_viewed = true;
+          refreshApplicantUI(container, allApps);
+        }
+      });
+    }
+  } else {
+    if (newStatus && app.status !== newStatus) {
+      apiPatch(`/company/applications/${app.id}/status`, { status: newStatus }).then(res => {
+        if (res && res.success) {
+          app.status = newStatus;
+          app.status_label = ucfirst(newStatus);
+          app.resume_viewed = true;
+          refreshApplicantUI(container, allApps);
+        }
+      });
+    } else {
+      app.resume_viewed = true;
+    }
   }
 
   // PDF-viewer style backdrop
@@ -1561,7 +1725,7 @@ async function showResumeModal(app, allApps, container, newStatus) {
     if (rawSt === 'interested') {
       footerActions = `
         <button class="btn btn--error ar-ojt-action" data-ojt-action="reject" style="font-size:.79rem;">${icon('x', 13)} Decline</button>
-        <button class="btn btn--primary ar-ojt-action" data-ojt-action="review" style="font-size:.79rem;background:#005930;border-color:#005930;">${icon('userCheck', 13)} Review Application</button>`;
+        <button class="btn btn--primary ar-ojt-action" data-ojt-action="review" style="font-size:.79rem;background:#005930;border-color:#005930;">${icon('fileText', 13)} Submit Review Note</button>`;
     } else if (rawSt === 'company_reviewed') {
       footerActions = `
         <button class="btn btn--error ar-ojt-action" data-ojt-action="reject" style="font-size:.79rem;">${icon('x', 13)} Decline</button>
@@ -1632,12 +1796,29 @@ async function showResumeModal(app, allApps, container, newStatus) {
             ${P.location || app.applicant.location ? `<span>${icon('mapPin', 12)} ${P.location || app.applicant.location}</span>` : ''}
             ${P.linkedin_url ? `<a href="https://${P.linkedin_url}" target="_blank" rel="noopener">${icon('linkedin', 12)} ${P.linkedin_url}</a>` : ''}
             ${P.portfolio_url ? `<a href="https://${P.portfolio_url}" target="_blank" rel="noopener">${icon('externalLink', 12)} ${P.portfolio_url}</a>` : ''}
+            ${(P.requirements_drive_url || app.applicant?.requirements_drive_url) ? `<a href="${P.requirements_drive_url || app.applicant?.requirements_drive_url}" target="_blank" rel="noopener" style="color:#0284c7;font-weight:700;">${icon('folder', 12)} Requirements Drive</a>` : ''}
           </div>
         </div>
         ${P.avatar_url
           ? `<img src="${P.avatar_url}" style="width:68px;height:68px;border-radius:50%;object-fit:cover;border:3px solid #e2e8f0;flex-shrink:0;">`
           : `<div style="width:68px;height:68px;border-radius:50%;background:${isOjt ? 'linear-gradient(135deg,#005930,#047857)' : 'linear-gradient(135deg,#1e293b,#334155)'};display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:800;color:#fff;flex-shrink:0;">${app.applicant.initials || 'CA'}</div>`}
       </div>
+
+      ${app.endorsement_letter_url ? `
+        <div style="margin:14px 0 4px;padding:12px 16px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.3);border-radius:8px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:32px;height:32px;border-radius:8px;background:#005930;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              ${icon('fileText', 16)}
+            </div>
+            <div>
+              <span style="font-size:0.82rem;color:#065f46;font-weight:700;">Official Endorsement Letter Issued</span>
+              <p style="margin:1px 0 0;font-size:0.73rem;color:#047857;">Uploaded by school OJT coordinator for this candidate.</p>
+            </div>
+          </div>
+          <button type="button" class="btn btn--outline btn-modal-view-endorsement" data-url="${resolveStorageUrl(app.endorsement_letter_url)}" data-name="${escapeHtml(app.applicant?.name || 'Student')}" style="font-size:0.75rem;padding:5px 12px;color:#005930;border-color:#005930;background:#fff;display:inline-flex;align-items:center;gap:5px;cursor:pointer;">
+            ${icon('externalLink', 12)} View Letter PDF
+          </button>
+        </div>` : ''}
 
       ${objText ? `
         <div class="rc-divider"></div>
@@ -1746,6 +1927,15 @@ async function showResumeModal(app, allApps, container, newStatus) {
       else if (act === 'accept') showOjtAcceptAfterInterviewModal(app, allApps, container, null);
       else if (act === 'start') showOjtSetStartModal(app, allApps, container, null);
       else if (act === 'reject') showOjtRejectModal(app, allApps, container, null);
+    });
+  });
+
+  backdrop.querySelectorAll('.btn-modal-view-endorsement').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const url = btn.dataset.url;
+      const name = btn.dataset.name;
+      if (url) openEndorsementLetterModal(url, name);
     });
   });
 }

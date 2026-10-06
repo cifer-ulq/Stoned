@@ -26,6 +26,12 @@ export function clearAuth() {
   localStorage.removeItem('hireme_user');
 }
 
+export function resolveStorageUrl(path) {
+  if (!path) return '';
+  if (path.startsWith('http://') || path.startsWith('https://')) return path;
+  return `http://localhost:8000${path.startsWith('/') ? '' : '/'}${path}`;
+}
+
 /**
  * Automatically invalidate cached endpoints based on the mutated path.
  */

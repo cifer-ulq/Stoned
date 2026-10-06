@@ -75,6 +75,26 @@ class CompanyRegisterController extends Controller
             \Log::error('[CompanyRegister] Failed to send confirmation email: ' . $e->getMessage());
         }
 
+        // Notify all system administrators
+        try {
+            $admins = User::where('role', 'admin')->get();
+            foreach ($admins as $admin) {
+                \App\Models\AppNotification::send(
+                    $admin->id,
+                    'company_registered',
+                    'New Company Registered',
+                    "{$data['company_name']} ({$data['industry']}) has registered and requires account & MOA verification.",
+                    [
+                        'company_id'   => $user->id,
+                        'company_name' => $data['company_name'],
+                        'route'        => '/companies',
+                    ]
+                );
+            }
+        } catch (\Throwable $ne) {
+            \Log::error('[CompanyRegister] Failed to dispatch admin notification: ' . $ne->getMessage());
+        }
+
         return response()->json([
             'message'    => 'Company registered successfully. Your account is pending review.',
             'email_sent' => $emailSent,

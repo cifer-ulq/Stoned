@@ -15,12 +15,13 @@ import './styles/responsive.css';
 // Core
 import { registerRoute, initRouter } from './router.js';
 import { getState, setState } from './store.js';
-import { apiGet, apiCache, revalidateEndpoint, clearAuth } from './api/client.js';
+import { apiGet, apiGetFresh, apiCache, revalidateEndpoint, clearAuth } from './api/client.js';
 
 // Components
 import { createNavbar } from './components/navbar.js';
 import { createLeftSidebar } from './components/sidebar-left.js';
 import { createRightSidebar } from './components/sidebar-right.js';
+import { showPromotionCelebrationModal } from './components/promotion-modal.js';
 
 // Pages
 import { renderHome } from './pages/home.js';
@@ -56,6 +57,10 @@ async function initAuth() {
   if (cached) {
     try {
       const u = JSON.parse(cached);
+      if (u.role === 'graduate' || u.role === 'jobseeker' || u.status === 'alumni') {
+        window.location.href = '../jobseeker/';
+        return false;
+      }
       applyUserToStore(u);
     } catch (_) { /* ignore bad cache */ }
   }
@@ -68,7 +73,13 @@ async function initAuth() {
     // Role guard — only students can access this portal
     const role = data.data?.role || data.role;
     if (role && role !== 'student') {
-      const destinations = { company: '../company/', supervisor: '../supervisors/', admin: '../admin/' };
+      const destinations = {
+        graduate:   '../jobseeker/',
+        jobseeker:  '../jobseeker/',
+        company:    '../company/',
+        supervisor: '../supervisors/',
+        admin:      '../admin/',
+      };
       window.location.href = destinations[role] || '../login/';
       return false;
     }
@@ -86,6 +97,7 @@ function applyUserToStore(data) {
   const nameParts = (data.name || '').trim().split(/\s+/);
   const initials  = nameParts.map(n => n[0]).join('').toUpperCase().slice(0, 2);
   const isAlumni  = data.role === 'graduate' || data.status === 'alumni' || data.student_profile?.status === 'alumni' || data.year_level === 'Graduated';
+  const isActiveOjt = !isAlumni && (data.is_active_ojt === true || data.status === 'active_ojt');
 
   setState('user', {
     id:                  data.id,
@@ -94,7 +106,8 @@ function applyUserToStore(data) {
     initials,
     rawRole:             data.role,
     role:                isAlumni ? 'Alumni / Graduate' : (data.role === 'student' ? 'BSIT Student' : (data.role || 'Student')),
-    status:              isAlumni ? 'alumni' : (data.status || 'active_ojt'),
+    status:              isAlumni ? 'alumni' : (isActiveOjt ? 'active_ojt' : (data.status || 'regular')),
+    is_active_ojt:       isActiveOjt,
     is_alumni:           isAlumni,
     avatar:              data.avatar_url ?? null,
     onboardingCompleted: data.onboarding_completed,
@@ -146,12 +159,12 @@ const scrollPositions = new Map();
 let activeRouteKey = null;
 
 const routeEndpointMap = {
-  '/':             ['/student/dashboard'],
-  '/portfolio':    ['/student/portfolio'],
-  '/jobs':         ['/student/employment-status', '/student/jobs', '/student/applications'],
+  '/':             ['/student/dashboard', '/auth/me', '/student/employment-status'],
+  '/portfolio':    ['/student/portfolio', '/student/requirements', '/auth/me', '/student/employment-status'],
+  '/jobs':         ['/student/employment-status', '/student/jobs', '/student/applications', '/student/external-jobs'],
   '/applications': ['/student/applications', '/ojt/my-interests'],
-  '/ojt':          ['/student/employment-status', '/ojt/my-interests', '/student/portfolio', '/ojt/postings'],
-  '/ojt-tracker':  ['/student/ojt-tracker'],
+  '/ojt':          ['/student/employment-status', '/ojt/my-interests', '/student/portfolio', '/student/requirements', '/ojt/postings'],
+  '/ojt-tracker':  ['/student/ojt-tracker', '/student/evaluation', '/student/employment-status'],
   '/interview':    ['/student/interviews'],
   '/companies':    ['/companies'],
   '/alumni':       [],
@@ -257,9 +270,18 @@ window.addEventListener('hireme:cache-invalidated', (e) => {
 
     if (isAffected) {
       if (key === activeRouteKey) {
-        // Active page! Refresh immediately with fresh data
-        view.dirty = false;
-        view.renderer(view.container, view.params);
+        // Active page! Check if user is typing or modal is open
+        const hasOpenModal = !!document.querySelector('.modal-overlay, .modal-backdrop');
+        const isInteracting = view.container.contains(document.activeElement) &&
+          ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName);
+
+        if (hasOpenModal || isInteracting) {
+          // Postpone until blur or modal close
+          view.dirty = true;
+        } else {
+          view.dirty = false;
+          view.renderer(view.container, view.params);
+        }
       } else {
         // Background page: mark dirty so it re-renders fresh when navigated to
         view.dirty = true;
@@ -273,6 +295,72 @@ window.addEventListener('hireme:clear-views', () => {
   pageViews.clear();
   scrollPositions.clear();
   activeRouteKey = null;
+});
+
+// ── Background Active View Revalidation Engine (Zero Hard Refresh) ──
+let activeSyncTimer = null;
+
+async function checkActiveViewFreshness() {
+  if (document.hidden || !activeRouteKey) return;
+  const view = pageViews.get(activeRouteKey);
+  if (!view || !view.endpoints || view.endpoints.length === 0) return;
+
+  // Don't interrupt user typing or active modal interaction
+  const hasOpenModal = !!document.querySelector('.modal-overlay, .modal-backdrop');
+  const isInteracting = view.container.contains(document.activeElement) &&
+    ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName);
+
+  if (hasOpenModal || isInteracting) {
+    return;
+  }
+
+  try {
+    const results = await Promise.all(
+      view.endpoints.map(ep => revalidateEndpoint(ep))
+    );
+    const hasChange = view.dirty || results.some(r => r.changed);
+    if (hasChange) {
+      view.dirty = false;
+      await view.renderer(view.container, view.params);
+    }
+  } catch (_) {}
+}
+
+function scheduleActiveViewCheck(delay = 6000) {
+  clearTimeout(activeSyncTimer);
+  activeSyncTimer = setTimeout(async () => {
+    await checkActiveViewFreshness();
+    scheduleActiveViewCheck(document.hidden ? 30000 : 6000);
+  }, delay);
+}
+
+// ── Real-Time Graduation & Promotion Listener ──
+window.addEventListener('hireme:graduated-promoted', (e) => {
+  const notif = e.detail || {};
+  showPromotionCelebrationModal(notif);
+});
+
+window.addEventListener('focus', async () => {
+  checkActiveViewFreshness();
+  try {
+    const u = getState('user');
+    if (u && (u.rawRole === 'student' || !u.is_alumni)) {
+      const fresh = await apiGetFresh('/auth/me');
+      const r = fresh?.data?.role || fresh?.role;
+      if (r === 'graduate' || r === 'jobseeker') {
+        showPromotionCelebrationModal({ data: fresh?.data || fresh });
+      }
+    }
+  } catch (_) {}
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    checkActiveViewFreshness();
+    scheduleActiveViewCheck(6000);
+  } else {
+    scheduleActiveViewCheck(30000);
+  }
 });
 
 /* ─────────────────────────────────────────
@@ -332,4 +420,5 @@ initAuth().then(authenticated => {
   });
 
   initRouter(app);
+  scheduleActiveViewCheck(6000);
 });

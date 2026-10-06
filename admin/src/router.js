@@ -16,15 +16,15 @@ function resolve() {
   if (_resolving) return;
   _resolving = true;
   try {
-    const hash = window.location.hash.slice(1) || '/';
-    const handler = routes[hash];
+    const raw = window.location.hash.slice(1) || '/';
+    const [routePath] = raw.split('?');
+    const handler = routes[routePath || '/'];
     const container = document.getElementById('main-content');
     if (!container) return;
     if (currentCleanup && typeof currentCleanup === 'function') {
       try { currentCleanup(); } catch (e) { console.error('[router cleanup]', e); }
       currentCleanup = null;
     }
-    container.innerHTML = '';
     if (handler) {
       currentCleanup = handler(container) || null;
     } else {

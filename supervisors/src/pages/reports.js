@@ -538,10 +538,15 @@ async function loadAnalytics(container) {
     });
   });
 
-  window.addEventListener('resize', () => {
+  const onResize = () => {
     const active = container.querySelector('.an-tab--active');
     if (active) moveInk(active);
-  }, { passive: true });
+  };
+  if (container._resizeHandler) {
+    window.removeEventListener('resize', container._resizeHandler);
+  }
+  container._resizeHandler = onResize;
+  window.addEventListener('resize', onResize, { passive: true });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
