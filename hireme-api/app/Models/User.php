@@ -61,6 +61,11 @@ class User extends Authenticatable
         return $this->hasMany(StudentEvaluation::class, 'student_user_id');
     }
 
+    public function ojtEmergencyRequests()
+    {
+        return $this->hasMany(OjtEmergencyRequest::class, 'student_user_id');
+    }
+
     public function companyProfile()
     {
         return $this->hasOne(CompanyProfile::class);

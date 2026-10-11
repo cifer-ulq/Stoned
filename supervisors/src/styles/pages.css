@@ -315,6 +315,24 @@
   letter-spacing: 0.02em;
 }
 
+.tr2-badge--warning {
+  background: #FEF3C7;
+  color: #92400e;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.tr2-badge--leave {
+  background: #E0F2FE;
+  color: #0369a1;
+  border: 1px solid rgba(2, 132, 199, 0.3);
+}
+
+.tr2-badge--withdrawn {
+  background: #FEE2E2;
+  color: #991b1b;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
 /* ── Progress ── */
 .tr2-prog {
   display: flex;

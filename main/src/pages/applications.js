@@ -33,10 +33,12 @@ function showToast(message, type = 'success') {
    ───────────────────────────────────────────────────────────────────────────── */
 // Job Status
 const jobStatusConfig = {
-  applied:   { label: 'Applied',   color: 'var(--color-gray-500)', bg: 'var(--bg-tertiary)',       icon: 'inbox',       gradient: 'linear-gradient(135deg, #9CA3BF, #6B7194)', step: 1 },
-  reviewed:  { label: 'Reviewed',  color: 'var(--color-info)',     bg: 'var(--color-info-bg)',     icon: 'eye',         gradient: 'linear-gradient(135deg, #005930, #16a34a)', step: 2 },
-  interview: { label: 'Interview', color: 'var(--color-warning)',  bg: 'var(--color-warning-bg)',  icon: 'video',       gradient: 'linear-gradient(135deg, #FFB547, #FFCC70)', step: 3 },
-  offered:   { label: 'Offered',   color: 'var(--color-success)',  bg: 'var(--color-success-bg)',  icon: 'checkCircle', gradient: 'linear-gradient(135deg, #34C759, #30D158)', step: 4 },
+  applied:   { label: 'Applied',      color: 'var(--color-gray-500)', bg: 'var(--bg-tertiary)',       icon: 'inbox',       gradient: 'linear-gradient(135deg, #9CA3BF, #6B7194)', step: 1 },
+  reviewed:  { label: 'Reviewed',     color: 'var(--color-info)',     bg: 'var(--color-info-bg)',     icon: 'eye',         gradient: 'linear-gradient(135deg, #005930, #16a34a)', step: 2 },
+  interview: { label: 'Interview',    color: 'var(--color-warning)',  bg: 'var(--color-warning-bg)',  icon: 'video',       gradient: 'linear-gradient(135deg, #FFB547, #FFCC70)', step: 3 },
+  offered:   { label: 'Offered',      color: 'var(--color-success)',  bg: 'var(--color-success-bg)',  icon: 'checkCircle', gradient: 'linear-gradient(135deg, #34C759, #30D158)', step: 4 },
+  hired:     { label: 'Hired',        color: '#15803d',               bg: '#bbf7d0',                  icon: 'award',       gradient: 'linear-gradient(135deg, #16a34a, #22c55e)', step: 5 },
+  rejected:  { label: 'Not Selected', color: 'var(--color-error)',    bg: 'var(--color-error-bg)',   icon: 'xCircle',     gradient: 'linear-gradient(135deg, #FF3B30, #FF6B6B)', step: 0 },
 };
 const jobStatusOrder = ['applied', 'reviewed', 'interview', 'offered'];
 const jobStatusAlias = { screened: 'reviewed', interviewed: 'interview', offer: 'offered' };
@@ -106,6 +108,9 @@ function isOjtInterviewPast(item) {
 
 function getOjtStatusBadge(item) {
   const status = item?.rawStatus || 'interested';
+  if (status === 'rejected') {
+    return 'Declined / Not Selected';
+  }
   if (status === 'interview_scheduled') {
     if (isOjtInterviewPast(item)) {
       return 'Interview Conducted (Awaiting Result)';
@@ -121,6 +126,9 @@ function getOjtStatusBadge(item) {
 
 function getOjtGuidance(item) {
   const status = item?.rawStatus || 'interested';
+  if (status === 'rejected') {
+    return 'Your application was not selected for this position. Explore more career and OJT opportunities on your feed.';
+  }
   if (status === 'interview_scheduled') {
     if (isOjtInterviewPast(item)) {
       const dt = item?.interviewScheduledAt ? new Date(item.interviewScheduledAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'recently';
@@ -132,6 +140,12 @@ function getOjtGuidance(item) {
     return 'Congratulations! The company accepted you after the interview. Waiting for your OJT Coordinator to grant final approval.';
   }
   return OJT_STEP_GUIDANCE[status] || '';
+}
+
+/* ── Date formatting helpers ── */
+function fmtDate(iso) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
 /* ── Relative time helper ── */
@@ -158,17 +172,30 @@ function openApplicationDetailsModal(item, onWithdrawSuccess, existingOverlay = 
   }
 
   const isOjt = item.type === 'ojt';
-  const color = isOjt ? (OJT_STEP_COLOR[item.rawStatus || 'interested'] || '#10B981') : '#005930';
+  const isRejectedOjt = isOjt && (item.rawStatus === 'rejected' || item.status === 'rejected');
+  const isDeclinedJob = !isOjt && item.offerDecision === 'rejected';
+  const isRejectedJob = !isOjt && (item.status === 'rejected' || item.rawStatus === 'rejected');
+  const isRejectedAny = isRejectedOjt || isRejectedJob || isDeclinedJob;
+
+  const color = isOjt 
+    ? (isRejectedOjt ? 'var(--color-error)' : (OJT_STEP_COLOR[item.rawStatus || 'interested'] || '#10B981')) 
+    : (isDeclinedJob ? '#d97706' : (isRejectedJob ? 'var(--color-error)' : '#005930'));
   const appliedDate = item.appliedDate ? new Date(item.appliedDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : 'Recently';
 
   // Status Meta
   let statusBadgeLabel = '';
   if (isOjt) {
-    statusBadgeLabel = getOjtStatusBadge(item);
+    statusBadgeLabel = isRejectedOjt ? 'Declined / Not Selected' : getOjtStatusBadge(item);
+  } else if (isDeclinedJob) {
+    statusBadgeLabel = 'Offer Declined by You';
+  } else if (isRejectedJob) {
+    statusBadgeLabel = 'Declined / Not Selected';
   } else {
     const sc = jobStatusConfig[item.status] || jobStatusConfig.applied;
     statusBadgeLabel = sc.label;
   }
+
+  const canWithdraw = !['rejected', 'hired', 'offered', 'company_accepted', 'accepted', 'ojt_confirmed', 'ojt_started'].includes(item.rawStatus || item.status) && (item.offerDecision !== 'rejected');
 
   const overlay = existingOverlay || document.createElement('div');
   overlay.id = 'app-details-modal';
@@ -180,7 +207,7 @@ function openApplicationDetailsModal(item, onWithdrawSuccess, existingOverlay = 
       <!-- Modal Header -->
       <div class="app-details-modal__header">
         <div class="app-details-modal__top-left">
-          <div class="app-details-modal__avatar" style="background:${isOjt ? color + '1a' : 'linear-gradient(135deg, #005930, #16a34a)'}; color:${isOjt ? color : '#fff'};">
+          <div class="app-details-modal__avatar" style="background:${isOjt ? (isRejectedOjt ? 'rgba(239,68,68,0.12)' : color + '1a') : (isRejectedJob ? 'rgba(239,68,68,0.12)' : 'linear-gradient(135deg, #005930, #16a34a)')}; color:${isOjt ? color : (isRejectedJob ? 'var(--color-error)' : '#fff')};">
             ${isOjt ? icon('graduationCap', 24) : escapeHtml(item.companyInitial)}
           </div>
           <div class="app-details-modal__title-wrap">
@@ -188,7 +215,7 @@ function openApplicationDetailsModal(item, onWithdrawSuccess, existingOverlay = 
               <span class="app-badge-type app-badge-type--${item.type}">
                 ${icon(isOjt ? 'graduationCap' : 'briefcase', 12)} ${isOjt ? 'OJT Internship' : 'Job Application'}
               </span>
-              <span class="ojt-app-card__badge" style="background:${color}20; color:${color}; border: 1px solid ${color}44;">
+              <span class="ojt-app-card__badge" style="background:${isRejectedAny ? 'var(--color-error-bg, rgba(239,68,68,0.12))' : color + '20'}; color:${color}; border: 1px solid ${color}44;">
                 ${statusBadgeLabel}
               </span>
               <span class="app-details-modal__ref">
@@ -215,7 +242,29 @@ function openApplicationDetailsModal(item, onWithdrawSuccess, existingOverlay = 
         <div class="app-details-section">
           <h4 class="app-details-section__title">${icon('trendingUp', 14)} Application Pipeline & Progress</h4>
           <div class="app-details-timeline-card">
-            ${isOjt ? `
+            ${isOjt ? (
+              isRejectedOjt ? `
+                <div class="app-status-callout app-status-callout--rejected" style="padding:14px 16px; background:rgba(239,68,68,0.06); border-left:4px solid #EF4444; border-radius:8px;">
+                  <div style="display:flex; align-items:center; gap:8px; font-weight:700; color:#EF4444; font-size:0.95rem; margin-bottom:6px;">
+                    ${icon('xCircle', 18)} Application Closed · Not Selected
+                  </div>
+                  <p style="margin:0 0 8px; font-size:0.85rem; color:var(--text-secondary); line-height:1.5;">
+                    This OJT placement application was not selected by the host company or supervisor. You may browse and apply to other active OJT postings.
+                  </p>
+                  ${item.companyNote ? `
+                    <div style="margin-top:8px; padding:8px 12px; background:rgba(0,0,0,0.03); border-radius:6px; font-size:0.82rem; color:var(--text-primary);">
+                      <strong style="display:block; margin-bottom:2px;">Feedback / Note from Employer:</strong>
+                      "${escapeHtml(item.companyNote)}"
+                    </div>
+                  ` : ''}
+                  ${item.coordinatorNote ? `
+                    <div style="margin-top:8px; padding:8px 12px; background:rgba(0,0,0,0.03); border-radius:6px; font-size:0.82rem; color:var(--text-primary);">
+                      <strong style="display:block; margin-bottom:2px;">Note from Coordinator:</strong>
+                      "${escapeHtml(item.coordinatorNote)}"
+                    </div>
+                  ` : ''}
+                </div>
+              ` : `
               <div class="ojt-timeline" style="min-width:0; overflow-x:auto; padding-bottom:6px;">
                 ${OJT_STEPS.map((step, sIdx) => {
                   const stepIndex = getOjtStepIndex(item);
@@ -239,7 +288,25 @@ function openApplicationDetailsModal(item, onWithdrawSuccess, existingOverlay = 
                     </div>`;
                 }).join('')}
               </div>
-            ` : `
+            `) : (
+              (isRejectedJob || isDeclinedJob) ? `
+                <div class="app-status-callout app-status-callout--rejected" style="padding:14px 16px; background:rgba(239,68,68,0.06); border-left:4px solid ${isDeclinedJob ? '#d97706' : 'var(--color-error)'}; border-radius:8px;">
+                  <div style="display:flex; align-items:center; gap:8px; font-weight:700; color:${isDeclinedJob ? '#d97706' : 'var(--color-error)'}; font-size:0.95rem; margin-bottom:6px;">
+                    ${icon(isDeclinedJob ? 'alertCircle' : 'xCircle', 18)} ${isDeclinedJob ? 'Offer Declined by You' : 'Application Not Selected'}
+                  </div>
+                  <p style="margin:0 0 8px; font-size:0.85rem; color:var(--text-secondary); line-height:1.5;">
+                    ${isDeclinedJob
+                      ? `You declined this job offer${item.offerDecidedAt ? ' on ' + fmtDate(item.offerDecidedAt) : ''}.`
+                      : 'Your application was not selected for this position. Explore more career opportunities on your jobs feed.'}
+                  </p>
+                  ${item.notes ? `
+                    <div style="margin-top:8px; padding:8px 12px; background:rgba(0,0,0,0.03); border-radius:6px; font-size:0.82rem; color:var(--text-primary);">
+                      <strong style="display:block; margin-bottom:2px;">Feedback from Hiring Team:</strong>
+                      "${escapeHtml(item.notes)}"
+                    </div>
+                  ` : ''}
+                </div>
+              ` : `
               <div class="app-tracker" style="margin:0; padding:8px 4px;">
                 ${jobStatusOrder.map((s, sIdx) => {
                   const sc          = jobStatusConfig[item.status] || jobStatusConfig.applied;
@@ -256,7 +323,7 @@ function openApplicationDetailsModal(item, onWithdrawSuccess, existingOverlay = 
                     </div>`;
                 }).join('')}
               </div>
-            `}
+            `)}
           </div>
 
           <!-- Current Guidance Callout -->
@@ -465,6 +532,7 @@ function openApplicationDetailsModal(item, onWithdrawSuccess, existingOverlay = 
 
       <!-- Modal Footer -->
       <div class="app-details-modal__footer">
+        ${canWithdraw ? `
         <button
           class="app-card__btn app-card__btn--ghost app-card__btn--danger modal-btn-withdraw"
           data-id="${item.id}"
@@ -472,6 +540,7 @@ function openApplicationDetailsModal(item, onWithdrawSuccess, existingOverlay = 
         >
           ${icon('x', 14)} Withdraw Application
         </button>
+        ` : '<div></div>'}
         <div style="display:flex; gap:10px; align-items:center;">
           <button
             class="app-card__btn app-card__btn--msg modal-btn-msg"
@@ -534,14 +603,16 @@ function unifiedApplicationCard(item, idx) {
   if (isOjt) {
     // ── OJT Card with 9-stage progress tracker ──
     const status      = item.rawStatus || 'interested';
+    const isRejected  = status === 'rejected';
     const stepIndex   = getOjtStepIndex(item);
-    const color       = OJT_STEP_COLOR[status] || '#10B981';
+    const color       = isRejected ? '#EF4444' : (OJT_STEP_COLOR[status] || '#10B981');
     const guidance    = getOjtGuidance(item);
-    const badgeLabel  = getOjtStatusBadge(item);
+    const badgeLabel  = isRejected ? 'Declined / Not Selected' : getOjtStatusBadge(item);
     const appliedDate = relativeDate(item.appliedDate);
+    const canWithdraw = !['rejected', 'hired', 'offered', 'company_accepted', 'accepted', 'ojt_confirmed', 'ojt_started'].includes(status);
 
     return `
-      <article class="ojt-app-card animate-fade-in-up" style="--enter-delay:${idx * 60}ms; border: 1.5px solid ${color}44;" data-app-id="${item.id}" data-type="ojt">
+      <article class="ojt-app-card animate-fade-in-up ${isRejected ? 'ojt-app-card--rejected' : ''}" style="--enter-delay:${idx * 60}ms; border: 1.5px solid ${color}44; ${isRejected ? 'border-left: 3.5px solid #EF4444;' : ''}" data-app-id="${item.id}" data-type="ojt">
         <!-- Header -->
         <div class="ojt-app-card__header">
           <div class="ojt-app-card__avatar" style="background:${color}1a; color:${color};">
@@ -561,42 +632,59 @@ function unifiedApplicationCard(item, idx) {
               }
             </p>
           </div>
-          <span class="ojt-app-card__badge" style="background:${color}1e; color:${color}; border: 1px solid ${color}44;">
+          <span class="ojt-app-card__badge" style="background:${isRejected ? 'rgba(239,68,68,0.12)' : color + '1e'}; color:${color}; border: 1px solid ${color}44;">
             ${escapeHtml(badgeLabel)}
           </span>
         </div>
 
-        <!-- 9-Stage Step Progress Strip -->
-        <div class="ojt-app-card__timeline">
-          <div class="ojt-timeline">
-            ${OJT_STEPS.map((step, sIdx) => {
-              const isDone    = sIdx < stepIndex;
-              const isCurrent = sIdx === stepIndex;
-              const stepColor = isDone ? '#10B981' : isCurrent ? color : 'var(--border-default)';
-              const textColor = isDone ? '#10B981' : isCurrent ? color : 'var(--text-tertiary)';
-              return `
-                <div class="ojt-timeline__step">
-                  ${sIdx < OJT_STEPS.length - 1 ? `
-                    <div class="ojt-timeline__line ${isDone ? 'ojt-timeline__line--done' : ''}"></div>
-                  ` : ''}
-                  <div class="ojt-timeline__dot ${isCurrent ? 'ojt-timeline__dot--current' : isDone ? 'ojt-timeline__dot--done' : ''}" style="border-color:${stepColor}; ${isCurrent ? 'background:' + color + ';' : isDone ? 'background:#10B981;' : ''}">
-                    <span style="color:${isCurrent || isDone ? '#fff' : 'var(--text-tertiary)'}; display:flex; align-items:center; justify-content:center;">
-                      ${icon(step.icon, 11)}
-                    </span>
-                  </div>
-                  <p class="ojt-timeline__label" style="color:${textColor}; font-weight:${isCurrent ? '700' : '500'};">
-                    ${step.label}
-                  </p>
-                </div>`;
-            }).join('')}
+        ${isRejected ? `
+          <!-- Rejection Status Callout -->
+          <div class="app-status-callout app-status-callout--rejected" style="margin: 12px 20px 14px; padding: 12px 14px; background: rgba(239,68,68,0.06); border-left: 3.5px solid #EF4444; border-radius: 6px;">
+            <div style="display:flex; align-items:center; gap:6px; font-weight:700; color:#EF4444; font-size:0.86rem; margin-bottom:4px;">
+              ${icon('xCircle', 15)} Application Not Selected
+            </div>
+            <p style="margin:0 0 4px; font-size:0.8rem; color:var(--text-secondary); line-height:1.4;">
+              Your application for this OJT placement was not selected by the host company or supervisor. You may apply to other open OJT postings.
+            </p>
+            ${item.companyNote ? `
+              <div style="margin-top:6px; padding:6px 10px; background:rgba(0,0,0,0.03); border-radius:4px; font-size:0.78rem; color:var(--text-primary);">
+                <strong>Feedback from Employer:</strong> "${escapeHtml(item.companyNote)}"
+              </div>
+            ` : ''}
           </div>
-        </div>
+        ` : `
+          <!-- 9-Stage Step Progress Strip -->
+          <div class="ojt-app-card__timeline">
+            <div class="ojt-timeline">
+              ${OJT_STEPS.map((step, sIdx) => {
+                const isDone    = sIdx < stepIndex;
+                const isCurrent = sIdx === stepIndex;
+                const stepColor = isDone ? '#10B981' : isCurrent ? color : 'var(--border-default)';
+                const textColor = isDone ? '#10B981' : isCurrent ? color : 'var(--text-tertiary)';
+                return `
+                  <div class="ojt-timeline__step">
+                    ${sIdx < OJT_STEPS.length - 1 ? `
+                      <div class="ojt-timeline__line ${isDone ? 'ojt-timeline__line--done' : ''}"></div>
+                    ` : ''}
+                    <div class="ojt-timeline__dot ${isCurrent ? 'ojt-timeline__dot--current' : isDone ? 'ojt-timeline__dot--done' : ''}" style="border-color:${stepColor}; ${isCurrent ? 'background:' + color + ';' : isDone ? 'background:#10B981;' : ''}">
+                      <span style="color:${isCurrent || isDone ? '#fff' : 'var(--text-tertiary)'}; display:flex; align-items:center; justify-content:center;">
+                        ${icon(step.icon, 11)}
+                      </span>
+                    </div>
+                    <p class="ojt-timeline__label" style="color:${textColor}; font-weight:${isCurrent ? '700' : '500'};">
+                      ${step.label}
+                    </p>
+                  </div>`;
+              }).join('')}
+            </div>
+          </div>
 
-        <!-- Guidance Note Box -->
-        ${guidance ? `
-        <div class="ojt-app-card__guidance" style="background:${color}0d; border-left: 3px solid ${color};">
-          <p>${escapeHtml(guidance)}</p>
-        </div>` : ''}
+          <!-- Guidance Note Box -->
+          ${guidance ? `
+          <div class="ojt-app-card__guidance" style="background:${color}0d; border-left: 3px solid ${color};">
+            <p>${escapeHtml(guidance)}</p>
+          </div>` : ''}
+        `}
 
         <!-- Bottom Actions Row -->
         <div class="ojt-app-card__footer">
@@ -610,6 +698,7 @@ function unifiedApplicationCard(item, idx) {
             >
               ${icon('eye', 13)} Details
             </button>
+            ${canWithdraw ? `
             <button
               class="app-card__btn app-card__btn--ghost app-card__btn--danger btn-withdraw"
               data-id="${item.id}"
@@ -618,6 +707,17 @@ function unifiedApplicationCard(item, idx) {
             >
               ${icon('x', 13)} Withdraw
             </button>
+            ` : ''}
+            ${isRejected ? `
+            <a
+              href="#/ojt"
+              class="app-card__btn app-card__btn--ghost"
+              style="text-decoration:none;"
+              title="Browse other OJT postings"
+            >
+              ${icon('arrowRight', 13)} Browse OJT
+            </a>
+            ` : ''}
             <button
               class="app-card__btn app-card__btn--msg"
               data-id="${item.id}"
@@ -633,12 +733,23 @@ function unifiedApplicationCard(item, idx) {
     `;
   } else {
     // ── Job Card with 4-stage progress tracker ──
-    const sc          = jobStatusConfig[item.status] || jobStatusConfig.applied;
+    const isHired = item.status === 'hired';
+    const isRejected = item.status === 'rejected';
+    const isDeclinedByCandidate = item.offerDecision === 'rejected';
+    const isRejectedAny = isRejected || isDeclinedByCandidate;
+    const canWithdraw = !['hired', 'rejected', 'offered'].includes(item.status) && !isDeclinedByCandidate;
+
+    let sc = jobStatusConfig[item.status] || jobStatusConfig.applied;
+    if (isDeclinedByCandidate) {
+      sc = { label: 'Offer Declined', color: '#d97706', bg: '#fef3c7', icon: 'alertCircle', gradient: 'linear-gradient(135deg, #d97706, #b45309)', step: 0 };
+    }
+
     const currentStep = sc.step || 0;
     const appliedDate = relativeDate(item.appliedDate);
+    const borderAccent = isHired ? '#16a34a' : (isDeclinedByCandidate ? '#d97706' : (isRejected ? 'var(--color-error)' : ''));
 
     return `
-      <article class="app-card animate-fade-in-up" style="--enter-delay:${idx * 60}ms;" data-app-id="${item.id}" data-type="job">
+      <article class="app-card animate-fade-in-up ${isRejectedAny ? 'app-card--rejected' : ''} ${isHired ? 'app-card--hired' : ''}" style="--enter-delay:${idx * 60}ms; ${borderAccent ? 'border-left: 3.5px solid ' + borderAccent + ';' : ''}" data-app-id="${item.id}" data-type="job">
         <div class="app-card__left">
           <div class="app-card__logo" style="background:${sc.gradient};">
             ${escapeHtml(item.companyInitial)}
@@ -655,25 +766,43 @@ function unifiedApplicationCard(item, idx) {
               </div>
               <p class="app-card__company" style="margin:0;">${escapeHtml(item.company)}</p>
             </div>
-            <span class="app-card__badge" style="background:${sc.bg};color:${sc.color};">
+            <span class="app-card__badge" style="background:${sc.bg};color:${sc.color}; border: 1px solid ${sc.color}44;">
               ${icon(sc.icon, 12)} ${sc.label}
             </span>
           </div>
 
-          <div class="app-tracker">
-            ${jobStatusOrder.map((s, sIdx) => {
-              const stepCfg = jobStatusConfig[s];
-              const done = (sIdx + 1) <= currentStep;
-              const active = (sIdx + 1) === currentStep;
-              return `
-                <div class="app-tracker__step ${done ? 'app-tracker__step--done' : ''} ${active ? 'app-tracker__step--active' : ''}">
-                  <div class="app-tracker__dot" style="${done ? 'background:' + stepCfg.gradient : ''}">
-                    ${done ? icon('checkCircle', 10) : ''}
-                  </div>
-                  ${sIdx < jobStatusOrder.length - 1 ? '<div class="app-tracker__line' + (done && (sIdx + 2) <= currentStep ? ' app-tracker__line--done' : '') + '"></div>' : ''}
-                </div>`;
-            }).join('')}
-          </div>
+          ${isRejectedAny ? `
+            <div class="app-status-callout app-status-callout--rejected" style="margin: 10px 0 12px; padding: 12px 14px; background: rgba(239,68,68,0.06); border-left: 3.5px solid ${isDeclinedByCandidate ? '#d97706' : 'var(--color-error)'}; border-radius: 6px;">
+              <div style="display:flex; align-items:center; gap:6px; font-weight:700; color:${isDeclinedByCandidate ? '#d97706' : 'var(--color-error)'}; font-size:0.86rem; margin-bottom:4px;">
+                ${icon(isDeclinedByCandidate ? 'alertCircle' : 'xCircle', 15)} ${isDeclinedByCandidate ? 'Offer Declined by You' : 'Application Not Selected'}
+              </div>
+              <p style="margin:0 0 4px; font-size:0.8rem; color:var(--text-secondary); line-height:1.4;">
+                ${isDeclinedByCandidate 
+                  ? `You declined this job offer${item.offerDecidedAt ? ' on ' + fmtDate(item.offerDecidedAt) : ''}.`
+                  : 'Your application was not selected for this position. Explore more career opportunities on your jobs feed.'}
+              </p>
+              ${item.notes ? `
+                <div style="margin-top:6px; padding:6px 10px; background:rgba(0,0,0,0.03); border-radius:4px; font-size:0.78rem; color:var(--text-primary);">
+                  <strong>Feedback:</strong> "${escapeHtml(item.notes)}"
+                </div>
+              ` : ''}
+            </div>
+          ` : `
+            <div class="app-tracker">
+              ${jobStatusOrder.map((s, sIdx) => {
+                const stepCfg = jobStatusConfig[s];
+                const done = (sIdx + 1) <= currentStep;
+                const active = (sIdx + 1) === currentStep;
+                return `
+                  <div class="app-tracker__step ${done ? 'app-tracker__step--done' : ''} ${active ? 'app-tracker__step--active' : ''}">
+                    <div class="app-tracker__dot" style="${done ? 'background:' + stepCfg.gradient : ''}">
+                      ${done ? icon('checkCircle', 10) : ''}
+                    </div>
+                    ${sIdx < jobStatusOrder.length - 1 ? '<div class="app-tracker__line' + (done && (sIdx + 2) <= currentStep ? ' app-tracker__line--done' : '') + '"></div>' : ''}
+                  </div>`;
+              }).join('')}
+            </div>
+          `}
 
           <div class="app-card__row-bottom">
             <span class="app-card__date">${icon('calendar', 12)} Applied ${appliedDate}</span>
@@ -686,6 +815,7 @@ function unifiedApplicationCard(item, idx) {
               >
                 ${icon('eye', 13)} Details
               </button>
+              ${canWithdraw ? `
               <button
                 class="app-card__btn app-card__btn--ghost app-card__btn--danger btn-withdraw"
                 data-id="${item.id}"
@@ -694,6 +824,17 @@ function unifiedApplicationCard(item, idx) {
               >
                 ${icon('x', 13)} Withdraw
               </button>
+              ` : ''}
+              ${isRejectedAny ? `
+              <a
+                href="#/jobs"
+                class="app-card__btn app-card__btn--ghost"
+                style="text-decoration:none;"
+                title="Browse other job postings"
+              >
+                ${icon('arrowRight', 13)} Browse Jobs
+              </a>
+              ` : ''}
               <button
                 class="app-card__btn app-card__btn--msg"
                 data-id="${item.id}"
@@ -758,6 +899,11 @@ export async function renderApplications(container) {
             Job Applications
             <span class="app-type-tab__count" id="tab-job-count">0</span>
           </button>
+          <button class="app-type-tab" data-filter="rejected">
+            <span class="app-type-tab__icon">${icon('xCircle', 14)}</span>
+            Declined / Not Selected
+            <span class="app-type-tab__count" id="tab-rejected-count">0</span>
+          </button>
         </div>
 
         <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
@@ -818,6 +964,9 @@ export async function renderApplications(container) {
     const activePipelineCount = allApplications.filter(a => 
       a.status === 'offered' || a.rawStatus === 'company_accepted' || a.rawStatus === 'accepted' || a.rawStatus === 'ojt_confirmed' || a.rawStatus === 'ojt_started'
     ).length;
+    const rejectedCount = allApplications.filter(a => 
+      a.status === 'rejected' || a.rawStatus === 'rejected' || a.offerDecision === 'rejected'
+    ).length;
 
     statsEl.innerHTML = `
       <div class="app-stat-card app-stat-card--total">
@@ -869,15 +1018,27 @@ export async function renderApplications(container) {
           <span class="app-stat-card__label">Offered / Approved</span>
         </div>
       </div>
+
+      <div class="app-stat-card app-stat-card--rejected">
+        <div class="app-stat-card__icon" style="background:rgba(239,68,68,0.12);color:#EF4444;">
+          ${icon('xCircle', 20)}
+        </div>
+        <div class="app-stat-card__data">
+          <span class="app-stat-card__value" data-counter="${rejectedCount}">${rejectedCount}</span>
+          <span class="app-stat-card__label">Declined / Not Selected</span>
+        </div>
+      </div>
     `;
 
     // Tab counts
     const tabAllCount = container.querySelector('#tab-all-count');
     const tabOjtCount = container.querySelector('#tab-ojt-count');
     const tabJobCount = container.querySelector('#tab-job-count');
+    const tabRejectedCount = container.querySelector('#tab-rejected-count');
     if (tabAllCount) tabAllCount.textContent = totalCount;
     if (tabOjtCount) tabOjtCount.textContent = ojtCount;
     if (tabJobCount) tabJobCount.textContent = jobCount;
+    if (tabRejectedCount) tabRejectedCount.textContent = rejectedCount;
   }
 
   // Render unified feed
@@ -886,9 +1047,16 @@ export async function renderApplications(container) {
     const emptyEl = container.querySelector('#app-empty');
     if (!feed) return;
 
-    const filtered = filterType === 'all'
-      ? allApplications
-      : allApplications.filter(a => a.type === filterType);
+    let filtered = allApplications;
+    if (filterType === 'ojt') {
+      filtered = allApplications.filter(a => a.type === 'ojt');
+    } else if (filterType === 'job') {
+      filtered = allApplications.filter(a => a.type === 'job');
+    } else if (filterType === 'rejected') {
+      filtered = allApplications.filter(a => 
+        a.status === 'rejected' || a.rawStatus === 'rejected' || a.offerDecision === 'rejected'
+      );
+    }
 
     if (filtered.length === 0) {
       feed.innerHTML = '';
@@ -896,7 +1064,10 @@ export async function renderApplications(container) {
         emptyEl.style.display = 'flex';
         const titleEl = emptyEl.querySelector('#empty-title');
         const descEl = emptyEl.querySelector('#empty-desc');
-        if (filterType === 'ojt') {
+        if (filterType === 'rejected') {
+          if (titleEl) titleEl.textContent = 'No declined applications';
+          if (descEl) descEl.textContent = 'You do not have any rejected or declined applications.';
+        } else if (filterType === 'ojt') {
           if (titleEl) titleEl.textContent = 'No OJT applications';
           if (descEl) descEl.textContent = 'You have not applied for any OJT internship slots yet.';
         } else if (filterType === 'job') {
@@ -1170,6 +1341,9 @@ function parseApplications(jobRes, ojtRes) {
       requiredSkills:   Array.isArray(listing?.required_skills) ? listing.required_skills : [],
       coverLetter:      a.cover_letter || '',
       notes:            a.notes || '',
+      offerDetails:     a.offer_details || null,
+      offerDecision:    a.offer_decision || null,
+      offerDecidedAt:   a.offer_decided_at || null,
       interview:        a.latest_interview || null,
       raw:              a,
     };
@@ -1202,7 +1376,6 @@ function parseApplications(jobRes, ojtRes) {
   } catch (_) {}
 
   const ojtItems = rawOjt
-    .filter(i => i.status !== 'rejected')
     .map(interest => {
       const posting = interest.posting || {};
       const company = posting.company_name || posting.company || 'Partner Company';

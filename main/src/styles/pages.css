@@ -3323,7 +3323,7 @@
 /* Stats Row */
 .app-stats {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: var(--space-3);
   margin-bottom: var(--space-6);
 }
@@ -3353,6 +3353,18 @@
 .app-stat-card:nth-child(3) { animation-delay: 240ms; }
 .app-stat-card:nth-child(4) { animation-delay: 300ms; }
 .app-stat-card:nth-child(5) { animation-delay: 360ms; }
+.app-stat-card:nth-child(6) { animation-delay: 420ms; }
+.app-stat-card--rejected .app-stat-card__value { color: var(--color-error, #EF4444); }
+
+.ojt-app-card--rejected {
+  opacity: 0.88;
+  border-left: 3.5px solid #EF4444 !important;
+}
+
+.app-card--rejected {
+  opacity: 0.88;
+  border-left: 3.5px solid var(--color-error, #EF4444) !important;
+}
 
 .app-stat-card:hover {
   transform: translateY(-3px);

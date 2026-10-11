@@ -51,6 +51,24 @@ function getEndpointsForRoute(routePath) {
  * - Preserves scroll positions, input search states, and active sub-tabs.
  * - Checks in background for new or updated data; refreshes page only if data changed.
  */
+let renderDebounceTimer = null;
+async function renderViewSafely(view) {
+  if (!view) return;
+  if (view.isRendering) {
+    view.dirty = true;
+    return;
+  }
+  view.isRendering = true;
+  try {
+    view.dirty = false;
+    await view.renderer(view.container);
+  } catch (err) {
+    console.error('[view manager] render error', err);
+  } finally {
+    view.isRendering = false;
+  }
+}
+
 function renderPage(routePath, renderer) {
   return async (mainContent) => {
     if (!mainContent) {
@@ -98,8 +116,7 @@ function renderPage(routePath, renderer) {
           const hasNewData = existingView.dirty || results.some(r => r.changed);
 
           if (hasNewData) {
-            existingView.dirty = false;
-            await renderer(existingView.container);
+            await renderViewSafely(existingView);
           }
         } catch {
           // Network error: continue showing existing cached view safely
@@ -118,10 +135,11 @@ function renderPage(routePath, renderer) {
         renderer,
         endpoints,
         dirty: false,
+        isRendering: false,
       };
       pageViews.set(routeKey, viewRecord);
 
-      await renderer(pageContainer);
+      await renderViewSafely(viewRecord);
       window.scrollTo({ top: 0, behavior: 'instant' });
     }
   };
@@ -141,16 +159,19 @@ window.addEventListener('hireme:cache-invalidated', (e) => {
     if (isAffected) {
       if (key === activeRouteKey) {
         // Active page! Check if user is typing or modal is open
-        const hasOpenModal = !!document.querySelector('.modal-overlay, .modal-backdrop, .modal-box, .swal2-container');
+        const hasOpenModal = !!document.querySelector('.modal-overlay, .modal-backdrop, .modal-box, .swal2-container, #sup-req-modal-overlay, [id$="-modal-overlay"]');
         const isInteracting = view.container.contains(document.activeElement) &&
           ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName);
 
-        if (hasOpenModal || isInteracting) {
+        if (hasOpenModal || isInteracting || view.isRendering) {
           // Defer until modal closes or interaction finishes
           view.dirty = true;
         } else {
-          view.dirty = false;
-          view.renderer(view.container);
+          // Debounce slightly to coalesce multiple invalidations & break synchronous recursion
+          clearTimeout(renderDebounceTimer);
+          renderDebounceTimer = setTimeout(() => {
+            renderViewSafely(view);
+          }, 30);
         }
       } else {
         view.dirty = true;
@@ -175,11 +196,11 @@ async function checkActiveViewFreshness() {
   if (!view || !view.endpoints || view.endpoints.length === 0) return;
 
   // Don't interrupt user typing or active modal interaction
-  const hasOpenModal = !!document.querySelector('.modal-overlay, .modal-backdrop, .modal-box, .swal2-container');
+  const hasOpenModal = !!document.querySelector('.modal-overlay, .modal-backdrop, .modal-box, .swal2-container, #sup-req-modal-overlay, [id$="-modal-overlay"]');
   const isInteracting = view.container.contains(document.activeElement) &&
     ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName);
 
-  if (hasOpenModal || isInteracting) {
+  if (hasOpenModal || isInteracting || view.isRendering) {
     return;
   }
 
@@ -189,8 +210,7 @@ async function checkActiveViewFreshness() {
     );
     const hasChange = view.dirty || results.some(r => r.changed);
     if (hasChange) {
-      view.dirty = false;
-      await view.renderer(view.container);
+      await renderViewSafely(view);
     }
   } catch (_) {}
 }

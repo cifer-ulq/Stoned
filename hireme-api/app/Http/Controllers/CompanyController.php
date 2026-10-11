@@ -16,6 +16,7 @@ use App\Models\StudentSkill;
 use App\Models\PortfolioProject;
 use App\Models\StudentAchievement;
 use App\Models\AppNotification;
+use App\Models\OjtEmergencyRequest;
 use App\Services\RecommendationService;
 use App\Services\CourseNormalizer;
 use Illuminate\Http\Request;
@@ -1350,10 +1351,11 @@ class CompanyController extends Controller
     public function ojtTrainees(Request $request)
     {
         $userId = $request->user()->id;
+        $today  = now()->toDateString();
 
-        $postings = OjtPosting::where('company_user_id', $userId)
+        $rawPostings = OjtPosting::where('company_user_id', $userId)
             ->with(['interests' => function ($q) {
-                $q->whereIn('status', ['ojt_started', 'accepted', 'ojt_confirmed'])
+                $q->whereIn('status', ['ojt_started', 'accepted', 'ojt_confirmed', 'stoppage_requested', 'on_leave', 'withdrawn_emergency'])
                   ->with([
                       'student',
                       'student.studentProfile',
@@ -1364,8 +1366,28 @@ class CompanyController extends Controller
                   ]);
             }])
             ->latest()
-            ->get()
-            ->map(function ($p) use ($userId) {
+            ->get();
+
+        // Batch-load today's time logs & total log counts for all trainees to avoid N+1 queries
+        $studentIds = $rawPostings->flatMap(fn ($p) => $p->interests->pluck('student_user_id'))->filter()->unique()->values();
+
+        $todayLogsByStudent = $studentIds->isNotEmpty()
+            ? \App\Models\TimeLog::whereIn('user_id', $studentIds)
+                ->where('log_date', $today)
+                ->get()
+                ->keyBy('user_id')
+            : collect();
+
+        $logCountsByStudent = $studentIds->isNotEmpty()
+            ? \App\Models\TimeLog::whereIn('user_id', $studentIds)
+                ->selectRaw('user_id, count(*) as total_logs, sum(hours_rendered) as sum_hours')
+                ->groupBy('user_id')
+                ->get()
+                ->keyBy('user_id')
+            : collect();
+
+        $postings = $rawPostings
+            ->map(function ($p) use ($userId, $todayLogsByStudent, $logCountsByStudent) {
                 return [
                     'posting' => [
                         'id'               => $p->id,
@@ -1381,34 +1403,53 @@ class CompanyController extends Controller
                         'preferred_courses'=> $p->preferred_courses,
                         'description'      => $p->description,
                     ],
-                    'trainees' => $p->interests->map(function ($i) use ($userId) {
-                        $sp = $i->student->studentProfile;
+                    'trainees' => $p->interests->map(function ($i) use ($userId, $todayLogsByStudent, $logCountsByStudent) {
+                        $studentId = $i->student_user_id ?? $i->student?->id;
+                        $sp = $i->student?->studentProfile;
                         $record = $i->student?->ojtRecord;
                         $eval = $i->student?->studentEvaluations
                             ? $i->student->studentEvaluations->where('company_user_id', $userId)->sortByDesc('created_at')->first()
                             : null;
 
+                        $logAgg = $logCountsByStudent->get($studentId);
                         $completedHours = (float) ($record?->completed_hours ?? 0);
-                        if ($completedHours == 0 && $record) {
-                            $completedHours = (float) \App\Models\TimeLog::where('user_id', $i->student_user_id ?? $i->student?->id)
-                                ->where('ojt_record_id', $record->id)
-                                ->sum('hours_rendered');
+                        if ($completedHours == 0 && $logAgg) {
+                            $completedHours = (float) ($logAgg->sum_hours ?? 0);
                         }
 
+                        $todayLog = $todayLogsByStudent->get($studentId);
+                        $todayDtr = $this->formatTodayDtrSummary($todayLog, (bool) ($i->has_lunch_break ?? true), (int) ($logAgg?->total_logs ?? 0));
+
+                        $latestEmer = OjtEmergencyRequest::where('student_user_id', $studentId)->latest()->first();
+
                         return [
-                            'id'           => $i->id,
-                            'interest_id'  => $i->id,
-                            'status'       => $i->status,
+                            'id'              => $i->id,
+                            'interest_id'     => $i->id,
+                            'status'          => $i->status,
                             'completed_hours' => $completedHours,
                             'required_hours'  => (int) ($record?->required_hours ?? 600),
+                            'today_dtr'       => $todayDtr,
+                            'emergency_request' => $latestEmer ? [
+                                'id'                      => $latestEmer->id,
+                                'type'                    => $latestEmer->type,
+                                'category'                => $latestEmer->category,
+                                'reason'                  => $latestEmer->reason,
+                                'start_date'              => $latestEmer->start_date?->format('M d, Y'),
+                                'expected_return_date'    => $latestEmer->expected_return_date?->format('M d, Y'),
+                                'coordinator_status'      => $latestEmer->coordinator_status,
+                                'company_status'          => $latestEmer->company_status,
+                                'assets_returned'         => (bool) $latestEmer->assets_returned,
+                                'company_clearance_notes' => $latestEmer->company_clearance_notes,
+                                'company_cleared_at'      => $latestEmer->company_cleared_at?->format('M d, Y'),
+                            ] : null,
                             'evaluation'      => $eval ? [
                                 'id'            => $eval->id,
                                 'status'        => $eval->status,
                                 'overall_score' => $eval->overall_score ? (float) $eval->overall_score : null,
                                 'submitted_at'  => $eval->submitted_at?->format('M d, Y'),
                             ] : null,
-                            'accepted_at'  => ($i->ojt_started_at ?? $i->updated_at)?->format('M d, Y'),
-                            'endorsed_at'  => $i->endorsed_at?->format('M d, Y'),
+                            'accepted_at'        => ($i->ojt_started_at ?? $i->updated_at)?->format('M d, Y'),
+                            'endorsed_at'        => $i->endorsed_at?->format('M d, Y'),
                             'ojt_start_date'     => $i->ojt_start_date?->format('M d, Y'),
                             'schedule_days'      => $i->schedule_days,
                             'shift_start'        => $i->shift_start,
@@ -1450,6 +1491,198 @@ class CompanyController extends Controller
             ->values();
 
         return response()->json(['success' => true, 'data' => $postings]);
+    }
+
+    /**
+     * Format a compact summary of today's DTR log for a trainee row.
+     */
+    private function formatTodayDtrSummary(?\App\Models\TimeLog $log, bool $hasLunch = true, int $totalLogsCount = 0): array
+    {
+        if (!$log) {
+            return [
+                'logged_today'      => false,
+                'session_state'     => 'none',
+                'label'             => 'No Log Today',
+                'morning_in'        => null,
+                'morning_out'       => null,
+                'afternoon_in'      => null,
+                'afternoon_out'     => null,
+                'time_in'           => null,
+                'time_out'          => null,
+                'hours_today'       => 0.0,
+                'location_validity' => null,
+                'distance_meters'   => null,
+                'total_logs_count'  => $totalLogsCount,
+            ];
+        }
+
+        $mIn  = $log->morning_in ? Carbon::parse($log->morning_in)->format('g:i A') : null;
+        $mOut = $log->morning_out ? Carbon::parse($log->morning_out)->format('g:i A') : null;
+        $aIn  = $log->afternoon_in ? Carbon::parse($log->afternoon_in)->format('g:i A') : null;
+        $aOut = $log->afternoon_out ? Carbon::parse($log->afternoon_out)->format('g:i A') : null;
+        $tIn  = $log->time_in ? Carbon::parse($log->time_in)->format('g:i A') : null;
+        $tOut = $log->time_out ? Carbon::parse($log->time_out)->format('g:i A') : null;
+        $hrs  = (float) ($log->hours_rendered ?? 0);
+
+        $locValidity = $log->distance_meters !== null
+            ? ((float) $log->distance_meters <= 100 ? 'In Site' : 'Too Far')
+            : ($log->location_validity === 'valid' ? 'In Site' : $log->location_validity);
+
+        if ($aIn && !$aOut) {
+            $state = 'in_afternoon';
+            $label = "Timed In (PM) · {$aIn}";
+        } elseif ($aOut || (!$hasLunch && $tOut)) {
+            $state = 'completed';
+            $label = "Completed Today · {$hrs}h";
+        } elseif ($mIn && !$mOut) {
+            $state = 'in_morning';
+            $label = "Timed In (AM) · {$mIn}";
+        } elseif ($mOut && !$aIn) {
+            $state = 'morning_done';
+            $mHrs  = (float) ($log->morning_hours ?? $hrs);
+            $label = "AM Done ({$mHrs}h) · On Break";
+        } elseif ($tIn && !$tOut) {
+            $state = 'in_morning';
+            $label = "Timed In · {$tIn}";
+        } else {
+            $state = 'completed';
+            $label = "Logged · {$hrs}h";
+        }
+
+        return [
+            'logged_today'      => true,
+            'session_state'     => $state,
+            'label'             => $label,
+            'morning_in'        => $mIn,
+            'morning_out'       => $mOut,
+            'afternoon_in'      => $aIn,
+            'afternoon_out'     => $aOut,
+            'time_in'           => $tIn,
+            'time_out'          => $tOut,
+            'hours_today'       => $hrs,
+            'location_validity' => $locValidity,
+            'distance_meters'   => $log->distance_meters,
+            'total_logs_count'  => $totalLogsCount,
+        ];
+    }
+
+    /**
+     * GET /api/company/ojt-trainees/{studentId}/logs
+     * Returns all DTR (TimeLog) records and attendance summary for an active trainee in the company's OJT listings.
+     */
+    public function traineeTimeLogs(Request $request, $studentId)
+    {
+        $userId = $request->user()->id;
+
+        $companyPostingIds = OjtPosting::where('company_user_id', $userId)->pluck('id');
+
+        $interest = StudentOjtInterest::with(['posting', 'student.studentProfile', 'student.ojtRecord'])
+            ->where('student_user_id', $studentId)
+            ->whereIn('ojt_posting_id', $companyPostingIds)
+            ->whereIn('status', ['ojt_started', 'accepted', 'ojt_confirmed', 'stoppage_requested', 'on_leave', 'withdrawn_emergency'])
+            ->latest()
+            ->first();
+
+        if (!$interest) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized: This student is not an active trainee in any of your OJT listings.',
+            ], 403);
+        }
+
+        $student = $interest->student;
+        $sp      = $student?->studentProfile;
+        $record  = $student?->ojtRecord ?? OjtRecord::where('user_id', $studentId)->latest()->first();
+        $posting = $interest->posting;
+        $siteLocation = $posting?->location ?: ($posting?->company_name ?: 'Assigned Work Site');
+
+        $rawLogs = \App\Models\TimeLog::where('user_id', $studentId)
+            ->orderByDesc('log_date')
+            ->orderByDesc('id')
+            ->get();
+
+        $logs = $rawLogs->map(function ($log) use ($siteLocation) {
+            $locValidity = $log->distance_meters !== null
+                ? ((float) $log->distance_meters <= 100 ? 'In Site' : 'Too Far')
+                : ($log->location_validity === 'valid' ? 'In Site' : ($log->location_validity ?: 'No GPS'));
+
+            $inLat  = $log->time_in_lat ?? $log->morning_in_lat ?? $log->afternoon_in_lat ?? $log->latitude;
+            $inLon  = $log->time_in_lon ?? $log->morning_in_lon ?? $log->afternoon_in_lon ?? $log->longitude;
+            $outLat = $log->time_out_lat ?? $log->afternoon_out_lat ?? $log->morning_out_lat;
+            $outLon = $log->time_out_lon ?? $log->afternoon_out_lon ?? $log->morning_out_lon;
+
+            return [
+                'id'                 => $log->id,
+                'rawDate'            => $log->log_date?->format('Y-m-d'),
+                'date'               => $log->log_date?->format('M j, Y'),
+                'dayLabel'           => $log->log_date?->format('D, M j, Y'),
+                'timeIn'             => $log->time_in ? Carbon::parse($log->time_in)->format('g:i A') : null,
+                'timeOut'            => $log->time_out ? Carbon::parse($log->time_out)->format('g:i A') : null,
+                'morningIn'          => $log->morning_in ? Carbon::parse($log->morning_in)->format('g:i A') : null,
+                'morningOut'         => $log->morning_out ? Carbon::parse($log->morning_out)->format('g:i A') : null,
+                'afternoonIn'        => $log->afternoon_in ? Carbon::parse($log->afternoon_in)->format('g:i A') : null,
+                'afternoonOut'       => $log->afternoon_out ? Carbon::parse($log->afternoon_out)->format('g:i A') : null,
+                'morningHours'       => (float) ($log->morning_hours ?? 0),
+                'afternoonHours'     => (float) ($log->afternoon_hours ?? 0),
+                'autoMorningTimeout' => (bool) ($log->auto_morning_timeout ?? false),
+                'hours'              => (float) ($log->hours_rendered ?? 0),
+                'status'             => $log->status ?: ($locValidity === 'In Site' ? 'valid' : $locValidity),
+                'task'               => $log->description,
+                'locationValidity'   => $locValidity,
+                'morningValidity'    => $log->morning_validity,
+                'afternoonValidity'  => $log->afternoon_validity,
+                'distanceMeters'     => $log->distance_meters !== null ? (int) $log->distance_meters : null,
+                'siteLocation'       => $siteLocation,
+                'inLat'              => $inLat !== null ? (float) $inLat : null,
+                'inLon'              => $inLon !== null ? (float) $inLon : null,
+                'outLat'             => $outLat !== null ? (float) $outLat : null,
+                'outLon'             => $outLon !== null ? (float) $outLon : null,
+            ];
+        })->values();
+
+        $totalHoursFromLogs = (float) $rawLogs->sum('hours_rendered');
+        $completedHours     = (float) ($record?->completed_hours ?? 0);
+        if ($completedHours == 0 && $totalHoursFromLogs > 0) {
+            $completedHours = $totalHoursFromLogs;
+        }
+        $requiredHours = (int) ($record?->required_hours ?? 600);
+        $progressPct   = $requiredHours > 0 ? min(100, (int) round(($completedHours / $requiredHours) * 100)) : 0;
+
+        $inSiteCount = $logs->where('locationValidity', 'In Site')->count();
+        $tooFarCount = $logs->where('locationValidity', 'Too Far')->count();
+        $noGpsCount  = $logs->count() - $inSiteCount - $tooFarCount;
+
+        $todayLog = $rawLogs->first(fn ($l) => $l->log_date?->toDateString() === now()->toDateString());
+        $todayDtr = $this->formatTodayDtrSummary($todayLog, (bool) ($interest->has_lunch_break ?? true), $logs->count());
+
+        return response()->json([
+            'success' => true,
+            'student' => [
+                'id'            => $student->id,
+                'name'          => $student->name,
+                'email'         => $student->email,
+                'program'       => $sp?->program ?? '—',
+                'year_level'    => $sp?->year_level ?? '',
+                'student_id'    => $sp?->student_id ?? '',
+                'posting_title' => $posting?->title ?? 'OJT Placement',
+                'department'    => $posting?->department ?? '',
+                'site_location' => $siteLocation,
+                'shift_start'   => $interest->shift_start ?? $record?->shift_start ?? '08:00',
+                'shift_end'     => $interest->shift_end ?? $record?->shift_end ?? '17:00',
+            ],
+            'summary' => [
+                'totalLogs'          => $logs->count(),
+                'completedHours'     => round($completedHours, 2),
+                'loggedHoursSum'     => round($totalHoursFromLogs, 2),
+                'requiredHours'      => $requiredHours,
+                'progressPct'        => $progressPct,
+                'inSiteCount'        => $inSiteCount,
+                'tooFarCount'        => $tooFarCount,
+                'noGpsCount'         => max(0, $noGpsCount),
+                'todayDtr'           => $todayDtr,
+            ],
+            'data' => $logs,
+        ]);
     }
 
     /**
@@ -2646,6 +2879,86 @@ class CompanyController extends Controller
             'expires_at'       => $job->expires_at?->format('Y-m-d'),
             'created_at'       => $job->created_at->format('M d, Y'),
         ];
+    }
+
+    /**
+     * GET /api/company/emergency-requests
+     * List emergency stoppage/leave requests for trainees under this company.
+     */
+    public function getEmergencyRequests(Request $request)
+    {
+        $userId = $request->user()->id;
+
+        $requests = OjtEmergencyRequest::whereHas('ojtInterest.posting', fn($q) => $q->where('company_user_id', $userId))
+            ->with(['student.studentProfile', 'ojtRecord', 'ojtInterest.posting'])
+            ->latest()
+            ->get()
+            ->map(fn($em) => [
+                'id'                      => $em->id,
+                'student_id'              => $em->student_user_id,
+                'student_name'            => $em->student?->name ?? 'Student',
+                'student_email'           => $em->student?->email,
+                'posting_title'           => $em->ojtInterest?->posting?->title ?? 'OJT Placement',
+                'type'                    => $em->type,
+                'category'                => $em->category,
+                'reason'                  => $em->reason,
+                'start_date'              => $em->start_date?->format('M d, Y'),
+                'expected_return_date'    => $em->expected_return_date?->format('M d, Y'),
+                'hours_rendered_snapshot' => (float) $em->hours_rendered_snapshot,
+                'coordinator_status'      => $em->coordinator_status,
+                'coordinator_remarks'     => $em->coordinator_remarks,
+                'company_status'          => $em->company_status,
+                'assets_returned'         => (bool) $em->assets_returned,
+                'company_clearance_notes' => $em->company_clearance_notes,
+                'company_cleared_at'      => $em->company_cleared_at?->format('M d, Y'),
+                'supporting_document_url' => $em->supporting_document_url,
+                'created_at'              => $em->created_at?->diffForHumans(),
+            ]);
+
+        return response()->json(['success' => true, 'data' => $requests]);
+    }
+
+    /**
+     * POST /api/company/emergency-requests/{id}/clearance
+     * Company HR submits operational clearance (asset return & exit remarks).
+     */
+    public function submitEmergencyClearance(Request $request, $id)
+    {
+        $request->validate([
+            'assets_returned'         => 'required|boolean',
+            'company_clearance_notes' => 'nullable|string|max:1000',
+        ]);
+
+        $userId    = $request->user()->id;
+        $emergency = OjtEmergencyRequest::whereHas('ojtInterest.posting', fn($q) => $q->where('company_user_id', $userId))
+            ->with(['student', 'ojtInterest.posting'])
+            ->findOrFail($id);
+
+        $emergency->update([
+            'company_status'          => 'cleared',
+            'assets_returned'         => $request->assets_returned,
+            'company_clearance_notes' => $request->company_clearance_notes,
+            'company_cleared_at'      => now(),
+        ]);
+
+        // Notify Coordinator
+        $posting = $emergency->ojtInterest?->posting;
+        $supervisors = $this->getCoordinatorsForStudent($emergency->student);
+        foreach ($supervisors as $sup) {
+            AppNotification::send(
+                $sup->id,
+                'company_clearance_submitted',
+                'Company Clearance Submitted',
+                "Host Company ({$posting?->company_name}) signed clearance for {$emergency->student?->name}.",
+                ['emergency_id' => $emergency->id]
+            );
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Company exit clearance recorded successfully.',
+            'data'    => $emergency,
+        ]);
     }
 }
 

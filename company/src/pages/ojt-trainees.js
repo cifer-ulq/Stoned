@@ -1034,7 +1034,13 @@ export async function renderOjtTrainees(container) {
 
       // Status pill
       let statusBadge = '';
-      if (t.evaluation?.status === 'submitted') {
+      if (t.status === 'withdrawn_emergency' || (t.emergency_request?.type === 'permanent_withdrawal' && t.emergency_request?.coordinator_status === 'approved')) {
+        statusBadge = `<span class="co-status-pill" style="background:#FEE2E2;color:#991B1B;border-color:rgba(239,68,68,0.3);">${icon('alertTriangle', 11)} Withdrawn (Emergency)</span>`;
+      } else if (t.status === 'on_leave' || (t.emergency_request?.type === 'temporary_leave' && t.emergency_request?.coordinator_status === 'approved')) {
+        statusBadge = `<span class="co-status-pill" style="background:#E0F2FE;color:#0369a1;border-color:rgba(2,132,199,0.3);">${icon('shieldCheck', 11)} On Medical Leave</span>`;
+      } else if (t.status === 'stoppage_requested' || t.emergency_request?.coordinator_status === 'pending') {
+        statusBadge = `<span class="co-status-pill co-status-pill--action" style="background:#FEF3C7;color:#92400e;border-color:rgba(245,158,11,0.35);">${icon('clock', 11)} Emergency Notice Filed</span>`;
+      } else if (t.evaluation?.status === 'submitted') {
         statusBadge = `<span class="co-status-pill co-status-pill--done">${icon('checkCircle', 11)} Graded (★ ${Number(t.evaluation.overall_score).toFixed(1)})</span>`;
       } else if (t.evaluation?.status === 'pending') {
         statusBadge = `<span class="co-status-pill co-status-pill--action">${icon('clock', 11)} Action Needed</span>`;
@@ -1046,7 +1052,12 @@ export async function renderOjtTrainees(container) {
 
       // Action button
       let actionBtn = '';
-      if (t.evaluation?.status === 'pending') {
+      if (t.emergency_request) {
+        actionBtn = `
+          <button class="btn btn--outline btn--sm btn-emergency-clearance" data-emergency-id="${t.emergency_request.id}" data-trainee-id="${t.id}" style="padding:4px 9px;font-size:0.75rem;gap:4px;color:#d97706;border-color:rgba(245,158,11,0.4);font-weight:600;">
+            ${icon('checkSquare', 12)} Exit Clearance
+          </button>`;
+      } else if (t.evaluation?.status === 'pending') {
         actionBtn = `
           <button class="btn btn--primary btn--sm btn-trigger-eval" data-eval-id="${t.evaluation.id}" style="padding:4px 10px;font-size:0.75rem;background:#F59E0B;border-color:#F59E0B;gap:4px;">
             ★ Evaluate
@@ -1066,6 +1077,8 @@ export async function renderOjtTrainees(container) {
       const scheduleDaysText = Array.isArray(t.schedule_days) && t.schedule_days.length
         ? t.schedule_days.join(', ')
         : 'Mon – Fri';
+
+      const dtrBadgeHtml = renderTodayDtrBadge(t.today_dtr);
 
       return `
         <tr data-trainee-id="${t.id}" class="${isInspected ? 'is-active-inspected' : ''}">
@@ -1098,10 +1111,18 @@ export async function renderOjtTrainees(container) {
           </td>
           <td>
             <div style="font-size:0.75rem;color:var(--text-primary);font-weight:500;">${scheduleDaysText}</div>
-            <div style="font-size:0.7rem;color:var(--text-secondary);">${t.shift_start || '08:00'} &ndash; ${t.shift_end || '17:00'}</div>
+            <div style="font-size:0.7rem;color:var(--text-secondary);margin-bottom:4px;">${t.shift_start || '08:00'} &ndash; ${t.shift_end || '17:00'}</div>
+            ${dtrBadgeHtml}
           </td>
           <td>${statusBadge}</td>
-          <td style="text-align:right;" onclick="event.stopPropagation();">${actionBtn}</td>
+          <td style="text-align:right;" onclick="event.stopPropagation();">
+            <div style="display:inline-flex;align-items:center;gap:6px;justify-content:flex-end;">
+              <button class="btn btn--outline btn--sm btn-open-trainee-dtr" data-student-id="${st.id}" data-trainee-id="${t.id}" title="View Student Daily Time Record (DTR)" style="padding:4px 9px;font-size:0.75rem;gap:4px;color:var(--color-primary, #005930);border-color:rgba(0,89,48,0.28);font-weight:600;">
+                ${icon('clock', 12)} DTR
+              </button>
+              ${actionBtn}
+            </div>
+          </td>
         </tr>
       `;
     }).join('');
@@ -1125,27 +1146,44 @@ export async function renderOjtTrainees(container) {
     let statusPill = '';
     let actionBtn = '';
 
-    if (t.evaluation?.status === 'pending') {
+    if (t.status === 'withdrawn_emergency' || (t.emergency_request?.type === 'permanent_withdrawal' && t.emergency_request?.coordinator_status === 'approved')) {
+      statusPill = `<span class="co-status-pill" style="background:#FEE2E2;color:#991B1B;border-color:rgba(239,68,68,0.3);">${icon('alertTriangle', 11)} Withdrawn (Emergency)</span>`;
+    } else if (t.status === 'on_leave' || (t.emergency_request?.type === 'temporary_leave' && t.emergency_request?.coordinator_status === 'approved')) {
+      statusPill = `<span class="co-status-pill" style="background:#E0F2FE;color:#0369a1;border-color:rgba(2,132,199,0.3);">${icon('shieldCheck', 11)} On Medical Leave</span>`;
+    } else if (t.status === 'stoppage_requested' || t.emergency_request?.coordinator_status === 'pending') {
+      statusPill = `<span class="co-status-pill co-status-pill--action" style="background:#FEF3C7;color:#92400e;border-color:rgba(245,158,11,0.35);">${icon('clock', 11)} Emergency Notice Filed</span>`;
+    } else if (t.evaluation?.status === 'pending') {
       statusPill = `<span class="co-status-pill co-status-pill--action">${icon('clock', 11)} Action: Evaluation Requested</span>`;
-      actionBtn = `
-        <button class="btn btn--primary btn--sm btn-trigger-eval" data-eval-id="${t.evaluation.id}" style="background:#F59E0B;border-color:#F59E0B;gap:4px;font-size:0.75rem;padding:4px 11px;font-weight:700;">
-          ★ Complete Evaluation
-        </button>`;
     } else if (t.evaluation?.status === 'submitted') {
       statusPill = `<span class="co-status-pill co-status-pill--done">${icon('checkCircle', 11)} Graded (${Number(t.evaluation.overall_score).toFixed(1)}/5.0)</span>`;
-      actionBtn = `
-        <button class="btn btn--outline btn--sm btn-view-eval-scorecard" data-eval-id="${t.evaluation.id}" style="font-size:0.75rem;padding:4px 10px;">
-          View Scorecard
-        </button>`;
     } else if (completed >= required) {
       statusPill = `<span class="co-status-pill co-status-pill--ready">${icon('checkCircle', 11)} 100% Hours Rendered</span>`;
     } else {
       statusPill = `<span class="co-status-pill co-status-pill--progress">Active Intern (${pct}%)</span>`;
     }
 
+    if (t.emergency_request) {
+      actionBtn = `
+        <button class="btn btn--outline btn--sm btn-emergency-clearance" data-emergency-id="${t.emergency_request.id}" data-trainee-id="${t.id}" style="padding:4px 9px;font-size:0.75rem;gap:4px;color:#d97706;border-color:rgba(245,158,11,0.4);font-weight:600;">
+          ${icon('checkSquare', 12)} Exit Clearance
+        </button>`;
+    } else if (t.evaluation?.status === 'pending') {
+      actionBtn = `
+        <button class="btn btn--primary btn--sm btn-trigger-eval" data-eval-id="${t.evaluation.id}" style="background:#F59E0B;border-color:#F59E0B;gap:4px;font-size:0.75rem;padding:4px 11px;font-weight:700;">
+          ★ Complete Evaluation
+        </button>`;
+    } else if (t.evaluation?.status === 'submitted') {
+      actionBtn = `
+        <button class="btn btn--outline btn--sm btn-view-eval-scorecard" data-eval-id="${t.evaluation.id}" style="font-size:0.75rem;padding:4px 10px;">
+          View Scorecard
+        </button>`;
+    }
+
     const scheduleDays = Array.isArray(t.schedule_days) && t.schedule_days.length
       ? t.schedule_days.join(', ')
       : 'Mon – Fri';
+
+    const dtrBadgeHtml = renderTodayDtrBadge(t.today_dtr);
 
     return `
       <div class="co-trainee-row ${isInspected ? 'is-active-inspected' : ''}" data-trainee-id="${t.id}">
@@ -1166,8 +1204,8 @@ export async function renderOjtTrainees(container) {
           </div>
         </div>
 
-        <!-- Middle: Hours Progress -->
-        <div style="flex:0.9;min-width:140px;">
+        <!-- Middle: Hours Progress & Today's Live DTR -->
+        <div style="flex:0.95;min-width:160px;">
           <div class="co-hours-gauge">
             <div class="co-hours-gauge__track">
               <div class="co-hours-gauge__fill" style="width:${pct}%;background:${barColor};"></div>
@@ -1177,8 +1215,11 @@ export async function renderOjtTrainees(container) {
               <span style="font-weight:700;color:var(--text-primary);">${pct}%</span>
             </div>
           </div>
-          <div style="font-size:0.7rem;color:var(--text-tertiary);margin-top:2px;">
-            ${scheduleDays} &bull; ${t.shift_start || '08:00'} - ${t.shift_end || '17:00'}
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px;">
+            <span style="font-size:0.7rem;color:var(--text-tertiary);">
+              ${scheduleDays} &bull; ${t.shift_start || '08:00'} - ${t.shift_end || '17:00'}
+            </span>
+            ${dtrBadgeHtml}
           </div>
         </div>
 
@@ -1193,6 +1234,9 @@ export async function renderOjtTrainees(container) {
         <!-- Right: Actions -->
         <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;" onclick="event.stopPropagation();">
           ${actionBtn}
+          <button class="btn btn--outline btn--sm btn-open-trainee-dtr" data-student-id="${st.id}" data-trainee-id="${t.id}" title="View Student Daily Time Record (DTR)" style="padding:4px 9px;font-size:0.75rem;gap:4px;color:var(--color-primary, #005930);border-color:rgba(0,89,48,0.28);font-weight:600;">
+            ${icon('clock', 13)} DTR
+          </button>
           <button class="btn btn--ghost btn--sm btn-inspect-trainee" data-trainee-id="${t.id}" title="Inspect Intern Dossier" style="padding:4px 8px;font-size:0.75rem;">
             ${icon('eye', 13)} Dossier
           </button>
@@ -1233,6 +1277,19 @@ export async function renderOjtTrainees(container) {
       });
     });
 
+    // Open DTR Table Modal button
+    rootEl.querySelectorAll('.btn-open-trainee-dtr').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const studentId = parseInt(btn.getAttribute('data-student-id'));
+        const tId = parseInt(btn.getAttribute('data-trainee-id'));
+        const target = allFlat.find(t => t.id === tId || t.student?.id === studentId);
+        if (studentId) {
+          openCompanyTraineeDtrModal(studentId, target);
+        }
+      });
+    });
+
     // Complete evaluation button
     rootEl.querySelectorAll('.btn-trigger-eval').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -1246,6 +1303,18 @@ export async function renderOjtTrainees(container) {
       btn.addEventListener('click', () => {
         const evalId = btn.getAttribute('data-eval-id');
         if (evalId) openCompanyViewSubmittedModal(evalId);
+      });
+    });
+
+    // Emergency exit clearance button
+    rootEl.querySelectorAll('.btn-emergency-clearance').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const tId = parseInt(btn.getAttribute('data-trainee-id'));
+        const target = allFlat.find(t => t.id === tId);
+        if (target && target.emergency_request) {
+          openCompanyEmergencyClearanceModal(target.emergency_request, target, () => loadData());
+        }
       });
     });
   }
@@ -1324,7 +1393,12 @@ export async function renderOjtTrainees(container) {
         </div>`;
     }
 
-    const skills = Array.isArray(st.skills) ? st.skills : [];
+    const dtr = t.today_dtr || {};
+    const dtrLocBadge = dtr.location_validity === 'In Site'
+      ? `<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:99px;font-size:0.68rem;font-weight:700;background:#ECFDF5;color:#047857;border:1px solid #A7F3D0;">✓ In Site${dtr.distance_meters != null ? ` (${dtr.distance_meters}m)` : ''}</span>`
+      : (dtr.location_validity === 'Too Far'
+        ? `<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:99px;font-size:0.68rem;font-weight:700;background:#FEF2F2;color:#B91C1C;border:1px solid #FECACA;">⚠ Too Far${dtr.distance_meters != null ? ` (${dtr.distance_meters}m)` : ''}</span>`
+        : '');
 
     dossierBody.innerHTML = `
       <!-- Hero Header -->
@@ -1344,6 +1418,36 @@ export async function renderOjtTrainees(container) {
       <!-- Action Button Box (if applicable) -->
       ${actionSectionHtml}
 
+      ${t.emergency_request ? `
+        <!-- Emergency Notice & Company Clearance Box -->
+        <div class="co-dossier__box" style="background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.3);border-left:4px solid #f59e0b;">
+          <div class="co-dossier__box-title" style="color:#b45309;display:flex;align-items:center;justify-content:space-between;">
+            <span style="display:inline-flex;align-items:center;gap:5px;">
+              ${icon('alertTriangle', 13)} Emergency Notice
+            </span>
+            <span class="badge ${t.emergency_request.company_status === 'cleared' ? 'badge--success' : 'badge--warning'}" style="font-size:0.65rem;padding:2px 6px;">
+              ${t.emergency_request.company_status === 'cleared' ? 'Exit Cleared' : 'Exit Clearance Pending'}
+            </span>
+          </div>
+          <div style="font-size:0.75rem;color:var(--text-secondary);margin-top:4px;">
+            Category: <strong>${(t.emergency_request.category || '').replace(/_/g, ' ').toUpperCase()}</strong> &bull; ${t.emergency_request.type === 'permanent_withdrawal' ? 'Permanent Stoppage' : 'Leave Notice'}
+          </div>
+          ${t.emergency_request.reason ? `
+            <div style="font-size:0.74rem;color:var(--text-primary);margin-top:5px;font-style:italic;background:var(--bg-card);padding:6px 8px;border-radius:4px;border:1px solid #E2E8F0;">
+              &ldquo;${escapeHtml(t.emergency_request.reason)}&rdquo;
+            </div>
+          ` : ''}
+          <div style="margin-top:8px;padding-top:8px;border-top:1px dashed rgba(245,158,11,0.3);display:flex;align-items:center;justify-content:space-between;gap:8px;">
+            <span style="font-size:0.72rem;color:var(--text-secondary);">
+              Assets Returned: <strong>${t.emergency_request.assets_returned ? 'Yes ✓' : 'Pending ⏳'}</strong>
+            </span>
+            <button class="btn btn--outline btn--xs" id="btn-dossier-clearance" style="font-size:0.72rem;padding:3px 8px;color:#b45309;border-color:rgba(245,158,11,0.4);">
+              ${icon('checkSquare', 11)} Exit Clearance
+            </button>
+          </div>
+        </div>
+      ` : ''}
+
       <!-- Practicum Progress Box -->
       <div class="co-dossier__box">
         <div class="co-dossier__box-title">${icon('checkCircle', 13)} Practicum Completion</div>
@@ -1356,6 +1460,40 @@ export async function renderOjtTrainees(container) {
           <span>Completed: <strong>${completed} hrs</strong></span>
           <span>Requirement: <strong>${required} hrs</strong></span>
         </div>
+      </div>
+
+      <!-- Daily Time Record (DTR) & Attendance Box -->
+      <div class="co-dossier__box" style="background:linear-gradient(180deg, #F8FAFC 0%, #FFFFFF 100%);border:1px solid rgba(0,89,48,0.2);">
+        <div class="co-dossier__box-title" style="display:flex;align-items:center;justify-content:space-between;">
+          <span style="display:inline-flex;align-items:center;gap:5px;color:var(--color-primary, #005930);">
+            ${icon('clock', 13)} Daily Time Record (DTR)
+          </span>
+          <span style="font-size:0.68rem;font-weight:700;color:var(--text-secondary);">
+            ${dtr.total_logs_count || 0} Day${(dtr.total_logs_count || 0) === 1 ? '' : 's'} Logged
+          </span>
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;margin:6px 0 8px;">
+          ${renderTodayDtrBadge(dtr)}
+          ${dtrLocBadge}
+        </div>
+
+        ${dtr.logged_today ? `
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;background:#fff;border:1px solid #E2E8F0;border-radius:8px;padding:8px 10px;font-size:0.72rem;margin-bottom:10px;">
+            <div>
+              <span style="color:var(--text-tertiary);display:block;font-size:0.65rem;text-transform:uppercase;">Morning Shift</span>
+              <span style="font-weight:600;color:var(--text-primary);">${dtr.morning_in || dtr.time_in || '—'} &ndash; ${dtr.morning_out || '—'}</span>
+            </div>
+            <div>
+              <span style="color:var(--text-tertiary);display:block;font-size:0.65rem;text-transform:uppercase;">Afternoon Shift</span>
+              <span style="font-weight:600;color:var(--text-primary);">${dtr.afternoon_in || '—'} &ndash; ${dtr.afternoon_out || '—'}</span>
+            </div>
+          </div>
+        ` : ''}
+
+        <button type="button" class="btn btn--primary btn--sm" id="btn-dossier-open-dtr" style="width:100%;gap:6px;font-size:0.78rem;font-weight:600;">
+          ${icon('clipboardList', 13)} View Full DTR Table
+        </button>
       </div>
 
       <!-- Assigned Role & Position -->
@@ -1441,12 +1579,22 @@ export async function renderOjtTrainees(container) {
       if (t.evaluation?.id) openCompanyViewSubmittedModal(t.evaluation.id);
     });
 
+    dossierBody.querySelector('#btn-dossier-open-dtr')?.addEventListener('click', () => {
+      if (st.id) openCompanyTraineeDtrModal(st.id, t);
+    });
+
     dossierBody.querySelector('#btn-dossier-chat')?.addEventListener('click', () => {
       if (window.openChat) window.openChat(`ojt_interest_${t.interest_id || t.id}`);
     });
 
     dossierBody.querySelector('#btn-dossier-chat-coord')?.addEventListener('click', () => {
       if (window.openCoordinatorChat) window.openCoordinatorChat(t.endorsed_by || 0);
+    });
+
+    dossierBody.querySelector('#btn-dossier-clearance')?.addEventListener('click', () => {
+      if (t.emergency_request) {
+        openCompanyEmergencyClearanceModal(t.emergency_request, t, () => loadData());
+      }
     });
   }
 
@@ -1511,10 +1659,65 @@ export async function renderOjtTrainees(container) {
     loadData();
   });
 
+  // Real-time refresh when student logs time-in / time-out or OJT status changes
+  if (window.__coTraineesRefreshHandler) {
+    window.removeEventListener('hireme:ojt-trainees-refresh', window.__coTraineesRefreshHandler);
+  }
+  window.__coTraineesRefreshHandler = () => {
+    if (!document.body.contains(container)) return;
+    apiCache.invalidate(['/company/ojt-trainees*']);
+    loadData();
+    if (window.__activeCompanyDtrModal && typeof window.__activeCompanyDtrModal.refresh === 'function') {
+      window.__activeCompanyDtrModal.refresh();
+    }
+  };
+  window.addEventListener('hireme:ojt-trainees-refresh', window.__coTraineesRefreshHandler);
+
+  if (window.__coOpenStudentDtrHandler) {
+    window.removeEventListener('hireme:open-student-dtr', window.__coOpenStudentDtrHandler);
+  }
+  window.__coOpenStudentDtrHandler = (e) => {
+    if (!document.body.contains(container)) return;
+    const studentId = parseInt(e.detail?.studentId || sessionStorage.getItem('co_open_dtr_student_id'));
+    if (studentId) {
+      sessionStorage.removeItem('co_open_dtr_student_id');
+      const allFlat = getAllTraineesFlat(rawData);
+      const target = allFlat.find(t => t.student?.id === studentId);
+      openCompanyTraineeDtrModal(studentId, target);
+    }
+  };
+  window.addEventListener('hireme:open-student-dtr', window.__coOpenStudentDtrHandler);
+
+  if (window.__coOpenCompanyEvalHandler) {
+    window.removeEventListener('hireme:open-company-eval', window.__coOpenCompanyEvalHandler);
+  }
+  window.__coOpenCompanyEvalHandler = (e) => {
+    if (!document.body.contains(container)) return;
+    const evalId = parseInt(e.detail?.evaluationId || sessionStorage.getItem('co_open_eval_id'));
+    if (evalId) {
+      sessionStorage.removeItem('co_open_eval_id');
+      openCompanyEvaluationModal(evalId, () => loadData());
+    }
+  };
+  window.addEventListener('hireme:open-company-eval', window.__coOpenCompanyEvalHandler);
+
   // =========================================================================
   // BOOTSTRAP INITIAL LOAD
   // =========================================================================
-  loadData();
+  loadData().then(() => {
+    const pendingDtrStudentId = parseInt(sessionStorage.getItem('co_open_dtr_student_id'));
+    if (pendingDtrStudentId) {
+      sessionStorage.removeItem('co_open_dtr_student_id');
+      const allFlat = getAllTraineesFlat(rawData);
+      const target = allFlat.find(t => t.student?.id === pendingDtrStudentId);
+      openCompanyTraineeDtrModal(pendingDtrStudentId, target);
+    }
+    const pendingEvalId = parseInt(sessionStorage.getItem('co_open_eval_id'));
+    if (pendingEvalId) {
+      sessionStorage.removeItem('co_open_eval_id');
+      openCompanyEvaluationModal(pendingEvalId, () => loadData());
+    }
+  });
 }
 
 // =========================================================================
@@ -1928,6 +2131,571 @@ async function openCompanyViewSubmittedModal(evalId) {
     alert(e.message || 'Failed to load evaluation.');
     backdrop.remove();
   }
+}
+
+/**
+ * Company Emergency Exit Clearance Modal:
+ * Confirms receipt of company assets/keys and records company turnover notes
+ */
+function openCompanyEmergencyClearanceModal(emergency, trainee, onComplete) {
+  const existing = document.getElementById('company-clearance-modal-overlay');
+  if (existing) existing.remove();
+
+  const backdrop = document.createElement('div');
+  backdrop.id = 'company-clearance-modal-overlay';
+  backdrop.className = 'modal-backdrop modal-backdrop--visible';
+  backdrop.style.cssText = `
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px);
+    z-index: 99999; display: flex; align-items: center; justify-content: center;
+    padding: 20px; box-sizing: border-box; animation: fadeIn 0.15s ease-out;
+  `;
+
+  const st = trainee?.student || {};
+  const isCleared = emergency.company_status === 'cleared' || emergency.assets_returned;
+
+  backdrop.innerHTML = `
+    <div class="modal modal--visible" style="max-width:540px;width:100%;border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);">
+      <div class="modal__header" style="border-bottom:1px solid #E2E8F0;background:linear-gradient(135deg, rgba(245,158,11,0.06) 0%, rgba(239,68,68,0.06) 100%);padding:18px 22px;display:flex;align-items:center;justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:38px;height:38px;border-radius:10px;background:rgba(245,158,11,0.15);color:#d97706;display:flex;align-items:center;justify-content:center;">
+            ${icon('checkSquare', 18)}
+          </div>
+          <div>
+            <h3 style="margin:0;font-size:1.05rem;font-weight:700;color:var(--text-primary);">Host Company Exit Clearance</h3>
+            <p style="margin:2px 0 0;font-size:0.78rem;color:var(--text-secondary);">${escapeHtml(st.name || 'Intern')} &bull; ${emergency.type === 'permanent_withdrawal' ? 'Permanent Stoppage' : 'Leave Notice'}</p>
+          </div>
+        </div>
+        <button type="button" id="clearance-close-btn" style="background:none;border:none;cursor:pointer;color:var(--text-secondary);padding:4px;">
+          ${icon('x', 18)}
+        </button>
+      </div>
+
+      <form id="company-clearance-form" style="padding:20px 22px;display:flex;flex-direction:column;gap:16px;">
+        <div id="clearance-error-box" style="display:none;background:#FEF2F2;border:1px solid #FCA5A5;color:#991B1B;padding:10px 14px;border-radius:8px;font-size:0.83rem;"></div>
+
+        <!-- Emergency Statement Box -->
+        <div style="background:#FFFBEB;border:1px solid rgba(245,158,11,0.3);border-left:4px solid #F59E0B;border-radius:8px;padding:12px 14px;font-size:0.82rem;line-height:1.45;">
+          <strong style="color:#92400e;display:block;margin-bottom:3px;">Student Notice Statement:</strong>
+          <span style="color:#78350f;">"${escapeHtml(emergency.reason || 'Medical / Emergency reasons.')}"</span>
+        </div>
+
+        <!-- Asset Return Checklist -->
+        <div style="background:#FAFBFD;border:1px solid #E2E8F0;border-radius:10px;padding:14px;">
+          <label style="font-weight:700;font-size:0.84rem;color:var(--text-primary);display:block;margin-bottom:8px;">Company Asset Return Verification</label>
+          <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;">
+            <input type="checkbox" name="assets_returned" value="1" ${isCleared ? 'checked' : ''} style="accent-color:var(--color-primary, #005930);margin-top:3px;width:16px;height:16px;">
+            <span style="font-size:0.82rem;color:var(--text-primary);line-height:1.4;">
+              <strong>Company Assets &amp; Items Returned</strong><br>
+              <span style="color:var(--text-secondary);font-size:0.76rem;">All company IDs, building access badges/keys, project laptops, tools, and confidential materials have been surrendered and turned over.</span>
+            </span>
+          </label>
+        </div>
+
+        <!-- Clearance Notes / Turnover Summary -->
+        <div>
+          <label style="display:block;font-size:0.82rem;font-weight:700;margin-bottom:6px;color:var(--text-primary);">Clearance Remarks / Turnover Notes</label>
+          <textarea name="notes" class="input" rows="3" style="width:100%;resize:vertical;font-family:inherit;font-size:0.82rem;" placeholder="Add exit clearance remarks, turnover notes, or condition of returned equipment...">${escapeHtml(emergency.company_clearance_notes || '')}</textarea>
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:4px;">
+          <button type="button" class="btn btn--outline" id="clearance-cancel-btn">Cancel</button>
+          <button type="submit" class="btn btn--primary" id="clearance-submit-btn" style="gap:6px;">
+            ${icon('check', 14)} Submit Clearance
+          </button>
+        </div>
+      </form>
+    </div>
+  `;
+
+  document.body.appendChild(backdrop);
+
+  const close = () => backdrop.remove();
+  backdrop.querySelector('#clearance-close-btn').addEventListener('click', close);
+  backdrop.querySelector('#clearance-cancel-btn').addEventListener('click', close);
+  backdrop.addEventListener('click', e => { if (e.target === backdrop) close(); });
+
+  const form = backdrop.querySelector('#company-clearance-form');
+  const errBox = backdrop.querySelector('#clearance-error-box');
+  const submitBtn = backdrop.querySelector('#clearance-submit-btn');
+
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    errBox.style.display = 'none';
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = `${icon('clock', 14)} Submitting…`;
+
+    const fd = new FormData(form);
+    const assetsReturned = fd.get('assets_returned') === '1';
+    const notes = fd.get('notes') || '';
+
+    try {
+      const res = await apiPost(`/company/emergency-requests/${emergency.id}/clearance`, {
+        assets_returned: assetsReturned,
+        notes: notes,
+      });
+
+      if (res && res.success) {
+        close();
+        if (typeof onComplete === 'function') onComplete();
+      } else {
+        errBox.textContent = res?.message || 'Failed to submit clearance.';
+        errBox.style.display = 'block';
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `${icon('check', 14)} Submit Clearance`;
+      }
+    } catch (err) {
+      errBox.textContent = err.message || 'An error occurred while submitting clearance.';
+      errBox.style.display = 'block';
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = `${icon('check', 14)} Submit Clearance`;
+    }
+  });
+}
+
+/**
+ * Render a compact live attendance badge for today's DTR state on a trainee row or dossier
+ */
+function renderTodayDtrBadge(todayDtr) {
+  if (!todayDtr || !todayDtr.logged_today) {
+    return `
+      <span style="display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:99px;font-size:0.68rem;font-weight:600;background:#F1F5F9;color:#64748B;border:1px solid #E2E8F0;" title="No attendance logged yet today">
+        <span style="width:6px;height:6px;border-radius:50%;background:#94A3B8;"></span>
+        ${escapeHtml(todayDtr?.label || 'No Log Today')}
+      </span>
+    `;
+  }
+
+  const state = todayDtr.session_state;
+  const distSuffix = todayDtr.distance_meters != null ? ` (${todayDtr.distance_meters}m)` : '';
+  const locPill = todayDtr.location_validity === 'In Site'
+    ? ` &bull; In Site${distSuffix}`
+    : (todayDtr.location_validity === 'Too Far' ? ` &bull; Too Far${distSuffix}` : '');
+
+  if (state === 'in_morning' || state === 'in_afternoon') {
+    return `
+      <span style="display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:99px;font-size:0.68rem;font-weight:700;background:#ECFDF5;color:#047857;border:1px solid #A7F3D0;" title="Student is currently timed in today">
+        <span style="width:6px;height:6px;border-radius:50%;background:#10B981;box-shadow:0 0 0 2px rgba(16,185,129,0.25);"></span>
+        ${escapeHtml(todayDtr.label)}${escapeHtml(locPill)}
+      </span>
+    `;
+  }
+
+  if (state === 'morning_done') {
+    return `
+      <span style="display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:99px;font-size:0.68rem;font-weight:700;background:#FFFBEB;color:#B45309;border:1px solid #FDE68A;" title="Morning session completed; on lunch break">
+        <span style="width:6px;height:6px;border-radius:50%;background:#F59E0B;"></span>
+        ${escapeHtml(todayDtr.label)}${escapeHtml(locPill)}
+      </span>
+    `;
+  }
+
+  return `
+    <span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:0.68rem;font-weight:700;background:#F0FDF4;color:#15803D;border:1px solid #BBF7D0;" title="Attendance completed for today">
+      ${icon('checkCircle', 11)}
+      ${escapeHtml(todayDtr.label)}${escapeHtml(locPill)}
+    </span>
+  `;
+}
+
+/**
+ * Company Trainee Daily Time Record (DTR) Modal — Table-only view (No Map)
+ * Displays Morning In/Out, Afternoon In/Out, Hours Rendered, Status, and Location Validity/Distance
+ */
+async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
+  const existing = document.getElementById('company-trainee-dtr-modal-overlay');
+  if (existing) existing.remove();
+
+  const backdrop = document.createElement('div');
+  backdrop.id = 'company-trainee-dtr-modal-overlay';
+  backdrop.className = 'modal-backdrop modal-backdrop--visible';
+  backdrop.style.cssText = `
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px);
+    z-index: 99999; display: flex; align-items: center; justify-content: center;
+    padding: 20px; box-sizing: border-box; animation: fadeIn 0.15s ease-out;
+  `;
+
+  backdrop.innerHTML = `
+    <div class="modal modal--visible" style="max-width:1020px;width:100%;border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);">
+      <div style="padding:40px;text-align:center;">
+        <div class="skeleton" style="height:28px;width:280px;margin:0 auto 14px;"></div>
+        <div class="skeleton skeleton--card" style="height:280px;"></div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+
+  let logsData = [];
+  let studentInfo = traineeFallback?.student || {};
+  let summaryInfo = {};
+  let searchFilter = '';
+  let validityFilter = 'all';
+
+  const close = () => {
+    if (window.__activeCompanyDtrModal?.studentId === studentId) {
+      window.__activeCompanyDtrModal = null;
+    }
+    backdrop.remove();
+  };
+
+  async function fetchAndRenderDtr() {
+    try {
+      const res = await apiGet(`/company/ojt-trainees/${studentId}/logs`, { forceRefresh: true });
+      if (!res?.success) throw new Error(res?.message || 'Unable to load student DTR logs.');
+
+      logsData = Array.isArray(res.data) ? res.data : [];
+      studentInfo = res.student || studentInfo;
+      summaryInfo = res.summary || {};
+
+      renderModalShell();
+    } catch (err) {
+      backdrop.innerHTML = `
+        <div class="modal modal--visible" style="max-width:480px;width:100%;border-radius:14px;overflow:hidden;background:#fff;padding:28px;text-align:center;">
+          <div style="width:48px;height:48px;border-radius:50%;background:#FEE2E2;color:#DC2626;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
+            ${icon('alertTriangle', 24)}
+          </div>
+          <h3 style="margin:0 0 6px;font-size:1.05rem;font-weight:700;color:var(--text-primary);">Could Not Load DTR</h3>
+          <p style="margin:0 0 18px;font-size:0.84rem;color:var(--text-secondary);">${escapeHtml(err.message || 'Failed to fetch time logs.')}</p>
+          <button type="button" class="btn btn--outline" id="dtr-err-close-btn">Close</button>
+        </div>
+      `;
+      backdrop.querySelector('#dtr-err-close-btn')?.addEventListener('click', close);
+    }
+  }
+
+  function getFilteredLogs() {
+    const q = searchFilter.toLowerCase().trim();
+    return logsData.filter(log => {
+      if (validityFilter === 'in_site' && log.locationValidity !== 'In Site') return false;
+      if (validityFilter === 'too_far' && log.locationValidity !== 'Too Far') return false;
+      if (validityFilter === 'no_gps' && (log.locationValidity === 'In Site' || log.locationValidity === 'Too Far')) return false;
+
+      if (q) {
+        const hay = `${log.dayLabel || ''} ${log.date || ''} ${log.rawDate || ''} ${log.locationValidity || ''} ${log.siteLocation || ''}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }
+
+  function renderLocationCell(log) {
+    const val = log.locationValidity;
+    const dist = log.distanceMeters != null ? `${log.distanceMeters}m` : '';
+    let badgeHtml = '';
+
+    if (val === 'In Site') {
+      badgeHtml = `
+        <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:99px;font-size:0.72rem;font-weight:700;background:#ECFDF5;color:#047857;border:1px solid #A7F3D0;">
+          ✓ In Site${dist ? ` (${dist})` : ''}
+        </span>`;
+    } else if (val === 'Too Far') {
+      badgeHtml = `
+        <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:99px;font-size:0.72rem;font-weight:700;background:#FEF2F2;color:#B91C1C;border:1px solid #FECACA;">
+          ⚠ Too Far${dist ? ` (${dist})` : ''}
+        </span>`;
+    } else {
+      badgeHtml = `
+        <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:99px;font-size:0.72rem;font-weight:600;background:#F1F5F9;color:#64748B;border:1px solid #E2E8F0;">
+          No GPS
+        </span>`;
+    }
+
+    const inCoords = (log.inLat != null && log.inLon != null)
+      ? `In: ${Number(log.inLat).toFixed(5)}, ${Number(log.inLon).toFixed(5)}`
+      : '';
+    const outCoords = (log.outLat != null && log.outLon != null)
+      ? `Out: ${Number(log.outLat).toFixed(5)}, ${Number(log.outLon).toFixed(5)}`
+      : '';
+    const coordsLine = [inCoords, outCoords].filter(Boolean).join(' · ');
+
+    return `
+      <div style="display:flex;flex-direction:column;gap:3px;align-items:flex-start;">
+        ${badgeHtml}
+        ${log.siteLocation ? `<span style="font-size:0.7rem;color:var(--text-secondary);font-weight:500;">${escapeHtml(log.siteLocation)}</span>` : ''}
+        ${coordsLine ? `<span style="font-size:0.66rem;font-family:monospace;color:var(--text-tertiary);">${escapeHtml(coordsLine)}</span>` : ''}
+      </div>
+    `;
+  }
+
+  function renderStatusBadge(log) {
+    const st = (log.status || '').toLowerCase();
+    const isOngoing = (log.morningIn && !log.morningOut && !log.afternoonIn) || (log.afternoonIn && !log.afternoonOut) || (log.timeIn && !log.timeOut);
+
+    if (isOngoing) {
+      return `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:0.7rem;font-weight:700;background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE;">In Session</span>`;
+    }
+    if (st === 'valid' || log.locationValidity === 'In Site') {
+      return `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:0.7rem;font-weight:700;background:#F0FDF4;color:#15803D;border:1px solid #BBF7D0;">Valid</span>`;
+    }
+    if (st === 'too far' || log.locationValidity === 'Too Far') {
+      return `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:0.7rem;font-weight:700;background:#FEF2F2;color:#B91C1C;border:1px solid #FECACA;">Out of Range</span>`;
+    }
+    return `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:0.7rem;font-weight:600;background:#F8FAFC;color:#475569;border:1px solid #E2E8F0;">${escapeHtml(log.status || 'Logged')}</span>`;
+  }
+
+  function renderTableRowsHtml(rows) {
+    if (!rows.length) {
+      return `
+        <tr>
+          <td colspan="8" style="padding:42px 20px;text-align:center;color:var(--text-secondary);">
+            <div style="width:42px;height:42px;border-radius:50%;background:rgba(0,89,48,0.06);color:var(--color-primary, #005930);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">
+              ${icon('clock', 20)}
+            </div>
+            <div style="font-weight:700;font-size:0.9rem;color:var(--text-primary);margin-bottom:3px;">No DTR attendance records found</div>
+            <div style="font-size:0.78rem;color:var(--text-secondary);">Time-in and time-out entries will appear here automatically as the trainee logs attendance.</div>
+          </td>
+        </tr>
+      `;
+    }
+
+    return rows.map(log => {
+      const mIn = log.morningIn || (!log.afternoonIn && log.timeIn ? log.timeIn : null);
+      const mOut = log.morningOut || null;
+      const aIn = log.afternoonIn || null;
+      const aOut = log.afternoonOut || (!log.morningIn && !log.afternoonIn && log.timeOut ? log.timeOut : null);
+
+      const mInHtml = mIn
+        ? `<span style="font-weight:600;color:#0F172A;">${escapeHtml(mIn)}</span>`
+        : `<span style="color:#94A3B8;">—</span>`;
+
+      const mOutHtml = mOut
+        ? `<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
+             <span style="font-weight:600;color:#0F172A;">${escapeHtml(mOut)}</span>
+             ${log.autoMorningTimeout ? `<span style="font-size:0.63rem;font-weight:700;padding:1px 5px;border-radius:4px;background:#FEF3C7;color:#92400E;" title="Automatically closed at lunch break">Auto 12:00</span>` : ''}
+           </div>`
+        : (mIn && !aIn
+          ? `<span style="font-size:0.72rem;font-weight:700;color:#059669;background:#ECFDF5;padding:2px 7px;border-radius:99px;">Active (AM)</span>`
+          : `<span style="color:#94A3B8;">—</span>`);
+
+      const aInHtml = aIn
+        ? `<span style="font-weight:600;color:#0F172A;">${escapeHtml(aIn)}</span>`
+        : `<span style="color:#94A3B8;">—</span>`;
+
+      const aOutHtml = aOut
+        ? `<span style="font-weight:600;color:#0F172A;">${escapeHtml(aOut)}</span>`
+        : (aIn
+          ? `<span style="font-size:0.72rem;font-weight:700;color:#059669;background:#ECFDF5;padding:2px 7px;border-radius:99px;">Active (PM)</span>`
+          : `<span style="color:#94A3B8;">—</span>`);
+
+      const hrs = Number(log.hours || 0).toFixed(2);
+      const hasSplitHrs = (log.morningHours > 0 || log.afternoonHours > 0);
+      const splitSub = hasSplitHrs
+        ? `<div style="font-size:0.67rem;color:var(--text-tertiary);">AM: ${Number(log.morningHours || 0).toFixed(1)}h &bull; PM: ${Number(log.afternoonHours || 0).toFixed(1)}h</div>`
+        : '';
+
+      return `
+        <tr style="border-bottom:1px solid #F1F5F9;">
+          <td style="padding:11px 14px;white-space:nowrap;">
+            <div style="font-weight:700;font-size:0.82rem;color:var(--text-primary);">${escapeHtml(log.dayLabel || log.date || '—')}</div>
+            <div style="font-size:0.69rem;color:var(--text-tertiary);font-family:monospace;">${escapeHtml(log.rawDate || '')}</div>
+          </td>
+          <td style="padding:11px 12px;white-space:nowrap;font-size:0.81rem;">${mInHtml}</td>
+          <td style="padding:11px 12px;white-space:nowrap;font-size:0.81rem;">${mOutHtml}</td>
+          <td style="padding:11px 12px;white-space:nowrap;font-size:0.81rem;">${aInHtml}</td>
+          <td style="padding:11px 12px;white-space:nowrap;font-size:0.81rem;">${aOutHtml}</td>
+          <td style="padding:11px 12px;white-space:nowrap;">
+            <div style="font-weight:700;font-size:0.83rem;color:var(--color-primary, #005930);">${hrs} hrs</div>
+            ${splitSub}
+          </td>
+          <td style="padding:11px 12px;white-space:nowrap;">${renderStatusBadge(log)}</td>
+          <td style="padding:11px 14px;min-width:190px;">${renderLocationCell(log)}</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function renderModalShell() {
+    const init = (studentInfo.name || 'Student').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+    const filteredRows = getFilteredLogs();
+
+    backdrop.innerHTML = `
+      <div class="modal modal--visible" style="max-width:1040px;width:100%;border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);max-height:90vh;display:flex;flex-direction:column;">
+        <!-- Modal Header -->
+        <div class="modal__header" style="border-bottom:1px solid #E2E8F0;background:#FAFBFD;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="width:42px;height:42px;border-radius:10px;background:rgba(0,89,48,0.1);color:var(--color-primary, #005930);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.95rem;flex-shrink:0;">
+              ${init}
+            </div>
+            <div>
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                <h3 style="margin:0;font-size:1.08rem;font-weight:800;color:var(--text-primary);">${escapeHtml(studentInfo.name || 'Trainee')} &mdash; Daily Time Record (DTR)</h3>
+                ${renderTodayDtrBadge(summaryInfo.todayDtr)}
+              </div>
+              <p style="margin:3px 0 0;font-size:0.78rem;color:var(--text-secondary);">
+                ${escapeHtml(studentInfo.program || '—')}
+                ${studentInfo.student_id ? ` &bull; ID: <span style="font-family:monospace;">${escapeHtml(studentInfo.student_id)}</span>` : ''}
+                &bull; Listing: <strong>${escapeHtml(studentInfo.posting_title || 'OJT Placement')}</strong>
+                ${studentInfo.site_location ? ` &bull; Site: ${escapeHtml(studentInfo.site_location)}` : ''}
+              </p>
+            </div>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:8px;">
+            <button type="button" class="btn btn--outline btn--sm" id="dtr-modal-export-csv" style="gap:5px;font-size:0.76rem;">
+              ${icon('download', 13)} Export CSV
+            </button>
+            <button type="button" class="btn btn--ghost btn--sm" id="dtr-modal-refresh" title="Refresh DTR Logs" style="gap:5px;font-size:0.76rem;">
+              ${icon('refreshCw', 13)} Refresh
+            </button>
+            <button type="button" id="dtr-modal-close" style="background:none;border:none;cursor:pointer;color:var(--text-secondary);padding:6px;border-radius:8px;">
+              ${icon('x', 18)}
+            </button>
+          </div>
+        </div>
+
+        <!-- Summary KPI Strip -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(190px, 1fr));gap:12px;padding:14px 24px;background:#F8FAFC;border-bottom:1px solid #E2E8F0;flex-shrink:0;">
+          <div style="background:#fff;border:1px solid #E2E8F0;border-radius:10px;padding:10px 14px;">
+            <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;color:var(--text-tertiary);">Total Hours Rendered</div>
+            <div style="font-size:1.1rem;font-weight:800;color:var(--color-primary, #005930);margin-top:2px;">
+              ${summaryInfo.completedHours ?? 0} <span style="font-size:0.8rem;font-weight:600;color:var(--text-secondary);">/ ${summaryInfo.requiredHours ?? 600} hrs (${summaryInfo.progressPct ?? 0}%)</span>
+            </div>
+          </div>
+          <div style="background:#fff;border:1px solid #E2E8F0;border-radius:10px;padding:10px 14px;">
+            <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;color:var(--text-tertiary);">Total Days Logged</div>
+            <div style="font-size:1.1rem;font-weight:800;color:var(--text-primary);margin-top:2px;">
+              ${summaryInfo.totalLogs ?? 0} <span style="font-size:0.8rem;font-weight:600;color:var(--text-secondary);">Attendance Days</span>
+            </div>
+          </div>
+          <div style="background:#fff;border:1px solid #E2E8F0;border-radius:10px;padding:10px 14px;">
+            <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;color:var(--text-tertiary);">Location Compliance (100m)</div>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:3px;font-size:0.82rem;font-weight:700;">
+              <span style="color:#047857;">✓ ${summaryInfo.inSiteCount ?? 0} In Site</span>
+              <span style="color:#B91C1C;">⚠ ${summaryInfo.tooFarCount ?? 0} Too Far</span>
+            </div>
+          </div>
+          <div style="background:#fff;border:1px solid #E2E8F0;border-radius:10px;padding:10px 14px;">
+            <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;color:var(--text-tertiary);">Assigned Shift Schedule</div>
+            <div style="font-size:0.9rem;font-weight:700;color:var(--text-primary);margin-top:3px;">
+              ${escapeHtml(studentInfo.shift_start || '08:00')} &ndash; ${escapeHtml(studentInfo.shift_end || '17:00')}
+            </div>
+          </div>
+        </div>
+
+        <!-- Filter & Search Bar -->
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 24px;border-bottom:1px solid #E2E8F0;background:#fff;flex-shrink:0;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:240px;">
+            <div style="position:relative;flex:1;max-width:320px;">
+              <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-tertiary);display:flex;">${icon('search', 14)}</span>
+              <input
+                type="text"
+                id="dtr-modal-search-input"
+                class="input"
+                value="${escapeHtml(searchFilter)}"
+                placeholder="Search by date, day, or location..."
+                style="width:100%;padding:6px 10px 6px 32px;font-size:0.8rem;height:34px;"
+              />
+            </div>
+            <select id="dtr-modal-validity-filter" class="input" style="width:auto;min-width:160px;height:34px;padding:4px 10px;font-size:0.8rem;">
+              <option value="all" ${validityFilter === 'all' ? 'selected' : ''}>All Locations (${logsData.length})</option>
+              <option value="in_site" ${validityFilter === 'in_site' ? 'selected' : ''}>In Site Only (${summaryInfo.inSiteCount ?? 0})</option>
+              <option value="too_far" ${validityFilter === 'too_far' ? 'selected' : ''}>Too Far Only (${summaryInfo.tooFarCount ?? 0})</option>
+              <option value="no_gps" ${validityFilter === 'no_gps' ? 'selected' : ''}>No GPS (${summaryInfo.noGpsCount ?? 0})</option>
+            </select>
+          </div>
+          <div style="font-size:0.75rem;color:var(--text-secondary);" id="dtr-modal-count-label">
+            Showing <strong>${filteredRows.length}</strong> of <strong>${logsData.length}</strong> daily records
+          </div>
+        </div>
+
+        <!-- DTR Table Body (Scrollable, No Map) -->
+        <div style="overflow-y:auto;flex:1;padding:0;">
+          <table style="width:100%;border-collapse:collapse;text-align:left;">
+            <thead style="position:sticky;top:0;background:#F8FAFC;border-bottom:1px solid #E2E8F0;z-index:2;">
+              <tr>
+                <th style="padding:10px 14px;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:#475569;">Date</th>
+                <th style="padding:10px 12px;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:#475569;">Time In (Morning)</th>
+                <th style="padding:10px 12px;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:#475569;">Time Out (Morning)</th>
+                <th style="padding:10px 12px;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:#475569;">Time In (Afternoon)</th>
+                <th style="padding:10px 12px;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:#475569;">Time Out (Afternoon)</th>
+                <th style="padding:10px 12px;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:#475569;">Hrs Rendered</th>
+                <th style="padding:10px 12px;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:#475569;">Status</th>
+                <th style="padding:10px 14px;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:#475569;">Location &amp; Geofence</th>
+              </tr>
+            </thead>
+            <tbody id="dtr-modal-tbody">
+              ${renderTableRowsHtml(filteredRows)}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Modal Footer -->
+        <div style="border-top:1px solid #E2E8F0;background:#FAFBFD;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+          <span style="font-size:0.74rem;color:var(--text-secondary);">
+            💡 Real-time sync active &mdash; this table updates automatically when the trainee logs Time-In or Time-Out.
+          </span>
+          <button type="button" class="btn btn--outline btn--sm" id="dtr-modal-footer-close">Close</button>
+        </div>
+      </div>
+    `;
+
+    backdrop.querySelector('#dtr-modal-close')?.addEventListener('click', close);
+    backdrop.querySelector('#dtr-modal-footer-close')?.addEventListener('click', close);
+    backdrop.querySelector('#dtr-modal-refresh')?.addEventListener('click', () => fetchAndRenderDtr());
+
+    const searchInputEl = backdrop.querySelector('#dtr-modal-search-input');
+    const validitySelectEl = backdrop.querySelector('#dtr-modal-validity-filter');
+    const tbodyEl = backdrop.querySelector('#dtr-modal-tbody');
+    const countLabelEl = backdrop.querySelector('#dtr-modal-count-label');
+
+    function updateTableOnly() {
+      const rows = getFilteredLogs();
+      if (tbodyEl) tbodyEl.innerHTML = renderTableRowsHtml(rows);
+      if (countLabelEl) {
+        countLabelEl.innerHTML = `Showing <strong>${rows.length}</strong> of <strong>${logsData.length}</strong> daily records`;
+      }
+    }
+
+    searchInputEl?.addEventListener('input', (e) => {
+      searchFilter = e.target.value;
+      updateTableOnly();
+    });
+
+    validitySelectEl?.addEventListener('change', (e) => {
+      validityFilter = e.target.value;
+      updateTableOnly();
+    });
+
+    backdrop.querySelector('#dtr-modal-export-csv')?.addEventListener('click', () => {
+      const rows = getFilteredLogs();
+      const headers = ['Date', 'Morning In', 'Morning Out', 'Afternoon In', 'Afternoon Out', 'Hours Rendered', 'Status', 'Location Validity', 'Distance (m)', 'Site Location'];
+      const csvLines = [
+        headers.join(','),
+        ...rows.map(r => [
+          `"${(r.rawDate || r.date || '').replace(/"/g, '""')}"`,
+          `"${(r.morningIn || r.timeIn || '—').replace(/"/g, '""')}"`,
+          `"${(r.morningOut || '—').replace(/"/g, '""')}"`,
+          `"${(r.afternoonIn || '—').replace(/"/g, '""')}"`,
+          `"${(r.afternoonOut || r.timeOut || '—').replace(/"/g, '""')}"`,
+          Number(r.hours || 0).toFixed(2),
+          `"${(r.status || '').replace(/"/g, '""')}"`,
+          `"${(r.locationValidity || 'No GPS').replace(/"/g, '""')}"`,
+          r.distanceMeters != null ? r.distanceMeters : '',
+          `"${(r.siteLocation || '').replace(/"/g, '""')}"`,
+        ].join(','))
+      ];
+      const blob = new Blob([csvLines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const safeName = (studentInfo.name || 'trainee').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      a.download = `dtr-${safeName}-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  }
+
+  backdrop.addEventListener('click', (e) => {
+    if (e.target === backdrop) close();
+  });
+
+  window.__activeCompanyDtrModal = {
+    studentId,
+    refresh: () => fetchAndRenderDtr(),
+  };
+
+  await fetchAndRenderDtr();
 }
 
 // Helpers

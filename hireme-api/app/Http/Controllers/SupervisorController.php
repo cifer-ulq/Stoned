@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\StudentProfile;
 use App\Models\AppNotification;
 use App\Models\StudentOjtRequirement;
+use App\Models\OjtEmergencyRequest;
 use App\Mail\StudentWelcome;
 use App\Services\CourseNormalizer;
 use Illuminate\Http\Request;
@@ -676,6 +677,22 @@ class SupervisorController extends Controller
 
             $status = $hasActiveOjt ? 'Active OJT' : 'Undeployed';
 
+            // Resolve emergency stoppage or medical leave status
+            $latestEmer = OjtEmergencyRequest::where('student_user_id', $student->id)->latest()->first();
+            $emergencyStatus = 'none';
+            if ($latestEmer) {
+                if ($latestEmer->coordinator_status === 'pending') {
+                    $status = 'Emergency Pending';
+                    $emergencyStatus = 'pending';
+                } elseif ($record?->status === 'on_leave' || $acceptedInterest?->status === 'on_leave') {
+                    $status = 'On Medical Leave';
+                    $emergencyStatus = 'on_leave';
+                } elseif ($record?->status === 'withdrawn_emergency' || $acceptedInterest?->status === 'withdrawn_emergency') {
+                    $status = 'Withdrawn (Emergency)';
+                    $emergencyStatus = 'withdrawn_emergency';
+                }
+            }
+
             $rawSection = $sp?->section ?? null;
             $cleanSection = $rawSection ? trim(preg_replace('/^(?:Section|BSIT|BSCS|BSIS|BSCpE)\s*/i', '', $rawSection)) : null;
 
@@ -701,6 +718,28 @@ class SupervisorController extends Controller
                 'requiredHours'  => $requiredHours,
                 'hasPlacement'   => $hasPlacement,
                 'status'         => $status,
+                'emergency_status' => $emergencyStatus,
+                'emergency_request' => $latestEmer ? [
+                    'id'                      => $latestEmer->id,
+                    'type'                    => $latestEmer->type,
+                    'category'                => $latestEmer->category,
+                    'reason'                  => $latestEmer->reason,
+                    'start_date'              => $latestEmer->start_date?->format('M d, Y'),
+                    'expected_return_date'    => $latestEmer->expected_return_date?->format('M d, Y'),
+                    'hours_rendered_snapshot' => (float) $latestEmer->hours_rendered_snapshot,
+                    'required_hours_snapshot' => (float) $latestEmer->required_hours_snapshot,
+                    'coordinator_status'      => $latestEmer->coordinator_status,
+                    'coordinator_remarks'     => $latestEmer->coordinator_remarks,
+                    'credited_hours'          => $latestEmer->credited_hours !== null ? (float) $latestEmer->credited_hours : null,
+                    'academic_verdict'        => $latestEmer->academic_verdict,
+                    'supporting_document_url' => $latestEmer->supporting_document_url,
+                    'supporting_document_name'=> $latestEmer->supporting_document_name,
+                    'fit_to_work_url'         => $latestEmer->fit_to_work_url,
+                    'has_fit_to_work'         => !empty($latestEmer->fit_to_work_document_path),
+                    'company_status'          => $latestEmer->company_status,
+                    'assets_returned'         => (bool) $latestEmer->assets_returned,
+                    'created_at'              => $latestEmer->created_at?->diffForHumans(),
+                ] : null,
                 'flag'           => ($record?->status === 'flagged') ? 'Needs review' : null,
                 'schedule_days'        => $record?->schedule_days ?? $acceptedInterest?->schedule_days,
                 'shift_start'          => $record?->shift_start ?? $acceptedInterest?->shift_start,
@@ -1494,6 +1533,258 @@ class SupervisorController extends Controller
             'success' => true,
             'message' => 'Requirement status updated to ' . ucfirst($validated['status']) . '.',
             'data'    => $reqRecord->fresh(['supervisor:id,name', 'posting:id,title']),
+        ]);
+    }
+
+    /**
+     * GET /api/supervisor/emergency-requests
+     * List all student emergency requests within the supervisor's program.
+     */
+    public function getEmergencyRequests(Request $request)
+    {
+        $course = $this->getSupervisorCourse($request);
+
+        $query = OjtEmergencyRequest::with([
+            'student.studentProfile',
+            'ojtRecord',
+            'ojtInterest.posting',
+            'coordinator:id,name',
+        ])->latest();
+
+        if ($course) {
+            $query->whereHas('student.studentProfile', fn($q) => $q->where('program', $course));
+        }
+
+        $requests = $query->get()->map(function ($em) {
+            return [
+                'id'                      => $em->id,
+                'student_id'              => $em->student_user_id,
+                'student_name'            => $em->student?->name ?? 'Student',
+                'student_email'           => $em->student?->email,
+                'course'                  => $em->student?->studentProfile?->program ?? '—',
+                'company_name'            => $em->ojtRecord?->company_name ?? $em->ojtInterest?->posting?->company_name ?? '—',
+                'company_user_id'         => $em->ojtInterest?->posting?->company_user_id,
+                'posting_title'           => $em->ojtInterest?->posting?->title ?? 'OJT Trainee',
+                'type'                    => $em->type,
+                'category'                => $em->category,
+                'reason'                  => $em->reason,
+                'start_date'              => $em->start_date?->format('M d, Y'),
+                'expected_return_date'    => $em->expected_return_date?->format('M d, Y'),
+                'actual_return_date'      => $em->actual_return_date?->format('M d, Y'),
+                'hours_rendered_snapshot' => (float) $em->hours_rendered_snapshot,
+                'required_hours_snapshot' => (float) $em->required_hours_snapshot,
+                'coordinator_status'      => $em->coordinator_status,
+                'coordinator_remarks'     => $em->coordinator_remarks,
+                'coordinator_name'        => $em->coordinator?->name,
+                'coordinator_action_at'   => $em->coordinator_action_at?->diffForHumans(),
+                'credited_hours'          => $em->credited_hours !== null ? (float) $em->credited_hours : null,
+                'academic_verdict'        => $em->academic_verdict,
+                'supporting_document_url' => $em->supporting_document_url,
+                'supporting_document_name'=> $em->supporting_document_name,
+                'fit_to_work_url'         => $em->fit_to_work_url,
+                'has_fit_to_work'         => !empty($em->fit_to_work_document_path),
+                'company_status'          => $em->company_status,
+                'assets_returned'         => (bool) $em->assets_returned,
+                'created_at'              => $em->created_at?->diffForHumans(),
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data'    => $requests,
+        ]);
+    }
+
+    /**
+     * PUT /api/supervisor/emergency-requests/{id}/review
+     * Review and decide on a student emergency leave or stoppage request.
+     */
+    public function reviewEmergencyRequest(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'action'                   => 'required|in:approve,reject,request_consultation,clear_fit_to_work',
+            'academic_verdict'         => 'nullable|in:excused_leave,incomplete_inc,official_drop',
+            'credited_hours'           => 'nullable|numeric|min:0|max:1000',
+            'coordinator_remarks'      => 'nullable|string|max:2000',
+            'new_expected_return_date' => 'nullable|date',
+        ]);
+
+        $supervisor = $request->user();
+        $emergency  = OjtEmergencyRequest::with(['student', 'ojtRecord', 'ojtInterest.posting'])->findOrFail($id);
+        $student    = $emergency->student;
+        $interest   = $emergency->ojtInterest;
+        $ojtRecord  = $emergency->ojtRecord;
+        $posting    = $interest?->posting;
+
+        DB::transaction(function () use ($validated, $supervisor, $emergency, $student, $interest, $ojtRecord, $posting) {
+            $action = $validated['action'];
+            $remarks = $validated['coordinator_remarks'] ?? null;
+
+            if ($action === 'approve') {
+                if ($emergency->type === 'temporary_leave') {
+                    $emergency->update([
+                        'coordinator_status'    => 'approved',
+                        'coordinator_remarks'   => $remarks,
+                        'coordinator_action_by' => $supervisor->id,
+                        'coordinator_action_at' => now(),
+                        'academic_verdict'      => $validated['academic_verdict'] ?? 'excused_leave',
+                        'expected_return_date'  => $validated['new_expected_return_date'] ?? $emergency->expected_return_date,
+                    ]);
+
+                    if ($interest) {
+                        $interest->update(['status' => 'on_leave']);
+                    }
+                    if ($ojtRecord) {
+                        $ojtRecord->update(['status' => 'on_leave']);
+                    }
+
+                    // Send approval notifications
+                    AppNotification::send(
+                        $student->id,
+                        'emergency_leave_approved',
+                        '✅ Medical / Emergency Leave Approved',
+                        "Your OJT Coordinator approved your leave until {$emergency->expected_return_date?->format('M d, Y')}. Attendance is safely paused; get well soon!",
+                        ['emergency_id' => $emergency->id]
+                    );
+
+                    if ($posting?->company_user_id) {
+                        AppNotification::send(
+                            $posting->company_user_id,
+                            'emergency_leave_approved_company',
+                            'ℹ️ Trainee Leave of Absence Authorized',
+                            "OJT Coordinator approved an emergency leave of absence for {$student->name} until {$emergency->expected_return_date?->format('M d, Y')}.",
+                            ['emergency_id' => $emergency->id, 'student_id' => $student->id]
+                        );
+                    }
+                } elseif ($emergency->type === 'permanent_withdrawal') {
+                    $credited = isset($validated['credited_hours']) && $validated['credited_hours'] !== null
+                        ? (float) $validated['credited_hours']
+                        : (float) $emergency->hours_rendered_snapshot;
+
+                    $verdict = $validated['academic_verdict'] ?? 'incomplete_inc';
+
+                    $emergency->update([
+                        'coordinator_status'    => 'approved',
+                        'coordinator_remarks'   => $remarks,
+                        'coordinator_action_by' => $supervisor->id,
+                        'coordinator_action_at' => now(),
+                        'credited_hours'        => $credited,
+                        'academic_verdict'      => $verdict,
+                    ]);
+
+                    if ($interest) {
+                        $interest->update(['status' => 'withdrawn_emergency']);
+                    }
+                    if ($ojtRecord) {
+                        $ojtRecord->update([
+                            'status'          => 'withdrawn_emergency',
+                            'completed_hours' => $credited,
+                        ]);
+                    }
+
+                    // Restore company posting slot
+                    if ($posting) {
+                        $posting->increment('slots_remaining');
+                    }
+
+                    // Send withdrawal notifications
+                    AppNotification::send(
+                        $student->id,
+                        'emergency_withdrawal_finalized',
+                        'OJT Stoppage & Withdrawal Finalized',
+                        "Your OJT stoppage has been officially processed. {$credited} hours have been credited on your record. Academic verdict: " . ucwords(str_replace('_', ' ', $verdict)) . ".",
+                        ['emergency_id' => $emergency->id, 'credited_hours' => $credited]
+                    );
+
+                    if ($posting?->company_user_id) {
+                        AppNotification::send(
+                            $posting->company_user_id,
+                            'emergency_withdrawal_company',
+                            'Trainee OJT Withdrawal Finalized',
+                            "OJT Stoppage for {$student->name} has been finalized. 1 training slot has been restored to your posting \"{$posting->title}\".",
+                            ['emergency_id' => $emergency->id, 'student_id' => $student->id, 'posting_id' => $posting->id]
+                        );
+                    }
+                }
+            } elseif ($action === 'clear_fit_to_work') {
+                // Resume training after medical leave
+                $emergency->update([
+                    'cleared_to_resume_at'  => now(),
+                    'actual_return_date'    => now()->toDateString(),
+                    'coordinator_remarks'   => $remarks ?: 'Fit to work clearance accepted. Trainee resumed OJT training.',
+                    'coordinator_action_by' => $supervisor->id,
+                    'coordinator_action_at' => now(),
+                ]);
+
+                if ($interest) {
+                    $interest->update(['status' => 'ojt_started']);
+                }
+                if ($ojtRecord) {
+                    $ojtRecord->update(['status' => 'active']);
+                }
+
+                AppNotification::send(
+                    $student->id,
+                    'fit_to_work_cleared',
+                    '🎉 Cleared to Resume OJT Training!',
+                    "Your Fit-to-Work medical clearance was accepted by your Coordinator. Attendance time-in is now reactivated.",
+                    ['emergency_id' => $emergency->id]
+                );
+
+                if ($posting?->company_user_id) {
+                    AppNotification::send(
+                        $posting->company_user_id,
+                        'trainee_resumed_ojt',
+                        'Trainee Resumed OJT Training',
+                        "{$student->name} has been medically cleared and resumes their internship training today.",
+                        ['emergency_id' => $emergency->id, 'student_id' => $student->id]
+                    );
+                }
+            } elseif ($action === 'reject') {
+                $emergency->update([
+                    'coordinator_status'    => 'rejected',
+                    'coordinator_remarks'   => $remarks ?: 'Emergency request was not approved per coordinator review.',
+                    'coordinator_action_by' => $supervisor->id,
+                    'coordinator_action_at' => now(),
+                ]);
+
+                // Restore active status
+                if ($interest && $interest->status === 'stoppage_requested') {
+                    $interest->update(['status' => 'ojt_started']);
+                }
+                if ($ojtRecord && $ojtRecord->status === 'on_leave') {
+                    $ojtRecord->update(['status' => 'active']);
+                }
+
+                AppNotification::send(
+                    $student->id,
+                    'emergency_request_rejected',
+                    'OJT Emergency Request Notice',
+                    "Your emergency request was reviewed by your Coordinator. Feedback: " . ($remarks ?: 'Please reach out to your coordinator.'),
+                    ['emergency_id' => $emergency->id]
+                );
+            } elseif ($action === 'request_consultation') {
+                $emergency->update([
+                    'coordinator_status'    => 'consultation_requested',
+                    'coordinator_remarks'   => $remarks ?: 'Coordinator requested an academic consultation regarding your emergency request.',
+                    'coordinator_action_by' => $supervisor->id,
+                    'coordinator_action_at' => now(),
+                ]);
+
+                AppNotification::send(
+                    $student->id,
+                    'consultation_requested',
+                    '⚠️ Consultation Requested by Coordinator',
+                    "Your OJT Coordinator requested a conference regarding your emergency notice: " . ($remarks ?: 'Please message your coordinator.'),
+                    ['emergency_id' => $emergency->id]
+                );
+            }
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Emergency request has been reviewed and updated.',
+            'data'    => $emergency->fresh(['coordinator:id,name']),
         ]);
     }
 }

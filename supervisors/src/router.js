@@ -14,7 +14,10 @@ export function navigate(path) {
 }
 
 function resolveRoute() {
-  const hash = window.location.hash.slice(1) || '/';
+  let raw = window.location.hash.slice(1) || '/';
+  if (!raw.startsWith('/')) raw = '/' + raw;
+  if (raw === '/dashboard' || raw === '/home') raw = '/';
+  const hash = raw;
   const handler = routes[hash];
   const mainContent = document.getElementById('main-content');
 

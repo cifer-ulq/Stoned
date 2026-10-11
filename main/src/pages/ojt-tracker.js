@@ -4,7 +4,7 @@
  * No tasks column — logs only show date, time in, time out, hours, status.
  */
 import { icon } from '../components/icons.js';
-import { apiGet, apiPost } from '../api/client.js';
+import { apiGet, apiPost, apiUpload, apiCache } from '../api/client.js';
 
 // Haversine distance in metres (client-side, for quick UI check)
 function haversineMeters(lat1, lon1, lat2, lon2) {
@@ -125,6 +125,17 @@ function renderPrestartOJT(container, res) {
   const dateParts     = parseDateParts(startDate, startDateFull);
   const countdown     = getCountdownData(daysLeft);
 
+  const ojtObj = {
+    ...dep,
+    company: company,
+    hoursRendered: 0,
+    totalHours: requiredHours,
+    emergency: res.emergency || null,
+    is_on_leave: Boolean(res.is_on_leave),
+    emergency_pending: Boolean(res.emergency_pending),
+    is_withdrawn: Boolean(res.is_withdrawn),
+  };
+
   container.innerHTML = `
     <div class="ojt-prestart animate-fade-in-up">
       <!-- ── Header ── -->
@@ -144,6 +155,9 @@ function renderPrestartOJT(container, res) {
           Your OJT deployment is officially confirmed. Attendance punch clock, geolocation verification, and daily log tracking will unlock automatically on your scheduled start date.
         </p>
       </div>
+
+      <!-- ── Emergency / Medical Status Banner ── -->
+      ${renderEmergencyBannerHtml(ojtObj)}
 
       <!-- ── Hero Milestone Card ── -->
       <div class="ojt-prestart-hero">
@@ -249,6 +263,9 @@ function renderPrestartOJT(container, res) {
             </button>
             <button class="btn btn--outline btn--sm" id="btn-contact-coordinator" style="display:inline-flex;align-items:center;gap:6px;color:var(--color-primary);">
               ${icon('shield', 14)} Message Coordinator
+            </button>
+            <button class="btn btn--outline btn--sm btn-trigger-emergency" id="btn-prestart-emergency" style="display:inline-flex;align-items:center;gap:6px;color:#dc2626;border-color:rgba(239,68,68,0.3);">
+              ${icon('alertTriangle', 14)} Emergency / Leave Notice
             </button>
             ${location && location !== 'Company Premises' ? `
               <a href="https://www.openstreetmap.org/search?query=${encodeURIComponent(location)}" target="_blank" rel="noopener noreferrer" class="btn btn--outline btn--sm" style="display:inline-flex;align-items:center;gap:6px;">
@@ -357,6 +374,28 @@ function renderPrestartOJT(container, res) {
   container.querySelector('#btn-contact-coordinator')?.addEventListener('click', () => {
     window.openCoordinatorChat?.();
   });
+
+  container.querySelector('#btn-prestart-emergency')?.addEventListener('click', () => {
+    openEmergencyModal(ojtObj, () => {
+      renderOJTTracker(container);
+    });
+  });
+
+  container.querySelector('#btn-upload-fit-to-work')?.addEventListener('click', () => {
+    openFitToWorkModal(ojtObj.emergency, () => {
+      renderOJTTracker(container);
+    });
+  });
+
+  container.addEventListener('click', (e) => {
+    const btn = e.target.closest('#btn-prestart-emergency, .btn-trigger-emergency');
+    if (btn) {
+      e.preventDefault();
+      openEmergencyModal(ojtObj, () => {
+        renderOJTTracker(container);
+      });
+    }
+  });
 }
 
 // ── Entry point ───────────────────────────────────────────────────────────────
@@ -399,7 +438,14 @@ export async function renderOJTTracker(container) {
   }
 
 
-  const ojt  = { ...res.deployment, ...res.progress };
+  const ojt = {
+    ...res.deployment,
+    ...res.progress,
+    emergency: res.emergency || null,
+    is_on_leave: Boolean(res.is_on_leave),
+    emergency_pending: Boolean(res.emergency_pending),
+    is_withdrawn: Boolean(res.is_withdrawn),
+  };
   const logs = res.logs || [];
 
   // Student's last known location from logged coordinates
@@ -421,6 +467,362 @@ export async function renderOJTTracker(container) {
     }, evaluation);
   }
   buildPage();
+}
+
+function renderEmergencyBannerHtml(ojt) {
+  const em = ojt.emergency;
+  if (!em) return '';
+
+  if (ojt.is_on_leave || (em.coordinator_status === 'approved' && em.type === 'temporary_leave')) {
+    return `
+      <section class="page-section animate-fade-in-up" style="margin-bottom:14px;">
+        <div class="jp-card" style="background:linear-gradient(135deg, rgba(2,132,199,0.06) 0%, rgba(16,185,129,0.06) 100%);border:1.5px solid rgba(2,132,199,0.3);border-left:5px solid #0284c7;padding:16px 20px;border-radius:12px;">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:14px;">
+            <div style="display:flex;align-items:flex-start;gap:14px;">
+              <div style="width:42px;height:42px;border-radius:10px;background:rgba(2,132,199,0.14);color:#0284c7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                ${icon('shieldCheck', 22)}
+              </div>
+              <div>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                  <h3 style="margin:0;font-size:1.02rem;font-weight:700;color:#0369a1;">Currently on Approved Medical / Emergency Leave</h3>
+                  <span class="badge" style="background:#E0F2FE;color:#0369a1;font-weight:700;font-size:0.7rem;padding:2px 8px;">Excused Leave</span>
+                </div>
+                <p style="margin:4px 0 0;font-size:0.83rem;color:#0c4a6e;line-height:1.45;">
+                  Authorized Leave Period: <strong>${em.start_date || 'Start'} – ${em.expected_return_date || 'Until cleared'}</strong> &middot; Category: <strong>${esc((em.category || '').replace('_', ' ').toUpperCase())}</strong>
+                </p>
+                <p style="margin:2px 0 0;font-size:0.8rem;color:#0284c7;">
+                  Attendance time-in is paused. Rendered hours remain safe and preserved (${ojt.hoursRendered} / ${ojt.totalHours} hrs). Take care!
+                </p>
+                ${em.coordinator_remarks ? `
+                  <div style="margin-top:6px;padding:6px 10px;background:rgba(2,132,199,0.08);border-radius:6px;font-size:0.78rem;color:#0369a1;">
+                    <strong>Coordinator Note:</strong> &ldquo;${esc(em.coordinator_remarks)}&rdquo;
+                  </div>
+                ` : ''}
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+              <button class="btn btn--primary btn--sm" id="btn-upload-fit-to-work" style="gap:6px;background:#0284c7;border-color:#0284c7;font-weight:600;">
+                ${icon('upload', 14)} Submit Fit-to-Work Clearance
+              </button>
+              <span class="text-xs text-secondary">Upload doctor's clearance to resume early</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    `;
+  }
+
+  if (ojt.is_withdrawn || (em.coordinator_status === 'approved' && em.type === 'permanent_withdrawal')) {
+    return `
+      <section class="page-section animate-fade-in-up" style="margin-bottom:14px;">
+        <div class="jp-card" style="background:#FEF2F2;border:1.5px solid rgba(239,68,68,0.3);border-left:5px solid #dc2626;padding:16px 20px;border-radius:12px;">
+          <div style="display:flex;align-items:flex-start;gap:14px;">
+            <div style="width:42px;height:42px;border-radius:10px;background:rgba(239,68,68,0.12);color:#dc2626;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              ${icon('alertTriangle', 22)}
+            </div>
+            <div>
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                <h3 style="margin:0;font-size:1.02rem;font-weight:700;color:#991b1b;">OJT Placement Formally Discontinued (Emergency Withdrawal)</h3>
+                <span class="badge" style="background:#FEE2E2;color:#991b1b;font-weight:700;font-size:0.7rem;padding:2px 8px;">Withdrawn</span>
+              </div>
+              <p style="margin:4px 0 0;font-size:0.83rem;color:#7f1d1d;line-height:1.45;">
+                This training placement was officially concluded due to an emergency.
+                <strong>${em.credited_hours !== null && em.credited_hours !== undefined ? em.credited_hours : ojt.hoursRendered} Hours</strong> have been officially credited to your academic record.
+                Academic verdict: <strong>${em.academic_verdict ? em.academic_verdict.replace('_', ' ').toUpperCase() : 'INCOMPLETE (INC)'}</strong>.
+              </p>
+              ${em.coordinator_remarks ? `
+                <div style="margin-top:6px;padding:6px 10px;background:rgba(239,68,68,0.08);border-radius:6px;font-size:0.78rem;color:#991b1b;">
+                  <strong>Coordinator Note:</strong> &ldquo;${esc(em.coordinator_remarks)}&rdquo;
+                </div>
+              ` : ''}
+            </div>
+          </div>
+        </div>
+      </section>
+    `;
+  }
+
+  if (ojt.emergency_pending || em.coordinator_status === 'pending') {
+    return `
+      <section class="page-section animate-fade-in-up" style="margin-bottom:14px;">
+        <div class="jp-card" style="background:#FFFBEB;border:1.5px solid rgba(245,158,11,0.35);border-left:5px solid #F59E0B;padding:14px 18px;border-radius:12px;">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;">
+            <div style="display:flex;align-items:flex-start;gap:12px;">
+              <div style="width:38px;height:38px;border-radius:10px;background:rgba(245,158,11,0.15);color:#d97706;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                ${icon('clock', 18)}
+              </div>
+              <div>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                  <h4 style="margin:0;font-size:0.96rem;font-weight:700;color:#92400e;">
+                    Emergency Request Pending Review &middot; ${em.type === 'temporary_leave' ? 'Leave of Absence' : 'Formal Stoppage'}
+                  </h4>
+                  <span class="badge" style="background:#FEF3C7;color:#92400e;font-size:0.7rem;font-weight:700;padding:2px 8px;">Pending Review</span>
+                </div>
+                <p style="margin:3px 0 0;font-size:0.82rem;color:#78350f;line-height:1.45;">
+                  Your emergency notice filed on <strong>${em.start_date || 'recently'}</strong> is awaiting review by your OJT Coordinator. Attendance logging is temporarily paused so you are not penalized with unexcused absences.
+                </p>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <button class="btn btn--outline btn--sm" id="tracker-btn-coord-chat-top" style="padding:4px 10px;font-size:0.75rem;gap:5px;color:#92400e;border-color:rgba(146,64,14,0.3);">
+                ${icon('messageCircle', 13)} Contact Coordinator
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+    `;
+  }
+
+  return '';
+}
+
+function openEmergencyModal(ojt, onSubmitted) {
+  const existing = document.getElementById('emergency-modal-overlay');
+  if (existing) existing.remove();
+
+  const bd = document.createElement('div');
+  bd.id = 'emergency-modal-overlay';
+  bd.className = 'modal-backdrop modal-backdrop--visible modal-backdrop--open';
+  bd.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,0.65);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:99999;padding:16px;opacity:1 !important;visibility:visible !important;';
+
+  const todayIso = new Date().toISOString().split('T')[0];
+
+  bd.innerHTML = `
+    <div class="modal modal--visible" style="max-width:560px;width:100%;max-height:90vh;overflow-y:auto;border-radius:14px;background:var(--bg-card,#fff);box-shadow:0 20px 45px rgba(0,0,0,0.25);">
+      <div style="padding:18px 22px;border-bottom:1px solid var(--border-light,#e2e8f0);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg, rgba(239,68,68,0.06) 0%, rgba(245,158,11,0.06) 100%);">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:38px;height:38px;border-radius:10px;background:rgba(239,68,68,0.12);color:#dc2626;display:flex;align-items:center;justify-content:center;">
+            ${icon('alertTriangle', 20)}
+          </div>
+          <div>
+            <h3 style="margin:0;font-size:1.1rem;font-weight:700;color:var(--text-primary);">Report Emergency / Leave Notice</h3>
+            <p style="margin:2px 0 0;font-size:0.78rem;color:var(--text-secondary);">${esc(ojt.company || 'Host Company')} &middot; ${ojt.hoursRendered || 0} of ${ojt.totalHours || 600} hrs rendered</p>
+          </div>
+        </div>
+        <button type="button" id="emer-close-btn" style="background:none;border:none;cursor:pointer;color:var(--text-secondary);padding:4px;">
+          ${icon('x', 18)}
+        </button>
+      </div>
+
+      <form id="emergency-form" style="padding:20px 22px;display:flex;flex-direction:column;gap:16px;">
+        <div id="emer-error-box" style="display:none;background:#FEF2F2;border:1px solid #FCA5A5;color:#991B1B;padding:10px 14px;border-radius:8px;font-size:0.83rem;"></div>
+
+        <!-- Request Type -->
+        <div>
+          <label style="display:block;font-size:0.82rem;font-weight:700;margin-bottom:8px;color:var(--text-primary);">Request Type <span style="color:#ef4444;">*</span></label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <label style="border:1.5px solid var(--border-light);border-radius:10px;padding:12px;cursor:pointer;display:flex;flex-direction:column;gap:4px;transition:all .15s;" id="type-opt-leave" class="emer-type-card">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <input type="radio" name="type" value="temporary_leave" checked style="accent-color:var(--color-primary);">
+                <strong style="font-size:0.86rem;color:var(--text-primary);">Temporary Leave</strong>
+              </div>
+              <span style="font-size:0.74rem;color:var(--text-secondary);padding-left:22px;">Temporary leave with intent to resume. Hours stay safe.</span>
+            </label>
+            <label style="border:1.5px solid var(--border-light);border-radius:10px;padding:12px;cursor:pointer;display:flex;flex-direction:column;gap:4px;transition:all .15s;" id="type-opt-withdraw" class="emer-type-card">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <input type="radio" name="type" value="permanent_withdrawal" style="accent-color:#ef4444;">
+                <strong style="font-size:0.86rem;color:#b91c1c;">Formal Stoppage</strong>
+              </div>
+              <span style="font-size:0.74rem;color:var(--text-secondary);padding-left:22px;">Discontinue training for this semester. Hours credited by coordinator.</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Category -->
+        <div>
+          <label style="display:block;font-size:0.82rem;font-weight:700;margin-bottom:6px;color:var(--text-primary);">Emergency Category <span style="color:#ef4444;">*</span></label>
+          <select name="category" class="input" style="width:100%;height:38px;" required>
+            <option value="medical">Medical Emergency / Severe Illness / Hospitalization</option>
+            <option value="accident">Accident / Physical Injury</option>
+            <option value="family_emergency">Family Emergency / Bereavement</option>
+            <option value="financial_personal">Severe Personal / Financial Hardship</option>
+            <option value="other">Other Urgent Matter</option>
+          </select>
+        </div>
+
+        <!-- Dates -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div>
+            <label style="display:block;font-size:0.82rem;font-weight:700;margin-bottom:6px;color:var(--text-primary);">Effective Start Date <span style="color:#ef4444;">*</span></label>
+            <input type="date" name="start_date" class="input" style="width:100%;height:38px;" value="${todayIso}" required>
+          </div>
+          <div id="expected-return-group">
+            <label style="display:block;font-size:0.82rem;font-weight:700;margin-bottom:6px;color:var(--text-primary);">Expected Return Date <span style="color:#ef4444;">*</span></label>
+            <input type="date" name="expected_return_date" class="input" style="width:100%;height:38px;" min="${todayIso}" required>
+          </div>
+        </div>
+
+        <!-- Reason -->
+        <div>
+          <label style="display:block;font-size:0.82rem;font-weight:700;margin-bottom:6px;color:var(--text-primary);">Reason &amp; Circumstances <span style="color:#ef4444;">*</span></label>
+          <textarea name="reason" class="input" rows="3" style="width:100%;resize:vertical;font-family:inherit;" placeholder="Describe your medical condition, hospitalization, doctor's advice, or emergency circumstances..." required minlength="15"></textarea>
+        </div>
+
+        <!-- Supporting Document Upload -->
+        <div>
+          <label style="display:block;font-size:0.82rem;font-weight:700;margin-bottom:6px;color:var(--text-primary);">Supporting Document (Medical Certificate / Doctor Note / Excuse Letter)</label>
+          <input type="file" name="document" class="input" accept=".pdf,.jpg,.jpeg,.png" style="width:100%;padding:6px;">
+          <span style="font-size:0.72rem;color:var(--text-tertiary);margin-top:3px;display:block;">Optional at submission, but strongly recommended for prompt coordinator approval (PDF, JPG, PNG &middot; Max 5MB).</span>
+        </div>
+
+        <!-- Notice Banner -->
+        <div style="background:rgba(0,89,48,0.06);border-left:3px solid var(--color-primary);padding:10px 14px;border-radius:6px;font-size:0.78rem;color:var(--color-primary);line-height:1.45;">
+          <strong>Official Protocol:</strong> Filing this notice immediately alerts both your <strong>Academic OJT Coordinator</strong> and <strong>Host Company</strong>. Daily time-in will be frozen so you are not marked absent.
+        </div>
+
+        <!-- Actions -->
+        <div style="display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:6px;">
+          <button type="button" class="btn btn--outline" id="emer-cancel-btn">Cancel</button>
+          <button type="submit" class="btn btn--primary" id="emer-submit-btn" style="background:#dc2626;border-color:#dc2626;gap:6px;">
+            ${icon('send', 14)} Submit Notice
+          </button>
+        </div>
+      </form>
+    </div>
+  `;
+
+  document.body.appendChild(bd);
+
+  const typeRadios = bd.querySelectorAll('input[name="type"]');
+  const returnGroup = bd.querySelector('#expected-return-group');
+  const returnInput = bd.querySelector('input[name="expected_return_date"]');
+
+  typeRadios.forEach(r => {
+    r.addEventListener('change', () => {
+      if (r.value === 'permanent_withdrawal') {
+        returnGroup.style.display = 'none';
+        returnInput.removeAttribute('required');
+      } else {
+        returnGroup.style.display = 'block';
+        returnInput.setAttribute('required', 'required');
+      }
+    });
+  });
+
+  const close = () => bd.remove();
+  bd.querySelector('#emer-close-btn').addEventListener('click', close);
+  bd.querySelector('#emer-cancel-btn').addEventListener('click', close);
+  bd.addEventListener('click', e => { if (e.target === bd) close(); });
+
+  const form = bd.querySelector('#emergency-form');
+  const errorBox = bd.querySelector('#emer-error-box');
+  const submitBtn = bd.querySelector('#emer-submit-btn');
+
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    errorBox.style.display = 'none';
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = `${icon('clock', 14)} Submitting…`;
+
+    try {
+      const fd = new FormData(form);
+      const res = await apiUpload('/student/ojt-emergency', fd);
+      if (res && res.success) {
+        bd.remove();
+        showToast(res.message || 'Emergency notice submitted successfully. Coordinator alerted.', 'success');
+        if (onSubmitted) onSubmitted();
+      } else {
+        errorBox.textContent = res?.message || 'Failed to submit emergency notice. Please try again.';
+        errorBox.style.display = 'block';
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `${icon('send', 14)} Submit Notice`;
+      }
+    } catch (err) {
+      errorBox.textContent = err.message || 'An unexpected error occurred. Please try again.';
+      errorBox.style.display = 'block';
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = `${icon('send', 14)} Submit Notice`;
+    }
+  });
+}
+
+function openFitToWorkModal(emergency, onSubmitted) {
+  const existing = document.getElementById('fit-to-work-modal-overlay');
+  if (existing) existing.remove();
+
+  const bd = document.createElement('div');
+  bd.id = 'fit-to-work-modal-overlay';
+  bd.className = 'modal-backdrop modal-backdrop--visible modal-backdrop--open';
+  bd.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,0.65);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:99999;padding:16px;opacity:1 !important;visibility:visible !important;';
+
+  bd.innerHTML = `
+    <div class="modal modal--visible" style="max-width:480px;width:100%;border-radius:14px;background:var(--bg-card,#fff);box-shadow:0 20px 45px rgba(0,0,0,0.25);">
+      <div style="padding:18px 22px;border-bottom:1px solid var(--border-light,#e2e8f0);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg, rgba(2,132,199,0.06) 0%, rgba(16,185,129,0.06) 100%);">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:38px;height:38px;border-radius:10px;background:rgba(2,132,199,0.12);color:#0284c7;display:flex;align-items:center;justify-content:center;">
+            ${icon('shieldCheck', 20)}
+          </div>
+          <div>
+            <h3 style="margin:0;font-size:1.05rem;font-weight:700;color:var(--text-primary);">Resume OJT Training</h3>
+            <p style="margin:2px 0 0;font-size:0.78rem;color:var(--text-secondary);">Submit Medical Fit-to-Work Clearance</p>
+          </div>
+        </div>
+        <button type="button" id="ftw-close-btn" style="background:none;border:none;cursor:pointer;color:var(--text-secondary);padding:4px;">
+          ${icon('x', 18)}
+        </button>
+      </div>
+
+      <form id="ftw-form" style="padding:20px 22px;display:flex;flex-direction:column;gap:14px;">
+        <div id="ftw-error-box" style="display:none;background:#FEF2F2;border:1px solid #FCA5A5;color:#991B1B;padding:10px 14px;border-radius:8px;font-size:0.83rem;"></div>
+
+        <p style="margin:0;font-size:0.83rem;color:var(--text-secondary);line-height:1.45;">
+          Please attach your official medical certificate / clearance issued by a licensed physician stating that you are medically fit to resume your internship duties.
+        </p>
+
+        <div>
+          <label style="display:block;font-size:0.82rem;font-weight:700;margin-bottom:6px;color:var(--text-primary);">Medical Certificate / Fit-to-Work Clearance <span style="color:#ef4444;">*</span></label>
+          <input type="file" name="document" class="input" accept=".pdf,.jpg,.jpeg,.png" style="width:100%;padding:6px;" required>
+          <span style="font-size:0.72rem;color:var(--text-tertiary);margin-top:3px;display:block;">Supported formats: PDF, JPG, PNG &middot; Max 5MB</span>
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:6px;">
+          <button type="button" class="btn btn--outline" id="ftw-cancel-btn">Cancel</button>
+          <button type="submit" class="btn btn--primary" id="ftw-submit-btn" style="gap:6px;background:#0284c7;border-color:#0284c7;">
+            ${icon('upload', 14)} Submit Clearance
+          </button>
+        </div>
+      </form>
+    </div>
+  `;
+
+  document.body.appendChild(bd);
+
+  const close = () => bd.remove();
+  bd.querySelector('#ftw-close-btn').addEventListener('click', close);
+  bd.querySelector('#ftw-cancel-btn').addEventListener('click', close);
+  bd.addEventListener('click', e => { if (e.target === bd) close(); });
+
+  const form = bd.querySelector('#ftw-form');
+  const errorBox = bd.querySelector('#ftw-error-box');
+  const submitBtn = bd.querySelector('#ftw-submit-btn');
+
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    errorBox.style.display = 'none';
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = `${icon('clock', 14)} Uploading…`;
+
+    try {
+      const fd = new FormData(form);
+      const res = await apiUpload('/student/ojt-emergency/fit-to-work', fd);
+      if (res && res.success) {
+        bd.remove();
+        showToast(res.message || 'Fit-to-Work clearance uploaded successfully.', 'success');
+        if (onSubmitted) onSubmitted();
+      } else {
+        errorBox.textContent = res?.message || 'Failed to upload clearance. Please try again.';
+        errorBox.style.display = 'block';
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `${icon('upload', 14)} Submit Clearance`;
+      }
+    } catch (err) {
+      errorBox.textContent = err.message || 'An unexpected error occurred. Please try again.';
+      errorBox.style.display = 'block';
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = `${icon('upload', 14)} Submit Clearance`;
+    }
+  });
 }
 
 // ── Main render ───────────────────────────────────────────────────────────────
@@ -458,7 +860,25 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
   const lunchText = sched.hasLunchBreak !== false && sched.lunchStart && sched.lunchEnd ? `Lunch: ${sched.lunchStart}–${sched.lunchEnd}` : '';
 
   let punchClockHtml = '';
-  if (!isWorkDay) {
+  if (ojt.is_withdrawn) {
+    punchClockHtml = `
+      <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(239,68,68,0.1);color:#dc2626;border:1px solid rgba(239,68,68,0.25);padding:8px 16px;border-radius:99px;font-size:0.83rem;font-weight:600;">
+        ${icon('alertCircle', 15)} OJT Withdrawn (Emergency Discontinuation)
+      </div>
+    `;
+  } else if (ojt.is_on_leave) {
+    punchClockHtml = `
+      <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(2,132,199,0.1);color:#0284c7;border:1px solid rgba(2,132,199,0.25);padding:8px 16px;border-radius:99px;font-size:0.83rem;font-weight:600;">
+        ${icon('shieldCheck', 15)} On Medical / Emergency Leave (Time-in Locked)
+      </div>
+    `;
+  } else if (ojt.emergency_pending) {
+    punchClockHtml = `
+      <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(245,158,11,0.1);color:#b45309;border:1px solid rgba(245,158,11,0.25);padding:8px 16px;border-radius:99px;font-size:0.83rem;font-weight:600;">
+        ${icon('clock', 15)} Leave Notice Pending Review (Attendance Paused)
+      </div>
+    `;
+  } else if (!isWorkDay) {
     punchClockHtml = `
       <div style="display:inline-flex;align-items:center;gap:8px;background:var(--bg-secondary);color:var(--text-tertiary);border:1px solid var(--border-light);padding:8px 16px;border-radius:99px;font-size:0.83rem;font-weight:600;">
         ${icon('calendar', 15)} Non-Working Day (${sched.todayDay || 'Off Day'})
@@ -561,6 +981,9 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
       </div>
     </section>
 
+    <!-- ── Emergency / Medical Status Banner ── -->
+    ${renderEmergencyBannerHtml(ojt)}
+
     <!-- ── Completed Evaluation Card (if submitted by company) ── -->
     ${evaluation && evaluation.overall_score ? `
     <section class="page-section animate-fade-in-up" style="animation-delay:40ms;">
@@ -629,9 +1052,16 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
         <div class="jp-card" style="flex:1;min-width:240px;">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
             <p class="text-xs text-tertiary" style="font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin:0;">Active OJT Deployment</p>
-            <button class="btn btn--outline btn--sm" id="tracker-btn-coord-chat" style="padding:4px 10px;font-size:0.75rem;gap:5px;color:var(--color-primary);border-color:rgba(0,89,48,0.25);display:inline-flex;align-items:center;">
-              ${icon('messageCircle', 13)} Message Coordinator
-            </button>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              ${!ojt.is_withdrawn ? `
+                <button class="btn btn--outline btn--sm btn-trigger-emergency" id="tracker-btn-emergency" style="padding:4px 10px;font-size:0.75rem;gap:5px;color:#dc2626;border-color:rgba(239,68,68,0.3);display:inline-flex;align-items:center;">
+                  ${icon('alertTriangle', 13)} ${ojt.emergency_pending || ojt.is_on_leave ? 'Emergency Info' : 'Emergency / Leave Notice'}
+                </button>
+              ` : ''}
+              <button class="btn btn--outline btn--sm" id="tracker-btn-coord-chat" style="padding:4px 10px;font-size:0.75rem;gap:5px;color:var(--color-primary);border-color:rgba(0,89,48,0.25);display:inline-flex;align-items:center;">
+                ${icon('messageCircle', 13)} Message Coordinator
+              </button>
+            </div>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
             <div>
@@ -904,6 +1334,42 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
   // Coordinator Chat
   container.querySelector('#tracker-btn-coord-chat')?.addEventListener('click', () => {
     window.openCoordinatorChat?.();
+  });
+  container.querySelector('#tracker-btn-coord-chat-top')?.addEventListener('click', () => {
+    window.openCoordinatorChat?.();
+  });
+
+  // Emergency & Leave Notice
+  window.openStudentEmergencyModal = (customOjt) => {
+    openEmergencyModal(customOjt || ojt, () => {
+      renderOJTTracker(container);
+    });
+  };
+
+  container.querySelector('#tracker-btn-emergency')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    openEmergencyModal(ojt, () => {
+      renderOJTTracker(container);
+    });
+  });
+
+  // Fit to Work Clearance
+  container.querySelector('#btn-upload-fit-to-work')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    openFitToWorkModal(ojt.emergency, () => {
+      renderOJTTracker(container);
+    });
+  });
+
+  // Delegated handler for any emergency button clicks within the tracker page
+  container.addEventListener('click', (e) => {
+    const emerBtn = e.target.closest('#tracker-btn-emergency, .btn-trigger-emergency');
+    if (emerBtn) {
+      e.preventDefault();
+      openEmergencyModal(ojt, () => {
+        renderOJTTracker(container);
+      });
+    }
   });
 
   // ── Time Logs Pagination & Interactive Row Clicks ────────────────────────

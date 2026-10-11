@@ -10,18 +10,49 @@ import { navigate } from '../router.js';
 const typeConfig = {
   application_reviewed:     { ic: 'eye',          color: '#3B82F6', bg: 'rgba(59,130,246,.12)', route: '/applications' },
   interview_scheduled:      { ic: 'video',        color: '#D97706', bg: 'rgba(217,119,6,.12)',  route: '/interview'    },
+  interview_rescheduled:    { ic: 'clock',        color: '#D97706', bg: 'rgba(217,119,6,.12)',  route: '/interview'    },
+  interview_cancelled:      { ic: 'alertCircle',  color: '#EF4444', bg: 'rgba(239,68,68,.12)',  route: '/interview'    },
   application_offered:      { ic: 'award',        color: '#16A34A', bg: 'rgba(22,163,74,.12)',  route: '/applications' },
   application_rejected:     { ic: 'alertCircle',  color: '#6B7280', bg: 'rgba(107,114,128,.1)', route: '/applications' },
-  admin_broadcast:          { ic: 'bell',         color: '#005930', bg: 'rgba(0,89,48,.12)',    route: '/home'         },
-  announcement:             { ic: 'bell',         color: '#005930', bg: 'rgba(0,89,48,.12)',    route: '/home'         },
+  company_accepted:         { ic: 'award',        color: '#10B981', bg: 'rgba(16,185,129,.12)', route: '/applications' },
+  company_rejected:         { ic: 'alertCircle',  color: '#EF4444', bg: 'rgba(239,68,68,.12)',  route: '/applications' },
+  offer_accepted:           { ic: 'award',        color: '#10B981', bg: 'rgba(16,185,129,.12)', route: '/applications' },
+  offer_rejected:           { ic: 'alertCircle',  color: '#6B7280', bg: 'rgba(107,114,128,.1)', route: '/applications' },
+  chat_message:             { ic: 'messageCircle',color: '#4A6CF7', bg: 'rgba(74,108,247,.12)', route: ''              },
+  admin_broadcast:          { ic: 'bell',         color: '#005930', bg: 'rgba(0,89,48,.12)',    route: '/'             },
+  announcement:             { ic: 'bell',         color: '#005930', bg: 'rgba(0,89,48,.12)',    route: '/'             },
   graduation_promotion:     { ic: 'award',        color: '#10B981', bg: 'rgba(16,185,129,.12)', route: '/portfolio'    },
   alumni_registration:      { ic: 'award',        color: '#4F46E5', bg: 'rgba(79,70,229,.12)',  route: '/portfolio'    },
   ojt_evaluation_completed: { ic: 'award',        color: '#10B981', bg: 'rgba(16,185,129,.12)', route: '/portfolio'    },
 };
-function cfg(type) { return typeConfig[type] || { ic: 'bell', color: '#005930', bg: 'rgba(0,89,48,.1)', route: '/home' }; }
+function cfg(type) { return typeConfig[type] || { ic: 'bell', color: '#005930', bg: 'rgba(0,89,48,.1)', route: '/' }; }
+
+function normalizeJobseekerRoute(rawRoute, notifType = '') {
+  if (notifType === 'chat_message') return '';
+  const c = cfg(notifType);
+  const src = rawRoute || c.route || '/';
+  let clean = String(src).replace(/^#\/?/, '').replace(/^\/+/, '').trim();
+  if (!clean || clean === 'home' || clean === 'dashboard') return '/';
+  if (clean === 'interviews') return '/interview';
+  return '/' + clean;
+}
+
+function navigateJobseekerNotification(targetRoute, notif = {}) {
+  const nType = notif.type || '';
+  if (nType === 'chat_message') {
+    const convKey = notif.data?.conversation_key;
+    if (typeof window.openChat === 'function') {
+      window.openChat(convKey || undefined);
+    }
+    return;
+  }
+  if (targetRoute) {
+    navigate(targetRoute);
+  }
+}
 
 /* ── Toast ──────────────────────────────────────────────────────── */
-function showToast(notif) {
+function showToast(notif, onOpenAction) {
   let container = document.getElementById('notif-toast-container');
   if (!container) {
     container = document.createElement('div');
@@ -30,6 +61,7 @@ function showToast(notif) {
   }
 
   const c = cfg(notif.type);
+  const targetRoute = normalizeJobseekerRoute(notif.data?.route || notif.data?.action_url || c.route, notif.type);
   const toast = document.createElement('div');
   toast.className = 'notif-toast';
   toast.innerHTML = `
@@ -41,11 +73,18 @@ function showToast(notif) {
     <button class="notif-toast__close">${icon('x', 14)}</button>
   `;
 
-  toast.querySelector('.notif-toast__close').addEventListener('click', () => dismissToast(toast));
-  toast.addEventListener('click', (e) => {
+  toast.querySelector('.notif-toast__close').addEventListener('click', (e) => {
+    e.stopPropagation();
+    dismissToast(toast);
+  });
+  toast.addEventListener('click', async (e) => {
     if (!e.target.closest('.notif-toast__close')) {
-      navigate(c.route);
       dismissToast(toast);
+      if (notif.id) {
+        await apiPatch(`/notifications/${notif.id}/read`).catch(() => {});
+      }
+      if (onOpenAction) onOpenAction();
+      navigateJobseekerNotification(targetRoute, notif);
     }
   });
 
@@ -75,9 +114,10 @@ function renderList(notifications, listEl) {
 
   listEl.innerHTML = notifications.map(n => {
     const c = cfg(n.type);
-    const targetRoute = n.data?.route || c.route;
+    const targetRoute = normalizeJobseekerRoute(n.data?.route || n.data?.action_url || c.route, n.type);
+    const convAttr = n.data?.conversation_key ? `data-conv-key="${n.data.conversation_key}"` : '';
     return `
-      <button class="notif-item${n.is_read ? '' : ' notif-item--unread'}" data-id="${n.id}" data-route="${targetRoute}">
+      <button class="notif-item${n.is_read ? '' : ' notif-item--unread'}" data-id="${n.id}" data-type="${n.type || ''}" ${convAttr} data-route="${targetRoute}">
         <div class="notif-item__icon" style="background:${c.bg};color:${c.color}">${icon(c.ic, 14)}</div>
         <div class="notif-item__body">
           <div class="notif-item__title">${n.title}</div>
@@ -145,10 +185,12 @@ export function initNotifications(nav) {
     const item = e.target.closest('.notif-item');
     if (!item) return;
 
-    const id    = item.dataset.id;
-    const route = item.dataset.route;
+    const id      = item.dataset.id;
+    const route   = item.dataset.route;
+    const nType   = item.dataset.type || '';
+    const convKey = item.dataset.convKey || '';
 
-    if (!item.classList.contains('notif-item--unread') === false) {
+    if (item.classList.contains('notif-item--unread')) {
       await apiPatch(`/notifications/${id}/read`).catch(() => {});
       item.classList.remove('notif-item--unread');
       const dot = item.querySelector('.notif-item__dot');
@@ -159,7 +201,7 @@ export function initNotifications(nav) {
 
     panelOpen = false;
     panel.classList.remove('notif-panel--open');
-    navigate(route);
+    navigateJobseekerNotification(route, { type: nType, data: convKey ? { conversation_key: convKey } : {} });
   });
 
   /* ── Load from API ── */

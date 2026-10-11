@@ -67,6 +67,7 @@ export function openAssignRequirementsModal({
 
   const overlay = document.createElement('div');
   overlay.id = 'sup-req-modal-overlay';
+  overlay.className = 'modal-overlay';
   overlay.style.cssText = `
     position: fixed; top: 0; left: 0; right: 0; bottom: 0;
     background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px);
@@ -326,6 +327,7 @@ export function openReviewRequirementsModal({
 
   const overlay = document.createElement('div');
   overlay.id = 'sup-req-modal-overlay';
+  overlay.className = 'modal-overlay';
   overlay.style.cssText = `
     position: fixed; top: 0; left: 0; right: 0; bottom: 0;
     background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px);

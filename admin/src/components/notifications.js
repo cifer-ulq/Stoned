@@ -13,6 +13,7 @@ let _lastPolledCount = -1;
 const TYPE_CONFIG = {
   company_registered:          { icon: 'briefcase',      color: '#2563EB', bg: 'rgba(37, 99, 235, 0.12)',  route: '/companies' },
   moa_submitted:               { icon: 'file-text',      color: '#D97706', bg: 'rgba(217, 119, 6, 0.12)',  route: '/companies' },
+  moa_request:                 { icon: 'file-text',      color: '#D97706', bg: 'rgba(217, 119, 6, 0.12)',  route: '/companies' },
   moa_expiring:                { icon: 'alert-triangle', color: '#EA580C', bg: 'rgba(234, 88, 12, 0.12)',  route: '/companies' },
   moa_approved:                { icon: 'check-circle',   color: '#059669', bg: 'rgba(5, 150, 105, 0.12)',  route: '/companies' },
   student_eligible_graduation: { icon: 'graduation-cap', color: '#005930', bg: 'rgba(0, 89, 48, 0.12)',    route: '/students' },
@@ -21,11 +22,20 @@ const TYPE_CONFIG = {
   ojt_evaluation_completed:    { icon: 'clipboard-check',color: '#005930', bg: 'rgba(0, 89, 48, 0.12)',    route: '/ojt' },
   ojt_started:                 { icon: 'layers',         color: '#7C3AED', bg: 'rgba(124, 58, 237, 0.12)', route: '/ojt' },
   endorsement_requested:       { icon: 'file',           color: '#D97706', bg: 'rgba(217, 119, 6, 0.12)',  route: '/ojt' },
-  admin_broadcast:             { icon: 'bell',           color: '#005930', bg: 'rgba(0, 89, 48, 0.14)',    route: '/students' },
+  admin_broadcast:             { icon: 'bell',           color: '#005930', bg: 'rgba(0, 89, 48, 0.14)',    route: '/' },
+  announcement:                { icon: 'bell',           color: '#005930', bg: 'rgba(0, 89, 48, 0.14)',    route: '/' },
 };
 
 function getTypeConfig(type) {
   return TYPE_CONFIG[type] || { icon: 'bell', color: '#005930', bg: 'rgba(0, 89, 48, 0.12)', route: '/' };
+}
+
+function normalizeAdminRoute(rawRoute, notifType = '') {
+  const c = getTypeConfig(notifType);
+  const src = rawRoute || c.route || '/';
+  let clean = String(src).replace(/^#\/?/, '').replace(/^\/+/, '').trim();
+  if (!clean || clean === 'dashboard' || clean === 'home') return '/';
+  return '/' + clean;
 }
 
 /* ── Inject Styles Once ── */
@@ -358,8 +368,17 @@ function showToast(notification) {
     dismiss();
   });
 
-  toast.addEventListener('click', () => {
-    const targetRoute = notification.data?.route || c.route;
+  toast.addEventListener('click', (e) => {
+    if (e.target.closest('.admin-toast__close')) return;
+    if (notification.id && !notification.is_read) {
+      notification.is_read = true;
+      _unreadCount = Math.max(0, _unreadCount - 1);
+      _lastPolledCount = _unreadCount;
+      const badgeEl = document.querySelector('.admin-notif-badge');
+      updateBadgeUI(badgeEl, _unreadCount);
+      apiPatch(`/notifications/${notification.id}/read`).catch(() => {});
+    }
+    const targetRoute = normalizeAdminRoute(notification.data?.route || notification.data?.action_url || c.route, notification.type);
     if (targetRoute) {
       window.location.hash = targetRoute;
     }
@@ -542,7 +561,7 @@ export function initNotifications(triggerBtn) {
 
       closePanel();
 
-      const targetRoute = notif?.data?.route || (notif ? getTypeConfig(notif.type).route : '/');
+      const targetRoute = normalizeAdminRoute(notif?.data?.route || notif?.data?.action_url || (notif ? getTypeConfig(notif.type).route : '/'), notif?.type || '');
       if (targetRoute) {
         window.location.hash = targetRoute;
       }

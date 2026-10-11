@@ -15,6 +15,7 @@ use App\Models\StudentSkill;
 use App\Models\StudentAchievement;
 use App\Models\PortfolioProject;
 use App\Models\StudentOjtRequirement;
+use App\Models\OjtEmergencyRequest;
 use App\Services\RecommendationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -931,10 +932,10 @@ class StudentController extends Controller
     {
         $user = $request->user();
 
-        // Find active or confirmed OJT interest
+        // Find active, confirmed, or emergency-paused OJT interest
         $interest = StudentOjtInterest::with(['posting.company', 'endorser'])
             ->where('student_user_id', $user->id)
-            ->whereIn('status', ['ojt_started', 'accepted', 'ojt_confirmed'])
+            ->whereIn('status', ['ojt_started', 'accepted', 'ojt_confirmed', 'stoppage_requested', 'on_leave', 'withdrawn_emergency'])
             ->latest()
             ->first();
 
@@ -1013,7 +1014,7 @@ class StudentController extends Controller
 
         // ── Active OJT: check for ojt_record ───────────────────────────────────
         $ojtRecord = OjtRecord::where('user_id', $user->id)
-            ->whereIn('status', ['active', 'completed'])
+            ->whereIn('status', ['active', 'completed', 'on_leave', 'withdrawn_emergency'])
             ->first();
 
         // Derive schedule info from posting
@@ -1204,21 +1205,32 @@ class StudentController extends Controller
             ];
         }
 
+        $latestEmergency = OjtEmergencyRequest::where('student_user_id', $user->id)->latest()->first();
+        $isOnLeave = ($interest->status === 'on_leave' || $ojtRecord?->status === 'on_leave');
+        $isEmergencyPending = ($interest->status === 'stoppage_requested' || ($latestEmergency && $latestEmergency->coordinator_status === 'pending'));
+        $isWithdrawn = ($interest->status === 'withdrawn_emergency' || $ojtRecord?->status === 'withdrawn_emergency');
+
         return response()->json([
-            'deployment' => [
-                'company'        => $posting->company_name,
-                'department'     => $posting->department,
-                'location'       => $posting->location,
-                'companyLat'     => $posting->latitude  !== null ? (float) $posting->latitude  : null,
-                'companyLon'     => $posting->longitude !== null ? (float) $posting->longitude : null,
-                'supervisor'     => $supervisorName,
-                'startDate'      => $startDate instanceof \DateTimeInterface ? $startDate->format('M j, Y') : \Carbon\Carbon::parse($startDate)->format('M j, Y'),
-                'endDate'        => $endDate instanceof \DateTimeInterface ? $endDate->format('M j, Y') : \Carbon\Carbon::parse($endDate)->format('M j, Y'),
-                'scheduleType'   => $posting->schedule_type,
-                'duration'       => $posting->duration,
-                'postingTitle'   => $posting->title,
-                'schedule'       => [
-                    'days'             => $scheduleDays,
+            'deployment'    => [
+                'company'         => $posting->company_name,
+                'companyUserId'   => $posting->company_user_id,
+                'companyLogo'     => $posting->company?->avatar_url,
+                'companyInitial'  => $posting->company_initial ?? ($posting->company_name ? strtoupper(substr($posting->company_name, 0, 2)) : 'CO'),
+                'companyColor'    => $posting->company_color ?? '#005930',
+                'department'      => $posting->department,
+                'location'        => $posting->location,
+                'branchName'      => $posting->branch_name,
+                'postingTitle'    => $posting->title,
+                'duration'        => $posting->duration,
+                'scheduleType'    => $posting->schedule_type ?? 'Full Day · Mon–Fri',
+                'supervisor'      => $ojtRecord?->supervisor_name ?? null,
+                'supervisorEmail' => $ojtRecord?->supervisor_email ?? null,
+                'requiredHours'   => (int) $totalHours,
+                'interestId'      => $interest->id,
+                'interestStatus'  => $interest->status,
+                'recordStatus'    => $ojtRecord?->status ?? 'active',
+                'schedule'        => [
+                    'days'             => $interest->schedule_days ?? $ojtRecord?->schedule_days ?? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
                     'shiftStart'       => $shiftStart,
                     'shiftEnd'         => $shiftEnd,
                     'lunchStart'       => $lunchStart,
@@ -1241,6 +1253,30 @@ class StudentController extends Controller
             'lunchStart'    => $lunchStart,
             'lunchEnd'      => $lunchEnd,
             'todayLog'      => $todayFormatted,
+            'emergency'     => $latestEmergency ? [
+                'id'                      => $latestEmergency->id,
+                'type'                    => $latestEmergency->type,
+                'category'                => $latestEmergency->category,
+                'reason'                  => $latestEmergency->reason,
+                'start_date'              => $latestEmergency->start_date ? $latestEmergency->start_date->format('M d, Y') : null,
+                'expected_return_date'    => $latestEmergency->expected_return_date ? $latestEmergency->expected_return_date->format('M d, Y') : null,
+                'hours_rendered_snapshot' => (float) $latestEmergency->hours_rendered_snapshot,
+                'required_hours_snapshot' => (float) $latestEmergency->required_hours_snapshot,
+                'coordinator_status'      => $latestEmergency->coordinator_status,
+                'coordinator_remarks'     => $latestEmergency->coordinator_remarks,
+                'credited_hours'          => $latestEmergency->credited_hours !== null ? (float) $latestEmergency->credited_hours : null,
+                'academic_verdict'        => $latestEmergency->academic_verdict,
+                'supporting_document_url' => $latestEmergency->supporting_document_url,
+                'supporting_document_name'=> $latestEmergency->supporting_document_name,
+                'fit_to_work_url'         => $latestEmergency->fit_to_work_url,
+                'has_fit_to_work'         => !empty($latestEmergency->fit_to_work_document_path),
+                'company_status'          => $latestEmergency->company_status,
+                'assets_returned'         => (bool) $latestEmergency->assets_returned,
+                'created_at'              => $latestEmergency->created_at ? $latestEmergency->created_at->diffForHumans() : null,
+            ] : null,
+            'is_on_leave'         => $isOnLeave,
+            'emergency_pending'   => $isEmergencyPending,
+            'is_withdrawn'        => $isWithdrawn,
             'progress' => [
                 'hoursRendered' => (float) $hoursRendered,
                 'totalHours'    => (float) $totalHours,
@@ -1370,6 +1406,36 @@ class StudentController extends Controller
     }
 
     /**
+     * Resolve the host company user ID for a student's active OJT placement.
+     */
+    private function getHostCompanyUserIdForStudent(User $student, ?StudentOjtInterest $interest = null, ?OjtRecord $ojtRecord = null): ?int
+    {
+        if ($interest?->posting?->company_user_id) {
+            return (int) $interest->posting->company_user_id;
+        }
+
+        $activeInterest = StudentOjtInterest::with('posting')
+            ->where('student_user_id', $student->id)
+            ->whereIn('status', ['accepted', 'ojt_started', 'ojt_confirmed', 'stoppage_requested', 'on_leave'])
+            ->latest()
+            ->first();
+
+        if ($activeInterest?->posting?->company_user_id) {
+            return (int) $activeInterest->posting->company_user_id;
+        }
+
+        $companyName = $ojtRecord?->company_name ?? $activeInterest?->posting?->company_name;
+        if ($companyName) {
+            $companyUserId = \App\Models\CompanyProfile::where('company_name', $companyName)->value('user_id');
+            if ($companyUserId) {
+                return (int) $companyUserId;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * POST /student/ojt-tracker/log-in
      * Record time-in (Morning or Afternoon) with current location.
      */
@@ -1387,6 +1453,29 @@ class StudentController extends Controller
 
         $user  = $request->user();
         $today = now()->toDateString();
+
+        // 0. Enforce emergency leave / stoppage guards
+        $rawInterest = StudentOjtInterest::where('student_user_id', $user->id)->latest()->first();
+        if ($rawInterest) {
+            if ($rawInterest->status === 'on_leave') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Attendance time-in is paused while on approved medical or emergency leave. Submit a Fit-to-Work clearance when you are ready to resume.',
+                ], 403);
+            }
+            if ($rawInterest->status === 'stoppage_requested') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Attendance time-in is temporarily suspended while your emergency request is under coordinator review.',
+                ], 403);
+            }
+            if ($rawInterest->status === 'withdrawn_emergency') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Your OJT placement has been formally withdrawn due to an emergency.',
+                ], 403);
+            }
+        }
 
         // 1. Enforce agreed work days schedule
         $dayCheck = $this->validateScheduleDay($user, $today);
@@ -1584,30 +1673,34 @@ class StudentController extends Controller
                 }
 
                 // Record Afternoon Time In
-                $log->update([
+                $log->update(array_filter([
                     'afternoon_in'       => $request->time_in,
                     'afternoon_in_lat'   => $lat,
                     'afternoon_in_lon'   => $lon,
                     'afternoon_validity' => $locationValidity,
-                ]);
+                    'location_validity'  => $locationValidity ?? $log->location_validity,
+                    'distance_meters'    => $distanceMeters ?? $log->distance_meters,
+                ], fn($v) => $v !== null));
                 $sessionLabel = 'Time In (Afternoon)';
             } elseif ($log->afternoon_in) {
                 return response()->json(['message' => 'Already logged in for afternoon session today.'], 422);
             } else {
                 // Fallback to morning in
-                $log->update([
+                $log->update(array_filter([
                     'morning_in'        => $request->time_in,
                     'morning_in_lat'    => $lat,
                     'morning_in_lon'    => $lon,
                     'morning_validity'  => $locationValidity,
-                ]);
+                    'location_validity' => $locationValidity ?? $log->location_validity,
+                    'distance_meters'   => $distanceMeters ?? $log->distance_meters,
+                ], fn($v) => $v !== null));
                 $sessionLabel = 'Time In (Morning)';
             }
         }
 
-        // Notify supervisors
+        // Notify supervisors for this student's program
         $locationNote = $locationValidity ? " ({$locationValidity})" : '';
-        foreach (User::where('role', 'supervisor')->pluck('id') as $svId) {
+        foreach ($this->getSupervisorIdsForStudent($user) as $svId) {
             AppNotification::send(
                 $svId,
                 'student_time_in',
@@ -1615,6 +1708,33 @@ class StudentController extends Controller
                 "{$user->name} logged in ({$sessionLabel}) at {$timeInFormatted} on {$today}{$locationNote}.",
                 ['student_id' => $user->id, 'log_id' => $log->id, 'date' => $today,
                  'time_in' => $timeInFormatted, 'session' => $sessionLabel, 'location_validity' => $locationValidity]
+            );
+        }
+
+        // Notify the host company of student time-in
+        $companyUserId = $this->getHostCompanyUserIdForStudent($user, $interest, $ojtRecord);
+        if ($companyUserId) {
+            $postingTitle = $interest?->posting?->title ?? 'OJT Placement';
+            $distLabel = $distanceMeters !== null ? " · {$distanceMeters}m" : '';
+            $companyLocNote = $locationValidity ? " [{$locationValidity}{$distLabel}]" : '';
+            AppNotification::send(
+                $companyUserId,
+                'student_time_in',
+                "Trainee {$sessionLabel}: {$user->name}",
+                "{$user->name} ({$postingTitle}) logged {$sessionLabel} at {$timeInFormatted} on {$today}{$companyLocNote}.",
+                [
+                    'student_id'        => $user->id,
+                    'student_name'      => $user->name,
+                    'posting_id'        => $interest?->ojt_posting_id,
+                    'posting_title'     => $postingTitle,
+                    'log_id'            => $log->id,
+                    'date'              => $today,
+                    'time_in'           => $timeInFormatted,
+                    'session'           => $sessionLabel,
+                    'location_validity' => $locationValidity,
+                    'distance_meters'   => $distanceMeters,
+                    'action_url'        => '#/ojt-trainees',
+                ]
             );
         }
 
@@ -1667,6 +1787,29 @@ class StudentController extends Controller
         $user  = $request->user();
         $today = now()->toDateString();
 
+        // 0. Enforce emergency leave / stoppage guards
+        $rawInterest = StudentOjtInterest::where('student_user_id', $user->id)->latest()->first();
+        if ($rawInterest) {
+            if ($rawInterest->status === 'on_leave') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Attendance time-out is paused while on approved medical or emergency leave.',
+                ], 403);
+            }
+            if ($rawInterest->status === 'stoppage_requested') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Attendance logging is temporarily suspended while your emergency request is under coordinator review.',
+                ], 403);
+            }
+            if ($rawInterest->status === 'withdrawn_emergency') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Your OJT placement has been formally withdrawn due to an emergency.',
+                ], 403);
+            }
+        }
+
         // 1. Enforce agreed work days schedule
         $dayCheck = $this->validateScheduleDay($user, $today);
         if ($dayCheck) {
@@ -1696,6 +1839,21 @@ class StudentController extends Controller
         $outLat = $request->latitude  !== null ? (float) $request->latitude  : null;
         $outLon = $request->longitude !== null ? (float) $request->longitude : null;
         $reqTimeOut = \Carbon\Carbon::createFromFormat('H:i', $request->time_out);
+
+        // Compute time-out geofence distance if posting coordinates exist
+        $outLocationValidity = null;
+        $outDistanceMeters   = null;
+        if ($outLat !== null && $outLon !== null && $interest?->posting) {
+            $posting = $interest->posting;
+            if ($posting->latitude !== null && $posting->longitude !== null) {
+                $outDistanceMeters = (int) round($this->haversineMeters(
+                    $outLat, $outLon,
+                    (float) $posting->latitude,
+                    (float) $posting->longitude
+                ));
+                $outLocationValidity = $outDistanceMeters <= 100 ? 'In Site' : 'Too Far';
+            }
+        }
 
         // -------------------------------------------------------------
         // Case 1: Half-Day schedule (hasLunch == false)
@@ -1844,6 +2002,38 @@ class StudentController extends Controller
             );
         }
 
+        // Notify the host company of student time-out
+        $companyUserId = $this->getHostCompanyUserIdForStudent($user, $interest, $ojtRecord);
+        if ($companyUserId) {
+            $postingTitle = $interest?->posting?->title ?? 'OJT Placement';
+            $locVal = $outLocationValidity ?? $log->location_validity;
+            $distVal = $outDistanceMeters ?? $log->distance_meters;
+            $distLabel = $distVal !== null ? " · {$distVal}m" : '';
+            $companyLocNote = $locVal ? " [{$locVal}{$distLabel}]" : '';
+            $totalDayHrs = (float) $log->hours_rendered;
+            AppNotification::send(
+                $companyUserId,
+                'student_time_out',
+                "Trainee {$sessionLabel}: {$user->name}",
+                "{$user->name} ({$postingTitle}) logged {$sessionLabel} at {$timeOutFormatted} on {$today} ({$sessionHours} hrs session · {$totalDayHrs} hrs total today){$companyLocNote}.",
+                [
+                    'student_id'        => $user->id,
+                    'student_name'      => $user->name,
+                    'posting_id'        => $interest?->ojt_posting_id,
+                    'posting_title'     => $postingTitle,
+                    'log_id'            => $log->id,
+                    'date'              => $today,
+                    'time_out'          => $timeOutFormatted,
+                    'session'           => $sessionLabel,
+                    'hours'             => $sessionHours,
+                    'hours_rendered'    => $totalDayHrs,
+                    'location_validity' => $locVal,
+                    'distance_meters'   => $distVal,
+                    'action_url'        => '#/ojt-trainees',
+                ]
+            );
+        }
+
         return response()->json([
             'message' => "{$sessionLabel} recorded.",
             'session' => $sessionLabel,
@@ -1916,7 +2106,7 @@ class StudentController extends Controller
         // Location validity
         $interest = StudentOjtInterest::with('posting')
             ->where('student_user_id', $user->id)
-            ->whereIn('status', ['accepted', 'ojt_started'])
+            ->whereIn('status', ['accepted', 'ojt_started', 'ojt_confirmed'])
             ->latest()->first();
 
         $locationValidity  = null;
@@ -1963,6 +2153,35 @@ class StudentController extends Controller
                 "{$user->name} logged {$timeIn->format('g:i A')} – {$timeOut->format('g:i A')} on {$today} ({$hours} hrs).",
                 ['student_id' => $user->id, 'log_id' => $log->id, 'date' => $today,
                  'time_in' => $timeIn->format('g:i A'), 'time_out' => $timeOut->format('g:i A'), 'hours' => $hours]
+            );
+        }
+
+        // Notify host company of attendance log
+        $companyUserId = $this->getHostCompanyUserIdForStudent($user, $interest, $ojtRecord);
+        if ($companyUserId) {
+            $postingTitle = $interest?->posting?->title ?? 'OJT Placement';
+            $distLabel = $distanceMeters !== null ? " · {$distanceMeters}m" : '';
+            $companyLocNote = $locationValidity ? " [{$locationValidity}{$distLabel}]" : '';
+            AppNotification::send(
+                $companyUserId,
+                'student_time_out',
+                "Trainee Attendance Logged: {$user->name}",
+                "{$user->name} ({$postingTitle}) logged {$timeIn->format('g:i A')} – {$timeOut->format('g:i A')} on {$today} ({$hours} hrs){$companyLocNote}.",
+                [
+                    'student_id'        => $user->id,
+                    'student_name'      => $user->name,
+                    'posting_id'        => $interest?->ojt_posting_id,
+                    'posting_title'     => $postingTitle,
+                    'log_id'            => $log->id,
+                    'date'              => $today,
+                    'time_in'           => $timeIn->format('g:i A'),
+                    'time_out'          => $timeOut->format('g:i A'),
+                    'hours'             => $hours,
+                    'hours_rendered'    => $hours,
+                    'location_validity' => $locationValidity,
+                    'distance_meters'   => $distanceMeters,
+                    'action_url'        => '#/ojt-trainees',
+                ]
             );
         }
 
@@ -2521,10 +2740,13 @@ class StudentController extends Controller
                 return [
                     'id'           => $app->id,
                     'status'       => $app->status,
-                    'cover_letter' => $app->cover_letter,
-                    'notes'        => $app->notes,
-                    'created_at'   => $app->created_at->toIso8601String(),
-                    'updated_at'   => $app->updated_at->toIso8601String(),
+                    'cover_letter'     => $app->cover_letter,
+                    'notes'            => $app->notes,
+                    'offer_details'    => $app->offer_details,
+                    'offer_decision'   => $app->offer_decision,
+                    'offer_decided_at' => $app->offer_decided_at?->toIso8601String(),
+                    'created_at'       => $app->created_at->toIso8601String(),
+                    'updated_at'       => $app->updated_at->toIso8601String(),
                     'job_listing'  => $listing ? [
                         'id'               => $listing->id,
                         'company_user_id'  => $listing->company_user_id,
@@ -2565,12 +2787,81 @@ class StudentController extends Controller
     public function withdrawApplication(Request $request, $id)
     {
         $app = \App\Models\JobApplication::where('applicant_user_id', $request->user()->id)
-            ->whereIn('status', ['applied', 'screened'])
+            ->whereIn('status', ['applied', 'screened', 'reviewed'])
             ->findOrFail($id);
 
         $app->delete();
 
         return response()->json(['success' => true]);
+    }
+
+    /* ── POST /student/applications/{id}/accept-offer ── */
+    public function acceptOffer(Request $request, $id)
+    {
+        $user = $request->user();
+
+        $app = \App\Models\JobApplication::where('applicant_user_id', $user->id)
+            ->where('id', $id)
+            ->where('status', 'offered')
+            ->with('jobListing')
+            ->firstOrFail();
+
+        $app->update([
+            'status'           => 'hired',
+            'offer_decision'   => 'accepted',
+            'offer_decided_at' => now(),
+        ]);
+
+        // Auto-withdraw all other active (non-final) applications
+        \App\Models\JobApplication::where('applicant_user_id', $user->id)
+            ->where('id', '!=', $id)
+            ->whereNotIn('status', ['hired', 'rejected'])
+            ->update(['status' => 'rejected']);
+
+        // Notify the company that the offer was accepted
+        if ($app->jobListing) {
+            $jobTitle = $app->jobListing->title ?? 'a position';
+            AppNotification::send(
+                $app->jobListing->company_user_id,
+                'offer_accepted',
+                'Offer Accepted! 🎉',
+                "{$user->name} has accepted your job offer for \"{$jobTitle}\".",
+                ['application_id' => $app->id, 'job_title' => $jobTitle, 'applicant_name' => $user->name]
+            );
+        }
+
+        return response()->json(['success' => true, 'message' => 'Offer accepted. Congratulations!']);
+    }
+
+    /* ── POST /student/applications/{id}/reject-offer ── */
+    public function rejectOffer(Request $request, $id)
+    {
+        $app = \App\Models\JobApplication::where('applicant_user_id', $request->user()->id)
+            ->where('id', $id)
+            ->where('status', 'offered')
+            ->with('jobListing')
+            ->firstOrFail();
+
+        $app->update([
+            'status'           => 'rejected',
+            'offer_decision'   => 'rejected',
+            'offer_decided_at' => now(),
+        ]);
+
+        // Notify the company that the offer was declined
+        if ($app->jobListing) {
+            $declineUser = $request->user();
+            $jobTitle    = $app->jobListing->title ?? 'a position';
+            AppNotification::send(
+                $app->jobListing->company_user_id,
+                'offer_rejected',
+                'Offer Declined',
+                "{$declineUser->name} has declined your job offer for \"{$jobTitle}\".",
+                ['application_id' => $app->id, 'job_title' => $jobTitle, 'applicant_name' => $declineUser->name]
+            );
+        }
+
+        return response()->json(['success' => true, 'message' => 'Offer declined.']);
     }
 
     /* ═══════════════════════════════════════════
@@ -2815,4 +3106,214 @@ class StudentController extends Controller
             'message' => 'Alumni PEO tracer assessment recorded successfully.',
         ]);
     }
+
+    /**
+     * POST /api/student/ojt-emergency
+     * Submit an emergency stoppage or medical leave request.
+     */
+    public function submitEmergencyRequest(Request $request)
+    {
+        $request->validate([
+            'type'                 => 'required|in:temporary_leave,permanent_withdrawal',
+            'category'             => 'required|in:medical,family_emergency,accident,financial_personal,other',
+            'reason'               => 'required|string|min:15|max:2000',
+            'start_date'           => 'required|date',
+            'expected_return_date' => 'nullable|date|after_or_equal:start_date',
+            'document'             => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
+        ], [
+            'reason.min' => 'Please provide a detailed explanation of the emergency (at least 15 characters).',
+            'document.max' => 'Supporting document must not exceed 5MB.',
+        ]);
+
+        $user = $request->user();
+
+        // 1. Check for active OJT placement
+        $interest = StudentOjtInterest::with('posting')
+            ->where('student_user_id', $user->id)
+            ->whereIn('status', ['accepted', 'ojt_started', 'ojt_confirmed', 'on_leave'])
+            ->latest()
+            ->first();
+
+        $ojtRecord = OjtRecord::where('user_id', $user->id)
+            ->whereIn('status', ['active', 'pending', 'on_leave'])
+            ->latest()
+            ->first();
+
+        if (!$interest && !$ojtRecord) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You do not have an active OJT training placement to file an emergency request for.',
+            ], 422);
+        }
+
+        // 2. Prevent duplicate pending requests
+        $hasPending = OjtEmergencyRequest::where('student_user_id', $user->id)
+            ->where('coordinator_status', 'pending')
+            ->exists();
+
+        if ($hasPending) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You already have an emergency request awaiting coordinator review.',
+            ], 422);
+        }
+
+        // 3. Handle file upload
+        $docPath = null;
+        $docName = null;
+        if ($request->hasFile('document')) {
+            $file = $request->file('document');
+            $docName = $file->getClientOriginalName();
+            $docPath = $file->store('ojt_emergencies', 'public');
+        }
+
+        // 4. Calculate hours rendered snapshot
+        $hoursSnapshot = 0.00;
+        if ($ojtRecord && $ojtRecord->completed_hours > 0) {
+            $hoursSnapshot = (float) $ojtRecord->completed_hours;
+        } else {
+            $hoursSnapshot = (float) TimeLog::where('user_id', $user->id)->sum('hours_rendered');
+        }
+        $requiredSnapshot = (float) ($ojtRecord?->required_hours ?? 600.00);
+
+        // 5. Create Emergency Request
+        $emergency = OjtEmergencyRequest::create([
+            'student_user_id'          => $user->id,
+            'ojt_record_id'            => $ojtRecord?->id,
+            'ojt_interest_id'          => $interest?->id,
+            'type'                     => $request->type,
+            'category'                 => $request->category,
+            'reason'                   => $request->reason,
+            'supporting_document_path' => $docPath,
+            'supporting_document_name' => $docName,
+            'start_date'               => $request->start_date,
+            'expected_return_date'     => $request->expected_return_date,
+            'hours_rendered_snapshot'  => $hoursSnapshot,
+            'required_hours_snapshot'  => $requiredSnapshot,
+            'coordinator_status'       => 'pending',
+            'company_status'           => 'notified',
+        ]);
+
+        // 6. Suspend attendance state immediately
+        if ($interest) {
+            $interest->update(['status' => 'stoppage_requested']);
+        }
+
+        // 7. Send high-priority notifications
+        $supervisorIds = $this->getSupervisorIdsForStudent($user);
+        $typeLabel = $request->type === 'temporary_leave' ? 'Emergency Leave of Absence' : 'Formal Stoppage & Withdrawal';
+        $catLabel = ucwords(str_replace('_', ' ', $request->category));
+
+        foreach ($supervisorIds as $supId) {
+            AppNotification::send(
+                $supId,
+                'emergency_stoppage_filed',
+                '🚨 Urgent: OJT Emergency Notice Filed',
+                "{$user->name} filed a {$typeLabel} ({$catLabel}). Supporting proof provided for review.",
+                [
+                    'emergency_id' => $emergency->id,
+                    'student_id'   => $user->id,
+                    'student_name' => $user->name,
+                    'type'         => $request->type,
+                    'category'     => $request->category,
+                ]
+            );
+        }
+
+        $companyUserId = $interest?->posting?->company_user_id;
+        if ($companyUserId) {
+            AppNotification::send(
+                $companyUserId,
+                'trainee_emergency_notice',
+                '⚠️ Trainee Emergency Notice',
+                "Trainee {$user->name} filed an {$typeLabel} ({$catLabel}). Academic coordinator has been alerted.",
+                [
+                    'emergency_id' => $emergency->id,
+                    'student_id'   => $user->id,
+                    'student_name' => $user->name,
+                    'type'         => $request->type,
+                ]
+            );
+        }
+
+        return response()->json([
+            'success'   => true,
+            'message'   => 'Your emergency request has been submitted. Both your OJT Coordinator and Host Company have been formally notified.',
+            'emergency' => $emergency,
+        ]);
+    }
+
+    /**
+     * GET /api/student/ojt-emergency
+     * Retrieve the authenticated student's latest emergency request.
+     */
+    public function getEmergencyRequest(Request $request)
+    {
+        $emergency = OjtEmergencyRequest::where('student_user_id', $request->user()->id)
+            ->with(['coordinator', 'ojtRecord'])
+            ->latest()
+            ->first();
+
+        return response()->json([
+            'success' => true,
+            'data'    => $emergency,
+        ]);
+    }
+
+    /**
+     * POST /api/student/ojt-emergency/fit-to-work
+     * Upload medical clearance / Fit-to-Work certificate to resume training.
+     */
+    public function submitFitToWorkClearance(Request $request)
+    {
+        $request->validate([
+            'document' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
+        ], [
+            'document.required' => 'Please attach your official medical clearance or doctor\'s fit-to-work certificate.',
+            'document.max'      => 'Document size must not exceed 5MB.',
+        ]);
+
+        $user = $request->user();
+        $emergency = OjtEmergencyRequest::where('student_user_id', $user->id)
+            ->where('coordinator_status', 'approved')
+            ->where('type', 'temporary_leave')
+            ->latest()
+            ->first();
+
+        if (!$emergency) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No approved temporary leave request found to submit clearance for.',
+            ], 422);
+        }
+
+        $file = $request->file('document');
+        $docPath = $file->store('ojt_emergencies/fit_to_work', 'public');
+
+        $emergency->update([
+            'fit_to_work_document_path' => $docPath,
+        ]);
+
+        $supervisorIds = $this->getSupervisorIdsForStudent($user);
+        foreach ($supervisorIds as $supId) {
+            AppNotification::send(
+                $supId,
+                'fit_to_work_uploaded',
+                '🩺 Medical Fit-to-Work Clearance Uploaded',
+                "{$user->name} uploaded a Fit-to-Work clearance certificate to resume OJT training.",
+                [
+                    'emergency_id' => $emergency->id,
+                    'student_id'   => $user->id,
+                    'student_name' => $user->name,
+                ]
+            );
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Fit-to-Work clearance uploaded successfully. Your coordinator will review it to reactivate your attendance logs.',
+            'data'    => $emergency,
+        ]);
+    }
 }
+

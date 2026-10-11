@@ -57,6 +57,7 @@ Route::middleware('auth:sanctum')->prefix('company')->group(function () {
     Route::post('request-moa',                    [CompanyController::class, 'requestMoa']);
     Route::get('dashboard',                       [CompanyController::class, 'dashboard']);
     Route::get('ojt-trainees',                    [CompanyController::class, 'ojtTrainees']);
+    Route::get('ojt-trainees/{studentId}/logs',   [CompanyController::class, 'traineeTimeLogs']);
     Route::get('ojt-postings',                    [CompanyController::class, 'ojtPostings']);
     Route::post('ojt-postings',                   [CompanyController::class, 'storeOjtPosting']);
     Route::put('ojt-postings/{id}',               [CompanyController::class, 'updateOjtPosting']);
@@ -95,6 +96,10 @@ Route::middleware('auth:sanctum')->prefix('company')->group(function () {
     Route::get('evaluations/pending',              [EvaluationController::class, 'companyPendingEvaluations']);
     Route::get('evaluations/{id}',                 [EvaluationController::class, 'companyEvaluationForm']);
     Route::post('evaluations/{id}/submit',         [EvaluationController::class, 'submitEvaluation']);
+
+    // Emergency Stoppage & Leave
+    Route::get('emergency-requests',               [CompanyController::class, 'getEmergencyRequests']);
+    Route::post('emergency-requests/{id}/clearance',[CompanyController::class, 'submitEmergencyClearance']);
 });
 
 // ── Supervisor routes ─────────────────────────────────────────────────────────
@@ -134,6 +139,10 @@ Route::middleware('auth:sanctum')->prefix('supervisor')->group(function () {
     Route::post('evaluations/send-batch',                  [EvaluationController::class, 'sendBatch']);
     Route::post('evaluations/remind/{id}',                 [EvaluationController::class, 'remindCompany']);
     Route::get('evaluations/{id}/details',                 [EvaluationController::class, 'evaluationDetails']);
+
+    // Emergency Stoppage & Medical Leave
+    Route::get('emergency-requests',                      [SupervisorController::class, 'getEmergencyRequests']);
+    Route::put('emergency-requests/{id}/review',          [SupervisorController::class, 'reviewEmergencyRequest']);
 });
 
 // ── Student routes ────────────────────────────────────────────────────────────
@@ -183,12 +192,19 @@ Route::middleware('auth:sanctum')->prefix('student')->group(function () {
     Route::post('ojt-tracker/log-in',   [StudentController::class, 'logTimeIn']);
     Route::post('ojt-tracker/log-out',  [StudentController::class, 'logTimeOut']);
 
+    // Emergency Stoppage & Leave
+    Route::post('ojt-emergency',             [StudentController::class, 'submitEmergencyRequest']);
+    Route::get('ojt-emergency',              [StudentController::class, 'getEmergencyRequest']);
+    Route::post('ojt-emergency/fit-to-work', [StudentController::class, 'submitFitToWorkClearance']);
+
     // Jobs, Applications & Interviews
     Route::get('jobs',                  [StudentController::class, 'jobs']);
     Route::get('external-jobs',         [StudentController::class, 'externalJobs']);
     Route::get('applications',          [StudentController::class, 'applications']);
     Route::post('apply/{jobId}',        [StudentController::class, 'apply']);
     Route::delete('applications/{id}',  [StudentController::class, 'withdrawApplication']);
+    Route::post('applications/{id}/accept-offer', [StudentController::class, 'acceptOffer']);
+    Route::post('applications/{id}/reject-offer', [StudentController::class, 'rejectOffer']);
     Route::get('interviews',            [StudentController::class, 'interviews']);
 
     // Employment / OJT status gate (used by jobs & OJT pages)

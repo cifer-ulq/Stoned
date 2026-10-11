@@ -25,30 +25,86 @@ async function apiNotif(method, path, body = null) {
 }
 
 const TYPE_CFG = {
-  student_applied:          { ic: 'userPlus',        color: '#4A6CF7', defaultRoute: '#applications' },
-  company_accepted:         { ic: 'checkCircle',      color: '#10B981', defaultRoute: '#applications' },
-  company_rejected:         { ic: 'xCircle',          color: '#EF4444', defaultRoute: '#applications' },
-  interview_scheduled:      { ic: 'calendar',        color: '#D97706', defaultRoute: '#interviews' },
-  interview_rescheduled:    { ic: 'clock',           color: '#D97706', defaultRoute: '#interviews' },
-  endorsement_requested:    { ic: 'fileText',          color: '#F59E0B', defaultRoute: '#portfolio' },
-  endorsement_sent:         { ic: 'send',              color: '#10B981', defaultRoute: '#portfolio' },
-  supervisor_rejected:      { ic: 'alertTriangle',     color: '#EF4444', defaultRoute: '#portfolio' },
-  ojt_started:              { ic: 'graduationCap',     color: '#8B5CF6', defaultRoute: '#ojt' },
-  student_time_in:          { ic: 'clock',            color: '#10B981', defaultRoute: '#trainees' },
-  student_time_out:         { ic: 'logOut',           color: '#6B7280', defaultRoute: '#trainees' },
-  requirements_assigned:    { ic: 'folder',           color: '#0284C7', defaultRoute: '#portfolio' },
-  requirements_verified:    { ic: 'checkCircle',      color: '#10B981', defaultRoute: '#portfolio' },
-  requirements_revision:    { ic: 'alertTriangle',    color: '#EF4444', defaultRoute: '#portfolio' },
-  requirements_submitted:   { ic: 'uploadCloud',      color: '#8B5CF6', defaultRoute: '#trainees' },
-  admin_broadcast:          { ic: 'bell',             color: '#005930', defaultRoute: '#home' },
-  announcement:             { ic: 'bell',             color: '#005930', defaultRoute: '#home' },
-  graduation_promotion:     { ic: 'award',            color: '#10B981', defaultRoute: '#portfolio' },
-  alumni_registration:      { ic: 'award',            color: '#4F46E5', defaultRoute: '#portfolio' },
-  ojt_evaluation_completed: { ic: 'checkCircle',      color: '#10B981', defaultRoute: '#portfolio' },
+  student_applied:                { ic: 'userPlus',        color: '#4A6CF7', defaultRoute: '#/applications' },
+  application_rejected:           { ic: 'xCircle',          color: '#EF4444', defaultRoute: '#/applications' },
+  company_accepted:               { ic: 'checkCircle',      color: '#10B981', defaultRoute: '#/applications' },
+  company_rejected:               { ic: 'xCircle',          color: '#EF4444', defaultRoute: '#/applications' },
+  offer_accepted:                 { ic: 'checkCircle',      color: '#10B981', defaultRoute: '#/applications' },
+  offer_rejected:                 { ic: 'xCircle',          color: '#EF4444', defaultRoute: '#/applications' },
+  ojt_approved:                   { ic: 'checkCircle',      color: '#10B981', defaultRoute: '#/ojt-tracker' },
+  ojt_confirmed:                  { ic: 'shieldCheck',      color: '#005930', defaultRoute: '#/ojt-tracker' },
+  interview_scheduled:            { ic: 'calendar',        color: '#D97706', defaultRoute: '#/interview' },
+  interview_rescheduled:          { ic: 'clock',           color: '#D97706', defaultRoute: '#/interview' },
+  interview_cancelled:            { ic: 'xCircle',          color: '#EF4444', defaultRoute: '#/interview' },
+  endorsement_requested:          { ic: 'fileText',          color: '#F59E0B', defaultRoute: '#/applications' },
+  endorsement_sent:               { ic: 'send',              color: '#10B981', defaultRoute: '#/applications' },
+  supervisor_rejected:            { ic: 'alertTriangle',     color: '#EF4444', defaultRoute: '#/applications' },
+  ojt_started:                    { ic: 'graduationCap',     color: '#8B5CF6', defaultRoute: '#/ojt-tracker' },
+  student_time_in:                { ic: 'clock',            color: '#10B981', defaultRoute: '#/ojt-tracker' },
+  student_time_out:               { ic: 'logOut',           color: '#6B7280', defaultRoute: '#/ojt-tracker' },
+  requirements_assigned:          { ic: 'folder',           color: '#0284C7', defaultRoute: '#/portfolio' },
+  requirements_verified:          { ic: 'checkCircle',      color: '#10B981', defaultRoute: '#/portfolio' },
+  requirements_revision:          { ic: 'alertTriangle',    color: '#EF4444', defaultRoute: '#/portfolio' },
+  requirements_submitted:         { ic: 'uploadCloud',      color: '#8B5CF6', defaultRoute: '#/portfolio' },
+  emergency_leave_approved:       { ic: 'shieldCheck',      color: '#0284C7', defaultRoute: '#/ojt-tracker' },
+  emergency_withdrawal_finalized: { ic: 'alertTriangle',    color: '#EF4444', defaultRoute: '#/portfolio' },
+  emergency_request_rejected:     { ic: 'alertCircle',      color: '#EF4444', defaultRoute: '#/ojt-tracker' },
+  fit_to_work_cleared:            { ic: 'checkCircle',      color: '#10B981', defaultRoute: '#/ojt-tracker' },
+  consultation_requested:         { ic: 'messageCircle',    color: '#D97706', defaultRoute: '#/ojt-tracker' },
+  student_eligible_graduation:    { ic: 'award',            color: '#10B981', defaultRoute: '#/portfolio' },
+  graduation_promotion:           { ic: 'award',            color: '#10B981', defaultRoute: '#/alumni' },
+  alumni_registration:            { ic: 'award',            color: '#4F46E5', defaultRoute: '#/alumni' },
+  ojt_evaluation_completed:       { ic: 'checkCircle',      color: '#10B981', defaultRoute: '#/portfolio' },
+  ojt_evaluation_request:         { ic: 'fileText',         color: '#D97706', defaultRoute: '#/portfolio' },
+  ojt_evaluation_reminder:        { ic: 'clock',            color: '#D97706', defaultRoute: '#/portfolio' },
+  ojt_evaluation_sent:            { ic: 'send',             color: '#10B981', defaultRoute: '#/portfolio' },
+  moa_approved:                   { ic: 'shieldCheck',      color: '#10B981', defaultRoute: '#/portfolio' },
+  moa_request:                    { ic: 'fileText',         color: '#0284C7', defaultRoute: '#/portfolio' },
+  chat_message:                   { ic: 'messageCircle',    color: '#4A6CF7', defaultRoute: '#/chat' },
+  admin_broadcast:                { ic: 'bell',             color: '#005930', defaultRoute: '#/' },
+  announcement:                   { ic: 'bell',             color: '#005930', defaultRoute: '#/' },
 };
 
 function cfg(type) {
-  return TYPE_CFG[type] || { ic: 'bell', color: '#005930', defaultRoute: '#home' };
+  return TYPE_CFG[type] || { ic: 'bell', color: '#005930', defaultRoute: '#/' };
+}
+
+function normalizeStudentRoute(rawRoute, notifType = '') {
+  const fallback = cfg(notifType).defaultRoute || '#/';
+  const src = (rawRoute || fallback).trim();
+  if (!src) return '#/';
+  if (src.startsWith('http')) return src;
+
+  const clean = src.replace(/^#\/?/, '').replace(/^\//, '');
+  if (!clean || clean === 'home' || clean === 'dashboard') return '#/';
+  if (clean === 'interviews') return '#/interview';
+  if (clean === 'ojt' && ['ojt_started', 'ojt_confirmed', 'ojt_approved', 'student_time_in', 'student_time_out', 'emergency_leave_approved', 'emergency_request_rejected', 'fit_to_work_cleared', 'consultation_requested'].includes(notifType)) {
+    return '#/ojt-tracker';
+  }
+  return `#/${clean}`;
+}
+
+function navigateStudentNotification(actionUrl, notif = null) {
+  if (notif) {
+    window.dispatchEvent(new CustomEvent('hireme:notification-clicked', { detail: notif }));
+  }
+  if (notif?.type === 'chat_message' || actionUrl === '#/chat') {
+    const convKey = notif?.data?.conversation_key || '';
+    if (typeof window.openChat === 'function') {
+      window.openChat(convKey);
+      return;
+    }
+  }
+  if (!actionUrl) return;
+  if (actionUrl.startsWith('#')) {
+    if (window.location.hash === actionUrl) {
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    } else {
+      window.location.hash = actionUrl;
+    }
+  } else {
+    window.location.href = actionUrl;
+  }
 }
 
 function escapeHtml(str = '') {
@@ -106,13 +162,13 @@ function showToast(notif, onOpenAction) {
 
   const c = cfg(notif.type);
   const rawRoute = notif.data?.route || notif.data?.action_url || c.defaultRoute || '';
-  const actionUrl = rawRoute && !rawRoute.startsWith('#') && !rawRoute.startsWith('http') ? '#' + rawRoute : rawRoute;
+  const actionUrl = normalizeStudentRoute(rawRoute, notif.type);
 
   const toast = document.createElement('div');
   toast.className = 'hireme-toast';
   toast.innerHTML = `
     <div class="hireme-toast__icon" style="background:${c.color}1c;color:${c.color}">
-      ${icon(c.ic, 18)}
+      ${icon(c.ic, 18) || icon('bell', 18)}
     </div>
     <div class="hireme-toast__content">
       <div class="hireme-toast__title">${escapeHtml(notif.title)}</div>
@@ -138,13 +194,7 @@ function showToast(notif, onOpenAction) {
     dismiss();
     await apiNotif('PATCH', `/notifications/${notif.id}/read`);
     if (onOpenAction) onOpenAction();
-    if (actionUrl) {
-      if (actionUrl.startsWith('#')) {
-        window.location.hash = actionUrl;
-      } else {
-        window.location.href = actionUrl;
-      }
-    }
+    navigateStudentNotification(actionUrl, notif);
   });
 
   container.appendChild(toast);
@@ -558,14 +608,16 @@ export function initNotifications(triggerBtn) {
 
     const c = cfg(n.type);
     const rawRoute = n.data?.route || n.data?.action_url || c.defaultRoute || '';
-    const actionUrl = rawRoute && !rawRoute.startsWith('#') && !rawRoute.startsWith('http') ? '#' + rawRoute : rawRoute;
+    const actionUrl = normalizeStudentRoute(rawRoute, n.type);
 
     const row = document.createElement('div');
     row.className = `notif-item ${n.is_read ? '' : 'notif-item--unread'}`;
     row.dataset.id = n.id;
     row.dataset.action = actionUrl;
+    row.dataset.type = n.type || '';
+    if (n.data?.conversation_key) row.dataset.convKey = n.data.conversation_key;
     row.innerHTML = `
-      <div class="notif-icon" style="background:${c.color}18;color:${c.color}">${icon(c.ic, 17)}</div>
+      <div class="notif-icon" style="background:${c.color}18;color:${c.color}">${icon(c.ic, 17) || icon('bell', 17)}</div>
       <div class="notif-body">
         <div class="notif-title">${escapeHtml(n.title)}</div>
         <div class="notif-msg">${escapeHtml(n.message)}</div>
@@ -582,19 +634,15 @@ export function initNotifications(triggerBtn) {
     el.addEventListener('click', async () => {
       const id = el.dataset.id;
       const actionUrl = el.dataset.action;
+      const nType = el.dataset.type || '';
+      const convKey = el.dataset.convKey || '';
       el.classList.remove('notif-item--unread');
       el.querySelector('.notif-unread-dot')?.remove();
       await apiNotif('PATCH', `/notifications/${id}/read`);
       syncNotifications();
       notifChannel?.postMessage({ type: 'NOTIF_READ', id });
-      if (actionUrl) {
-        closePanel();
-        if (actionUrl.startsWith('#')) {
-          window.location.hash = actionUrl;
-        } else {
-          window.location.href = actionUrl;
-        }
-      }
+      closePanel();
+      navigateStudentNotification(actionUrl, { type: nType, data: convKey ? { conversation_key: convKey } : {} });
     });
   }
 
@@ -659,10 +707,11 @@ export function initNotifications(triggerBtn) {
     listEl.innerHTML = list.map(n => {
       const c = cfg(n.type);
       const rawRoute = n.data?.route || n.data?.action_url || c.defaultRoute || '';
-      const actionUrl = rawRoute && !rawRoute.startsWith('#') && !rawRoute.startsWith('http') ? '#' + rawRoute : rawRoute;
+      const actionUrl = normalizeStudentRoute(rawRoute, n.type);
+      const convAttr = n.data?.conversation_key ? `data-conv-key="${escapeHtml(n.data.conversation_key)}"` : '';
       return `
-        <div class="notif-item ${n.is_read ? '' : 'notif-item--unread'}" data-id="${n.id}" data-action="${actionUrl}">
-          <div class="notif-icon" style="background:${c.color}18;color:${c.color}">${icon(c.ic, 17)}</div>
+        <div class="notif-item ${n.is_read ? '' : 'notif-item--unread'}" data-id="${n.id}" data-type="${escapeHtml(n.type || '')}" ${convAttr} data-action="${actionUrl}">
+          <div class="notif-icon" style="background:${c.color}18;color:${c.color}">${icon(c.ic, 17) || icon('bell', 17)}</div>
           <div class="notif-body">
             <div class="notif-title">${escapeHtml(n.title)}</div>
             <div class="notif-msg">${escapeHtml(n.message)}</div>

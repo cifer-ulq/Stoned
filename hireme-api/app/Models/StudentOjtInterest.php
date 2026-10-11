@@ -88,4 +88,9 @@ class StudentOjtInterest extends Model
     {
         return $this->belongsTo(User::class, 'endorsed_by');
     }
+
+    public function emergencyRequests()
+    {
+        return $this->hasMany(OjtEmergencyRequest::class, 'ojt_interest_id');
+    }
 }

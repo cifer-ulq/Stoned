@@ -80,14 +80,26 @@ function openApplicationDetailsModal(item, onWithdrawSuccess, onDecisionSuccess)
   if (existing) existing.remove();
 
   const statusKey = item.status;
-  const sc = jobStatusConfig[statusKey] || jobStatusConfig.applied;
+  const isDeclinedByCandidate = item.offerDecision === 'rejected';
+  const isRejected = item.status === 'rejected';
+  const isRejectedAny = isRejected || isDeclinedByCandidate;
   const isHired = item.status === 'hired';
   const isOffered = item.status === 'offered';
-  const color = isHired ? '#16a34a' : (sc.color || '#005930');
+
+  let sc = jobStatusConfig[statusKey] || jobStatusConfig.applied;
+  if (isDeclinedByCandidate) {
+    sc = { label: 'Offer Declined', color: '#d97706', bg: '#fef3c7', icon: 'alertCircle', gradient: 'linear-gradient(135deg, #d97706, #b45309)', step: 0 };
+  } else if (isRejected) {
+    sc = { label: 'Not Selected', color: 'var(--color-error)', bg: 'var(--color-error-bg)', icon: 'xCircle', gradient: 'linear-gradient(135deg, #FF3B30, #FF6B6B)', step: 0 };
+  }
+
+  const color = isHired ? '#16a34a' : (isDeclinedByCandidate ? '#d97706' : (isRejected ? 'var(--color-error)' : (sc.color || '#005930')));
   const appliedDate = item.appliedDate ? new Date(item.appliedDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : 'Recently';
 
-  const canWithdraw = !['hired', 'rejected', 'offered'].includes(item.status);
-  const guidanceText = jobGuidance[item.status] || 'Your application is progressing through the company hiring pipeline.';
+  const canWithdraw = !['hired', 'rejected', 'offered'].includes(item.status) && !isDeclinedByCandidate;
+  const guidanceText = isDeclinedByCandidate
+    ? `You voluntarily declined the job offer${item.offerDecidedAt ? ' on ' + fmtDate(item.offerDecidedAt) : ''}.`
+    : (isRejected ? 'Your application was not selected for this position. Explore more career opportunities on your job match feed.' : (jobGuidance[item.status] || 'Your application is progressing through the company hiring pipeline.'));
 
   const overlay = document.createElement('div');
   overlay.id = 'app-details-modal';
@@ -97,7 +109,7 @@ function openApplicationDetailsModal(item, onWithdrawSuccess, onDecisionSuccess)
       <!-- Modal Header -->
       <div class="app-details-modal__header">
         <div class="app-details-modal__top-left">
-          <div class="app-details-modal__avatar" style="background: linear-gradient(135deg, #00381E 0%, #005930 60%, #0B7A44 100%); color:#fff;">
+          <div class="app-details-modal__avatar" style="background: ${isRejectedAny ? 'rgba(239,68,68,0.12)' : 'linear-gradient(135deg, #00381E 0%, #005930 60%, #0B7A44 100%)'}; color:${isRejectedAny ? 'var(--color-error)' : '#fff'};">
             ${escapeHtml(item.companyInitial)}
           </div>
           <div class="app-details-modal__title-wrap">
@@ -132,42 +144,62 @@ function openApplicationDetailsModal(item, onWithdrawSuccess, onDecisionSuccess)
         <div class="app-details-section">
           <h4 class="app-details-section__title">${icon('trendingUp', 14)} Application Pipeline & Progress</h4>
           <div class="app-details-timeline-card">
-            <div class="app-tracker" style="margin:0; padding:10px 6px;">
-              ${(() => {
-                const steps = isHired ? [...jobStatusOrder, 'hired'] : jobStatusOrder;
-                const labels = isHired ? ['Applied', 'Reviewed', 'Interview', 'Offered', 'Hired!'] : ['Applied', 'Reviewed', 'Interview', 'Offered'];
-                const currentStep = isHired ? 5 : (sc.step || 1);
+            ${isRejectedAny ? `
+              <div class="app-status-callout app-status-callout--rejected" style="padding:14px 16px; background:rgba(239,68,68,0.06); border-left:4px solid ${isDeclinedByCandidate ? '#d97706' : 'var(--color-error)'}; border-radius:8px;">
+                <div style="display:flex; align-items:center; gap:8px; font-weight:700; color:${isDeclinedByCandidate ? '#d97706' : 'var(--color-error)'}; font-size:0.95rem; margin-bottom:6px;">
+                  ${icon(isDeclinedByCandidate ? 'alertCircle' : 'xCircle', 18)} ${isDeclinedByCandidate ? 'Offer Declined by You' : 'Application Not Selected'}
+                </div>
+                <p style="margin:0 0 8px; font-size:0.85rem; color:var(--text-secondary); line-height:1.5;">
+                  ${isDeclinedByCandidate 
+                    ? `You declined this employment offer${item.offerDecidedAt ? ' on ' + fmtDate(item.offerDecidedAt) : ''}.`
+                    : 'Your application was not selected for this position. Explore more career opportunities on your job match feed.'}
+                </p>
+                ${item.notes ? `
+                  <div style="margin-top:8px; padding:10px 12px; background:rgba(0,0,0,0.03); border-radius:6px; font-size:0.82rem; color:var(--text-primary);">
+                    <strong style="display:block; margin-bottom:2px;">Feedback from Hiring Team:</strong>
+                    "${escapeHtml(item.notes)}"
+                  </div>
+                ` : ''}
+              </div>
+            ` : `
+              <div class="app-tracker" style="margin:0; padding:10px 6px;">
+                ${(() => {
+                  const steps = isHired ? [...jobStatusOrder, 'hired'] : jobStatusOrder;
+                  const labels = isHired ? ['Applied', 'Reviewed', 'Interview', 'Offered', 'Hired!'] : ['Applied', 'Reviewed', 'Interview', 'Offered'];
+                  const currentStep = isHired ? 5 : (sc.step || 1);
 
-                return steps.map((s, sIdx) => {
-                  const stepCfg = jobStatusConfig[s] || jobStatusConfig.applied;
-                  const done = (sIdx + 1) <= currentStep;
-                  const active = (sIdx + 1) === currentStep;
-                  const dotBg = done
-                    ? (active
-                        ? (s === 'hired' ? 'linear-gradient(135deg,#16a34a,#22c55e)' : (stepCfg.gradient || 'linear-gradient(135deg, #005930, #16a34a)'))
-                        : 'linear-gradient(135deg, #005930, #10B981)')
-                    : '';
+                  return steps.map((s, sIdx) => {
+                    const stepCfg = jobStatusConfig[s] || jobStatusConfig.applied;
+                    const done = (sIdx + 1) <= currentStep;
+                    const active = (sIdx + 1) === currentStep;
+                    const dotBg = done
+                      ? (active
+                          ? (s === 'hired' ? 'linear-gradient(135deg,#16a34a,#22c55e)' : (stepCfg.gradient || 'linear-gradient(135deg, #005930, #16a34a)'))
+                          : 'linear-gradient(135deg, #005930, #10B981)')
+                      : '';
 
-                  return `
-                    <div class="app-tracker__step ${done ? 'app-tracker__step--done' : ''} ${active ? 'app-tracker__step--active' : ''}">
-                      <div class="app-tracker__dot" style="${dotBg ? 'background:' + dotBg + ';' : ''}">
-                        ${done ? icon(active ? stepCfg.icon : 'checkCircle', 11) : ''}
-                      </div>
-                      <span class="app-tracker__label">${labels[sIdx]}</span>
-                      ${sIdx < steps.length - 1 ? '<div class="app-tracker__line' + (done && (sIdx + 2) <= currentStep ? ' app-tracker__line--done' : '') + '"></div>' : ''}
-                    </div>`;
-                }).join('');
-              })()}
-            </div>
+                    return `
+                      <div class="app-tracker__step ${done ? 'app-tracker__step--done' : ''} ${active ? 'app-tracker__step--active' : ''}">
+                        <div class="app-tracker__dot" style="${dotBg ? 'background:' + dotBg + ';' : ''}">
+                          ${done ? icon(active ? stepCfg.icon : 'checkCircle', 11) : ''}
+                        </div>
+                        <span class="app-tracker__label">${labels[sIdx]}</span>
+                        ${sIdx < steps.length - 1 ? '<div class="app-tracker__line' + (done && (sIdx + 2) <= currentStep ? ' app-tracker__line--done' : '') + '"></div>' : ''}
+                      </div>`;
+                  }).join('');
+                })()}
+              </div>
+            `}
           </div>
+        </div>
 
-          <!-- Current Guidance Callout -->
-          <div class="app-details-note-box" style="border-left-color:${color}; background:rgba(0,89,48,0.06);">
-            <strong style="color:${color}; display:flex; align-items:center; gap:6px; margin-bottom:4px;">
-              ${icon('sparkles', 14)} Current Status Guidance:
-            </strong>
-            <p style="margin:0;">${escapeHtml(guidanceText)}</p>
-          </div>
+        <!-- Current Guidance Callout -->
+        <div class="app-details-note-box" style="border-left-color:${color}; background:rgba(0,89,48,0.06);">
+          <strong style="color:${color}; display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+            ${icon('sparkles', 14)} Current Status Guidance:
+          </strong>
+          <p style="margin:0;">${escapeHtml(guidanceText)}</p>
+        </div>
 
           <!-- Interview Details Card (If scheduled) -->
           ${(() => {
@@ -581,20 +613,28 @@ function showOfferModal(app, onDecision) {
    CARD RENDERER (Matching student unified card layout)
    ───────────────────────────────────────────────────────────────────────────── */
 function unifiedApplicationCard(item, idx) {
-  const sc = jobStatusConfig[item.status] || jobStatusConfig.applied;
   const isHired = item.status === 'hired';
   const isRejected = item.status === 'rejected';
+  const isDeclinedByCandidate = item.offerDecision === 'rejected';
+  const isRejectedAny = isRejected || isDeclinedByCandidate;
   const isOffered = item.status === 'offered';
   const appliedDate = relativeDate(item.appliedDate);
 
+  let sc = jobStatusConfig[item.status] || jobStatusConfig.applied;
+  if (isDeclinedByCandidate) {
+    sc = { label: 'Offer Declined', color: '#d97706', bg: '#fef3c7', icon: 'alertCircle', gradient: 'linear-gradient(135deg, #d97706, #b45309)', step: 0 };
+  } else if (isRejected) {
+    sc = { label: 'Not Selected', color: 'var(--color-error)', bg: 'var(--color-error-bg)', icon: 'xCircle', gradient: 'linear-gradient(135deg, #FF3B30, #FF6B6B)', step: 0 };
+  }
+
   const visSkills = item.requiredSkills.slice(0, 3);
   const extraSkills = item.requiredSkills.length > 3 ? item.requiredSkills.length - 3 : 0;
-  const canWithdraw = !['hired', 'rejected', 'offered'].includes(item.status);
+  const canWithdraw = !['hired', 'rejected', 'offered'].includes(item.status) && !isDeclinedByCandidate;
 
   // Latest interview
   const iv = item.interview;
   let interviewHtml = '';
-  if (iv) {
+  if (iv && !isRejectedAny) {
     const ivDate = iv.scheduled_date ? fmtDate(iv.scheduled_date) : '';
     const ivTime = iv.scheduled_time ? String(iv.scheduled_time).slice(0, 5) : '';
     const platformLower = (iv.platform || '').toLowerCase();
@@ -656,10 +696,10 @@ function unifiedApplicationCard(item, idx) {
   const steps = isHired ? [...jobStatusOrder, 'hired'] : jobStatusOrder;
   const labels = isHired ? ['Applied', 'Reviewed', 'Interview', 'Offered', 'Hired!'] : ['Applied', 'Reviewed', 'Interview', 'Offered'];
   const currentStep = isHired ? 5 : (sc.step || 1);
-  const borderAccent = isHired ? '#16a34a' : isRejected ? 'var(--color-error)' : 'var(--color-primary, #005930)';
+  const borderAccent = isHired ? '#16a34a' : (isDeclinedByCandidate ? '#d97706' : (isRejected ? 'var(--color-error)' : 'var(--color-primary, #005930)'));
 
   return `
-    <article class="app-card animate-fade-in-up ${isHired ? 'app-card--hired' : ''} ${isRejected ? 'app-card--rejected' : ''}" style="--enter-delay:${idx * 60}ms; border-left: 3.5px solid ${borderAccent};" data-app-id="${item.id}">
+    <article class="app-card animate-fade-in-up ${isHired ? 'app-card--hired' : ''} ${isRejectedAny ? 'app-card--rejected' : ''}" style="--enter-delay:${idx * 60}ms; border-left: 3.5px solid ${borderAccent};" data-app-id="${item.id}">
       <div class="app-card__left">
         <div class="app-card__logo" style="background: linear-gradient(135deg, #00381E 0%, #005930 60%, #0B7A44 100%); color: #fff;">
           ${escapeHtml(item.companyInitial)}
@@ -715,28 +755,47 @@ function unifiedApplicationCard(item, idx) {
         <!-- Offer banner -->
         ${offerBannerHtml}
 
-        <!-- Progress Tracker -->
-        <div class="app-tracker">
-          ${steps.map((s, sIdx) => {
-            const stepCfg = jobStatusConfig[s] || jobStatusConfig.applied;
-            const done = !isRejected && (sIdx + 1) <= currentStep;
-            const active = !isRejected && (sIdx + 1) === currentStep;
-            const dotBg = done
-              ? (active
-                  ? (s === 'hired' ? 'linear-gradient(135deg,#16a34a,#22c55e)' : (stepCfg.gradient || 'linear-gradient(135deg, #005930, #16a34a)'))
-                  : 'linear-gradient(135deg, #005930, #10B981)')
-              : '';
+        ${isRejectedAny ? `
+          <!-- Status callout banner -->
+          <div class="app-status-callout app-status-callout--rejected" style="margin: 10px 0 12px; padding: 12px 14px; background: ${isDeclinedByCandidate ? 'rgba(217,119,6,0.08)' : 'rgba(239,68,68,0.06)'}; border-left: 3.5px solid ${isDeclinedByCandidate ? '#d97706' : 'var(--color-error)'}; border-radius: 6px;">
+            <div style="display:flex; align-items:center; gap:6px; font-weight:700; color:${isDeclinedByCandidate ? '#d97706' : 'var(--color-error)'}; font-size:0.86rem; margin-bottom:4px;">
+              ${icon(isDeclinedByCandidate ? 'alertCircle' : 'xCircle', 15)} ${isDeclinedByCandidate ? 'Offer Declined by You' : 'Application Not Selected'}
+            </div>
+            <p style="margin:0 0 4px; font-size:0.8rem; color:var(--text-secondary); line-height:1.4;">
+              ${isDeclinedByCandidate
+                ? `You declined this job offer${item.offerDecidedAt ? ' on ' + fmtDate(item.offerDecidedAt) : ''}.`
+                : 'Your application was not selected for this position. Explore more career opportunities on your jobs feed.'}
+            </p>
+            ${item.notes ? `
+              <div style="margin-top:6px; padding:6px 10px; background:rgba(0,0,0,0.03); border-radius:4px; font-size:0.78rem; color:var(--text-primary);">
+                <strong>Feedback / Notes:</strong> "${escapeHtml(item.notes)}"
+              </div>
+            ` : ''}
+          </div>
+        ` : `
+          <!-- Progress Tracker -->
+          <div class="app-tracker">
+            ${steps.map((s, sIdx) => {
+              const stepCfg = jobStatusConfig[s] || jobStatusConfig.applied;
+              const done = (sIdx + 1) <= currentStep;
+              const active = (sIdx + 1) === currentStep;
+              const dotBg = done
+                ? (active
+                    ? (s === 'hired' ? 'linear-gradient(135deg,#16a34a,#22c55e)' : (stepCfg.gradient || 'linear-gradient(135deg, #005930, #16a34a)'))
+                    : 'linear-gradient(135deg, #005930, #10B981)')
+                : '';
 
-            return `
-              <div class="app-tracker__step ${done ? 'app-tracker__step--done' : ''} ${active ? 'app-tracker__step--active' : ''}">
-                <div class="app-tracker__dot" style="${dotBg ? 'background:' + dotBg + ';' : ''}">
-                  ${done ? icon(active ? stepCfg.icon : 'checkCircle', 11) : ''}
-                </div>
-                <span class="app-tracker__label">${labels[sIdx]}</span>
-                ${sIdx < steps.length - 1 ? '<div class="app-tracker__line' + (done && (sIdx + 2) <= currentStep ? ' app-tracker__line--done' : '') + '"></div>' : ''}
-              </div>`;
-          }).join('')}
-        </div>
+              return `
+                <div class="app-tracker__step ${done ? 'app-tracker__step--done' : ''} ${active ? 'app-tracker__step--active' : ''}">
+                  <div class="app-tracker__dot" style="${dotBg ? 'background:' + dotBg + ';' : ''}">
+                    ${done ? icon(active ? stepCfg.icon : 'checkCircle', 11) : ''}
+                  </div>
+                  <span class="app-tracker__label">${labels[sIdx]}</span>
+                  ${sIdx < steps.length - 1 ? '<div class="app-tracker__line' + (done && (sIdx + 2) <= currentStep ? ' app-tracker__line--done' : '') + '"></div>' : ''}
+                </div>`;
+            }).join('')}
+          </div>
+        `}
 
         <!-- Bottom actions row -->
         <div class="app-card__row-bottom">
@@ -757,6 +816,16 @@ function unifiedApplicationCard(item, idx) {
               >
                 ${icon('x', 13)} Withdraw
               </button>
+            ` : ''}
+            ${isRejectedAny ? `
+              <a
+                href="#/jobs"
+                class="app-card__btn app-card__btn--ghost"
+                style="text-decoration:none;"
+                title="Browse other job opportunities"
+              >
+                ${icon('arrowRight', 13)} Browse Jobs
+              </a>
             ` : ''}
             <button
               class="app-card__btn app-card__btn--msg"
@@ -830,6 +899,11 @@ export async function renderApplications(container) {
             <span class="app-type-tab__icon">${icon('award', 14)}</span>
             Offers & Hired
             <span class="app-type-tab__count" id="tab-offered-count">0</span>
+          </button>
+          <button class="app-type-tab" data-filter="rejected">
+            <span class="app-type-tab__icon">${icon('xCircle', 14)}</span>
+            Declined / Not Selected
+            <span class="app-type-tab__count" id="tab-rejected-count">0</span>
           </button>
         </div>
 
@@ -943,6 +1017,7 @@ export async function renderApplications(container) {
     const reviewedCount = allApplications.filter(a => a.status === 'screened').length;
     const interviewCount = allApplications.filter(a => a.status === 'interview' || a.rawStatus === 'interviewed').length;
     const offeredCount = allApplications.filter(a => a.status === 'offered' || a.status === 'hired').length;
+    const rejectedCount = allApplications.filter(a => a.status === 'rejected' || a.offerDecision === 'rejected').length;
 
     statsEl.innerHTML = `
       <div class="app-stat-card app-stat-card--total">
@@ -984,6 +1059,16 @@ export async function renderApplications(container) {
           <span class="app-stat-card__label">Offered / Hired</span>
         </div>
       </div>
+
+      <div class="app-stat-card app-stat-card--rejected">
+        <div class="app-stat-card__icon" style="background:rgba(239,68,68,0.12); color:#EF4444;">
+          ${icon('xCircle', 20)}
+        </div>
+        <div class="app-stat-card__data">
+          <span class="app-stat-card__value" data-counter="${rejectedCount}">${rejectedCount}</span>
+          <span class="app-stat-card__label">Declined / Not Selected</span>
+        </div>
+      </div>
     `;
 
     // Counter animation
@@ -1002,10 +1087,12 @@ export async function renderApplications(container) {
     const tabScreened = container.querySelector('#tab-screened-count');
     const tabInterview = container.querySelector('#tab-interview-count');
     const tabOffered = container.querySelector('#tab-offered-count');
+    const tabRejected = container.querySelector('#tab-rejected-count');
     if (tabAll) tabAll.textContent = totalCount;
     if (tabScreened) tabScreened.textContent = reviewedCount;
     if (tabInterview) tabInterview.textContent = interviewCount;
     if (tabOffered) tabOffered.textContent = offeredCount;
+    if (tabRejected) tabRejected.textContent = rejectedCount;
   }
 
   // Render Feed
@@ -1021,6 +1108,8 @@ export async function renderApplications(container) {
       filtered = allApplications.filter(a => a.status === 'interview' || a.rawStatus === 'interviewed');
     } else if (filterType === 'offered') {
       filtered = allApplications.filter(a => a.status === 'offered' || a.status === 'hired');
+    } else if (filterType === 'rejected') {
+      filtered = allApplications.filter(a => a.status === 'rejected' || a.offerDecision === 'rejected');
     }
 
     if (filtered.length === 0) {
@@ -1038,6 +1127,9 @@ export async function renderApplications(container) {
         } else if (filterType === 'offered') {
           if (titleEl) titleEl.textContent = 'No offers yet';
           if (descEl) descEl.textContent = 'Formal job offers from hiring companies will appear here.';
+        } else if (filterType === 'rejected') {
+          if (titleEl) titleEl.textContent = 'No declined applications';
+          if (descEl) descEl.textContent = 'Applications that were not selected or job offers you declined will appear here.';
         } else {
           if (titleEl) titleEl.textContent = 'No applications yet';
           if (descEl) descEl.textContent = 'Start applying to job openings to track your progress and offers here.';

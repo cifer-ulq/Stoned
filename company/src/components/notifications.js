@@ -24,23 +24,77 @@ async function apiNotif(method, path, body = null) {
 }
 
 const TYPE_CFG = {
-  student_applied:       { ic: 'userPlus',       color: '#4A6CF7', defaultRoute: '#applicants' },
-  offer_accepted:        { ic: 'checkCircle',     color: '#10B981', defaultRoute: '#applicants' },
-  offer_rejected:        { ic: 'xCircle',         color: '#EF4444', defaultRoute: '#applicants' },
-  company_accepted:      { ic: 'checkCircle',     color: '#10B981', defaultRoute: '#applicants' },
-  company_rejected:      { ic: 'xCircle',         color: '#EF4444', defaultRoute: '#applicants' },
-  interview_scheduled:   { ic: 'calendar',        color: '#D97706', defaultRoute: '#interviews' },
-  interview_rescheduled: { ic: 'clock',           color: '#D97706', defaultRoute: '#interviews' },
-  endorsement_requested: { ic: 'fileText',         color: '#F59E0B', defaultRoute: '#ojt-trainees' },
-  endorsement_sent:      { ic: 'send',             color: '#10B981', defaultRoute: '#ojt-trainees' },
-  supervisor_rejected:   { ic: 'alertTriangle',    color: '#EF4444', defaultRoute: '#ojt-trainees' },
-  ojt_started:           { ic: 'graduationCap',    color: '#8B5CF6', defaultRoute: '#ojt-trainees' },
-  admin_broadcast:       { ic: 'bell',             color: '#005930', defaultRoute: '#dashboard' },
-  announcement:          { ic: 'bell',             color: '#005930', defaultRoute: '#dashboard' },
+  student_applied:                   { ic: 'userPlus',        color: '#4A6CF7', defaultRoute: '#/applicants' },
+  offer_accepted:                    { ic: 'checkCircle',      color: '#10B981', defaultRoute: '#/applicants' },
+  offer_rejected:                    { ic: 'xCircle',          color: '#EF4444', defaultRoute: '#/applicants' },
+  company_accepted:                  { ic: 'checkCircle',      color: '#10B981', defaultRoute: '#/applicants' },
+  company_rejected:                  { ic: 'xCircle',          color: '#EF4444', defaultRoute: '#/applicants' },
+  ojt_confirmed:                     { ic: 'shieldCheck',      color: '#005930', defaultRoute: '#/ojt-trainees' },
+  ojt_approved:                      { ic: 'checkCircle',      color: '#10B981', defaultRoute: '#/applicants' },
+  interview_scheduled:               { ic: 'calendar',        color: '#D97706', defaultRoute: '#/interviews' },
+  interview_rescheduled:             { ic: 'clock',           color: '#D97706', defaultRoute: '#/interviews' },
+  interview_cancelled:               { ic: 'xCircle',          color: '#EF4444', defaultRoute: '#/interviews' },
+  endorsement_requested:             { ic: 'fileText',          color: '#F59E0B', defaultRoute: '#/applicants' },
+  endorsement_sent:                  { ic: 'send',              color: '#10B981', defaultRoute: '#/applicants' },
+  supervisor_rejected:               { ic: 'alertTriangle',     color: '#EF4444', defaultRoute: '#/applicants' },
+  ojt_started:                       { ic: 'graduationCap',     color: '#8B5CF6', defaultRoute: '#/ojt-trainees' },
+  trainee_emergency_notice:          { ic: 'alertTriangle',     color: '#EF4444', defaultRoute: '#/ojt-trainees' },
+  emergency_leave_approved_company:  { ic: 'shieldCheck',      color: '#0284C7', defaultRoute: '#/ojt-trainees' },
+  emergency_withdrawal_company:      { ic: 'alertTriangle',     color: '#EF4444', defaultRoute: '#/ojt-trainees' },
+  trainee_resumed_ojt:               { ic: 'checkCircle',      color: '#10B981', defaultRoute: '#/ojt-trainees' },
+  student_time_in:                   { ic: 'clock',            color: '#10B981', defaultRoute: '#/ojt-trainees' },
+  student_time_out:                  { ic: 'logOut',           color: '#6B7280', defaultRoute: '#/ojt-trainees' },
+  ojt_evaluation_request:            { ic: 'star',             color: '#F59E0B', defaultRoute: '#/ojt-trainees' },
+  ojt_evaluation_reminder:           { ic: 'bell',             color: '#D97706', defaultRoute: '#/ojt-trainees' },
+  moa_approved:                      { ic: 'shieldCheck',      color: '#10B981', defaultRoute: '#/profile' },
+  chat_message:                      { ic: 'messageCircle',    color: '#4A6CF7', defaultRoute: '' },
+  admin_broadcast:                   { ic: 'bell',             color: '#005930', defaultRoute: '#/' },
+  announcement:                      { ic: 'bell',             color: '#005930', defaultRoute: '#/' },
 };
 
 function cfg(type) {
-  return TYPE_CFG[type] || { ic: 'bell', color: '#005930', defaultRoute: '#dashboard' };
+  return TYPE_CFG[type] || { ic: 'bell', color: '#005930', defaultRoute: '#/' };
+}
+
+function normalizeActionUrl(rawRoute, notifType = '') {
+  if (notifType === 'chat_message') return '';
+  if (notifType === 'ojt_approved' || notifType === 'endorsement_sent' || notifType === 'endorsement_requested' || notifType === 'supervisor_rejected') {
+    return '#/applicants';
+  }
+  if (notifType === 'moa_approved') return '#/profile';
+  if (notifType === 'ojt_evaluation_request' || notifType === 'ojt_evaluation_reminder') return '#/ojt-trainees';
+  if (!rawRoute) return TYPE_CFG[notifType]?.defaultRoute || '#/';
+  if (rawRoute.startsWith('http')) return rawRoute;
+  const clean = rawRoute.replace(/^#\/?/, '').trim();
+  if (!clean || clean === 'dashboard' || clean === 'home') return '#/';
+  return `#/${clean}`;
+}
+
+function navigateCompanyNotification(actionUrl, notif = {}) {
+  const nType = notif.type || '';
+  if (nType === 'chat_message') {
+    const convKey = notif.data?.conversation_key;
+    if (typeof window.openChat === 'function') {
+      window.openChat(convKey || undefined);
+    }
+    return;
+  }
+  const studentId = notif.data?.student_id;
+  if (studentId && (nType === 'student_time_in' || nType === 'student_time_out')) {
+    sessionStorage.setItem('co_open_dtr_student_id', String(studentId));
+    window.dispatchEvent(new CustomEvent('hireme:open-student-dtr', { detail: { studentId } }));
+  }
+  const evalId = notif.data?.evaluation_id;
+  if (evalId && (nType === 'ojt_evaluation_request' || nType === 'ojt_evaluation_reminder')) {
+    sessionStorage.setItem('co_open_eval_id', String(evalId));
+    window.dispatchEvent(new CustomEvent('hireme:open-company-eval', { detail: { evaluationId: evalId } }));
+  }
+  if (!actionUrl) return;
+  if (actionUrl.startsWith('#')) {
+    window.location.hash = actionUrl;
+  } else {
+    window.location.href = actionUrl;
+  }
 }
 
 function escapeHtml(str = '') {
@@ -98,13 +152,13 @@ function showToast(notif, onOpenAction) {
 
   const c = cfg(notif.type);
   const rawRoute = notif.data?.route || notif.data?.action_url || c.defaultRoute || '';
-  const actionUrl = rawRoute && !rawRoute.startsWith('#') && !rawRoute.startsWith('http') ? '#' + rawRoute : rawRoute;
+  const actionUrl = normalizeActionUrl(rawRoute, notif.type);
 
   const toast = document.createElement('div');
   toast.className = 'hireme-toast';
   toast.innerHTML = `
     <div class="hireme-toast__icon" style="background:${c.color}1c;color:${c.color}">
-      ${icon(c.ic, 18)}
+      ${icon(c.ic, 18) || icon('bell', 18)}
     </div>
     <div class="hireme-toast__content">
       <div class="hireme-toast__title">${escapeHtml(notif.title)}</div>
@@ -130,13 +184,7 @@ function showToast(notif, onOpenAction) {
     dismiss();
     await apiNotif('PATCH', `/notifications/${notif.id}/read`);
     if (onOpenAction) onOpenAction();
-    if (actionUrl) {
-      if (actionUrl.startsWith('#')) {
-        window.location.hash = actionUrl;
-      } else {
-        window.location.href = actionUrl;
-      }
-    }
+    navigateCompanyNotification(actionUrl, notif);
   });
 
   container.appendChild(toast);
@@ -519,14 +567,18 @@ export function initNotifications(triggerBtn) {
 
     const c = cfg(n.type);
     const rawRoute = n.data?.route || n.data?.action_url || c.defaultRoute || '';
-    const actionUrl = rawRoute && !rawRoute.startsWith('#') && !rawRoute.startsWith('http') ? '#' + rawRoute : rawRoute;
+    const actionUrl = normalizeActionUrl(rawRoute, n.type);
 
     const row = document.createElement('div');
     row.className = `notif-item ${n.is_read ? '' : 'notif-item--unread'}`;
     row.dataset.id = n.id;
     row.dataset.action = actionUrl;
+    row.dataset.type = n.type || '';
+    if (n.data?.student_id) row.dataset.studentId = n.data.student_id;
+    if (n.data?.evaluation_id) row.dataset.evalId = n.data.evaluation_id;
+    if (n.data?.conversation_key) row.dataset.convKey = n.data.conversation_key;
     row.innerHTML = `
-      <div class="notif-icon" style="background:${c.color}18;color:${c.color}">${icon(c.ic, 17)}</div>
+      <div class="notif-icon" style="background:${c.color}18;color:${c.color}">${icon(c.ic, 17) || icon('bell', 17)}</div>
       <div class="notif-body">
         <div class="notif-title">${escapeHtml(n.title)}</div>
         <div class="notif-msg">${escapeHtml(n.message)}</div>
@@ -543,19 +595,24 @@ export function initNotifications(triggerBtn) {
     el.addEventListener('click', async () => {
       const id = el.dataset.id;
       const actionUrl = el.dataset.action;
+      const nType = el.dataset.type || '';
+      const studentId = el.dataset.studentId;
+      const evalId = el.dataset.evalId;
+      const convKey = el.dataset.convKey;
       el.classList.remove('notif-item--unread');
       el.querySelector('.notif-unread-dot')?.remove();
       await apiNotif('PATCH', `/notifications/${id}/read`);
       syncNotifications();
       notifChannel?.postMessage({ type: 'NOTIF_READ', id });
-      if (actionUrl) {
-        closePanel();
-        if (actionUrl.startsWith('#')) {
-          window.location.hash = actionUrl;
-        } else {
-          window.location.href = actionUrl;
-        }
-      }
+      closePanel();
+      navigateCompanyNotification(actionUrl, {
+        type: nType,
+        data: {
+          ...(studentId ? { student_id: studentId } : {}),
+          ...(evalId ? { evaluation_id: evalId } : {}),
+          ...(convKey ? { conversation_key: convKey } : {}),
+        },
+      });
     });
   }
 
@@ -620,10 +677,13 @@ export function initNotifications(triggerBtn) {
     listEl.innerHTML = list.map(n => {
       const c = cfg(n.type);
       const rawRoute = n.data?.route || n.data?.action_url || c.defaultRoute || '';
-      const actionUrl = rawRoute && !rawRoute.startsWith('#') && !rawRoute.startsWith('http') ? '#' + rawRoute : rawRoute;
+      const actionUrl = normalizeActionUrl(rawRoute, n.type);
+      const studentAttr = n.data?.student_id ? `data-student-id="${escapeHtml(n.data.student_id)}"` : '';
+      const evalAttr = n.data?.evaluation_id ? `data-eval-id="${escapeHtml(n.data.evaluation_id)}"` : '';
+      const convAttr = n.data?.conversation_key ? `data-conv-key="${escapeHtml(n.data.conversation_key)}"` : '';
       return `
-        <div class="notif-item ${n.is_read ? '' : 'notif-item--unread'}" data-id="${n.id}" data-action="${actionUrl}">
-          <div class="notif-icon" style="background:${c.color}18;color:${c.color}">${icon(c.ic, 17)}</div>
+        <div class="notif-item ${n.is_read ? '' : 'notif-item--unread'}" data-id="${n.id}" data-type="${escapeHtml(n.type || '')}" ${studentAttr} ${evalAttr} ${convAttr} data-action="${actionUrl}">
+          <div class="notif-icon" style="background:${c.color}18;color:${c.color}">${icon(c.ic, 17) || icon('bell', 17)}</div>
           <div class="notif-body">
             <div class="notif-title">${escapeHtml(n.title)}</div>
             <div class="notif-msg">${escapeHtml(n.message)}</div>
