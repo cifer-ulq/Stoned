@@ -258,7 +258,8 @@
   font-weight: var(--weight-bold);
   letter-spacing: -0.01em;
   line-height: 1.2;
-  white-space: nowrap;
+  white-space: normal;
+  word-break: break-word;
 }
 
 .profile-header__headline {
@@ -271,12 +272,15 @@
   display: flex;
   gap: var(--space-2);
   flex-shrink: 0;
+  flex-wrap: wrap;
 }
 
 .profile-header__bottom {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
   margin-top: var(--space-3);
   padding-top: var(--space-3);
   border-top: 1px solid var(--border-default);
@@ -299,6 +303,7 @@
 .profile-header__links {
   display: flex;
   gap: var(--space-3);
+  flex-wrap: wrap;
 }
 
 .profile-link {
@@ -317,6 +322,7 @@
 /* Stats Bar */
 .profile-stats-bar {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-1);
   padding: var(--space-4) var(--space-5);
   background: var(--bg-elevated);
@@ -328,6 +334,7 @@
 
 .profile-stat {
   flex: 1;
+  min-width: 90px;
   text-align: center;
   padding: var(--space-2) 0;
 }
@@ -357,6 +364,13 @@
   margin-top: var(--space-6);
   border-bottom: 1px solid var(--border-default);
   padding: 0 var(--space-2);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.profile-tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .profile-tabs__item {
@@ -371,6 +385,8 @@
   margin-bottom: -1px;
   transition: all var(--duration-fast);
   border-radius: var(--radius-md) var(--radius-md) 0 0;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .profile-tabs__item:hover {
@@ -622,7 +638,7 @@
 /* ── Categories Grid ── */
 .skills-categories-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
   gap: 16px;
   margin-top: 16px;
 }
@@ -1457,6 +1473,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   max-width: 800px;
   margin: 0 auto 16px;
   padding: 10px 18px;
@@ -1470,6 +1487,7 @@
 .resume-toolbar__info {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
 }
 
@@ -1496,6 +1514,7 @@
 .resume-toolbar__actions {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
@@ -1661,7 +1680,8 @@
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 6px 12px;
   margin-bottom: 1px;
 }
 
@@ -1756,9 +1776,10 @@
 
 .resume-skill-row {
   display: flex;
+  flex-wrap: wrap;
   font-size: 0.79rem;
   line-height: 1.38;
-  gap: 6px;
+  gap: 4px 6px;
 }
 
 .resume-skill-label {
@@ -1956,6 +1977,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-wrap: wrap;
   gap: var(--space-6);
   margin-top: var(--space-6);
   padding-top: var(--space-5);
@@ -2003,6 +2025,9 @@
   border-radius: var(--radius-lg);
   padding: 4px;
   border: 1px solid var(--border-default);
+  overflow-x: auto;
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
 }
 
 .jm-tabs__btn {
@@ -2021,6 +2046,7 @@
   position: relative;
   z-index: 1;
   font-family: var(--font-body);
+  white-space: nowrap;
 }
 
 .jm-tabs__btn:hover { color: var(--text-primary); }
@@ -2846,6 +2872,7 @@
   padding: 16px 20px 12px;
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 12px;
   border-bottom: 1px solid var(--border-light);
 }
@@ -3016,6 +3043,7 @@
 .ojt-app-card__actions {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
@@ -3646,6 +3674,7 @@
 
 .app-card__actions {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-1);
 }
 
@@ -5888,9 +5917,10 @@
   color: #fff;
 }
 
-/* â”€â”€ Segmented Control (Date Posted) â”€â”€ */
+/* ── Segmented Control (Date Posted) ── */
 .jf-segment-control {
   display: flex;
+  flex-wrap: wrap;
   background: var(--bg-elevated);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
@@ -5899,8 +5929,8 @@
 }
 
 .jf-segment-btn {
-  flex: 1;
-  padding: 5px 0;
+  flex: 1 1 60px;
+  padding: 5px 4px;
   border: none;
   background: transparent;
   color: var(--text-secondary);
@@ -7188,7 +7218,17 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
 }
+
+/* ── Active OJT Tracker: Map + Calendar 2-Column Row ── */
+.ojt-map-cal-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
 
 
 

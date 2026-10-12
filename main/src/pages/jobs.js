@@ -337,7 +337,7 @@ function jobDetailModal(job, applied = false) {
         <div class="modal__body" style="max-height: 70vh; overflow-y: auto; padding: 22px 24px; background: #ffffff;">
 
           <!-- 4 KPI Stat Tiles -->
-          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px;">
+          <div class="job-modal-kpis" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px;">
             <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 10px; text-align: center;">
               <div style="font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #64748b; margin-bottom: 4px; display: flex; align-items: center; justify-content: center; gap: 4px;">
                 ${icon('zap', 12)} Match Score
@@ -418,11 +418,11 @@ function jobDetailModal(job, applied = false) {
           </div>
 
           <!-- Company Overview Card -->
-          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; display: flex; align-items: center; gap: 14px;">
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
             <div style="width: 40px; height: 40px; border-radius: 50%; background: rgba(0,89,48,0.1); color: #005930; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
               ${icon('building', 20)}
             </div>
-            <div style="flex: 1; min-width: 0;">
+            <div style="flex: 1; min-width: 150px;">
               <p style="font-size: 0.68rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 2px;">Company / Organization</p>
               <p style="font-weight: 700; font-size: 0.92rem; color: #0f172a; margin: 0 0 2px;">${escapeHtml(job.company)}</p>
               <p style="font-size: 0.78rem; color: #64748b; margin: 0;">
@@ -439,7 +439,7 @@ function jobDetailModal(job, applied = false) {
         </div>
 
         <!-- Footer -->
-        <div class="modal__footer" style="padding: 14px 24px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+        <div class="modal__footer" style="padding: 14px 24px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
           <button class="btn btn--outline" id="jd-close-btn" style="height: 38px; padding: 0 16px;">Close</button>
           <div style="display: flex; gap: 8px;">
             ${applied
@@ -503,7 +503,7 @@ function sendResumeModal(job) {
         </div>
 
         <!-- Footer -->
-        <div class="modal__footer" style="padding: 14px 24px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 8px;">
+        <div class="modal__footer" style="padding: 14px 24px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap;">
           <button class="btn btn--ghost" id="send-resume-cancel" style="height: 38px; padding: 0 16px;">Cancel</button>
           <a href="#/portfolio" class="btn btn--outline" style="height: 38px; padding: 0 16px; display: flex; align-items: center; gap: 6px; text-decoration: none;">
             ${icon('fileText', 14)} My Resume
@@ -587,7 +587,7 @@ function applyModal(job) {
         </div>
 
         <!-- Footer -->
-        <div class="modal__footer" style="padding: 14px 24px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 8px;">
+        <div class="modal__footer" style="padding: 14px 24px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap;">
           <button class="btn btn--ghost" id="apply-modal-cancel" style="height: 38px; padding: 0 16px;">Cancel</button>
           <button class="btn ${isNotRec ? '' : 'btn--primary'}" id="apply-modal-submit" data-job-id="${job.id}" style="height: 38px; padding: 0 18px; display: flex; align-items: center; gap: 6px; ${isNotRec ? 'background: #dc2626; color: #ffffff; border: 1px solid #b91c1c;' : ''}">
             ${icon('send', 14)} ${isNotRec ? 'Proceed & Apply Anyway' : 'Submit Application'}

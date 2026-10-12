@@ -1,4 +1,4 @@
-﻿/* ================================================================
+/* ================================================================
    CHMSU HireMe — Onboarding Wizard — Professional Redesign v2
    Two-panel layout · Ambient orbs · Premium typography
    ================================================================ */
@@ -811,18 +811,21 @@
   .ob-main__topbar { margin-bottom: 1.25rem; }
   .ob-form--grid { grid-template-columns: 1fr; }
   .ob-form--grid .ob-field--full { grid-column: 1; }
+  .ob-picker__grid--2 { grid-template-columns: 1fr; }
   .ob-emp-grid { grid-template-columns: 1fr 1fr; }
   .ob-step__title { font-size: 1.25rem; }
   .ob-roles { gap: 10px; }
   .ob-role { padding: 1rem 1.2rem; }
 }
 
+@media (max-width: 480px) {
+  .ob-emp-grid { grid-template-columns: 1fr; }
+  .ob-nav { flex-wrap: wrap; gap: 10px; }
+  .ob-nav__btn { padding-left: 18px; padding-right: 18px; flex: 1 1 auto; justify-content: center; }
+  .ob-panel { padding: 0.9rem 1rem; }
+}
+
 @media (min-width: 701px) and (max-width: 840px) {
   .ob-panel { width: 220px; padding: 2rem 1.4rem; }
   .ob-main { padding: 2rem 2rem 1.5rem; }
 }
-
-
-
-
-

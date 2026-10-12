@@ -477,6 +477,16 @@ function renderCards(container, apps, allApps) {
             ${icon('calendar', 12)}
             <span>Applied ${a.applied_at || 'Recently'}</span>
           </div>
+          ${isOjt && (a.coordinators?.length || a.supervisor) ? (() => {
+            const coords = Array.isArray(a.coordinators) && a.coordinators.length ? a.coordinators : [a.supervisor];
+            const first = coords[0];
+            const extra = coords.length > 1 ? ` (+${coords.length - 1} more)` : '';
+            return `
+            <div class="ap-card__meta-item" title="OJT Coordinator: ${first.name}${first.email ? ' · ' + first.email : ''}" style="color:#005930;font-weight:600;">
+              ${icon('shield', 12)}
+              <span>Coord: ${first.name}${extra}</span>
+            </div>`;
+          })() : ''}
           ${a.raw_status === 'endorsed' ? `
             <div class="ap-card__meta-item ap-card__meta-item--highlight">
               ${icon('checkCircle', 12)}
@@ -504,6 +514,10 @@ function renderCards(container, apps, allApps) {
             <button type="button" class="ap-btn ap-btn--ghost ap-btn-chat" data-id="${id}" onclick="event.stopPropagation(); window.openChat && window.openChat('${chatKey}')" title="Message candidate">
               ${icon('messageSquare', 13)} Chat
             </button>
+            ${isOjt ? `
+              <button type="button" class="ap-btn ap-btn--ghost ap-btn-coord-chat" data-id="${id}" style="color:#005930;font-weight:700;" title="View OJT Coordinator contact info & choose who to message">
+                ${icon('users', 13)} Coordinator
+              </button>` : ''}
             <button class="ap-btn ap-btn--ghost ap-btn-profile" data-id="${id}" title="View full candidate portfolio in new tab">
               ${icon('externalLink', 13)} Portfolio
             </button>
@@ -512,6 +526,27 @@ function renderCards(container, apps, allApps) {
 
       </div>`;
   }).join('');
+
+  // Wire OJT Coordinator Selector & Contact buttons
+  grid.querySelectorAll('.ap-btn-coord-chat').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const app = allApps.find(a => String(a.id) === btn.dataset.id);
+      if (!app) return;
+      const coords = Array.isArray(app.coordinators) ? app.coordinators : (app.supervisor ? [app.supervisor] : []);
+      const endorsedById = app.endorsed_by || app.supervisor?.id || 0;
+      if (window.openCoordinatorSelector) {
+        window.openCoordinatorSelector({
+          studentName: app.applicant?.name || 'Student',
+          course: app.applicant?.program || '',
+          coordinators: coords,
+          endorsedById,
+        });
+      } else if (window.openCoordinatorChat) {
+        window.openCoordinatorChat(0);
+      }
+    });
+  });
 
   // Wire View & Review Profile buttons (open resume modal + mark viewed)
   grid.querySelectorAll('.ap-btn-view-profile').forEach(btn => {
@@ -1684,6 +1719,9 @@ async function showResumeModal(app, allApps, container, newStatus) {
   const EXP = d.experience || [];
   const SKL = d.skills     || [];
   const PRJ = d.projects   || [];
+  const COORDS = Array.isArray(d.coordinators) && d.coordinators.length
+    ? d.coordinators
+    : (Array.isArray(app.coordinators) && app.coordinators.length ? app.coordinators : (app.supervisor ? [app.supervisor] : []));
 
   const lvlColor = lvl => lvl >= 80 ? '#005930' : lvl >= 50 ? '#0284c7' : '#64748b';
   const lvlLabel = lvl => lvl >= 80 ? 'Expert'  : lvl >= 50 ? 'Mid'     : 'Junior';
@@ -1722,25 +1760,31 @@ async function showResumeModal(app, allApps, container, newStatus) {
   let footerActions = '';
   if (isOjt) {
     const rawSt = app.raw_status || 'interested';
+    const coordBtnHtml = `<button type="button" class="btn btn--outline" id="ar-btn-coord-select" style="font-size:.79rem;color:#10b981;border-color:rgba(16,185,129,0.4);background:rgba(16,185,129,0.1);gap:5px;">${icon('users', 13)} ${COORDS.length > 1 ? `Coordinators (${COORDS.length})` : 'Message Coordinator'}</button>`;
     if (rawSt === 'interested') {
       footerActions = `
+        ${coordBtnHtml}
         <button class="btn btn--error ar-ojt-action" data-ojt-action="reject" style="font-size:.79rem;">${icon('x', 13)} Decline</button>
         <button class="btn btn--primary ar-ojt-action" data-ojt-action="review" style="font-size:.79rem;background:#005930;border-color:#005930;">${icon('fileText', 13)} Submit Review Note</button>`;
     } else if (rawSt === 'company_reviewed') {
       footerActions = `
+        ${coordBtnHtml}
         <button class="btn btn--error ar-ojt-action" data-ojt-action="reject" style="font-size:.79rem;">${icon('x', 13)} Decline</button>
         <button class="btn btn--primary ar-ojt-action" data-ojt-action="endorse" style="font-size:.79rem;background:#D97706;border-color:#D97706;">${icon('fileText', 13)} Request Endorsement Letter</button>`;
     } else if (rawSt === 'endorsement_requested') {
       footerActions = `
+        ${coordBtnHtml}
         <button class="btn btn--error ar-ojt-action" data-ojt-action="reject" style="font-size:.79rem;">${icon('x', 13)} Decline</button>
         <button class="btn btn--primary" disabled style="font-size:.79rem;opacity:0.6;cursor:not-allowed;background:#8B5CF6;border-color:#8B5CF6;">${icon('clock', 13)} Awaiting Endorsement Letter</button>`;
     } else if (rawSt === 'endorsed') {
       footerActions = `
+        ${coordBtnHtml}
         <button class="btn btn--error ar-ojt-action" data-ojt-action="reject" style="font-size:.79rem;">${icon('x', 13)} Decline</button>
         <button class="btn btn--primary ar-ojt-action" data-ojt-action="schedule" style="font-size:.79rem;background:#005930;border-color:#005930;">${icon('calendar', 13)} Schedule Interview</button>`;
     } else if (rawSt === 'interview_scheduled') {
       const interviewPassed = isInterviewPast(app);
       footerActions = `
+        ${coordBtnHtml}
         <button class="btn btn--error ar-ojt-action" data-ojt-action="reject" style="font-size:.79rem;">${icon('x', 13)} Decline</button>
         ${interviewPassed
           ? `<button class="btn btn--primary ar-ojt-action" data-ojt-action="accept" style="font-size:.79rem;background:#005930;border-color:#005930;">${icon('checkCircle', 13)} Accept After Interview</button>`
@@ -1748,18 +1792,23 @@ async function showResumeModal(app, allApps, container, newStatus) {
         }`;
     } else if (rawSt === 'company_accepted') {
       footerActions = `
+        ${coordBtnHtml}
         <button class="btn btn--primary" disabled style="font-size:.79rem;opacity:0.6;cursor:not-allowed;background:#005930;border-color:#005930;">${icon('clock', 13)} Awaiting Coordinator Approval</button>`;
     } else if (rawSt === 'accepted') {
       footerActions = `
+        ${coordBtnHtml}
         <button class="btn btn--primary ar-ojt-action" data-ojt-action="start" style="font-size:.79rem;background:#005930;border-color:#005930;">${icon('calendar', 13)} Set Start Date & Instructions</button>`;
     } else if (rawSt === 'ojt_confirmed') {
       footerActions = `
+        ${coordBtnHtml}
         <button class="btn btn--primary" disabled style="font-size:.79rem;opacity:0.75;cursor:default;background:#8B5CF6;border-color:#8B5CF6;">${icon('calendar', 13)} Confirmed · Start: ${app.ojt_start_date || 'Set'}</button>`;
     } else if (rawSt === 'ojt_started') {
       footerActions = `
+        ${coordBtnHtml}
         <button class="btn btn--primary" disabled style="font-size:.79rem;opacity:0.75;cursor:default;background:#005930;border-color:#005930;">${icon('graduationCap', 13)} Active Trainee</button>`;
     } else if (rawSt === 'rejected') {
       footerActions = `
+        ${coordBtnHtml}
         <button class="btn btn--error" disabled style="font-size:.79rem;opacity:0.6;cursor:default;">${icon('x', 13)} Application Closed</button>`;
     }
   } else {
@@ -1818,6 +1867,38 @@ async function showResumeModal(app, allApps, container, newStatus) {
           <button type="button" class="btn btn--outline btn-modal-view-endorsement" data-url="${resolveStorageUrl(app.endorsement_letter_url)}" data-name="${escapeHtml(app.applicant?.name || 'Student')}" style="font-size:0.75rem;padding:5px 12px;color:#005930;border-color:#005930;background:#fff;display:inline-flex;align-items:center;gap:5px;cursor:pointer;">
             ${icon('externalLink', 12)} View Letter PDF
           </button>
+        </div>` : ''}
+
+      ${isOjt && COORDS.length ? `
+        <div style="margin:14px 0 4px;padding:12px 16px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+            <span style="font-size:0.74rem;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#005930;display:inline-flex;align-items:center;gap:5px;">
+              ${icon('shield', 13)} Course OJT Coordinator${COORDS.length > 1 ? `s (${COORDS.length})` : ''}
+            </span>
+            <button type="button" id="ar-paper-coord-select" style="background:#005930;color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:0.72rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:4px;">
+              ${icon('messageCircle', 11)} ${COORDS.length > 1 ? 'Choose & Message Coordinator' : 'Message Coordinator'}
+            </button>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px;">
+            ${COORDS.map(c => `
+              <div style="padding:8px 11px;background:#ffffff;border:1px solid ${c.is_endorser ? '#005930' : '#e2e8f0'};border-radius:7px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                <div style="min-width:0;flex:1;">
+                  <div style="font-size:0.8rem;font-weight:700;color:#0f172a;display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
+                    <span>${escapeHtml(c.name || 'Coordinator')}</span>
+                    ${c.is_endorser ? `<span style="background:rgba(0,89,48,0.12);color:#005930;font-size:0.62rem;font-weight:800;padding:1px 6px;border-radius:99px;">Endorser</span>` : ''}
+                  </div>
+                  <div style="font-size:0.72rem;color:#475569;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(c.course || c.position || 'CHMSU OJT Coordinator')}</div>
+                  <div style="font-size:0.72rem;color:#005930;margin-top:2px;">
+                    ${c.email ? `<a href="mailto:${escapeHtml(c.email)}" style="color:#005930;text-decoration:none;font-weight:600;">${escapeHtml(c.email)}</a>` : ''}
+                    ${c.phone ? ` &middot; <span style="color:#64748b;">${escapeHtml(c.phone)}</span>` : ''}
+                  </div>
+                </div>
+                <button type="button" class="ar-direct-coord-chat" data-id="${c.id}" title="Message ${escapeHtml(c.name)}" style="background:rgba(0,89,48,0.08);color:#005930;border:1px solid rgba(0,89,48,0.25);border-radius:6px;padding:5px 9px;font-size:0.71rem;font-weight:700;cursor:pointer;flex-shrink:0;">
+                  Chat
+                </button>
+              </div>
+            `).join('')}
+          </div>
         </div>` : ''}
 
       ${objText ? `
@@ -1899,6 +1980,29 @@ async function showResumeModal(app, allApps, container, newStatus) {
         </div>` : ''}
 
     </div>`;
+
+  const triggerCoordSelector = () => {
+    if (window.openCoordinatorSelector) {
+      window.openCoordinatorSelector({
+        studentName: P.name || app.applicant?.name || 'Student',
+        course: P.program || app.applicant?.program || '',
+        coordinators: COORDS,
+        endorsedById: app.endorsed_by || app.supervisor?.id || 0,
+      });
+    }
+  };
+
+  backdrop.querySelector('#ar-btn-coord-select')?.addEventListener('click', triggerCoordSelector);
+  backdrop.querySelector('#ar-paper-coord-select')?.addEventListener('click', triggerCoordSelector);
+  backdrop.querySelectorAll('.ar-direct-coord-chat').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const supId = Number(btn.dataset.id);
+      if (supId > 0 && window.openCoordinatorChat) {
+        backdrop.remove();
+        window.openCoordinatorChat(supId);
+      }
+    });
+  });
 
   backdrop.querySelectorAll('.ar-modal-action').forEach(btn => {
     btn.addEventListener('click', async () => {

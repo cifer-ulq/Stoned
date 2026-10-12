@@ -265,7 +265,8 @@ function openApplicationDetailsModal(item, onWithdrawSuccess, existingOverlay = 
                   ` : ''}
                 </div>
               ` : `
-              <div class="ojt-timeline" style="min-width:0; overflow-x:auto; padding-bottom:6px;">
+              <div style="overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:6px;">
+              <div class="ojt-timeline" style="min-width:520px;">
                 ${OJT_STEPS.map((step, sIdx) => {
                   const stepIndex = getOjtStepIndex(item);
                   const isDone    = sIdx < stepIndex;
@@ -287,6 +288,7 @@ function openApplicationDetailsModal(item, onWithdrawSuccess, existingOverlay = 
                       </p>
                     </div>`;
                 }).join('')}
+              </div>
               </div>
             `) : (
               (isRejectedJob || isDeclinedJob) ? `
@@ -541,7 +543,7 @@ function openApplicationDetailsModal(item, onWithdrawSuccess, existingOverlay = 
           ${icon('x', 14)} Withdraw Application
         </button>
         ` : '<div></div>'}
-        <div style="display:flex; gap:10px; align-items:center;">
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
           <button
             class="app-card__btn app-card__btn--msg modal-btn-msg"
             data-id="${item.id}"

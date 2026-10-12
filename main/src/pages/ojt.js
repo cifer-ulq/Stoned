@@ -218,11 +218,16 @@ export async function renderOJT(container) {
   await renderBrowsingState(container, empStatus);
 
   // ── Reactive Real-Time Event Listener (Zero Hard Refresh) ──
+  if (container._ojtRefreshHandler) {
+    window.removeEventListener('hireme:requirements-updated', container._ojtRefreshHandler);
+    window.removeEventListener('hireme:ojt-updated', container._ojtRefreshHandler);
+  }
   const handleOjtRefresh = () => {
     if (window.location.hash.includes('ojt') && document.body.contains(container)) {
       renderBrowsingState(container, null);
     }
   };
+  container._ojtRefreshHandler = handleOjtRefresh;
   window.addEventListener('hireme:requirements-updated', handleOjtRefresh);
   window.addEventListener('hireme:ojt-updated', handleOjtRefresh);
 }
@@ -300,7 +305,7 @@ async function renderBrowsingState(container, empStatus = null) {
   container.innerHTML = `
     ${myInterests.length ? `
     <!-- Active applications shortcut banner -->
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 16px;background:var(--color-primary-bg);border:1px solid rgba(0,89,48,0.2);border-radius:12px;margin-bottom:16px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:10px 16px;background:var(--color-primary-bg);border:1px solid rgba(0,89,48,0.2);border-radius:12px;margin-bottom:16px;">
       <span style="font-size:0.82rem;color:var(--color-primary);font-weight:600;display:flex;align-items:center;gap:7px;">
         ${icon('send', 14)} You have <strong>${myInterests.length}</strong> active OJT application${myInterests.length > 1 ? 's' : ''}.
       </span>
@@ -374,7 +379,7 @@ async function renderBrowsingState(container, empStatus = null) {
 
     <!-- ── Hero Banner ── -->
     <section class="page-section animate-fade-in-up">
-      <div style="background:linear-gradient(135deg,#00381E 0%,#005930 45%,#0B7A44 100%);border-radius:16px;padding:28px 30px;position:relative;overflow:hidden;box-shadow:0 8px 30px rgba(0,89,48,0.18);">
+      <div class="ojt-hero-banner" style="background:linear-gradient(135deg,#00381E 0%,#005930 45%,#0B7A44 100%);border-radius:16px;padding:28px 30px;position:relative;overflow:hidden;box-shadow:0 8px 30px rgba(0,89,48,0.18);">
         <div style="position:absolute;right:-40px;top:-40px;width:240px;height:240px;border-radius:50%;background:rgba(34,197,94,0.18);pointer-events:none;"></div>
         <div style="position:absolute;right:160px;bottom:-60px;width:180px;height:180px;border-radius:50%;background:rgba(52,199,89,0.12);pointer-events:none;"></div>
         <div style="position:absolute;left:38%;top:-30px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,0.06);pointer-events:none;"></div>
@@ -386,31 +391,31 @@ async function renderBrowsingState(container, empStatus = null) {
               <span style="color:#4ade80;">${icon('graduationCap', 13)}</span>
               <span style="font-size:0.67rem;font-weight:700;color:#4ade80;text-transform:uppercase;letter-spacing:0.07em;">Skill-Matched OJT Opportunities</span>
             </div>
-            <h1 style="font-size:1.75rem;font-weight:800;color:#fff;margin:0 0 6px;line-height:1.2;">Recommended OJT Openings</h1>
+            <h1 class="ojt-hero-banner__title" style="font-size:1.75rem;font-weight:800;color:#fff;margin:0 0 6px;line-height:1.2;">Recommended OJT Openings</h1>
             <p style="color:rgba(255,255,255,0.78);font-size:0.86rem;margin:0;max-width:700px;line-height:1.6;">OJT positions matched to your profile based on your verified skills, program requirements, and academic background.</p>
 
             <!-- Stats row -->
-            <div style="display:flex;gap:22px;flex-wrap:wrap;margin-top:18px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.15);">
+            <div class="ojt-hero-banner__stats" style="display:flex;gap:22px;flex-wrap:wrap;margin-top:18px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.15);">
               <div>
                 <p style="font-size:1.35rem;font-weight:800;color:#fff;margin:0;line-height:1;">${allSlots.length}</p>
                 <p style="font-size:0.64rem;color:rgba(255,255,255,0.65);margin:2px 0 0;text-transform:uppercase;letter-spacing:0.05em;">Total Slots</p>
               </div>
-              <div style="width:1px;background:rgba(255,255,255,0.15);"></div>
+              <div class="ojt-hero-banner__divider" style="width:1px;background:rgba(255,255,255,0.15);"></div>
               <div>
                 <p style="font-size:1.35rem;font-weight:800;color:#4ade80;margin:0;line-height:1;">${recommendedSlots.length}</p>
                 <p style="font-size:0.64rem;color:rgba(255,255,255,0.65);margin:2px 0 0;text-transform:uppercase;letter-spacing:0.05em;">Recommended</p>
               </div>
-              <div style="width:1px;background:rgba(255,255,255,0.15);"></div>
+              <div class="ojt-hero-banner__divider" style="width:1px;background:rgba(255,255,255,0.15);"></div>
               <div>
                 <p style="font-size:1.35rem;font-weight:800;color:#38bdf8;margin:0;line-height:1;">${avgScore}%</p>
                 <p style="font-size:0.64rem;color:rgba(255,255,255,0.65);margin:2px 0 0;text-transform:uppercase;letter-spacing:0.05em;">Avg Match Score</p>
               </div>
-              <div style="width:1px;background:rgba(255,255,255,0.15);"></div>
+              <div class="ojt-hero-banner__divider" style="width:1px;background:rgba(255,255,255,0.15);"></div>
               <div>
                 <p style="font-size:1.35rem;font-weight:800;color:#FFB547;margin:0;line-height:1;">${allSlots.filter(s => s.status === 'open').length}</p>
                 <p style="font-size:0.64rem;color:rgba(255,255,255,0.65);margin:2px 0 0;text-transform:uppercase;letter-spacing:0.05em;">Open Now</p>
               </div>
-              <div style="width:1px;background:rgba(255,255,255,0.15);"></div>
+              <div class="ojt-hero-banner__divider" style="width:1px;background:rgba(255,255,255,0.15);"></div>
               <div>
                 <p style="font-size:1.35rem;font-weight:800;color:rgba(255,255,255,0.9);margin:0;line-height:1;">${[...new Set(allSlots.map(s => s.company))].length}</p>
                 <p style="font-size:0.64rem;color:rgba(255,255,255,0.65);margin:2px 0 0;text-transform:uppercase;letter-spacing:0.05em;">Companies</p>
@@ -440,10 +445,10 @@ async function renderBrowsingState(container, empStatus = null) {
     <!-- ── Search & Filter bar ── -->
     <section class="page-section animate-fade-in-up" style="animation-delay:60ms;">
       <div class="jp-card" style="padding:14px 16px;">
-        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+        <div class="ojt-filter-controls" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
 
           <!-- Search -->
-          <div style="flex:1;min-width:200px;position:relative;">
+          <div class="ojt-filter-search" style="flex:1;min-width:min(100%,200px);position:relative;">
             <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-tertiary);pointer-events:none;">${icon('search', 15)}</span>
             <input type="text" id="ojt-search" class="form-input" placeholder="Search company, role or skills..." style="padding-left:36px;height:40px;font-size:0.84rem;" />
           </div>
@@ -497,7 +502,7 @@ async function renderBrowsingState(container, empStatus = null) {
         </div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px solid var(--border-default);flex-wrap:wrap;gap:8px;">
           <p class="text-xs text-tertiary" id="ojt-result-count"></p>
-          <div style="display:flex;gap:6px;align-items:center;">
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
             <span style="font-size:0.7rem;color:var(--text-tertiary);">Quick:</span>
             <button class="ojt-qf btn" data-type="rec" style="height:24px;padding:0 10px;font-size:0.67rem;font-weight:700;border-radius:99px;background:var(--color-primary-bg);color:var(--color-primary);border:1px solid rgba(0,89,48,0.3);">🌟 71%+ Match</button>
             <button class="ojt-qf btn" data-status="open" style="height:24px;padding:0 10px;font-size:0.67rem;font-weight:700;border-radius:99px;background:var(--color-success-bg);color:var(--color-success);border:1px solid rgba(52,199,89,0.3);">Open</button>
@@ -509,7 +514,7 @@ async function renderBrowsingState(container, empStatus = null) {
 
     <!-- ── Slot cards grid ── -->
     <section class="page-section animate-fade-in-up" style="animation-delay:100ms;">
-      <div id="ojt-slots-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:16px;"></div>
+      <div id="ojt-slots-grid" class="ojt-slots-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:16px;"></div>
       <div id="ojt-empty" style="display:none;text-align:center;padding:56px 0;">
         <div style="width:72px;height:72px;border-radius:50%;background:var(--bg-secondary);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
           ${icon('search', 28)}
@@ -519,7 +524,7 @@ async function renderBrowsingState(container, empStatus = null) {
       </div>
     </section>
 
-    <div id="slot-detail-backdrop" style="display:none;"></div>
+    <div id="slot-detail-backdrop" class="modal-backdrop" style="display:none;"></div>
   `;
 
   let currentTab = 'all';
@@ -1007,10 +1012,10 @@ async function renderBrowsingState(container, empStatus = null) {
         </div>
 
         <!-- Footer -->
-        <div class="modal__footer" style="padding:14px 24px;display:flex;justify-content:space-between;align-items:center;background:var(--bg-secondary);">
+        <div class="modal__footer" style="padding:14px 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;background:var(--bg-secondary);">
           <button class="btn btn--outline btn--sm" id="slot-detail-cancel" style="padding:0 16px;height:34px;">Close</button>
 
-          <div style="display:flex;gap:8px;align-items:center;">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
             ${isClosed
               ? `<button class="btn btn--sm" style="background:var(--bg-tertiary);color:var(--text-tertiary);cursor:not-allowed;height:34px;" disabled>${icon('x', 14)} Slot Closed</button>`
               : (isActiveOjt || isHired)
@@ -1205,7 +1210,7 @@ async function renderBrowsingState(container, empStatus = null) {
             <p class="text-sm text-secondary" style="line-height:1.6; margin-bottom:20px;">
               You are applying for <strong>${safeTitle}</strong> at <strong>${safeCompany}</strong>. Your student profile and academic credentials will be submitted directly to the host company.
             </p>
-            <div style="display:flex; gap:10px; justify-content:center;">
+            <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
               <button class="btn btn--outline" id="apply-cancel" style="padding:0 18px; height:38px;">Cancel</button>
               <button class="btn btn--primary" id="apply-confirm" style="padding:0 20px; height:38px; display:inline-flex; align-items:center; gap:6px;">
                 ${icon('checkCircle', 15)} Confirm Application

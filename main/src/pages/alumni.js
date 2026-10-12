@@ -188,9 +188,9 @@ function openPeoModal(peos, onSuccess) {
 
   const fields = peos.map(p => `
     <div style="background:var(--bg-secondary);padding:var(--space-4);border-radius:var(--radius-lg);margin-bottom:var(--space-3);border:1px solid var(--border-default);">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-        <span style="font-weight:700;font-size:0.8rem;color:var(--color-primary);">${p.code}: ${p.title}</span>
-        <select class="form-select peo-score-input" data-peo-id="${p.peo_id}" style="width:auto;padding:4px 24px 4px 8px;font-size:0.75rem;">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:6px;">
+        <span style="font-weight:700;font-size:0.8rem;color:var(--color-primary);flex:1 1 180px;">${p.code}: ${p.title}</span>
+        <select class="form-select peo-score-input" data-peo-id="${p.peo_id}" style="width:auto;max-width:100%;padding:4px 24px 4px 8px;font-size:0.75rem;">
           <option value="5" ${p.score >= 4.5 ? 'selected' : ''}>5 - Highly Proficient (Mastery)</option>
           <option value="4" ${p.score >= 3.5 && p.score < 4.5 ? 'selected' : ''}>4 - Proficient (Strong)</option>
           <option value="3" ${p.score >= 2.5 && p.score < 3.5 ? 'selected' : ''}>3 - Developing (Satisfactory)</option>
@@ -208,17 +208,17 @@ function openPeoModal(peos, onSuccess) {
 
   modal.innerHTML = `
     <div style="background:var(--bg-elevated);border-radius:var(--radius-2xl);max-width:640px;width:100%;max-height:90vh;display:flex;flex-direction:column;box-shadow:var(--shadow-xl);overflow:hidden;border:1px solid var(--border-default);">
-      <div style="padding:var(--space-5);border-bottom:1px solid var(--border-default);display:flex;justify-content:space-between;align-items:center;">
+      <div style="padding:var(--space-5);border-bottom:1px solid var(--border-default);display:flex;justify-content:space-between;align-items:center;gap:12px;">
         <div>
           <h3 style="font-size:var(--text-base);font-weight:700;">Graduate Career &amp; PEO Tracer Survey</h3>
           <p style="font-size:var(--text-xs);color:var(--text-secondary);">Rate your university training alignment and career outcomes</p>
         </div>
-        <button id="peo-modal-close" style="background:none;border:none;cursor:pointer;color:var(--text-tertiary);">${icon('x', 20)}</button>
+        <button id="peo-modal-close" style="background:none;border:none;cursor:pointer;color:var(--text-tertiary);flex-shrink:0;">${icon('x', 20)}</button>
       </div>
       <div style="padding:var(--space-5);overflow-y:auto;flex:1;">
         ${fields}
       </div>
-      <div style="padding:var(--space-4) var(--space-5);border-top:1px solid var(--border-default);display:flex;justify-content:flex-end;gap:10px;background:var(--bg-primary);">
+      <div style="padding:var(--space-4) var(--space-5);border-top:1px solid var(--border-default);display:flex;justify-content:flex-end;flex-wrap:wrap;gap:10px;background:var(--bg-primary);">
         <button class="btn btn--outline btn--sm" id="peo-modal-cancel">Cancel</button>
         <button class="btn btn--primary btn--sm" id="peo-modal-submit">${icon('check', 14)} Submit Self-Assessment</button>
       </div>

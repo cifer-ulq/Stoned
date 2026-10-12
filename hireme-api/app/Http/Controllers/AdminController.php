@@ -1653,6 +1653,7 @@ class AdminController extends Controller
             'name'   => ['required', 'string', 'max:255'],
             'email'  => ['required', 'email', 'unique:users,email'],
             'course' => ['required', 'string', 'max:255'],
+            'phone'  => ['nullable', 'string', 'max:50'],
         ]);
 
         $normalizedCourse = \App\Services\CourseNormalizer::normalize($data['course']) ?: $data['course'];
@@ -1671,6 +1672,7 @@ class AdminController extends Controller
             'company_name' => 'CHMSU',
             'position'     => $normalizedCourse,
             'course'       => $normalizedCourse,
+            'phone'        => $data['phone'] ?? null,
         ]);
 
         return response()->json([
@@ -1679,6 +1681,7 @@ class AdminController extends Controller
                 'id'         => $user->id,
                 'name'       => $user->name,
                 'email'      => $user->email,
+                'phone'      => $profile->phone,
                 'course'     => $normalizedCourse,
                 'created_at' => $user->created_at->toDateString(),
             ],
@@ -1699,6 +1702,7 @@ class AdminController extends Controller
                 'id'         => $u->id,
                 'name'       => $u->name,
                 'email'      => $u->email,
+                'phone'      => $u->supervisorProfile?->phone ?? '',
                 'course'     => $u->supervisorProfile?->course ?? $u->supervisorProfile?->position ?? '—',
                 'created_at' => $u->created_at?->toDateString(),
             ]);

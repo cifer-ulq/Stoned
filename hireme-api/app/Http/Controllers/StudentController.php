@@ -364,6 +364,41 @@ class StudentController extends Controller
         $achievements = StudentAchievement::where('user_id', $user->id)->orderBy('sort_order')->orderByDesc('id')->get();
         $projects     = PortfolioProject::where('user_id', $user->id)->orderBy('sort_order')->orderByDesc('id')->get();
 
+        // Resolve course coordinators for student/graduate profiles
+        $coordinators = [];
+        if (in_array($user->role, ['student', 'graduate'])) {
+            $allSups = User::where('role', 'supervisor')->with('supervisorProfile')->get();
+            $normalizedProgram = $program ? \App\Services\CourseNormalizer::normalize($program) : null;
+            $matchedSups = $normalizedProgram
+                ? $allSups->filter(function ($sup) use ($normalizedProgram) {
+                    $supCourse = $sup->supervisorProfile?->getAssignedCourse();
+                    return $supCourse !== null && strcasecmp($supCourse, $normalizedProgram) === 0;
+                })->values()
+                : collect();
+
+            if ($matchedSups->isEmpty()) {
+                $matchedSups = $allSups;
+            }
+
+            $coordinators = $matchedSups->map(function ($sup) {
+                $assignedCourse = $sup->supervisorProfile?->getAssignedCourse()
+                    ?? $sup->supervisorProfile?->course
+                    ?? $sup->supervisorProfile?->position
+                    ?? 'OJT Coordinator';
+
+                return [
+                    'id'           => $sup->id,
+                    'name'         => $sup->name,
+                    'email'        => $sup->email,
+                    'phone'        => $sup->supervisorProfile?->phone ?? '',
+                    'avatar'       => $sup->avatar_url,
+                    'course'       => $assignedCourse,
+                    'position'     => $sup->supervisorProfile?->position ?? $assignedCourse,
+                    'company_name' => $sup->supervisorProfile?->company_name ?? 'CHMSU',
+                ];
+            })->toArray();
+        }
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -371,6 +406,7 @@ class StudentController extends Controller
                 'name'  => $user->name,
                 'email' => $user->email,
                 'role'  => $user->role,
+                'coordinators' => $coordinators,
                 'profile' => [
                     'program'          => $program,
                     'year_level'       => $yearLevel,

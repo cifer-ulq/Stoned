@@ -1440,6 +1440,28 @@ function renderApplicantsList(body, students, slot, backdrop, container, allSlot
       showSetOjtStartModal(slot, interestId, studentName, body, container, allSlots, backdrop);
     });
   });
+
+  // ── Message / Choose Course Coordinator ───────────────────────────────────
+  body.querySelectorAll('.btn--message-coord').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const interestId = btn.dataset.id;
+      const applicant = students.find(s => String(s.id) === String(interestId));
+      if (!applicant) return;
+      const st = applicant.student || {};
+      const coords = Array.isArray(applicant.coordinators) ? applicant.coordinators : (applicant.supervisor ? [applicant.supervisor] : []);
+      const endorsedById = applicant.endorsed_by || applicant.supervisor?.id || 0;
+      if (window.openCoordinatorSelector) {
+        window.openCoordinatorSelector({
+          studentName: st.name || 'Student',
+          course: st.program || '',
+          coordinators: coords,
+          endorsedById,
+        });
+      } else if (window.openCoordinatorChat) {
+        window.openCoordinatorChat(0);
+      }
+    });
+  });
 }
 
 function applicantCard(s, state) {
@@ -1464,6 +1486,9 @@ function applicantCard(s, state) {
   const ojtStartDate = s.ojt_start_date || '';
   const ojtInstructions = s.ojt_instructions || '';
   const avatarUrl = st.avatar_url || null;
+  const coordinators = Array.isArray(s.coordinators) ? s.coordinators : (s.supervisor ? [s.supervisor] : []);
+  const primaryCoord = coordinators[0] || s.supervisor || null;
+  const extraCoordCount = Math.max(0, coordinators.length - 1);
 
   const BADGE = {
     new_applicant:        { bg: 'rgba(0,89,48,0.08)',     color: '#005930',         border: 'rgba(0,89,48,0.2)',     label: 'New Applicant',                        ico: 'clock' },
@@ -1604,6 +1629,32 @@ function applicantCard(s, state) {
       </div>`;
   }
 
+  // ── Course Coordinator(s) Contact Box ──────────────────────────────────────
+  const coordinatorBoxHtml = primaryCoord ? `
+    <div style="margin:0 20px 14px;padding:10px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+      <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1;">
+        <div style="width:32px;height:32px;border-radius:8px;background:rgba(0,89,48,0.1);color:#005930;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          ${icon('shield', 15)}
+        </div>
+        <div style="min-width:0;flex:1;">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <span style="font-size:0.7rem;font-weight:800;text-transform:uppercase;letter-spacing:0.04em;color:#005930;">
+              ${primaryCoord.is_endorser ? 'Endorsing OJT Coordinator' : 'Course OJT Coordinator'}
+            </span>
+            ${extraCoordCount > 0 ? `<span style="background:rgba(0,89,48,0.12);color:#005930;font-size:0.66rem;font-weight:700;padding:1px 7px;border-radius:99px;">+${extraCoordCount} more in course</span>` : ''}
+          </div>
+          <div style="font-size:0.8rem;font-weight:700;color:#0f172a;margin-top:1px;">
+            ${primaryCoord.name}
+            ${primaryCoord.email ? `<span style="font-weight:500;color:#64748b;font-size:0.75rem;"> &middot; <a href="mailto:${primaryCoord.email}" style="color:#005930;text-decoration:none;">${primaryCoord.email}</a></span>` : ''}
+            ${primaryCoord.phone ? `<span style="font-weight:500;color:#64748b;font-size:0.75rem;"> &middot; ${primaryCoord.phone}</span>` : ''}
+          </div>
+        </div>
+      </div>
+      <button type="button" class="btn btn--sm btn--outline btn--message-coord" data-id="${s.id}" style="height:30px;padding:0 11px;border-radius:7px;font-size:0.74rem;font-weight:700;color:#005930;border-color:rgba(0,89,48,0.3);background:#ffffff;display:inline-flex;align-items:center;gap:5px;cursor:pointer;flex-shrink:0;">
+        ${icon('messageCircle', 12)} ${coordinators.length > 1 ? `Choose Coordinator (${coordinators.length})` : 'Message Coordinator'}
+      </button>
+    </div>` : '';
+
   // ── Action buttons per stage ──────────────────────────────────────────────
   let actionButtons = '';
   if (state === 'new_applicant' || state === 'pending') {
@@ -1676,16 +1727,22 @@ function applicantCard(s, state) {
       </div>` : ''}
 
       ${stageDetailsBox}
+      ${coordinatorBoxHtml}
 
       <!-- Unified Card Footer: Profile on left, actions on right -->
       <div style="padding:12px 20px;background:#f8fafc;border-top:1px solid #edf2f7;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
-        <button class="btn btn--sm btn--mark-viewed" data-id="${s.id}" style="${
-          resumeViewed
-            ? 'background:rgba(16,185,129,0.1);color:#005930;border:1px solid rgba(16,185,129,0.3);'
-            : 'background:rgba(0,89,48,0.08);color:#005930;border:1px solid rgba(0,89,48,0.25);'
-        }height:34px;padding:0 14px;border-radius:8px;font-size:0.78rem;font-weight:700;display:inline-flex;align-items:center;gap:6px;cursor:pointer;">
-          ${resumeViewed ? `${icon('checkCircle', 13)} Viewed Profile ${icon('externalLink', 11)}` : `${icon('user', 13)} View Full Profile ${icon('externalLink', 11)}`}
-        </button>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn--sm btn--mark-viewed" data-id="${s.id}" style="${
+            resumeViewed
+              ? 'background:rgba(16,185,129,0.1);color:#005930;border:1px solid rgba(16,185,129,0.3);'
+              : 'background:rgba(0,89,48,0.08);color:#005930;border:1px solid rgba(0,89,48,0.25);'
+          }height:34px;padding:0 14px;border-radius:8px;font-size:0.78rem;font-weight:700;display:inline-flex;align-items:center;gap:6px;cursor:pointer;">
+            ${resumeViewed ? `${icon('checkCircle', 13)} Viewed Profile ${icon('externalLink', 11)}` : `${icon('user', 13)} View Full Profile ${icon('externalLink', 11)}`}
+          </button>
+          <button type="button" class="btn btn--sm btn--outline" onclick="window.openChat && window.openChat('ojt_interest_${s.id}')" style="height:34px;padding:0 12px;border-radius:8px;font-size:0.77rem;font-weight:600;display:inline-flex;align-items:center;gap:5px;cursor:pointer;">
+            ${icon('messageSquare', 13)} Chat Student
+          </button>
+        </div>
 
         <div style="display:flex;align-items:center;gap:8px;margin-left:auto;">
           ${actionButtons}

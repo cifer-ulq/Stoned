@@ -82,9 +82,15 @@ function resolveRoute() {
     const linkPath = link.getAttribute('data-route');
     link.classList.toggle('navbar__link--active', linkPath === activeRoute);
   });
+  document.querySelectorAll('.navbar__tab').forEach(tab => {
+    tab.classList.toggle('navbar__tab--active', tab.getAttribute('data-route') === activeRoute);
+  });
   document.querySelectorAll('.mobile-nav__link').forEach(link => {
     const linkPath = link.getAttribute('data-route');
     link.classList.toggle('mobile-nav__link--active', linkPath === activeRoute);
+  });
+  document.querySelectorAll('.mobile-bottom-nav__tab').forEach(tab => {
+    tab.classList.toggle('mobile-bottom-nav__tab--active', tab.getAttribute('data-route') === activeRoute);
   });
   document.querySelectorAll('.sidebar-nav__item').forEach(item => {
     item.classList.toggle('sidebar-nav__item--active', item.getAttribute('data-route') === activeRoute);

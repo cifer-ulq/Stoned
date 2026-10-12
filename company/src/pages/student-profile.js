@@ -235,6 +235,7 @@ function renderProfile(d, params) {
   const experience   = Array.isArray(d.experience)   ? d.experience   : [];
   const projects     = Array.isArray(d.projects)     ? d.projects     : [];
   const achievements = Array.isArray(d.achievements) ? d.achievements : [];
+  const coordinators = Array.isArray(d.coordinators) ? d.coordinators : [];
 
   // Parse contextual reviewer parameters
   const slotId     = params.get('slot') || params.get('slotId');
@@ -282,6 +283,11 @@ function renderProfile(d, params) {
           </span>
         </div>
         <div class="sp-review-bar__actions">
+          ${coordinators.length > 0 ? `
+            <button id="sp-btn-jump-coordinators" class="sp-review-btn sp-review-btn--secondary" style="color:#005930;border-color:rgba(0,89,48,0.3);background:rgba(0,89,48,0.06);font-weight:700;" title="View Course OJT Coordinator(s) & Contact Information">
+              ${icon('award', 14)} <span>OJT Coordinator${coordinators.length > 1 ? `s (${coordinators.length})` : ''}</span>
+            </button>
+          ` : ''}
           <button id="sp-btn-mark-viewed" class="sp-review-btn sp-review-btn--mark" title="Candidate profile officially inspected">
             ${icon('checkCircle', 14)} <span>Profile Inspected</span>
           </button>
@@ -459,6 +465,77 @@ function renderProfile(d, params) {
           ${requirementsDriveUrl ? `<a class="contact-chip contact-chip--link" href="${requirementsDriveUrl}" target="_blank" rel="noopener" style="color:#0284c7;border-color:rgba(2,132,199,0.3);background:rgba(2,132,199,0.06);">${icon('folder', 13)} OJT Requirements Drive</a>` : ''}
         </div>
       </div>
+
+      ${coordinators.length > 0 ? `
+      <!-- Course OJT Coordinator(s) & Contact Information -->
+      <div class="profile-section" id="sp-coordinators-section" style="border:1px solid rgba(0,89,48,0.24);background:linear-gradient(180deg, rgba(0,89,48,0.04) 0%, rgba(0,89,48,0.005) 100%);border-radius:12px;padding:20px;">
+        <div class="profile-section__header" style="align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px;">
+          <div style="display:flex;align-items:flex-start;gap:12px;">
+            <div style="width:38px;height:38px;border-radius:10px;background:rgba(0,89,48,0.12);color:#005930;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              ${icon('award', 20)}
+            </div>
+            <div>
+              <h3 class="profile-section__title" style="margin:0;font-size:1.05rem;color:#005930;">
+                Course OJT Coordinator${coordinators.length > 1 ? `s (${coordinators.length})` : ''} &amp; Contact Information
+              </h3>
+              <p style="font-size:0.8rem;color:var(--text-tertiary);margin:3px 0 0;line-height:1.4;">
+                Assigned university faculty coordinator${coordinators.length > 1 ? 's' : ''} for <strong>${program || 'this program'}</strong>. You can reach out via portal chat or direct email/phone.
+              </p>
+            </div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));gap:12px;">
+          ${coordinators.map(c => {
+            const cInitials = (c.name || 'C').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
+            return `
+              <div style="padding:14px;border-radius:10px;background:var(--bg-card, #fff);border:1px solid rgba(0,89,48,0.18);box-shadow:0 2px 6px rgba(0,0,0,0.03);display:flex;flex-direction:column;justify-content:space-between;gap:10px;">
+                <div style="display:flex;align-items:flex-start;gap:10px;">
+                  <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#005930,#007a42);color:#fff;font-weight:700;font-size:0.82rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    ${cInitials}
+                  </div>
+                  <div style="min-width:0;flex:1;">
+                    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                      <span style="font-weight:700;font-size:0.9rem;color:var(--text-primary);">${c.name || 'OJT Coordinator'}</span>
+                      ${c.course ? `<span style="font-size:0.65rem;font-weight:700;padding:1px 6px;border-radius:99px;background:rgba(0,89,48,0.1);color:#005930;">${c.course}</span>` : ''}
+                    </div>
+                    <div style="font-size:0.76rem;color:var(--text-secondary);margin-top:2px;">
+                      ${c.position || 'OJT Coordinator'}${c.company_name ? ` &bull; ${c.company_name}` : ''}
+                    </div>
+                  </div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:5px;padding-top:8px;border-top:1px dashed var(--border-light, #e2e8f0);font-size:0.78rem;">
+                  ${c.email ? `
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
+                      <a href="mailto:${c.email}?subject=OJT%20Inquiry%20regarding%20${encodeURIComponent(name)}" style="color:#005930;text-decoration:none;font-weight:600;display:inline-flex;align-items:center;gap:5px;word-break:break-all;">
+                        ${icon('mail', 13)} ${c.email}
+                      </a>
+                      <button type="button" class="sp-copy-coord-email" data-email="${c.email}" style="background:none;border:1px solid var(--border-light, #cbd5e1);border-radius:5px;padding:2px 6px;font-size:0.68rem;color:var(--text-secondary);cursor:pointer;flex-shrink:0;" title="Copy Email">
+                        Copy
+                      </button>
+                    </div>
+                  ` : ''}
+                  ${c.phone ? `
+                    <a href="tel:${c.phone}" style="color:var(--text-secondary);text-decoration:none;display:inline-flex;align-items:center;gap:5px;">
+                      ${icon('phone', 13)} ${c.phone}
+                    </a>
+                  ` : `<span style="color:var(--text-tertiary);font-size:0.73rem;">${icon('phone', 12)} No phone listed</span>`}
+                </div>
+                <div style="display:flex;gap:8px;margin-top:2px;">
+                  <button type="button" class="sp-message-coord-btn" data-coord-id="${c.id}" data-coord-email="${c.email || ''}" style="flex:1;background:#005930;color:#fff;border:none;border-radius:7px;padding:7px 10px;font-size:0.76rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:5px;">
+                    ${icon('messageCircle', 13)} Message Coordinator
+                  </button>
+                  ${c.email ? `
+                    <a href="mailto:${c.email}?subject=OJT%20Inquiry%20regarding%20${encodeURIComponent(name)}" style="background:var(--bg-elevated, #f1f5f9);color:var(--text-primary);border:1px solid var(--border-light, #cbd5e1);border-radius:7px;padding:7px 10px;font-size:0.76rem;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:4px;" title="Send Email">
+                      ${icon('mail', 13)} Email
+                    </a>
+                  ` : ''}
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+      ` : ''}
 
       ${requirementsDriveUrl ? `
       <!-- OJT Requirements Drive Section -->
@@ -1066,19 +1143,50 @@ function renderProfile(d, params) {
     achievements: renderAchievements,
   };
 
-  function switchTab(name) {
-    document.querySelectorAll('.profile-tab-btn').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.tab === name);
+  function wireAboutHandlers() {
+    tabContainer.querySelectorAll('.sp-copy-coord-email').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const emailToCopy = btn.getAttribute('data-email');
+        if (emailToCopy && navigator.clipboard) {
+          navigator.clipboard.writeText(emailToCopy);
+          const orig = btn.textContent;
+          btn.textContent = 'Copied!';
+          setTimeout(() => { btn.textContent = orig; }, 1500);
+        }
+      });
     });
 
-    if (tabRenderers[name]) {
-      tabContainer.innerHTML = tabRenderers[name]();
+    tabContainer.querySelectorAll('.sp-message-coord-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const coordId = parseInt(btn.getAttribute('data-coord-id'), 10);
+        const coordEmail = btn.getAttribute('data-coord-email') || '';
+        if (coordId && window.opener && !window.opener.closed && typeof window.opener.openCoordinatorChat === 'function') {
+          window.opener.openCoordinatorChat(coordId);
+          window.opener.focus();
+        } else if (coordId && typeof window.openCoordinatorChat === 'function') {
+          window.openCoordinatorChat(coordId);
+        } else if (coordEmail) {
+          window.location.href = `mailto:${coordEmail}?subject=OJT%20Inquiry%20regarding%20${encodeURIComponent(name)}`;
+        }
+      });
+    });
+  }
+
+  function switchTab(tabName) {
+    document.querySelectorAll('.profile-tab-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.tab === tabName);
+    });
+
+    if (tabRenderers[tabName]) {
+      tabContainer.innerHTML = tabRenderers[tabName]();
     }
 
     // Attach sub-handlers
-    if (name === 'resume') {
+    if (tabName === 'about') {
+      wireAboutHandlers();
+    } else if (tabName === 'resume') {
       wireResumeHandlers();
-    } else if (name === 'achievements') {
+    } else if (tabName === 'achievements') {
       wireAchievementHandlers();
     }
   }
@@ -1097,6 +1205,14 @@ function renderProfile(d, params) {
         document.getElementById('profile-tabs')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     });
+  });
+
+  // Top header "OJT Coordinators" jump button
+  document.getElementById('sp-btn-jump-coordinators')?.addEventListener('click', () => {
+    switchTab('about');
+    setTimeout(() => {
+      document.getElementById('sp-coordinators-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
   });
 
   // Top header "Download Resume" button jumps to Resume tab & triggers download

@@ -107,7 +107,7 @@ function render(container, company, jobs, ojt) {
         </div>
 
         <!-- Main Info Bar -->
-        <div style="padding: 0 32px 28px; position: relative;">
+        <div class="cp-profile-body" style="padding: 0 32px 28px; position: relative;">
           
           <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 20px; margin-top: -46px; margin-bottom: 20px;">
             
@@ -181,18 +181,18 @@ function render(container, company, jobs, ojt) {
       </div>
 
       <!-- Navigation Tabs -->
-      <div style="display: flex; gap: 8px; background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: 14px; padding: 6px; margin-bottom: 24px; box-shadow: var(--shadow-sm);">
+      <div class="cp-tabs-bar" style="display: flex; gap: 8px; background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: 14px; padding: 6px; margin-bottom: 24px; box-shadow: var(--shadow-sm); overflow-x: auto; -webkit-overflow-scrolling: touch;">
         <button
           class="cp-tab-btn"
           data-tab="about"
-          style="flex: 1; height: 42px; border-radius: 10px; border: none; background: ${activeTab === 'about' ? 'var(--color-primary)' : 'transparent'}; color: ${activeTab === 'about' ? '#fff' : 'var(--text-secondary)'}; font-size: 0.9rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s;"
+          style="flex: 1; min-width: 140px; white-space: nowrap; height: 42px; border-radius: 10px; border: none; background: ${activeTab === 'about' ? 'var(--color-primary)' : 'transparent'}; color: ${activeTab === 'about' ? '#fff' : 'var(--text-secondary)'}; font-size: 0.9rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s;"
         >
           ${icon('fileText', 16)} About Company
         </button>
         <button
           class="cp-tab-btn"
           data-tab="jobs"
-          style="flex: 1; height: 42px; border-radius: 10px; border: none; background: ${activeTab === 'jobs' ? 'var(--color-primary)' : 'transparent'}; color: ${activeTab === 'jobs' ? '#fff' : 'var(--text-secondary)'}; font-size: 0.9rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s;"
+          style="flex: 1; min-width: 140px; white-space: nowrap; height: 42px; border-radius: 10px; border: none; background: ${activeTab === 'jobs' ? 'var(--color-primary)' : 'transparent'}; color: ${activeTab === 'jobs' ? '#fff' : 'var(--text-secondary)'}; font-size: 0.9rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s;"
         >
           ${icon('briefcase', 16)} Job Listings
           <span style="padding: 2px 7px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; background: ${activeTab === 'jobs' ? 'rgba(255,255,255,0.25)' : 'var(--bg-secondary)'}; color: ${activeTab === 'jobs' ? '#fff' : 'var(--text-primary)'};">
@@ -202,7 +202,7 @@ function render(container, company, jobs, ojt) {
         <button
           class="cp-tab-btn"
           data-tab="ojt"
-          style="flex: 1; height: 42px; border-radius: 10px; border: none; background: ${activeTab === 'ojt' ? 'var(--color-primary)' : 'transparent'}; color: ${activeTab === 'ojt' ? '#fff' : 'var(--text-secondary)'}; font-size: 0.9rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s;"
+          style="flex: 1; min-width: 140px; white-space: nowrap; height: 42px; border-radius: 10px; border: none; background: ${activeTab === 'ojt' ? 'var(--color-primary)' : 'transparent'}; color: ${activeTab === 'ojt' ? '#fff' : 'var(--text-secondary)'}; font-size: 0.9rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s;"
         >
           ${icon('graduationCap', 16)} OJT Postings
           <span style="padding: 2px 7px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; background: ${activeTab === 'ojt' ? 'rgba(255,255,255,0.25)' : 'var(--bg-secondary)'}; color: ${activeTab === 'ojt' ? '#fff' : 'var(--text-primary)'};">
@@ -247,7 +247,7 @@ function renderTabView(container, company, jobs, ojt, tab) {
 
   if (tab === 'about') {
     content.innerHTML = `
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px;">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 24px;">
         
         <!-- Left: Company Overview -->
         <div style="display: flex; flex-direction: column; gap: 20px;">

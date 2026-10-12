@@ -29,8 +29,30 @@
 .navbar__left {
   display: flex;
   align-items: center;
+  gap: var(--space-2);
   width: 260px;
   flex-shrink: 0;
+}
+
+.navbar__mobile-toggle {
+  display: none;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-default);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all var(--duration-fast);
+}
+
+.navbar__mobile-toggle:hover {
+  background: var(--color-primary-bg);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
 }
 
 .navbar__logo {
@@ -70,9 +92,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-2);
+  gap: var(--space-1);
   flex: 1;
-  max-width: 500px;
+  max-width: 580px;
   margin: 0 auto;
 }
 
@@ -81,8 +103,8 @@
   align-items: center;
   justify-content: center;
   height: calc(var(--navbar-height) - 4px);
-  min-width: 80px;
-  padding: 0 var(--space-6);
+  min-width: 68px;
+  padding: 0 var(--space-4);
   color: var(--text-tertiary);
   border-radius: var(--radius-md);
   position: relative;
@@ -1615,10 +1637,99 @@ textarea.form-input { min-height: 80px; resize: vertical; }
   font-size: var(--text-sm);
 }
 
-/* -- Responsive: on very small screens take full width -- */
-@media (max-width: 400px) {
+/* -- Responsive: on mobile screens take full width and respect bottom nav / dvh -- */
+@media (max-width: 576px) {
   .chat-panel {
-    right: 4px;
-    width: calc(100vw - 8px);
+    left: 8px;
+    right: 8px;
+    bottom: 62px;
+    width: auto;
+    height: min(480px, calc(100dvh - var(--navbar-height, 64px) - 72px));
+    max-height: calc(100dvh - var(--navbar-height, 64px) - 72px);
+    border-radius: var(--radius-xl, 16px);
+    border-bottom: 1px solid var(--border-default);
+  }
+  .chat-close-btn,
+  .chat-back-btn {
+    width: 36px;
+    height: 36px;
   }
 }
+
+/* ── Mobile Sidebar Backdrop & Bottom Nav Bar ── */
+.sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  top: var(--navbar-height);
+  background: var(--bg-overlay, rgba(15, 23, 42, 0.45));
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--duration-normal) var(--ease-default),
+              visibility var(--duration-normal) var(--ease-default);
+  z-index: calc(var(--z-modal, 1001) - 1);
+}
+
+.sidebar-backdrop--open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.mobile-bottom-nav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background: var(--bg-elevated);
+  border-top: 1px solid var(--border-default);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
+  z-index: var(--z-sticky, 200);
+  align-items: center;
+  justify-content: space-around;
+  padding: 0 var(--space-1);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.mobile-bottom-nav__tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  color: var(--text-tertiary);
+  text-decoration: none;
+  font-size: 0.65rem;
+  font-weight: var(--weight-medium);
+  transition: color var(--duration-fast);
+  position: relative;
+}
+
+.mobile-bottom-nav__tab span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.mobile-bottom-nav__tab--active {
+  color: var(--color-primary);
+  font-weight: var(--weight-semibold);
+}
+
+.mobile-bottom-nav__tab--active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 25%;
+  right: 25%;
+  height: 3px;
+  background: var(--color-primary);
+  border-radius: 0 0 var(--radius-full) var(--radius-full);
+}
+

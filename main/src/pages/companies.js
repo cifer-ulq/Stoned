@@ -42,16 +42,16 @@ export async function renderCompanies(container) {
     <div class="cp-page-wrap animate-fade-in" style="max-width: 1200px; margin: 0 auto; padding-bottom: 40px;">
       <!-- Hero Skeleton -->
       <div style="background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: 16px; padding: 28px; margin-bottom: 24px;">
-        <div class="skeleton" style="width: 220px; height: 32px; border-radius: 8px; margin-bottom: 10px;"></div>
-        <div class="skeleton" style="width: 380px; height: 18px; border-radius: 6px; margin-bottom: 24px;"></div>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px;">
+        <div class="skeleton" style="width: min(100%, 220px); height: 32px; border-radius: 8px; margin-bottom: 10px;"></div>
+        <div class="skeleton" style="width: min(100%, 380px); height: 18px; border-radius: 6px; margin-bottom: 24px;"></div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 16px;">
           <div class="skeleton" style="height: 64px; border-radius: 12px;"></div>
           <div class="skeleton" style="height: 64px; border-radius: 12px;"></div>
           <div class="skeleton" style="height: 64px; border-radius: 12px;"></div>
         </div>
       </div>
       <!-- Cards Skeleton -->
-      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px;">
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 20px;">
         ${[1, 2, 3, 4, 5, 6].map(() => `<div class="skeleton skeleton--card" style="height: 240px; border-radius: 16px;"></div>`).join('')}
       </div>
     </div>
@@ -123,7 +123,7 @@ export async function renderCompanies(container) {
       <div class="cp-page-wrap animate-fade-in" style="max-width: 1200px; margin: 0 auto; padding-bottom: 40px;">
         
         <!-- Hero Header with Stats -->
-        <header class="cp-hero" style="background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: 20px; padding: 28px 32px; margin-bottom: 24px; position: relative; overflow: hidden; box-shadow: var(--shadow-sm);">
+        <header class="cp-hero cp-hero-banner" style="background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: 20px; padding: 28px 32px; margin-bottom: 24px; position: relative; overflow: hidden; box-shadow: var(--shadow-sm);">
           <div style="position: absolute; right: -40px; top: -40px; width: 220px; height: 220px; background: radial-gradient(circle, var(--color-primary-bg) 0%, transparent 70%); pointer-events: none; border-radius: 50%;"></div>
 
           <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 20px; margin-bottom: 24px;">
@@ -177,7 +177,7 @@ export async function renderCompanies(container) {
           <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding-top: 20px; border-top: 1px solid var(--border-default);">
             
             <!-- Search Input -->
-            <div style="flex: 1; min-width: 260px; position: relative;">
+            <div style="flex: 1; min-width: min(100%, 220px); position: relative;">
               <span style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-tertiary); display: flex; pointer-events: none;">
                 ${icon('search', 17)}
               </span>
@@ -253,7 +253,7 @@ export async function renderCompanies(container) {
         </header>
 
         <!-- Result Info Bar -->
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding: 0 4px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding: 0 4px; flex-wrap: wrap; gap: 8px;">
           <span style="font-size: 0.88rem; color: var(--text-secondary); font-weight: 500;">
             Showing <strong style="color: var(--text-primary);">${filtered.length}</strong> ${filtered.length === 1 ? 'company' : 'companies'}
             ${selectedCategory !== 'all' ? ` in <strong style="color: var(--color-primary);">${selectedCategory}</strong>` : ''}
@@ -282,7 +282,7 @@ export async function renderCompanies(container) {
 
   function renderGrid(list) {
     return `
-      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px;">
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 20px;">
         ${list.map((c, i) => companyCardGrid(c, i)).join('')}
       </div>
     `;
@@ -436,7 +436,7 @@ export async function renderCompanies(container) {
         </div>
 
         <!-- Openings Badges & Button -->
-        <div style="display: flex; align-items: center; gap: 14px; flex-shrink: 0;">
+        <div class="cp-card__list-right" style="display: flex; align-items: center; gap: 14px; flex-shrink: 0;">
           <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-end;">
             ${ojtCount > 0 ? `
               <span style="padding: 3px 10px; background: rgba(0, 89, 48, 0.08); color: #005930; border: 1px solid rgba(0, 89, 48, 0.2); border-radius: 12px; font-size: 0.74rem; font-weight: 700;">

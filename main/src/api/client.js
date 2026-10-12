@@ -217,8 +217,24 @@ export async function apiUpload(path, formData) {
 
   const res = await fetch(`${API_BASE}${path}`, { method: 'POST', headers, body: formData });
   if (res.status === 401) { clearAuth(); window.location.href = '../login/'; return null; }
+  if (res.status === 413) {
+    return {
+      status: 'error',
+      message: 'File size is too large for the server. Please upload a smaller file.',
+      errors: { file: ['The uploaded file exceeds the maximum allowed size.'] },
+    };
+  }
 
-  const data = await res.json();
+  let data = null;
+  try {
+    data = await res.json();
+  } catch {
+    return {
+      status: 'error',
+      message: res.ok ? 'Upload completed.' : `Upload failed (HTTP ${res.status}). Please try a smaller file.`,
+    };
+  }
+
   if (res.ok) {
     handleMutationInvalidation(path);
   }

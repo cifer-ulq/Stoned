@@ -40,3 +40,5 @@ hireme-api/.phpunit.result.cache
 .idea/
 .DS_Store
 Thumbs.db
+cloudflared.exe
+

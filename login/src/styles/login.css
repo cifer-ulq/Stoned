@@ -629,8 +629,10 @@
   .lp-form-panel { padding: 2rem 1.75rem; padding-top: 4.5rem; align-items: flex-start; }
 }
 @media (max-width: 480px) {
-  .lp-form-panel { padding: 2rem 1.25rem; padding-top: 3.5rem; }
+  .lp-form-panel { padding: 2rem 1.25rem; padding-top: 4rem; }
   .lp-form-inner { max-width: 100%; }
   .login-header__title { font-size: 1.5rem; }
   .login-social { grid-template-columns: 1fr; }
+  .login-theme-toggle { top: 0.85rem; right: 1rem; }
+  .login-options { flex-wrap: wrap; gap: 8px; }
 }

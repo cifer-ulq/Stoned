@@ -84,7 +84,7 @@ class ChatController extends Controller
             $unread  = $msgs->where('receiver_id', $me->id)->whereNull('read_at')->count();
 
             $otherId = $latest->sender_id === $me->id ? $latest->receiver_id : $latest->sender_id;
-            $other   = User::with(['companyProfile', 'supervisorProfile'])->select('id', 'name', 'avatar_url', 'role')->find($otherId);
+            $other   = User::with(['companyProfile', 'supervisorProfile'])->select('id', 'name', 'email', 'avatar_url', 'role')->find($otherId);
             $displayName = $other?->name;
             if ($other?->role === 'company' && $other->companyProfile?->company_name) {
                 $displayName = $other->companyProfile->company_name;
@@ -94,10 +94,15 @@ class ChatController extends Controller
                 'key'          => $key,
                 'label'        => $this->keyLabel($key, $me),
                 'other_user'   => $other ? [
-                    'id'     => $other->id,
-                    'name'   => $displayName,
-                    'avatar' => $other->avatar_url,
-                    'role'   => $other->role,
+                    'id'           => $other->id,
+                    'name'         => $displayName,
+                    'email'        => $other->email,
+                    'phone'        => $other->supervisorProfile?->phone ?? '',
+                    'course'       => $other->supervisorProfile?->getAssignedCourse() ?? $other->supervisorProfile?->course ?? $other->supervisorProfile?->position ?? '',
+                    'position'     => $other->supervisorProfile?->position ?? '',
+                    'company_name' => $other->supervisorProfile?->company_name ?? 'CHMSU',
+                    'avatar'       => $other->avatar_url,
+                    'role'         => $other->role,
                 ] : null,
                 'last_message' => $latest->message,
                 'last_at'      => $latest->created_at,
@@ -152,7 +157,7 @@ class ChatController extends Controller
             ]);
 
         $otherId = collect($participants)->first(fn($id) => $id !== $me->id);
-        $other   = User::with(['companyProfile', 'supervisorProfile'])->select('id', 'name', 'avatar_url', 'role')->find($otherId);
+        $other   = User::with(['companyProfile', 'supervisorProfile'])->select('id', 'name', 'email', 'avatar_url', 'role')->find($otherId);
         $displayName = $other?->name;
         if ($other?->role === 'company' && $other->companyProfile?->company_name) {
             $displayName = $other->companyProfile->company_name;
@@ -161,10 +166,15 @@ class ChatController extends Controller
         return response()->json([
             'data'  => $messages,
             'other' => $other ? [
-                'id'     => $other->id,
-                'name'   => $displayName,
-                'avatar' => $other->avatar_url,
-                'role'   => $other->role,
+                'id'           => $other->id,
+                'name'         => $displayName,
+                'email'        => $other->email,
+                'phone'        => $other->supervisorProfile?->phone ?? '',
+                'course'       => $other->supervisorProfile?->getAssignedCourse() ?? $other->supervisorProfile?->course ?? $other->supervisorProfile?->position ?? '',
+                'position'     => $other->supervisorProfile?->position ?? '',
+                'company_name' => $other->supervisorProfile?->company_name ?? 'CHMSU',
+                'avatar'       => $other->avatar_url,
+                'role'         => $other->role,
             ] : null,
             'label' => $this->keyLabel($key, $me),
         ]);
@@ -273,6 +283,7 @@ class ChatController extends Controller
                     'other_user' => [
                         'id'     => $company->id,
                         'name'   => $company->companyProfile?->company_name ?? $company->name,
+                        'email'  => $company->email,
                         'avatar' => $company->avatar_url,
                         'role'   => $company->role,
                     ],
@@ -285,7 +296,7 @@ class ChatController extends Controller
                 $companyUserId = $me->id;
                 $supervisor = null;
                 if ($id > 0) {
-                    $supervisor = User::where('role', 'supervisor')->find($id);
+                    $supervisor = User::where('role', 'supervisor')->with('supervisorProfile')->find($id);
                 }
                 if (!$supervisor) {
                     $endorserId = \App\Models\StudentOjtInterest::whereHas('posting', fn($q) => $q->where('company_user_id', $companyUserId))
@@ -293,11 +304,11 @@ class ChatController extends Controller
                         ->latest('updated_at')
                         ->value('endorsed_by');
                     if ($endorserId) {
-                        $supervisor = User::where('role', 'supervisor')->find($endorserId);
+                        $supervisor = User::where('role', 'supervisor')->with('supervisorProfile')->find($endorserId);
                     }
                 }
                 if (!$supervisor) {
-                    $supervisor = User::where('role', 'supervisor')->first();
+                    $supervisor = User::where('role', 'supervisor')->with('supervisorProfile')->first();
                 }
 
                 if (!$supervisor) {
@@ -307,10 +318,15 @@ class ChatController extends Controller
                 return response()->json([
                     'key'        => "coord_company_{$companyUserId}_{$supervisor->id}",
                     'other_user' => [
-                        'id'     => $supervisor->id,
-                        'name'   => $supervisor->name,
-                        'avatar' => $supervisor->avatar_url,
-                        'role'   => $supervisor->role,
+                        'id'           => $supervisor->id,
+                        'name'         => $supervisor->name,
+                        'email'        => $supervisor->email,
+                        'phone'        => $supervisor->supervisorProfile?->phone ?? '',
+                        'course'       => $supervisor->supervisorProfile?->getAssignedCourse() ?? $supervisor->supervisorProfile?->course ?? $supervisor->supervisorProfile?->position ?? 'OJT Coordinator',
+                        'position'     => $supervisor->supervisorProfile?->position ?? 'OJT Coordinator',
+                        'company_name' => $supervisor->supervisorProfile?->company_name ?? 'CHMSU',
+                        'avatar'       => $supervisor->avatar_url,
+                        'role'         => $supervisor->role,
                     ],
                 ]);
             }
@@ -318,7 +334,7 @@ class ChatController extends Controller
             if (in_array($me->role, ['student', 'graduate'])) {
                 $studentId = $me->id;
                 if ($id > 0) {
-                    $supervisor = User::where('role', 'supervisor')->find($id);
+                    $supervisor = User::where('role', 'supervisor')->with('supervisorProfile')->find($id);
                 } else {
                     $supervisor = null;
                     $endorserId = \App\Models\StudentOjtInterest::where('student_user_id', $studentId)
@@ -327,7 +343,7 @@ class ChatController extends Controller
                         ->value('endorsed_by');
 
                     if ($endorserId) {
-                        $supervisor = User::where('role', 'supervisor')->find($endorserId);
+                        $supervisor = User::where('role', 'supervisor')->with('supervisorProfile')->find($endorserId);
                     }
 
                     if (!$supervisor) {
@@ -335,6 +351,7 @@ class ChatController extends Controller
                         $normalized = $program ? \App\Services\CourseNormalizer::normalize($program) : null;
                         if ($normalized) {
                             $supervisor = User::where('role', 'supervisor')
+                                ->with('supervisorProfile')
                                 ->whereHas('supervisorProfile', function ($q) use ($normalized) {
                                     $q->where('course', $normalized)
                                       ->orWhere(function ($sq) use ($normalized) {
@@ -344,7 +361,7 @@ class ChatController extends Controller
                         }
                     }
                     if (!$supervisor) {
-                        $supervisor = User::where('role', 'supervisor')->first();
+                        $supervisor = User::where('role', 'supervisor')->with('supervisorProfile')->first();
                     }
                 }
 
@@ -355,10 +372,15 @@ class ChatController extends Controller
                 return response()->json([
                     'key'        => "coord_student_{$studentId}_{$supervisor->id}",
                     'other_user' => [
-                        'id'     => $supervisor->id,
-                        'name'   => $supervisor->name,
-                        'avatar' => $supervisor->avatar_url,
-                        'role'   => $supervisor->role,
+                        'id'           => $supervisor->id,
+                        'name'         => $supervisor->name,
+                        'email'        => $supervisor->email,
+                        'phone'        => $supervisor->supervisorProfile?->phone ?? '',
+                        'course'       => $supervisor->supervisorProfile?->getAssignedCourse() ?? $supervisor->supervisorProfile?->course ?? 'OJT Coordinator',
+                        'position'     => $supervisor->supervisorProfile?->position ?? 'OJT Coordinator',
+                        'company_name' => $supervisor->supervisorProfile?->company_name ?? 'CHMSU',
+                        'avatar'       => $supervisor->avatar_url,
+                        'role'         => $supervisor->role,
                     ],
                 ]);
             }
@@ -376,6 +398,7 @@ class ChatController extends Controller
                     'other_user' => [
                         'id'     => $student->id,
                         'name'   => $student->name,
+                        'email'  => $student->email,
                         'avatar' => $student->avatar_url,
                         'role'   => $student->role,
                     ],
@@ -391,17 +414,35 @@ class ChatController extends Controller
     // ── List Coordinators for Company Chat ───────────────────────────────────
     public function listCoordinators(Request $request)
     {
+        $requestedCourse = $request->query('course');
+        $normalizedFilter = $requestedCourse ? \App\Services\CourseNormalizer::normalize($requestedCourse) : null;
+
         $coordinators = User::where('role', 'supervisor')
             ->with('supervisorProfile')
             ->get()
-            ->map(fn($u) => [
-                'id'       => $u->id,
-                'name'     => $u->name,
-                'email'    => $u->email,
-                'avatar'   => $u->avatar_url,
-                'course'   => $u->supervisorProfile?->course ?? $u->supervisorProfile?->position ?? 'OJT Coordinator',
-                'position' => $u->supervisorProfile?->position ?? 'OJT Coordinator',
-            ]);
+            ->map(function ($u) {
+                $assignedCourse = $u->supervisorProfile?->getAssignedCourse()
+                    ?? $u->supervisorProfile?->course
+                    ?? $u->supervisorProfile?->position
+                    ?? 'OJT Coordinator';
+
+                return [
+                    'id'           => $u->id,
+                    'name'         => $u->name,
+                    'email'        => $u->email,
+                    'phone'        => $u->supervisorProfile?->phone ?? '',
+                    'avatar'       => $u->avatar_url,
+                    'course'       => $assignedCourse,
+                    'position'     => $u->supervisorProfile?->position ?? $assignedCourse,
+                    'company_name' => $u->supervisorProfile?->company_name ?? 'CHMSU',
+                ];
+            });
+
+        if ($normalizedFilter) {
+            $coordinators = $coordinators->sortByDesc(function ($c) use ($normalizedFilter) {
+                return strcasecmp($c['course'] ?? '', $normalizedFilter) === 0 ? 1 : 0;
+            })->values();
+        }
 
         return response()->json(['data' => $coordinators]);
     }

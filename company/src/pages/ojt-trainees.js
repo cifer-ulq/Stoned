@@ -1225,10 +1225,17 @@ export async function renderOjtTrainees(container) {
 
         <!-- Coordinator badge snippet -->
         <div style="display:none;flex-direction:column;font-size:0.72rem;color:var(--text-secondary);min-width:130px;" class="desktop-only-slots">
-          <span style="font-size:0.68rem;font-weight:700;text-transform:uppercase;color:var(--text-tertiary);">Academic Coordinator</span>
-          <span style="font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px;">
-            ${escapeHtml(sup.name || 'Faculty Mentor')}
+          <span style="font-size:0.68rem;font-weight:700;text-transform:uppercase;color:var(--text-tertiary);">
+            OJT Coordinator${Array.isArray(t.coordinators) && t.coordinators.length > 1 ? `s (${t.coordinators.length})` : ''}
           </span>
+          <span style="font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px;" title="${escapeHtml((Array.isArray(t.coordinators) && t.coordinators.length ? t.coordinators.map(c => `${c.name}${c.email ? ` (${c.email})` : ''}`).join(', ') : sup.name) || 'Faculty Mentor')}">
+            ${escapeHtml(sup.name || (Array.isArray(t.coordinators) && t.coordinators[0]?.name) || 'Faculty Mentor')}
+          </span>
+          ${(sup.email || (Array.isArray(t.coordinators) && t.coordinators[0]?.email)) ? `
+            <span style="font-size:0.66rem;color:var(--text-tertiary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px;">
+              ${escapeHtml(sup.email || t.coordinators[0]?.email)}
+            </span>
+          ` : ''}
         </div>
 
         <!-- Right: Actions -->
@@ -1242,12 +1249,21 @@ export async function renderOjtTrainees(container) {
           </button>
           <button
             type="button"
+            class="btn btn--ghost btn--sm btn-trainee-coord-chat"
+            data-trainee-id="${t.id}"
+            title="View Coordinator Contact Info & Message Coordinator"
+            style="color:var(--color-primary, #005930);padding:4px 8px;font-size:0.75rem;"
+          >
+            ${icon('award', 13)} Coordinator${Array.isArray(t.coordinators) && t.coordinators.length > 1 ? ` (${t.coordinators.length})` : ''}
+          </button>
+          <button
+            type="button"
             class="btn btn--ghost btn--sm"
             onclick="window.openChat && window.openChat('ojt_interest_${t.interest_id || t.id}')"
             title="Message Intern"
             style="color:var(--color-primary, #005930);padding:4px 8px;font-size:0.75rem;"
           >
-            ${icon('messageCircle', 13)} Message
+            ${icon('messageCircle', 13)} Intern
           </button>
         </div>
       </div>
@@ -1274,6 +1290,30 @@ export async function renderOjtTrainees(container) {
         const tId = parseInt(btn.getAttribute('data-trainee-id'));
         const target = allFlat.find(t => t.id === tId);
         if (target) inspectTrainee(target);
+      });
+    });
+
+    rootEl.querySelectorAll('.btn-trainee-coord-chat').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const tId = parseInt(btn.getAttribute('data-trainee-id'));
+        const target = allFlat.find(t => t.id === tId);
+        if (!target) return;
+        const st = target.student || {};
+        const sup = target.supervisor || {};
+        const coords = Array.isArray(target.coordinators) && target.coordinators.length > 0
+          ? target.coordinators
+          : (sup.id ? [sup] : []);
+        if (window.openCoordinatorSelector) {
+          window.openCoordinatorSelector({
+            studentName: st.name || 'Intern',
+            course: st.program || '',
+            coordinators: coords,
+            endorsedById: target.endorsed_by || sup.id || null,
+          });
+        } else if (window.openCoordinatorChat) {
+          window.openCoordinatorChat(target.endorsed_by || sup.id || 0);
+        }
       });
     });
 
@@ -1345,6 +1385,9 @@ export async function renderOjtTrainees(container) {
   function renderDossierContent(t) {
     const st = t.student || {};
     const sup = t.supervisor || {};
+    const coords = Array.isArray(t.coordinators) && t.coordinators.length > 0
+      ? t.coordinators
+      : (sup.id ? [{ ...sup, is_endorser: true }] : []);
     const p = t.parentPosting || {};
     const init = (st.name || 'Student').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
     const completed = t.completed_hours || 0;
@@ -1533,15 +1576,51 @@ export async function renderOjtTrainees(container) {
           </div>` : ''}
       </div>
 
-      <!-- Academic Coordinator Endorsement -->
+      <!-- Academic Coordinator(s) & Contact Info -->
       <div class="co-dossier__box">
-        <div class="co-dossier__box-title">${icon('shield', 13)} Academic Coordinator</div>
-        <div style="font-weight:700;font-size:0.85rem;color:var(--text-primary);">${escapeHtml(sup.name || 'Faculty Coordinator')}</div>
-        <div style="font-size:0.74rem;color:var(--text-secondary);">${escapeHtml(sup.position || 'CHMSU Practicum Coordinator')}</div>
-        ${sup.email ? `<div style="font-size:0.72rem;color:var(--text-tertiary);margin-top:2px;">${escapeHtml(sup.email)}</div>` : ''}
-        <div style="font-size:0.7rem;color:var(--color-primary, #005930);font-weight:600;margin-top:4px;">
-          ✓ Officially Endorsed & Approved
+        <div class="co-dossier__box-title" style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
+          <span style="display:inline-flex;align-items:center;gap:5px;">
+            ${icon('shield', 13)} Course OJT Coordinator${coords.length > 1 ? `s (${coords.length})` : ''}
+          </span>
+          <span style="font-size:0.66rem;color:var(--color-primary, #005930);font-weight:700;">
+            ✓ Endorsed
+          </span>
         </div>
+        ${coords.length > 0 ? `
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:6px;">
+            ${coords.map(c => `
+              <div style="padding:8px 10px;border-radius:8px;background:var(--bg-elevated, #F8FAFC);border:1px solid ${c.is_endorser ? 'rgba(0,89,48,0.35)' : 'var(--border-light, #E2E8F0)'};">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;">
+                  <div style="min-width:0;flex:1;">
+                    <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
+                      <span style="font-weight:700;font-size:0.82rem;color:var(--text-primary);">${escapeHtml(c.name || 'Faculty Coordinator')}</span>
+                      ${c.is_endorser ? `<span style="font-size:0.6rem;font-weight:700;padding:1px 5px;border-radius:99px;background:#005930;color:#fff;text-transform:uppercase;">Endorsing</span>` : ''}
+                      ${c.course ? `<span style="font-size:0.62rem;font-weight:700;padding:1px 5px;border-radius:4px;background:rgba(0,89,48,0.1);color:var(--color-primary, #005930);">${escapeHtml(c.course)}</span>` : ''}
+                    </div>
+                    <div style="font-size:0.71rem;color:var(--text-secondary);margin-top:1px;">${escapeHtml(c.position || 'CHMSU Practicum Coordinator')}</div>
+                  </div>
+                  <button
+                    type="button"
+                    class="btn btn--outline btn--xs btn-dossier-direct-coord"
+                    data-coord-id="${c.id}"
+                    style="padding:3px 8px;font-size:0.7rem;color:var(--color-primary, #005930);border-color:rgba(0,89,48,0.3);flex-shrink:0;"
+                    title="Message ${escapeHtml(c.name || 'Coordinator')}"
+                  >
+                    ${icon('messageCircle', 11)} Chat
+                  </button>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:2px;margin-top:5px;padding-top:5px;border-top:1px dashed var(--border-light, #E2E8F0);font-size:0.71rem;color:var(--text-secondary);">
+                  ${c.email ? `<a href="mailto:${escapeHtml(c.email)}" style="color:var(--color-primary, #005930);text-decoration:none;display:inline-flex;align-items:center;gap:4px;word-break:break-all;">${icon('mail', 11)} ${escapeHtml(c.email)}</a>` : ''}
+                  ${c.phone ? `<a href="tel:${escapeHtml(c.phone)}" style="color:var(--text-secondary);text-decoration:none;display:inline-flex;align-items:center;gap:4px;">${icon('phone', 11)} ${escapeHtml(c.phone)}</a>` : ''}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        ` : `
+          <div style="font-weight:700;font-size:0.85rem;color:var(--text-primary);">${escapeHtml(sup.name || 'Faculty Coordinator')}</div>
+          <div style="font-size:0.74rem;color:var(--text-secondary);">${escapeHtml(sup.position || 'CHMSU Practicum Coordinator')}</div>
+          ${sup.email ? `<div style="font-size:0.72rem;color:var(--text-tertiary);margin-top:2px;">${escapeHtml(sup.email)}</div>` : ''}
+        `}
       </div>
 
       <!-- Quick Communication -->
@@ -1559,9 +1638,9 @@ export async function renderOjtTrainees(container) {
           class="btn btn--outline btn--sm"
           id="btn-dossier-chat-coord"
           style="flex:1;min-width:145px;gap:6px;font-size:0.78rem;color:var(--color-primary, #005930);"
-          title="Message University OJT Coordinator"
+          title="Choose or Message University OJT Coordinator"
         >
-          ${icon('award', 13)} Message Coordinator
+          ${icon('award', 13)} ${coords.length > 1 ? `Choose Coordinator (${coords.length})` : 'Message Coordinator'}
         </button>
         ${st.email ? `
           <a href="mailto:${st.email}" class="btn btn--ghost btn--sm" style="gap:6px;font-size:0.78rem;" title="Send Direct Email">
@@ -1587,8 +1666,26 @@ export async function renderOjtTrainees(container) {
       if (window.openChat) window.openChat(`ojt_interest_${t.interest_id || t.id}`);
     });
 
+    dossierBody.querySelectorAll('.btn-dossier-direct-coord').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const coordId = parseInt(btn.getAttribute('data-coord-id'), 10);
+        if (coordId && window.openCoordinatorChat) {
+          window.openCoordinatorChat(coordId);
+        }
+      });
+    });
+
     dossierBody.querySelector('#btn-dossier-chat-coord')?.addEventListener('click', () => {
-      if (window.openCoordinatorChat) window.openCoordinatorChat(t.endorsed_by || 0);
+      if (window.openCoordinatorSelector) {
+        window.openCoordinatorSelector({
+          studentName: st.name || 'Intern',
+          course: st.program || '',
+          coordinators: coords,
+          endorsedById: t.endorsed_by || sup.id || null,
+        });
+      } else if (window.openCoordinatorChat) {
+        window.openCoordinatorChat(t.endorsed_by || sup.id || 0);
+      }
     });
 
     dossierBody.querySelector('#btn-dossier-clearance')?.addEventListener('click', () => {

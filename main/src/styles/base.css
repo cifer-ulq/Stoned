@@ -1,4 +1,4 @@
-﻿/* ===========================
+/* ===========================
    Base / Global Styles
    =========================== */
 
@@ -243,6 +243,8 @@ h6 { font-size: var(--text-base); font-weight: var(--weight-medium); }
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
   margin-bottom: var(--space-6);
 }
 

@@ -283,7 +283,7 @@ function renderPrestartOJT(container, res) {
               <h3 class="ojt-instructions-title" style="color:#005930;display:flex;align-items:center;gap:6px;">${icon('calendar', 15)} Agreed Work Schedule</h3>
               <span class="badge badge--success" style="font-size:0.68rem;padding:2px 8px;background:rgba(0,89,48,0.1);color:#005930;border:1px solid rgba(0,89,48,0.2);">Company Policy</span>
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;">
+            <div class="ojt-schedule-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;">
               <div class="ojt-field">
                 <span class="ojt-field__label">${icon('calendar', 12)} Working Days</span>
                 <span class="ojt-field__val" style="font-weight:700;color:var(--text-primary);">${esc(schedDays)}</span>
@@ -387,25 +387,28 @@ function renderPrestartOJT(container, res) {
     });
   });
 
-  container.addEventListener('click', (e) => {
-    const btn = e.target.closest('#btn-prestart-emergency, .btn-trigger-emergency');
-    if (btn) {
-      e.preventDefault();
-      openEmergencyModal(ojtObj, () => {
-        renderOJTTracker(container);
-      });
-    }
-  });
+  if (!container._prestartEmerBound) {
+    container._prestartEmerBound = true;
+    container.addEventListener('click', (e) => {
+      const btn = e.target.closest('#btn-prestart-emergency, .btn-trigger-emergency');
+      if (btn) {
+        e.preventDefault();
+        openEmergencyModal(ojtObj, () => {
+          renderOJTTracker(container);
+        });
+      }
+    });
+  }
 }
 
 // ── Entry point ───────────────────────────────────────────────────────────────
 export async function renderOJTTracker(container) {
   container.innerHTML = `
     <div style="padding:12px 0;">
-      <div class="skeleton skeleton--text" style="width:220px; height:28px; margin-bottom:8px;"></div>
-      <div class="skeleton skeleton--text" style="width:340px;"></div>
+      <div class="skeleton skeleton--text" style="width:min(100%, 220px); height:28px; margin-bottom:8px;"></div>
+      <div class="skeleton skeleton--text" style="width:min(100%, 340px);"></div>
     </div>
-    <div style="display:grid; grid-template-columns:200px 1fr; gap:16px; margin-bottom:16px; flex-wrap:wrap;">
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap:16px; margin-bottom:16px;">
       <div class="skeleton skeleton--card" style="height:200px;"></div>
       <div class="skeleton skeleton--card" style="height:200px;"></div>
     </div>
@@ -611,7 +614,7 @@ function openEmergencyModal(ojt, onSubmitted) {
         <!-- Request Type -->
         <div>
           <label style="display:block;font-size:0.82rem;font-weight:700;margin-bottom:8px;color:var(--text-primary);">Request Type <span style="color:#ef4444;">*</span></label>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div class="ojt-emer-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
             <label style="border:1.5px solid var(--border-light);border-radius:10px;padding:12px;cursor:pointer;display:flex;flex-direction:column;gap:4px;transition:all .15s;" id="type-opt-leave" class="emer-type-card">
               <div style="display:flex;align-items:center;gap:8px;">
                 <input type="radio" name="type" value="temporary_leave" checked style="accent-color:var(--color-primary);">
@@ -642,7 +645,7 @@ function openEmergencyModal(ojt, onSubmitted) {
         </div>
 
         <!-- Dates -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="ojt-emer-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
           <div>
             <label style="display:block;font-size:0.82rem;font-weight:700;margin-bottom:6px;color:var(--text-primary);">Effective Start Date <span style="color:#ef4444;">*</span></label>
             <input type="date" name="start_date" class="input" style="width:100%;height:38px;" value="${todayIso}" required>
@@ -672,7 +675,7 @@ function openEmergencyModal(ojt, onSubmitted) {
         </div>
 
         <!-- Actions -->
-        <div style="display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:6px;">
+        <div style="display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:6px;flex-wrap:wrap;">
           <button type="button" class="btn btn--outline" id="emer-cancel-btn">Cancel</button>
           <button type="submit" class="btn btn--primary" id="emer-submit-btn" style="background:#dc2626;border-color:#dc2626;gap:6px;">
             ${icon('send', 14)} Submit Notice
@@ -1063,7 +1066,7 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
               </button>
             </div>
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+          <div class="ojt-deploy-details-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
             <div>
               <p class="text-xs text-tertiary" style="margin-bottom:3px;">Company</p>
               <p class="text-sm" style="font-weight:600;">${ojt.company}</p>
@@ -1093,7 +1096,7 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
 
           <!-- Hours progress bar -->
           <div style="padding-top:14px;border-top:1px solid var(--border-light);">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;flex-wrap:wrap;gap:4px;">
               <span class="text-xs text-secondary">Hours completed</span>
               <span class="text-xs" style="font-weight:600;color:var(--color-accent);">${hoursRendered} of ${totalHours} hrs (${pctDisplay}%)</span>
             </div>
@@ -1106,12 +1109,12 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
       </div>
     </section>
 
-    <!-- ── Map 45% · Calendar 45% · 10% gap ── -->
+    <!-- ── Map & Calendar Responsive Grid ── -->
     <section class="page-section animate-fade-in-up" style="animation-delay:80ms;">
-      <div style="display:flex;gap:10%;align-items:stretch;">
+      <div class="ojt-map-cal-row">
 
-        <!-- Map card — 45% -->
-        <div class="jp-card" style="flex:0 0 45%;padding:0;overflow:hidden;display:flex;flex-direction:column;">
+        <!-- Map card -->
+        <div class="jp-card ojt-map-card" style="padding:0;overflow:hidden;display:flex;flex-direction:column;">
           <div style="padding:11px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border-light);flex-shrink:0;">
             <h3 style="font-size:0.82rem;font-weight:700;display:flex;align-items:center;gap:6px;">${icon('mapPin', 14)} Company Location</h3>
             <a href="https://www.openstreetmap.org/search?query=${encodeURIComponent(ojt.location || '')}" target="_blank" rel="noopener noreferrer" style="font-size:0.68rem;color:var(--color-primary);font-weight:600;text-decoration:none;display:flex;align-items:center;gap:3px;">Open Maps ${icon('arrowRight', 10)}</a>
@@ -1120,7 +1123,7 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
           <div style="padding:8px 14px;display:flex;align-items:center;gap:12px;border-top:1px solid var(--border-light);background:var(--bg-secondary);flex-shrink:0;flex-wrap:wrap;">
             <span style="display:flex;align-items:center;gap:5px;font-size:0.68rem;color:var(--text-secondary);"><span style="width:10px;height:10px;border-radius:50%;background:#ef4444;display:inline-block;flex-shrink:0;"></span>Company</span>
             <span style="display:flex;align-items:center;gap:5px;font-size:0.68rem;color:var(--text-secondary);"><span style="width:10px;height:10px;border-radius:50%;border:1.5px dashed #005930;background:rgba(34,197,94,0.2);display:inline-block;flex-shrink:0;"></span>100m Geofence</span>
-            <div style="display:flex;align-items:center;gap:4px;margin-left:auto;">
+            <div style="display:flex;align-items:center;gap:4px;margin-left:auto;flex-wrap:wrap;">
               <button id="map-filter-all" class="btn btn--outline btn--sm active" style="height:22px;padding:0 8px;font-size:0.65rem;border-radius:99px;font-weight:600;background:rgba(0,89,48,0.1);color:#005930;border-color:#005930;">All Pins</button>
               <button id="map-filter-in" class="btn btn--outline btn--sm" style="height:22px;padding:0 8px;font-size:0.65rem;border-radius:99px;font-weight:600;display:flex;align-items:center;gap:4px;"><span style="width:7px;height:7px;border-radius:50%;background:#22c55e;"></span>Log In</button>
               <button id="map-filter-out" class="btn btn--outline btn--sm" style="height:22px;padding:0 8px;font-size:0.65rem;border-radius:99px;font-weight:600;display:flex;align-items:center;gap:4px;"><span style="width:7px;height:7px;border-radius:50%;background:#f97316;"></span>Log Out</button>
@@ -1128,8 +1131,8 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
           </div>
         </div>
 
-        <!-- Calendar card — 45% -->
-        <div class="jp-card" style="flex:0 0 45%;padding:14px;display:flex;flex-direction:column;">
+        <!-- Calendar card -->
+        <div class="jp-card ojt-cal-card" style="padding:14px;display:flex;flex-direction:column;">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
             <h3 style="font-size:0.82rem;font-weight:700;display:flex;align-items:center;gap:5px;">${icon('calendar', 14)} Calendar</h3>
             <div style="display:flex;align-items:center;gap:3px;">
@@ -1172,7 +1175,7 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
                <p style="margin-top:12px;font-weight:600;">No logs yet</p>
                <p class="text-sm">Log today's attendance to get started.</p>
               </div>`
-           : `<div style="overflow-x:auto;">
+           : `<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
                 <table style="width:100%;border-collapse:collapse;">
                   <thead>
                     <tr style="border-bottom:2px solid var(--border-light);">
@@ -1193,7 +1196,7 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
               </div>
               <div id="time-logs-pagination" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-top:14px;padding-top:12px;border-top:1px solid var(--border-light);">
                 <div class="text-xs text-secondary" id="pagination-info">Showing entries</div>
-                <div style="display:flex;align-items:center;gap:6px;" id="pagination-controls"></div>
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;" id="pagination-controls"></div>
               </div>`
         }
       </div>
@@ -1361,16 +1364,20 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
     });
   });
 
-  // Delegated handler for any emergency button clicks within the tracker page
-  container.addEventListener('click', (e) => {
-    const emerBtn = e.target.closest('#tracker-btn-emergency, .btn-trigger-emergency');
-    if (emerBtn) {
-      e.preventDefault();
-      openEmergencyModal(ojt, () => {
-        renderOJTTracker(container);
-      });
-    }
-  });
+  // Delegated handler for any emergency button clicks within the tracker page (guarded against duplicate binding)
+  container._currentOjtObj = ojt;
+  if (!container._trackerEmerBound) {
+    container._trackerEmerBound = true;
+    container.addEventListener('click', (e) => {
+      const emerBtn = e.target.closest('#tracker-btn-emergency, .btn-trigger-emergency');
+      if (emerBtn && container._currentOjtObj) {
+        e.preventDefault();
+        openEmergencyModal(container._currentOjtObj, () => {
+          renderOJTTracker(container);
+        });
+      }
+    });
+  }
 
   // ── Time Logs Pagination & Interactive Row Clicks ────────────────────────
   let currentLogsPage = 1;
@@ -1547,6 +1554,14 @@ function initLeafletMap(container, ojt, logs = []) {
 
   function boot() {
     const L = window.L;
+    if (!L || !mapDiv || !mapDiv.isConnected) return;
+
+    // Clean up any existing Leaflet instance on this element before re-initializing
+    if (mapDiv._leafletMap) {
+      try { mapDiv._leafletMap.remove(); } catch (_) {}
+      mapDiv._leafletMap = null;
+    }
+
     // Default center: Bacolod City
     const defaultLat = 10.6840;
     const defaultLon = 122.9563;
@@ -1558,6 +1573,7 @@ function initLeafletMap(container, ojt, logs = []) {
     const centerLon = firstLog?.inLon != null ? Number(firstLog.inLon) : (ojt.companyLon != null ? Number(ojt.companyLon) : defaultLon);
 
     const map = L.map(mapDiv, { zoomControl: true, scrollWheelZoom: true }).setView([centerLat, centerLon], 15);
+    mapDiv._leafletMap = map;
 
     L.DomEvent.disableClickPropagation(mapDiv);
 
@@ -1762,27 +1778,68 @@ function initLeafletMap(container, ojt, logs = []) {
       const entry = logMarkersMap[logId];
       if (!entry) return;
 
+      if (window.innerWidth <= 992 && mapDiv && mapDiv.isConnected) {
+        mapDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+
       if (!map.hasLayer(inLayer)) map.addLayer(inLayer);
       if (!map.hasLayer(outLayer)) map.addLayer(outLayer);
       if (!map.hasLayer(linesLayer)) map.addLayer(linesLayer);
       updateFilterActive(btnAll);
 
-      if (entry.inMarker && entry.outMarker) {
-        map.fitBounds(L.latLngBounds([
-          entry.inMarker.getLatLng(),
-          entry.outMarker.getLatLng()
-        ]), { padding: [70, 70], maxZoom: 18 });
-        entry.inMarker.openPopup();
-      } else if (entry.inMarker) {
-        map.setView(entry.inMarker.getLatLng(), 17);
-        entry.inMarker.openPopup();
-      } else if (entry.outMarker) {
-        map.setView(entry.outMarker.getLatLng(), 17);
-        entry.outMarker.openPopup();
+      setTimeout(() => {
+        if (!mapDiv || !mapDiv.isConnected) return;
+        map.invalidateSize();
+        if (entry.inMarker && entry.outMarker) {
+          map.fitBounds(L.latLngBounds([
+            entry.inMarker.getLatLng(),
+            entry.outMarker.getLatLng()
+          ]), { padding: [70, 70], maxZoom: 18 });
+          entry.inMarker.openPopup();
+        } else if (entry.inMarker) {
+          map.setView(entry.inMarker.getLatLng(), 17);
+          entry.inMarker.openPopup();
+        } else if (entry.outMarker) {
+          map.setView(entry.outMarker.getLatLng(), 17);
+          entry.outMarker.openPopup();
+        }
+      }, window.innerWidth <= 992 ? 250 : 0);
+    };
+
+    if (window._ojtMapResizeHandler) {
+      window.removeEventListener('resize', window._ojtMapResizeHandler);
+    }
+    if (window._ojtMapResizeObserver) {
+      try { window._ojtMapResizeObserver.disconnect(); } catch (_) {}
+      window._ojtMapResizeObserver = null;
+    }
+
+    const syncMapSize = () => {
+      if (!mapDiv || !mapDiv.isConnected) {
+        if (window._ojtMapResizeHandler) {
+          window.removeEventListener('resize', window._ojtMapResizeHandler);
+          window._ojtMapResizeHandler = null;
+        }
+        if (window._ojtMapResizeObserver) {
+          try { window._ojtMapResizeObserver.disconnect(); } catch (_) {}
+          window._ojtMapResizeObserver = null;
+        }
+        return;
+      }
+      if (mapDiv.offsetParent !== null) {
+        map.invalidateSize();
       }
     };
 
-    setTimeout(() => map.invalidateSize(), 200);
+    window._ojtMapResizeHandler = syncMapSize;
+    window.addEventListener('resize', window._ojtMapResizeHandler);
+
+    if (typeof ResizeObserver !== 'undefined') {
+      window._ojtMapResizeObserver = new ResizeObserver(() => syncMapSize());
+      window._ojtMapResizeObserver.observe(mapDiv);
+    }
+
+    setTimeout(() => syncMapSize(), 200);
   }
 
   if (window.L) {
@@ -1955,7 +2012,7 @@ function showLogInModal(sessionLabelOrSuccess, onSuccessMaybe) {
           ${icon('mapPin', 13)} GPS location is required to verify your attendance against the OJT work site geofence.
         </p>
       </div>
-      <div class="modal__footer">
+      <div class="modal__footer" style="flex-wrap:wrap;gap:8px;">
         <button class="btn btn--outline" id="li-cancel">Cancel</button>
         <button class="btn btn--primary" id="li-submit" disabled>${icon('checkCircle', 16)} Confirm ${esc(sessionLabel)}</button>
       </div>
@@ -2083,7 +2140,7 @@ function showLogOutModal(todayLog, sessionLabelOrSuccess, onSuccessMaybe) {
           <button class="btn btn--outline" id="lo-retry" style="font-size:0.76rem;padding:5px 14px;display:inline-flex;align-items:center;gap:6px;">${icon('refreshCcw',13)} Retry Location</button>
         </div>
       </div>
-      <div class="modal__footer">
+      <div class="modal__footer" style="flex-wrap:wrap;gap:8px;">
         <button class="btn btn--outline" id="lo-cancel">Cancel</button>
         <button class="btn btn--primary" id="lo-submit" disabled style="background:#d97706;border-color:#d97706;">${icon('checkCircle', 16)} Confirm ${esc(sessionLabel)}</button>
       </div>
@@ -2099,8 +2156,20 @@ function showLogOutModal(todayLog, sessionLabelOrSuccess, onSuccessMaybe) {
   const timeInput = bd.querySelector('#lo-time');
   const warningEl = bd.querySelector('#lo-time-warning');
 
+  function normalizeOutTime(rawVal) {
+    if (!rawVal) return rawVal;
+    if (!isMorning && loggedIn24 && loggedIn24 >= '12:00' && rawVal < '12:00') {
+      const [hStr, mStr] = rawVal.split(':');
+      const h = parseInt(hStr, 10);
+      if (h >= 1 && h <= 9) {
+        return `${String(h + 12).padStart(2, '0')}:${mStr}`;
+      }
+    }
+    return rawVal;
+  }
+
   function checkTimeValidity() {
-    const val = timeInput.value;
+    const val = normalizeOutTime(timeInput.value);
     if (loggedIn24 && val && val < loggedIn24) {
       warningEl.textContent = `Time Out cannot be earlier than Time In (${loggedInAt}).`;
       warningEl.style.display = 'block';
@@ -2148,7 +2217,7 @@ function showLogOutModal(todayLog, sessionLabelOrSuccess, onSuccessMaybe) {
   bd.addEventListener('click', e => { if (e.target === bd) close(); });
 
   submitBtn.addEventListener('click', () => {
-    const timeVal = bd.querySelector('#lo-time').value;
+    const timeVal = normalizeOutTime(bd.querySelector('#lo-time').value);
     if (!timeVal) return;
     if (loggedIn24 && timeVal < loggedIn24) {
       showToast(`Time Out cannot be earlier than Time In (${loggedInAt}).`, 'error');
@@ -2222,7 +2291,7 @@ function showLogDetail(log) {
         <span style="background:${sc.bg};color:${sc.color};font-size:0.72rem;font-weight:700;padding:3px 10px;border-radius:99px;">${sc.label}</span>
 
         <!-- Sessions breakdown -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px;text-align:left;">
+        <div class="ojt-log-sessions-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px;text-align:left;">
           <!-- Morning Session -->
           <div style="background:var(--bg-secondary);border-radius:var(--radius-md);padding:10px 12px;border-left:3px solid var(--color-success);">
             <p style="font-size:0.72rem;font-weight:700;color:var(--color-success);text-transform:uppercase;margin-bottom:6px;">Morning Session</p>

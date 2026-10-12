@@ -598,6 +598,30 @@ function injectCelebrationStyles() {
     @keyframes gpm-spin {
       to { transform: rotate(360deg); }
     }
+    @media (max-width: 576px) {
+      .gpm-card {
+        padding: 24px 18px 20px;
+        border-radius: 18px;
+      }
+      .gpm-emblem {
+        width: 68px;
+        height: 68px;
+      }
+      .gpm-title {
+        font-size: 1.3rem;
+      }
+      .gpm-stats {
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+      .gpm-stat-box--full {
+        grid-column: span 1;
+      }
+      .gpm-stat-val {
+        white-space: normal;
+        word-break: break-word;
+      }
+    }
   `;
   document.head.appendChild(style);
 }

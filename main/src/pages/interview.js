@@ -154,12 +154,12 @@ function showInterviewDetailModal(iv) {
           </span>
 
           ${iv.isF2F ? `
-            <div class="iv-modal__loc-row">
+            <div class="iv-modal__loc-row" style="flex-wrap: wrap; gap: 10px;">
               <div class="iv-modal__loc-addr">
                 <strong>Physical Address:</strong><br>
                 ${iv.location || 'Company Office / Campus'}
               </div>
-              <div style="display: flex; gap: 8px;">
+              <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                 <button class="btn btn--ghost btn--sm" id="iv-modal-copy-loc" data-loc="${iv.location}">
                   ${icon('share', 13)} Copy Address
                 </button>
@@ -172,7 +172,7 @@ function showInterviewDetailModal(iv) {
               Please arrive 10-15 minutes before your scheduled appointment. Bring any required documents and a valid ID.
             </p>
           ` : `
-            <div class="iv-modal__loc-row">
+            <div class="iv-modal__loc-row" style="flex-wrap: wrap; gap: 10px;">
               <div class="iv-modal__loc-addr">
                 <span class="iv-card__meeting-badge" style="background:${p.bg};color:${p.color};margin-bottom:6px;">
                   ${icon('video', 12)} ${p.label}
@@ -182,7 +182,7 @@ function showInterviewDetailModal(iv) {
                 </div>
               </div>
               ${!isPast && iv.meetingLink !== '#' ? `
-                <div style="display: flex; gap: 8px;">
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                   <button class="btn btn--ghost btn--sm" id="iv-modal-copy-link" data-link="${iv.meetingLink}">
                     ${icon('share', 13)} Copy Link
                   </button>
@@ -196,7 +196,7 @@ function showInterviewDetailModal(iv) {
         </div>
 
         <!-- Interviewer details -->
-        <div style="display: flex; justify-content: space-between; align-items: center; background: var(--bg-secondary); padding: 10px 14px; border-radius: var(--radius-lg); border: 1px solid var(--border-default); font-size: 0.82rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; background: var(--bg-secondary); padding: 10px 14px; border-radius: var(--radius-lg); border: 1px solid var(--border-default); font-size: 0.82rem;">
           <span style="color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">
             ${icon('user', 14)} Interviewer / Contact:
           </span>
@@ -221,7 +221,7 @@ function showInterviewDetailModal(iv) {
         `}
       </div>
 
-      <div class="modal-footer">
+      <div class="modal-footer" style="flex-wrap: wrap;">
         <button class="btn btn--ghost btn--sm" id="iv-modal-close-btn">Close</button>
         ${!isPast && !iv.isF2F && iv.meetingLink !== '#' ? `
           <a href="${iv.meetingLink}" target="_blank" rel="noopener noreferrer" class="btn btn--primary btn--sm">

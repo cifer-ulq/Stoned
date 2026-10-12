@@ -707,6 +707,17 @@ function pfmStyles(extra = '') {
     .pfm-tag-chips { display:flex; flex-wrap:wrap; gap:5px; margin-top:6px; }
     .pfm-tag-pill { background:var(--surface-card); border:1px solid var(--border-default); color:var(--text-secondary); font-size:0.72rem; font-weight:600; padding:2px 8px; border-radius:99px; cursor:pointer; transition:all .15s; }
     .pfm-tag-pill:hover { border-color:var(--color-primary); color:var(--color-primary); background:var(--color-primary-bg); }
+    .pfm-grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .pfm-grid-3 { display:grid; grid-template-columns:1fr 1fr 100px; gap:10px; }
+    @media (max-width: 576px) {
+      .pfm-header { padding:14px 16px; }
+      .pfm-section { padding:14px 16px; }
+      .pfm-footer { padding:12px 16px; flex-wrap:wrap; }
+      .pfm-footer-actions { width:100%; justify-content:flex-end; flex-wrap:wrap; }
+      .pfm-grid-2 { grid-template-columns:1fr; }
+      .pfm-grid-3 { grid-template-columns:1fr 1fr; }
+      .pfm-grid-3 > :last-child { grid-column:span 2; }
+    }
     ${extra}`;
 }
 
@@ -1069,12 +1080,12 @@ function openExpModal(exp) {
                 ${EXP_TYPES.map(t => `<button type="button" class="pfm-type-pill${t === selectedType ? ' pfm-type-pill--active' : ''}" data-type="${t}">${t}</button>`).join('')}
               </div>
             </div>
-            <div style="display:flex;gap:10px;">
-              <div class="form-group" style="flex:1;">
+            <div class="pfm-grid-2">
+              <div class="form-group">
                 <label class="pfm-label">Start</label>
                 <input class="form-input pfm-input" name="period_start" placeholder="Jan 2026" value="${exp?.period_start || ''}">
               </div>
-              <div class="form-group" style="flex:1;">
+              <div class="form-group">
                 <label class="pfm-label">End <span class="pfm-hint">(blank = Present)</span></label>
                 <input class="form-input pfm-input" name="period_end" placeholder="Present" value="${exp?.period_end || ''}">
               </div>
@@ -1216,16 +1227,16 @@ function openEduModal(edu) {
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
             Period & Academic Record
           </div>
-          <div style="display:flex;gap:10px;">
-            <div class="form-group" style="flex:1;">
+          <div class="pfm-grid-3">
+            <div class="form-group">
               <label class="pfm-label">Year Start</label>
               <input class="form-input pfm-input" name="year_start" placeholder="2022" value="${edu?.year_start || ''}">
             </div>
-            <div class="form-group" style="flex:1;">
+            <div class="form-group">
               <label class="pfm-label">Year End <span class="pfm-hint">(blank = Present)</span></label>
               <input class="form-input pfm-input" name="year_end" placeholder="2026" value="${edu?.year_end || ''}">
             </div>
-            <div class="form-group" style="flex:0 0 100px;">
+            <div class="form-group">
               <label class="pfm-label">GPA</label>
               <input class="form-input pfm-input" name="gpa" placeholder="1.50" value="${edu?.gpa || ''}">
             </div>
@@ -1618,6 +1629,32 @@ function openSkillModal(skill) {
 
       /* dark mode tweak */
       [data-theme="dark"] .skm-chip { background:var(--bg-secondary); }
+
+      @media (max-width: 640px) {
+        .skm-box { max-height: 92dvh; }
+        .skm-header { padding: 14px 16px; }
+        .skm-layout { flex-direction: column; }
+        .skm-sidebar {
+          width: 100%;
+          flex-direction: row;
+          overflow-x: auto;
+          overflow-y: hidden;
+          border-right: none;
+          border-bottom: 1px solid var(--border-subtle);
+          padding: 8px 12px;
+          gap: 6px;
+          -webkit-overflow-scrolling: touch;
+        }
+        .skm-cat-btn {
+          width: auto;
+          flex-shrink: 0;
+          padding: 6px 12px;
+          white-space: nowrap;
+        }
+        .skm-right { padding: 12px; gap: 10px; }
+        .skm-footer { padding: 12px 16px; gap: 10px; }
+        .skm-actions { flex-wrap: wrap; }
+      }
     </style>`;
 
   document.body.appendChild(overlay);
@@ -2288,7 +2325,7 @@ function openProjectModal(proj) {
               <label class="pfm-label">Project Title <span class="pfm-req">*</span></label>
               <input class="form-input pfm-input" name="title" required placeholder="e.g. HireMe Placement Intelligence System" value="${proj?.title || ''}">
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="pfm-grid-2">
               <div>
                 <label class="pfm-label">Category</label>
                 <select class="form-input pfm-input form-select" name="category">
@@ -2372,7 +2409,7 @@ function openProjectModal(proj) {
         <div class="pfm-section">
           <span class="pfm-section-label">${icon('shieldCheck', 12)} Verification & Live Links</span>
           <div class="pfm-fields">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="pfm-grid-2">
               <div>
                 <label class="pfm-label">Live Demo URL</label>
                 <div class="pfm-input-wrap">
@@ -2730,7 +2767,7 @@ function openAchModal(ach) {
               <label class="pfm-label">Title / Certificate Name <span class="pfm-req">*</span></label>
               <input class="form-input pfm-input" name="title" required placeholder="e.g. AWS Certified Cloud Practitioner or Dean's Lister" value="${ach?.title || ''}">
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="pfm-grid-2">
               <div>
                 <label class="pfm-label">Issuing Organization <span class="pfm-req">*</span></label>
                 <input class="form-input pfm-input" name="issuer" required placeholder="e.g. Amazon Web Services, CHMSU, DICT" value="${ach?.issuer || ''}">
@@ -2758,7 +2795,7 @@ function openAchModal(ach) {
         <div class="pfm-section">
           <span class="pfm-section-label">${icon('shieldCheck', 12)} Verifiable Proof & Documentation</span>
           <div class="pfm-fields">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="pfm-grid-2">
               <div>
                 <label class="pfm-label">Credential ID / License No.</label>
                 <input class="form-input pfm-input" name="credential_id" placeholder="e.g. AWS-CCP-938210" value="${ach?.credential_id || ''}">
@@ -2808,7 +2845,7 @@ function openAchModal(ach) {
         <div class="pfm-section">
           <span class="pfm-section-label">${icon('calendar', 12)} Validity & Details</span>
           <div class="pfm-fields">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="pfm-grid-2">
               <div>
                 <label class="pfm-label">Issue Date</label>
                 <input class="form-input pfm-input" name="date" placeholder="e.g. Nov 2025" value="${ach?.date || ''}">
@@ -3033,11 +3070,11 @@ function openCertificateViewer(ach) {
         `}
       </div>
 
-      <div class="pfm-footer" style="padding:12px 20px;">
+      <div class="pfm-footer" style="padding:12px 20px;flex-wrap:wrap;gap:10px;">
         <div style="font-size:0.75rem;color:var(--text-secondary);">
           ${ach.award_level ? `Distinction: <strong>${ach.award_level}</strong>` : 'Verified Portfolio Document'}
         </div>
-        <div style="display:flex;gap:8px;">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
           ${ach.credential_url ? `
             <a href="${ach.credential_url}" target="_blank" rel="noopener" class="btn btn--outline btn--sm" style="gap:4px;">
               ${icon('externalLink', 12)} Issuer Verification

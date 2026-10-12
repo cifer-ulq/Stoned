@@ -665,9 +665,10 @@ function showToast(msg) {
   toast.style.cssText = `
     position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);
     background:var(--bg-elevated);border:1px solid var(--border-default);
-    color:var(--text-primary);padding:12px 24px;border-radius:999px;
+    color:var(--text-primary);padding:12px 20px;border-radius:16px;
     font-size:0.825rem;font-weight:500;box-shadow:var(--shadow-lg);
-    animation:lp-enter 0.35s ease both;z-index:9999;white-space:nowrap;
+    animation:lp-enter 0.35s ease both;z-index:9999;white-space:normal;
+    max-width:calc(100vw - 32px);text-align:center;
   `;
   document.body.appendChild(toast);
   setTimeout(() => toast.remove(), 2800);

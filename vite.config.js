@@ -19,6 +19,39 @@ export default defineConfig({
           next();
         });
       },
+      transform(code, id) {
+        if (!id.includes('node_modules') && (id.endsWith('.js') || id.endsWith('.html'))) {
+          return code
+            .replace(/http:\/\/localhost:8000/g, '')
+            .replace(/http:\/\/127\.0\.0\.1:8000/g, '');
+        }
+      },
+      transformIndexHtml(html) {
+        const runtimeShim = `<script>
+(function() {
+  const origFetch = window.fetch;
+  window.fetch = async function(input, init) {
+    if (typeof input === 'string') {
+      input = input.replace(/^https?:\\/\\/(localhost|127\\.0\\.0\\.1):8000/, '');
+    }
+    const res = await origFetch.call(this, input, init);
+    const origJson = res.json.bind(res);
+    res.json = async function() {
+      const data = await origJson();
+      try {
+        const text = JSON.stringify(data)
+          .replace(/https?:\\/\\/(localhost|127\\.0\\.0\\.1):8000\\//g, '/');
+        return JSON.parse(text);
+      } catch {
+        return data;
+      }
+    };
+    return res;
+  };
+})();
+</script>`;
+        return html.replace('<head>', '<head>' + runtimeShim);
+      },
     },
   ],
   build: {
@@ -29,6 +62,8 @@ export default defineConfig({
         main: resolve(__dirname, 'main/index.html'),
         jobseeker: resolve(__dirname, 'jobseeker/index.html'),
         login: resolve(__dirname, 'login/index.html'),
+        adminLogin: resolve(__dirname, 'login/admin-login.html'),
+        setPassword: resolve(__dirname, 'login/set-password.html'),
         onboarding: resolve(__dirname, 'login/onboarding.html'),
         admin: resolve(__dirname, 'admin/index.html'),
         company: resolve(__dirname, 'company/index.html'),
@@ -40,5 +75,17 @@ export default defineConfig({
   server: {
     port: 5173,
     open: false,
+    allowedHosts: true,
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true,
+      },
+      '/storage': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true,
+      },
+    },
   },
 });
+

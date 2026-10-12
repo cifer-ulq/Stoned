@@ -410,6 +410,23 @@ function injectStyles() {
       color: #0f172a;
       background: rgba(0,0,0,0.06);
     }
+    @media (max-width: 576px) {
+      .notif-panel {
+        position: fixed;
+        top: calc(var(--navbar-height, 64px) + 6px);
+        left: 12px;
+        right: 12px;
+        width: auto;
+        max-height: calc(100dvh - var(--navbar-height, 64px) - 80px);
+      }
+      #hireme-toast-container {
+        top: 12px;
+        left: 12px;
+        right: 12px;
+        width: auto;
+        max-width: none;
+      }
+    }
   `;
   document.head.appendChild(s);
 }

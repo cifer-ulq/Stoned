@@ -240,6 +240,9 @@ class CompanyController extends Controller
         // Verify the posting belongs to this company
         OjtPosting::where('company_user_id', $request->user()->id)->findOrFail($id);
 
+        // Pre-load all supervisors with profiles once to avoid N+1 queries
+        $allSupervisors = User::where('role', 'supervisor')->with('supervisorProfile')->get();
+
         $interests = StudentOjtInterest::with([
             'student',
             'student.studentProfile',
@@ -272,7 +275,7 @@ class CompanyController extends Controller
                 WHEN 'rejected' THEN 10
                 ELSE 11 END")
             ->get()
-            ->map(function ($i) {
+            ->map(function ($i) use ($allSupervisors) {
                 $sp = $i->student->studentProfile;
                 $uid = $i->student->id;
 
@@ -282,6 +285,9 @@ class CompanyController extends Controller
                 $skills       = \App\Models\StudentSkill::where('user_id', $uid)->orderByDesc('level')->get();
                 $projects     = \App\Models\PortfolioProject::where('user_id', $uid)->orderBy('sort_order')->get();
                 $achievements = \App\Models\StudentAchievement::where('user_id', $uid)->orderBy('sort_order')->get();
+
+                $coordinators = $this->formatCoordinatorsForStudent($i->student, $i->endorser, $allSupervisors);
+                $primarySup   = $coordinators[0] ?? null;
 
                 return [
                     'id'                       => $i->id,
@@ -347,13 +353,9 @@ class CompanyController extends Controller
                             'date'        => $a->date,
                         ]),
                     ],
-                    'supervisor' => $i->endorser ? [
-                        'id'       => $i->endorser->id,
-                        'name'     => $i->endorser->name,
-                        'email'    => $i->endorser->email,
-                        'company'  => $i->endorser->supervisorProfile?->company_name ?? '',
-                        'position' => $i->endorser->supervisorProfile?->position ?? '',
-                    ] : null,
+                    'endorsed_by'  => $i->endorsed_by,
+                    'supervisor'   => $primarySup,
+                    'coordinators' => $coordinators,
                     'endorsement_letter_url' => $i->endorsement_letter
                         ? url(\Illuminate\Support\Facades\Storage::disk('public')->url($i->endorsement_letter))
                         : null,
@@ -1386,8 +1388,10 @@ class CompanyController extends Controller
                 ->keyBy('user_id')
             : collect();
 
+        $allSupervisors = User::where('role', 'supervisor')->with('supervisorProfile')->get();
+
         $postings = $rawPostings
-            ->map(function ($p) use ($userId, $todayLogsByStudent, $logCountsByStudent) {
+            ->map(function ($p) use ($userId, $todayLogsByStudent, $logCountsByStudent, $allSupervisors) {
                 return [
                     'posting' => [
                         'id'               => $p->id,
@@ -1403,7 +1407,7 @@ class CompanyController extends Controller
                         'preferred_courses'=> $p->preferred_courses,
                         'description'      => $p->description,
                     ],
-                    'trainees' => $p->interests->map(function ($i) use ($userId, $todayLogsByStudent, $logCountsByStudent) {
+                    'trainees' => $p->interests->map(function ($i) use ($userId, $todayLogsByStudent, $logCountsByStudent, $allSupervisors) {
                         $studentId = $i->student_user_id ?? $i->student?->id;
                         $sp = $i->student?->studentProfile;
                         $record = $i->student?->ojtRecord;
@@ -1421,6 +1425,9 @@ class CompanyController extends Controller
                         $todayDtr = $this->formatTodayDtrSummary($todayLog, (bool) ($i->has_lunch_break ?? true), (int) ($logAgg?->total_logs ?? 0));
 
                         $latestEmer = OjtEmergencyRequest::where('student_user_id', $studentId)->latest()->first();
+
+                        $coordinators = $this->formatCoordinatorsForStudent($i->student, $i->endorser, $allSupervisors);
+                        $primarySup   = $coordinators[0] ?? null;
 
                         return [
                             'id'              => $i->id,
@@ -1450,6 +1457,7 @@ class CompanyController extends Controller
                             ] : null,
                             'accepted_at'        => ($i->ojt_started_at ?? $i->updated_at)?->format('M d, Y'),
                             'endorsed_at'        => $i->endorsed_at?->format('M d, Y'),
+                            'endorsed_by'        => $i->endorsed_by,
                             'ojt_start_date'     => $i->ojt_start_date?->format('M d, Y'),
                             'schedule_days'      => $i->schedule_days,
                             'shift_start'        => $i->shift_start,
@@ -1476,13 +1484,8 @@ class CompanyController extends Controller
                                 'student_id' => $sp?->student_id ?? '',
                                 'skills'     => $sp?->skills ?? [],
                             ],
-                            'supervisor' => $i->endorser ? [
-                                'id'       => $i->endorser->id,
-                                'name'     => $i->endorser->name,
-                                'email'    => $i->endorser->email,
-                                'company'  => $i->endorser->supervisorProfile?->company_name ?? '',
-                                'position' => $i->endorser->supervisorProfile?->position ?? '',
-                            ] : null,
+                            'supervisor'   => $primarySup,
+                            'coordinators' => $coordinators,
                         ];
                     }),
                 ];
@@ -2043,10 +2046,13 @@ class CompanyController extends Controller
             'student',
             'student.studentProfile',
             'endorser',
+            'endorser.supervisorProfile',
         ])
         ->whereHas('posting', fn ($q) => $q->where('company_user_id', $userId))
         ->orderByDesc('created_at')
         ->get();
+
+        $allSupervisors = User::where('role', 'supervisor')->with('supervisorProfile')->get();
 
         $studentIds = $ojtInterests->pluck('student_user_id')->unique()->toArray();
         $allUserIds = array_unique(array_merge($applicantIds, $studentIds));
@@ -2116,7 +2122,7 @@ class CompanyController extends Controller
             ];
         });
 
-        $ojtData = $ojtInterests->map(function ($interest) use ($skillsByUser) {
+        $ojtData = $ojtInterests->map(function ($interest) use ($skillsByUser, $allSupervisors) {
             $student = $interest->student;
             $profile = $student?->studentProfile;
             $posting = $interest->posting;
@@ -2186,6 +2192,9 @@ class CompanyController extends Controller
                 ? "{$profile->program}" . ($profile->year_level ? " · {$profile->year_level}" : '')
                 : ($profile?->headline ?? 'Student Intern');
 
+            $coordinators = $this->formatCoordinatorsForStudent($student, $interest->endorser, $allSupervisors);
+            $primarySup   = $coordinators[0] ?? null;
+
             return [
                 'id'             => 'ojt_' . $interest->id,
                 'raw_id'         => $interest->id,
@@ -2211,6 +2220,9 @@ class CompanyController extends Controller
                     ? url(\Illuminate\Support\Facades\Storage::disk('public')->url($interest->endorsement_letter))
                     : null,
                 'endorsed_at'            => $interest->endorsed_at?->format('M d, Y'),
+                'endorsed_by'            => $interest->endorsed_by,
+                'supervisor'             => $primarySup,
+                'coordinators'           => $coordinators,
                 'ojt_start_date'         => $interest->ojt_start_date?->format('M d, Y'),
                 'ojt_start_date_raw'     => $interest->ojt_start_date?->toDateString(),
                 'ojt_instructions'       => $interest->ojt_instructions,
@@ -2406,7 +2418,7 @@ class CompanyController extends Controller
         if (str_starts_with($id, 'ojt_')) {
             $interestId = (int) substr($id, 4);
             $interest = StudentOjtInterest::whereHas('posting', fn ($q) => $q->where('company_user_id', $userId))
-                ->with(['student', 'student.studentProfile'])
+                ->with(['student', 'student.studentProfile', 'endorser', 'endorser.supervisorProfile'])
                 ->findOrFail($interestId);
 
             // Mark resume as viewed
@@ -2417,6 +2429,7 @@ class CompanyController extends Controller
             $uid = $interest->student_user_id;
             $student = $interest->student;
             $profile = $student->studentProfile;
+            $coordinators = $this->formatCoordinatorsForStudent($student, $interest->endorser);
 
             return response()->json([
                 'success' => true,
@@ -2425,13 +2438,18 @@ class CompanyController extends Controller
                         'name'          => $student->name,
                         'email'         => $student->email,
                         'avatar_url'    => $student->avatar_url,
+                        'program'       => $profile?->program ?? '',
+                        'year_level'    => $profile?->year_level ?? '',
                         'headline'      => $profile?->headline ?? ($profile?->program ? "{$profile->program} Student" : ''),
                         'bio'           => $profile?->bio ?? '',
                         'location'      => $profile?->location ?? '',
                         'phone'         => $profile?->phone ?? '',
                         'linkedin_url'  => $profile?->linkedin_url ?? '',
                         'portfolio_url' => $profile?->portfolio_url ?? ($profile?->github_url ?? ''),
+                        'requirements_drive_url' => $profile?->requirements_drive_url ?? '',
                     ],
+                    'coordinators' => $coordinators,
+                    'supervisor'   => $coordinators[0] ?? null,
                     'education'    => StudentEducation::where('user_id', $uid)->orderBy('sort_order')->orderByDesc('year_start')->get(),
                     'experience'   => StudentExperience::where('user_id', $uid)->orderBy('sort_order')->orderByDesc('period_start')->get(),
                     'skills'       => StudentSkill::where('user_id', $uid)->orderBy('sort_order')->orderByDesc('level')->get(),
@@ -2505,6 +2523,7 @@ class CompanyController extends Controller
         if ($program) {
             $normalizedProgram = \App\Services\CourseNormalizer::normalize($program);
             $supervisors = \App\Models\User::where('role', 'supervisor')
+                ->with('supervisorProfile')
                 ->whereHas('supervisorProfile', function ($q) use ($normalizedProgram) {
                     $q->where('course', $normalizedProgram)
                       ->orWhere(function ($sq) use ($normalizedProgram) {
@@ -2518,7 +2537,59 @@ class CompanyController extends Controller
             }
         }
 
-        return \App\Models\User::where('role', 'supervisor')->get();
+        return \App\Models\User::where('role', 'supervisor')->with('supervisorProfile')->get();
+    }
+
+    /**
+     * Format all matched course coordinators (plus endorser if set) with full contact info.
+     */
+    private function formatCoordinatorsForStudent($student, $endorser = null, $preloadedSupervisors = null): array
+    {
+        $allSupervisors = $preloadedSupervisors ?? \App\Models\User::where('role', 'supervisor')->with('supervisorProfile')->get();
+        $program = $student?->studentProfile?->program;
+        $normalizedProgram = $program ? \App\Services\CourseNormalizer::normalize($program) : null;
+
+        $matched = collect();
+        if ($normalizedProgram) {
+            $matched = $allSupervisors->filter(function ($sup) use ($normalizedProgram) {
+                $supCourse = $sup->supervisorProfile?->getAssignedCourse();
+                return $supCourse !== null && strcasecmp($supCourse, $normalizedProgram) === 0;
+            })->values();
+        }
+
+        if ($matched->isEmpty()) {
+            $matched = $allSupervisors;
+        }
+
+        if ($endorser && !$matched->contains('id', $endorser->id)) {
+            $matched = collect([$endorser])->concat($matched);
+        }
+
+        $endorserId = $endorser?->id;
+
+        return $matched
+            ->sortByDesc(fn ($sup) => ($endorserId && $sup->id === $endorserId) ? 1 : 0)
+            ->values()
+            ->map(function ($sup) use ($endorserId) {
+                $assignedCourse = $sup->supervisorProfile?->getAssignedCourse()
+                    ?? $sup->supervisorProfile?->course
+                    ?? $sup->supervisorProfile?->position
+                    ?? 'OJT Coordinator';
+
+                return [
+                    'id'           => $sup->id,
+                    'name'         => $sup->name,
+                    'email'        => $sup->email,
+                    'phone'        => $sup->supervisorProfile?->phone ?? '',
+                    'avatar'       => $sup->avatar_url,
+                    'course'       => $assignedCourse,
+                    'company'      => $sup->supervisorProfile?->company_name ?? 'CHMSU',
+                    'company_name' => $sup->supervisorProfile?->company_name ?? 'CHMSU',
+                    'position'     => $sup->supervisorProfile?->position ?? $assignedCourse,
+                    'is_endorser'  => $endorserId !== null && $sup->id === $endorserId,
+                ];
+            })
+            ->toArray();
     }
 
     /* ── POST /company/applications/{id}/interview ── */

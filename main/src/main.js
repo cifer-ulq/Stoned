@@ -18,7 +18,7 @@ import { getState, setState } from './store.js';
 import { apiGet, apiGetFresh, apiCache, revalidateEndpoint, clearAuth } from './api/client.js';
 
 // Components
-import { createNavbar } from './components/navbar.js';
+import { createNavbar, createMobileBottomNav } from './components/navbar.js';
 import { createLeftSidebar } from './components/sidebar-left.js';
 import { createRightSidebar } from './components/sidebar-right.js';
 import { showPromotionCelebrationModal } from './components/promotion-modal.js';
@@ -127,6 +127,12 @@ function buildShell() {
   toastContainer.className = 'toast-container';
   app.appendChild(toastContainer);
 
+  // Mobile sidebar backdrop
+  const sidebarBackdrop = document.createElement('div');
+  sidebarBackdrop.className = 'sidebar-backdrop';
+  sidebarBackdrop.id = 'sidebar-backdrop';
+  app.appendChild(sidebarBackdrop);
+
   // 3-column layout wrapper
   const layoutWrapper = document.createElement('div');
   layoutWrapper.className = 'layout';
@@ -148,7 +154,11 @@ function buildShell() {
 
   app.appendChild(layoutWrapper);
 
-  return { leftSidebar, mainContent };
+  // Mobile bottom navigation bar
+  const mobileBottomNav = createMobileBottomNav();
+  app.appendChild(mobileBottomNav);
+
+  return { leftSidebar, mainContent, sidebarBackdrop };
 }
 
 /* ─────────────────────────────────────────
@@ -176,6 +186,17 @@ function getEndpointsForRoute(routePath, params = {}) {
     return id ? [`/companies/${id}`, `/companies/${id}/jobs`, `/companies/${id}/ojt-postings`] : ['/companies'];
   }
   return routeEndpointMap[routePath] || [];
+}
+
+function isModalOrDrawerOpen() {
+  if (document.querySelector('.modal-overlay, .modal-backdrop, .jf-panel--open, .sidebar-left--open')) {
+    return true;
+  }
+  const slotBackdrop = document.getElementById('slot-detail-backdrop');
+  if (slotBackdrop && slotBackdrop.style.display && slotBackdrop.style.display !== 'none') {
+    return true;
+  }
+  return false;
 }
 
 /**
@@ -214,6 +235,11 @@ function renderPage(routePath, renderer) {
       // Restore scroll position
       const savedScroll = scrollPositions.get(routeKey) || 0;
       window.scrollTo({ top: savedScroll, behavior: 'instant' });
+
+      // Notify interactive widgets (e.g. Leaflet maps) that container is visible again
+      requestAnimationFrame(() => {
+        window.dispatchEvent(new Event('resize'));
+      });
 
       // 2. STALE-WHILE-REVALIDATE: Check for new data
       const isStaleOrExpired = existingView.dirty || endpoints.some(ep => !apiCache.isFresh(ep));
@@ -270,8 +296,8 @@ window.addEventListener('hireme:cache-invalidated', (e) => {
 
     if (isAffected) {
       if (key === activeRouteKey) {
-        // Active page! Check if user is typing or modal is open
-        const hasOpenModal = !!document.querySelector('.modal-overlay, .modal-backdrop');
+        // Active page! Check if user is typing or modal/drawer is open
+        const hasOpenModal = isModalOrDrawerOpen();
         const isInteracting = view.container.contains(document.activeElement) &&
           ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName);
 
@@ -305,8 +331,8 @@ async function checkActiveViewFreshness() {
   const view = pageViews.get(activeRouteKey);
   if (!view || !view.endpoints || view.endpoints.length === 0) return;
 
-  // Don't interrupt user typing or active modal interaction
-  const hasOpenModal = !!document.querySelector('.modal-overlay, .modal-backdrop');
+  // Don't interrupt user typing or active modal/drawer interaction
+  const hasOpenModal = isModalOrDrawerOpen();
   const isInteracting = view.container.contains(document.activeElement) &&
     ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName);
 
@@ -397,6 +423,11 @@ initAuth().then(authenticated => {
   registerRoute('/companies',    renderPage('/companies', renderCompanies));
   registerRoute('/company/:id',  (params) => renderPage('/company/:id', renderCompanyProfile)(params));
 
+  const closeMobileSidebar = () => {
+    document.getElementById('sidebar-left')?.classList.remove('sidebar-left--open');
+    document.getElementById('sidebar-backdrop')?.classList.remove('sidebar-backdrop--open');
+  };
+
   window.addEventListener('hashchange', () => {
     const hash = window.location.hash.slice(1) || '/';
     // Map parameterized routes to their parent nav item (e.g. /company/3 → /companies)
@@ -407,15 +438,26 @@ initAuth().then(authenticated => {
     document.querySelectorAll('.navbar__tab').forEach(tab => {
       tab.classList.toggle('navbar__tab--active', tab.getAttribute('data-route') === activeRoute);
     });
+    document.querySelectorAll('.mobile-bottom-nav__tab').forEach(tab => {
+      tab.classList.toggle('mobile-bottom-nav__tab--active', tab.getAttribute('data-route') === activeRoute);
+    });
+    closeMobileSidebar();
   });
 
   document.addEventListener('click', (e) => {
     const leftSidebar = document.getElementById('sidebar-left');
+    const backdrop = document.getElementById('sidebar-backdrop');
     if (e.target.closest('#mobile-sidebar-toggle')) {
-      leftSidebar?.classList.toggle('sidebar-left--open');
+      const isOpen = leftSidebar?.classList.toggle('sidebar-left--open');
+      backdrop?.classList.toggle('sidebar-backdrop--open', !!isOpen);
+      return;
+    }
+    if (e.target.closest('#sidebar-backdrop') || e.target.closest('.sidebar-left a[href]')) {
+      closeMobileSidebar();
+      return;
     }
     if (!e.target.closest('.sidebar-left') && !e.target.closest('#mobile-sidebar-toggle')) {
-      leftSidebar?.classList.remove('sidebar-left--open');
+      closeMobileSidebar();
     }
   });
 

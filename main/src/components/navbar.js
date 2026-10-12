@@ -23,8 +23,11 @@ export function createNavbar() {
 
   nav.innerHTML = `
     <div class="navbar__inner">
-      <!-- Left: Logo -->
+      <!-- Left: Mobile Toggle + Logo -->
       <div class="navbar__left">
+        <button class="navbar__mobile-toggle" id="mobile-sidebar-toggle" aria-label="Open navigation menu" title="Menu">
+          ${icon('menu', 20)}
+        </button>
         <a class="navbar__logo" href="#/" data-route="/">
           <div class="navbar__logo-icon">H</div>
           <span class="navbar__logo-text">HireMe</span>
@@ -43,6 +46,10 @@ export function createNavbar() {
         </a>
         <a class="navbar__tab" href="#/jobs" data-route="/jobs" title="Job Match">
           ${icon('briefcase', 22)}
+          <span class="navbar__tab-indicator"></span>
+        </a>
+        <a class="navbar__tab" href="#/companies" data-route="/companies" title="Companies">
+          ${icon('layers', 22)}
           <span class="navbar__tab-indicator"></span>
         </a>
         <a class="navbar__tab" href="#/applications" data-route="/applications" title="Applications">
@@ -165,3 +172,53 @@ export function createNavbar() {
 
   return nav;
 }
+
+/**
+ * Sticky Mobile Bottom Navigation Bar (visible at <= 768px)
+ */
+export function createMobileBottomNav() {
+  const user = getState('user');
+  const isAlumni = user.is_alumni || user.status === 'alumni' || user.rawRole === 'graduate' || user.role?.toLowerCase().includes('graduate') || user.role?.toLowerCase().includes('alumni');
+
+  const bottomNav = document.createElement('nav');
+  bottomNav.className = 'mobile-bottom-nav';
+  bottomNav.id = 'mobile-bottom-nav';
+  bottomNav.setAttribute('aria-label', 'Mobile Navigation');
+
+  bottomNav.innerHTML = `
+    <a class="mobile-bottom-nav__tab mobile-bottom-nav__tab--active" href="#/" data-route="/">
+      ${icon('home', 20)}
+      <span>Home</span>
+    </a>
+    <a class="mobile-bottom-nav__tab" href="#/portfolio" data-route="/portfolio">
+      ${icon('user', 20)}
+      <span>Portfolio</span>
+    </a>
+    <a class="mobile-bottom-nav__tab" href="#/jobs" data-route="/jobs">
+      ${icon('briefcase', 20)}
+      <span>Jobs</span>
+    </a>
+    ${!isAlumni ? `
+    <a class="mobile-bottom-nav__tab" href="#/ojt" data-route="/ojt">
+      ${icon('graduationCap', 20)}
+      <span>OJT</span>
+    </a>
+    <a class="mobile-bottom-nav__tab" href="#/ojt-tracker" data-route="/ojt-tracker">
+      ${icon('clock', 20)}
+      <span>Tracker</span>
+    </a>
+    ` : `
+    <a class="mobile-bottom-nav__tab" href="#/alumni" data-route="/alumni">
+      ${icon('award', 20)}
+      <span>Alumni</span>
+    </a>
+    `}
+    <a class="mobile-bottom-nav__tab" href="#/applications" data-route="/applications">
+      ${icon('inbox', 20)}
+      <span>Apps</span>
+    </a>
+  `;
+
+  return bottomNav;
+}
+
