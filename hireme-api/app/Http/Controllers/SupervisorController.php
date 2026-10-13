@@ -11,6 +11,7 @@ use App\Models\StudentProfile;
 use App\Models\AppNotification;
 use App\Models\StudentOjtRequirement;
 use App\Models\OjtEmergencyRequest;
+use App\Models\OjtPullOutRequest;
 use App\Mail\StudentWelcome;
 use App\Services\CourseNormalizer;
 use Illuminate\Http\Request;
@@ -693,6 +694,22 @@ class SupervisorController extends Controller
                 }
             }
 
+            // Resolve OJT pull-out request status
+            $latestPullOut = OjtPullOutRequest::where('student_user_id', $student->id)->latest()->first();
+            $pullOutStatus = 'none';
+            if ($latestPullOut) {
+                if ($latestPullOut->status === 'pending_supervisor') {
+                    $status = 'Pull-Out Requested';
+                    $pullOutStatus = 'pending_supervisor';
+                } elseif (in_array($latestPullOut->status, ['recommended_by_supervisor', 'printed_pending_signature', 'emailed_to_dean'])) {
+                    $status = 'Pull-Out Recommended';
+                    $pullOutStatus = $latestPullOut->status;
+                } elseif ($latestPullOut->status === 'approved') {
+                    $status = 'Pulled Out (Approved)';
+                    $pullOutStatus = 'approved';
+                }
+            }
+
             $rawSection = $sp?->section ?? null;
             $cleanSection = $rawSection ? trim(preg_replace('/^(?:Section|BSIT|BSCS|BSIS|BSCpE)\s*/i', '', $rawSection)) : null;
 
@@ -739,6 +756,23 @@ class SupervisorController extends Controller
                     'company_status'          => $latestEmer->company_status,
                     'assets_returned'         => (bool) $latestEmer->assets_returned,
                     'created_at'              => $latestEmer->created_at?->diffForHumans(),
+                ] : null,
+                'pull_out_status' => $pullOutStatus,
+                'pull_out_request' => $latestPullOut ? [
+                    'id'                      => $latestPullOut->id,
+                    'reason_category'         => $latestPullOut->reason_category,
+                    'reason'                  => $latestPullOut->reason,
+                    'student_letter_url'      => $latestPullOut->student_letter_url,
+                    'student_letter_name'     => $latestPullOut->student_letter_name,
+                    'hours_rendered_snapshot' => (float) $latestPullOut->hours_rendered_snapshot,
+                    'required_hours_snapshot' => (float) $latestPullOut->required_hours_snapshot,
+                    'status'                  => $latestPullOut->status,
+                    'supervisor_remarks'      => $latestPullOut->supervisor_remarks,
+                    'supervisor_action_at'    => $latestPullOut->supervisor_action_at?->format('M d, Y h:i A'),
+                    'delivery_method'         => $latestPullOut->delivery_method,
+                    'dean_verdict'            => $latestPullOut->dean_verdict,
+                    'credited_hours'          => $latestPullOut->credited_hours !== null ? (float) $latestPullOut->credited_hours : null,
+                    'created_at'              => $latestPullOut->created_at?->diffForHumans(),
                 ] : null,
                 'flag'           => ($record?->status === 'flagged') ? 'Needs review' : null,
                 'schedule_days'        => $record?->schedule_days ?? $acceptedInterest?->schedule_days,

@@ -66,6 +66,11 @@ class User extends Authenticatable
         return $this->hasMany(OjtEmergencyRequest::class, 'student_user_id');
     }
 
+    public function ojtPullOutRequests()
+    {
+        return $this->hasMany(OjtPullOutRequest::class, 'student_user_id');
+    }
+
     public function companyProfile()
     {
         return $this->hasOne(CompanyProfile::class);

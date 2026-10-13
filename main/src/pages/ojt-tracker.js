@@ -416,11 +416,13 @@ export async function renderOJTTracker(container) {
     <div class="skeleton skeleton--card" style="height:220px;"></div>
   `;
 
-  const [res, evalRes] = await Promise.all([
+  const [res, evalRes, pullOutRes] = await Promise.all([
     apiGet('/student/ojt-tracker').catch(() => null),
     apiGet('/student/evaluation').catch(() => null),
+    apiGet('/student/ojt-pull-out').catch(() => null),
   ]);
   const evaluation = evalRes?.data || null;
+  const pullOut = pullOutRes?.data || null;
 
   // ── Locked state: OJT confirmed but start date hasn't arrived yet ──────────
   if (res?.locked) {
@@ -445,6 +447,7 @@ export async function renderOJTTracker(container) {
     ...res.deployment,
     ...res.progress,
     emergency: res.emergency || null,
+    pull_out: pullOut || null,
     is_on_leave: Boolean(res.is_on_leave),
     emergency_pending: Boolean(res.emergency_pending),
     is_withdrawn: Boolean(res.is_withdrawn),
@@ -578,6 +581,270 @@ function renderEmergencyBannerHtml(ojt) {
   }
 
   return '';
+}
+
+function renderPullOutBannerHtml(ojt) {
+  const po = ojt?.pull_out;
+  if (!po) return '';
+
+  if (po.status === 'pending_supervisor') {
+    return `
+      <section class="page-section animate-fade-in-up" style="margin-bottom:14px;">
+        <div class="jp-card" style="background:#FFFBEB;border:1.5px solid rgba(245,158,11,0.35);border-left:5px solid #F59E0B;padding:16px 20px;border-radius:12px;">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;">
+            <div style="display:flex;align-items:flex-start;gap:14px;">
+              <div style="width:40px;height:40px;border-radius:10px;background:rgba(245,158,11,0.15);color:#d97706;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                ${icon('fileText', 20)}
+              </div>
+              <div>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                  <h3 style="margin:0;font-size:1.02rem;font-weight:700;color:#92400e;">
+                    OJT Pull-Out Request Filed &middot; Stage 1: Coordinator Review
+                  </h3>
+                  <span class="badge" style="background:#FEF3C7;color:#92400e;font-size:0.7rem;font-weight:700;padding:2px 8px;">Awaiting Recommendation</span>
+                </div>
+                <p style="margin:4px 0 0;font-size:0.83rem;color:#78350f;line-height:1.45;">
+                  Your formal pull-out request from <strong>${esc(ojt.company || 'Host Company')}</strong> (${esc((po.reason_category || '').replace(/_/g, ' ').toUpperCase())}) is under review by your Academic OJT Coordinator.
+                </p>
+                <div style="margin-top:6px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:0.78rem;">
+                  ${po.student_letter_url ? `
+                    <a href="${storageUrl(po.student_letter_url)}" target="_blank" rel="noopener noreferrer" style="color:#0284c7;font-weight:600;display:inline-flex;align-items:center;gap:4px;">
+                      ${icon('fileText', 13)} View Uploaded Request Letter
+                    </a>
+                  ` : ''}
+                  <span style="color:#92400e;">Hours snapshot: <strong>${po.hours_rendered_snapshot} hrs rendered</strong></span>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <button class="btn btn--outline btn--sm" id="btn-cancel-pull-out" style="padding:4px 10px;font-size:0.75rem;color:#dc2626;border-color:rgba(220,38,38,0.35);">
+                ${icon('x', 13)} Cancel Request
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+    `;
+  }
+
+  if (po.status === 'recommended_by_supervisor') {
+    return `
+      <section class="page-section animate-fade-in-up" style="margin-bottom:14px;">
+        <div class="jp-card" style="background:linear-gradient(135deg, rgba(2,132,199,0.06) 0%, rgba(59,130,246,0.06) 100%);border:1.5px solid rgba(2,132,199,0.3);border-left:5px solid #0284c7;padding:16px 20px;border-radius:12px;">
+          <div style="display:flex;align-items:flex-start;gap:14px;">
+            <div style="width:40px;height:40px;border-radius:10px;background:rgba(2,132,199,0.14);color:#0284c7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              ${icon('checkCircle', 20)}
+            </div>
+            <div>
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                <h3 style="margin:0;font-size:1.02rem;font-weight:700;color:#0369a1;">
+                  Pull-Out Recommended by Coordinator &middot; Stage 2: Program Chair
+                </h3>
+                <span class="badge" style="background:#E0F2FE;color:#0369a1;font-weight:700;font-size:0.7rem;padding:2px 8px;">Recommended</span>
+              </div>
+              <p style="margin:4px 0 0;font-size:0.83rem;color:#0c4a6e;line-height:1.45;">
+                Your OJT Coordinator recommended approval for your pull-out request. It has been forwarded to the <strong>Program Chair (Admin)</strong> to generate an official endorsement memorandum for the <strong>College Dean</strong>.
+              </p>
+              ${po.supervisor_remarks ? `
+                <div style="margin-top:6px;padding:6px 10px;background:rgba(2,132,199,0.08);border-radius:6px;font-size:0.78rem;color:#0369a1;">
+                  <strong>Coordinator Note:</strong> &ldquo;${esc(po.supervisor_remarks)}&rdquo;
+                </div>
+              ` : ''}
+            </div>
+          </div>
+        </div>
+      </section>
+    `;
+  }
+
+  if (po.status === 'printed_pending_signature' || po.status === 'emailed_to_dean') {
+    const isEmailed = po.status === 'emailed_to_dean';
+    return `
+      <section class="page-section animate-fade-in-up" style="margin-bottom:14px;">
+        <div class="jp-card" style="background:linear-gradient(135deg, rgba(79,70,229,0.06) 0%, rgba(99,102,241,0.06) 100%);border:1.5px solid rgba(79,70,229,0.3);border-left:5px solid #4f46e5;padding:16px 20px;border-radius:12px;">
+          <div style="display:flex;align-items:flex-start;gap:14px;">
+            <div style="width:40px;height:40px;border-radius:10px;background:rgba(79,70,229,0.12);color:#4f46e5;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              ${icon(isEmailed ? 'send' : 'printer', 20)}
+            </div>
+            <div>
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                <h3 style="margin:0;font-size:1.02rem;font-weight:700;color:#3730a3;">
+                  Endorsement Letter Sent to Dean &middot; Stage 3: Dean's Conforme
+                </h3>
+                <span class="badge" style="background:#EEF2FF;color:#4338ca;font-weight:700;font-size:0.7rem;padding:2px 8px;">
+                  ${isEmailed ? 'Awaiting Dean Email Response' : 'Pending Physical Dean Signature'}
+                </span>
+              </div>
+              <p style="margin:4px 0 0;font-size:0.83rem;color:#312e81;line-height:1.45;">
+                ${isEmailed 
+                  ? `The official pull-out memorandum was emailed to <strong>${esc(po.dean_name || 'the Dean')}</strong>. We are awaiting the Dean's formal email reply to finalize your clearance.`
+                  : `The official pull-out memorandum has been generated and printed. The Program Chair is obtaining physical Dean signatures.`
+                }
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+    `;
+  }
+
+  if (po.status === 'approved') {
+    return `
+      <section class="page-section animate-fade-in-up" style="margin-bottom:14px;">
+        <div class="jp-card" style="background:linear-gradient(135deg, rgba(0,89,48,0.06) 0%, rgba(16,185,129,0.08) 100%);border:1.5px solid rgba(0,89,48,0.25);border-left:5px solid #005930;padding:16px 20px;border-radius:12px;">
+          <div style="display:flex;align-items:flex-start;gap:14px;">
+            <div style="width:40px;height:40px;border-radius:10px;background:rgba(0,89,48,0.12);color:#005930;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              ${icon('checkCheck', 20)}
+            </div>
+            <div>
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                <h3 style="margin:0;font-size:1.02rem;font-weight:700;color:#005930;">OJT Pull-Out Officially Approved by College Dean</h3>
+                <span class="badge" style="background:#D1FAE5;color:#065F46;font-weight:700;font-size:0.7rem;padding:2px 8px;">Cleared for Re-deployment</span>
+              </div>
+              <p style="margin:4px 0 0;font-size:0.83rem;color:#064e3b;line-height:1.45;">
+                Your placement with <strong>${esc(ojt.company || 'Host Company')}</strong> has been officially concluded with the Dean's authorization.
+                <strong>${po.credited_hours !== null && po.credited_hours !== undefined ? po.credited_hours : ojt.hoursRendered} Hours</strong> have been credited to your training record.
+                You are authorized to express interest and be endorsed to an alternative OJT company.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+    `;
+  }
+
+  if (po.status === 'rejected' || po.status === 'rejected_by_supervisor') {
+    return `
+      <section class="page-section animate-fade-in-up" style="margin-bottom:14px;">
+        <div class="jp-card" style="background:#FEF2F2;border:1.5px solid rgba(239,68,68,0.3);border-left:5px solid #dc2626;padding:14px 18px;border-radius:12px;">
+          <div style="display:flex;align-items:flex-start;gap:12px;">
+            <div style="width:38px;height:38px;border-radius:10px;background:rgba(239,68,68,0.12);color:#dc2626;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              ${icon('alertTriangle', 18)}
+            </div>
+            <div>
+              <h4 style="margin:0;font-size:0.96rem;font-weight:700;color:#991b1b;">OJT Pull-Out Request Not Approved</h4>
+              <p style="margin:3px 0 0;font-size:0.82rem;color:#7f1d1d;line-height:1.45;">
+                ${esc(po.admin_remarks || po.supervisor_remarks || 'Your pull-out request was declined. Please consult your academic coordinator regarding your training assignment.')}
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+    `;
+  }
+
+  return '';
+}
+
+function openPullOutModal(ojt, onSubmitted) {
+  const existing = document.getElementById('pull-out-modal-overlay');
+  if (existing) existing.remove();
+
+  const bd = document.createElement('div');
+  bd.id = 'pull-out-modal-overlay';
+  bd.className = 'modal-backdrop modal-backdrop--visible modal-backdrop--open';
+  bd.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,0.65);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:99999;padding:16px;opacity:1 !important;visibility:visible !important;';
+
+  bd.innerHTML = `
+    <div class="modal modal--visible" style="max-width:580px;width:100%;max-height:92vh;overflow-y:auto;border-radius:14px;background:var(--bg-card,#fff);box-shadow:0 20px 45px rgba(0,0,0,0.25);">
+      <div style="padding:18px 22px;border-bottom:1px solid var(--border-light,#e2e8f0);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg, rgba(185,28,28,0.06) 0%, rgba(217,119,6,0.06) 100%);">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:38px;height:38px;border-radius:10px;background:rgba(185,28,28,0.12);color:#b91c1c;display:flex;align-items:center;justify-content:center;">
+            ${icon('fileText', 20)}
+          </div>
+          <div>
+            <h3 style="margin:0;font-size:1.1rem;font-weight:700;color:var(--text-primary);">Request Official OJT Pull-Out</h3>
+            <p style="margin:2px 0 0;font-size:0.78rem;color:var(--text-secondary);">${esc(ojt.company || 'Host Company')} &middot; ${ojt.hoursRendered || 0} of ${ojt.totalHours || 600} hrs rendered</p>
+          </div>
+        </div>
+        <button type="button" id="po-close-btn" style="background:none;border:none;cursor:pointer;color:var(--text-secondary);padding:4px;">
+          ${icon('x', 18)}
+        </button>
+      </div>
+
+      <form id="pull-out-form" style="padding:20px 22px;display:flex;flex-direction:column;gap:16px;">
+        <div id="po-error-box" style="display:none;background:#FEF2F2;border:1px solid #FCA5A5;color:#991B1B;padding:10px 14px;border-radius:8px;font-size:0.83rem;"></div>
+
+        <!-- Pull-Out Category -->
+        <div>
+          <label style="display:block;font-size:0.82rem;font-weight:700;margin-bottom:6px;color:var(--text-primary);">Grounds / Category for Pull-Out <span style="color:#ef4444;">*</span></label>
+          <select name="reason_category" class="input" style="width:100%;height:38px;" required>
+            <option value="breach_of_moa">Breach of MOA / Working Hours &amp; Allowance Violation</option>
+            <option value="safety_hostile">Workplace Safety Hazard / Harassment / Hostile Environment</option>
+            <option value="task_mismatch">Task Mismatch / Assigned Tasks Not Aligned with Curriculum</option>
+            <option value="medical_personal">Severe Medical Condition / Personal Hardship</option>
+            <option value="relocation">Unforeseen Geographical Relocation / Distance</option>
+            <option value="other">Other Valid Grounds</option>
+          </select>
+        </div>
+
+        <!-- Narrative Reason -->
+        <div>
+          <label style="display:block;font-size:0.82rem;font-weight:700;margin-bottom:6px;color:var(--text-primary);">Detailed Statement &amp; Justification <span style="color:#ef4444;">*</span></label>
+          <textarea name="reason" class="input" rows="4" style="width:100%;resize:vertical;font-family:inherit;" placeholder="Explain clearly the specific events, non-compliances, or reasons requiring your withdrawal from this host establishment..." required minlength="20"></textarea>
+          <span style="font-size:0.72rem;color:var(--text-tertiary);margin-top:3px;display:block;">Be specific and truthful. Minimum 20 characters.</span>
+        </div>
+
+        <!-- Official Letter Upload -->
+        <div>
+          <label style="display:block;font-size:0.82rem;font-weight:700;margin-bottom:6px;color:var(--text-primary);">Upload Formal Pull-Out Request Letter <span style="color:#ef4444;">*</span></label>
+          <input type="file" name="letter" class="input" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" style="width:100%;padding:6px;" required>
+          <span style="font-size:0.72rem;color:var(--text-tertiary);margin-top:3px;display:block;">Attach your signed formal letter stating your valid reason (PDF, DOCX, JPG, PNG &middot; Max 10MB).</span>
+        </div>
+
+        <!-- Institutional Protocol Notice -->
+        <div style="background:rgba(0,89,48,0.06);border-left:3px solid var(--color-primary);padding:10px 14px;border-radius:6px;font-size:0.78rem;color:var(--color-primary);line-height:1.45;">
+          <strong>Institutional Governance Protocol:</strong> Your request letter will be submitted to your <strong>Academic OJT Coordinator</strong> for evaluation. Once recommended, the <strong>Program Chair (Admin)</strong> will generate an official endorsement memorandum to the <strong>College Dean</strong> for printing or email routing.
+        </div>
+
+        <!-- Actions -->
+        <div style="display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:6px;flex-wrap:wrap;">
+          <button type="button" class="btn btn--outline" id="po-cancel-btn">Cancel</button>
+          <button type="submit" class="btn btn--primary" id="po-submit-btn" style="background:#b91c1c;border-color:#b91c1c;gap:6px;">
+            ${icon('send', 14)} Submit Pull-Out Request
+          </button>
+        </div>
+      </form>
+    </div>
+  `;
+
+  document.body.appendChild(bd);
+
+  const close = () => bd.remove();
+  bd.querySelector('#po-close-btn').addEventListener('click', close);
+  bd.querySelector('#po-cancel-btn').addEventListener('click', close);
+  bd.addEventListener('click', e => { if (e.target === bd) close(); });
+
+  const form = bd.querySelector('#pull-out-form');
+  const errorBox = bd.querySelector('#po-error-box');
+  const submitBtn = bd.querySelector('#po-submit-btn');
+
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    errorBox.style.display = 'none';
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = `${icon('clock', 14)} Submitting…`;
+
+    try {
+      const fd = new FormData(form);
+      const res = await apiUpload('/student/ojt-pull-out', fd);
+      if (res && res.success) {
+        bd.remove();
+        showToast(res.message || 'Pull-out request submitted. Your coordinator has been alerted.', 'success');
+        if (onSubmitted) onSubmitted();
+      } else {
+        errorBox.textContent = res?.message || 'Failed to submit pull-out request. Please check inputs.';
+        errorBox.style.display = 'block';
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `${icon('send', 14)} Submit Pull-Out Request`;
+      }
+    } catch (err) {
+      errorBox.textContent = err.message || 'An unexpected error occurred. Please try again.';
+      errorBox.style.display = 'block';
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = `${icon('send', 14)} Submit Pull-Out Request`;
+    }
+  });
 }
 
 function openEmergencyModal(ojt, onSubmitted) {
@@ -987,6 +1254,9 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
     <!-- ── Emergency / Medical Status Banner ── -->
     ${renderEmergencyBannerHtml(ojt)}
 
+    <!-- ── OJT Pull-Out Status Banner ── -->
+    ${renderPullOutBannerHtml(ojt)}
+
     <!-- ── Completed Evaluation Card (if submitted by company) ── -->
     ${evaluation && evaluation.overall_score ? `
     <section class="page-section animate-fade-in-up" style="animation-delay:40ms;">
@@ -1059,6 +1329,9 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
               ${!ojt.is_withdrawn ? `
                 <button class="btn btn--outline btn--sm btn-trigger-emergency" id="tracker-btn-emergency" style="padding:4px 10px;font-size:0.75rem;gap:5px;color:#dc2626;border-color:rgba(239,68,68,0.3);display:inline-flex;align-items:center;">
                   ${icon('alertTriangle', 13)} ${ojt.emergency_pending || ojt.is_on_leave ? 'Emergency Info' : 'Emergency / Leave Notice'}
+                </button>
+                <button class="btn btn--outline btn--sm" id="tracker-btn-pull-out" style="padding:4px 10px;font-size:0.75rem;gap:5px;color:#b91c1c;border-color:rgba(185,28,28,0.35);display:inline-flex;align-items:center;">
+                  ${icon('fileText', 13)} ${ojt.pull_out && ['pending_supervisor', 'recommended_by_supervisor', 'printed_pending_signature', 'emailed_to_dean'].includes(ojt.pull_out.status) ? 'Pull-Out Status' : 'Request Pull-Out'}
                 </button>
               ` : ''}
               <button class="btn btn--outline btn--sm" id="tracker-btn-coord-chat" style="padding:4px 10px;font-size:0.75rem;gap:5px;color:var(--color-primary);border-color:rgba(0,89,48,0.25);display:inline-flex;align-items:center;">
@@ -1362,6 +1635,31 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
     openFitToWorkModal(ojt.emergency, () => {
       renderOJTTracker(container);
     });
+  });
+
+  // Pull-Out Request Action
+  container.querySelector('#tracker-btn-pull-out')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    openPullOutModal(ojt, () => {
+      renderOJTTracker(container);
+    });
+  });
+
+  // Cancel Pull-Out Request
+  container.querySelector('#btn-cancel-pull-out')?.addEventListener('click', async (e) => {
+    e.preventDefault();
+    if (!confirm('Are you sure you want to cancel your pending pull-out request?')) return;
+    try {
+      const res = await apiPost('/student/ojt-pull-out/cancel', {});
+      if (res && res.success) {
+        showToast(res.message || 'Pull-out request cancelled.', 'info');
+        renderOJTTracker(container);
+      } else {
+        showToast(res?.message || 'Could not cancel request.', 'error');
+      }
+    } catch (err) {
+      showToast(err.message || 'Failed to cancel request.', 'error');
+    }
   });
 
   // Delegated handler for any emergency button clicks within the tracker page (guarded against duplicate binding)

@@ -9,6 +9,7 @@ import { getState } from '../store.js';
 import { openStudentImportModal } from '../components/student-import-modal.js';
 import { openAssignRequirementsModal, openReviewRequirementsModal } from '../components/requirements-modal.js';
 import { openReviewEmergencyModal } from '../components/review-emergency-modal.js';
+import { openReviewPullOutModal } from '../components/review-pullout-modal.js';
 
 const REAL = v => v && v !== '—' && v !== '';
 const PER_PAGE = 10;
@@ -19,6 +20,9 @@ const STATUS_BADGES = {
   'Emergency Pending': { cls: 'tr2-badge--warning', text: 'Emergency Pending' },
   'On Medical Leave': { cls: 'tr2-badge--leave', text: 'On Medical Leave' },
   'Withdrawn (Emergency)': { cls: 'tr2-badge--withdrawn', text: 'Withdrawn (Emergency)' },
+  'Pull-Out Requested': { cls: 'tr2-badge--warning', text: 'Pull-Out Requested' },
+  'Pull-Out Recommended': { cls: 'tr2-badge--leave', text: 'Pull-Out Recommended' },
+  'Pulled Out (Approved)': { cls: 'tr2-badge--withdrawn', text: 'Pulled Out (Approved)' },
 };
 
 const BAR_COLOR = pct => pct >= 75 ? '#005930' : pct >= 40 ? '#10B981' : '#F59E0B';
@@ -382,6 +386,11 @@ export default function traineesPage(container) {
                   ${icon('alertTriangle', 13)} ${t.emergency_status === 'pending' ? 'Review Notice' : (t.emergency_status === 'on_leave' ? 'On Leave' : 'Withdrawn')}
                 </button>
               ` : ''}
+              ${t.pull_out_status && t.pull_out_status !== 'none' ? `
+                <button class="btn btn--outline btn--sm tr2-pullout-btn" data-id="${t.id}" style="padding:4px 8px;font-size:0.72rem;gap:4px;color:#b91c1c;border-color:rgba(185,28,28,0.45);font-weight:600;background:rgba(185,28,28,0.06);" title="Review OJT Pull-Out Request">
+                  ${icon('fileText', 13)} ${t.pull_out_status === 'pending_supervisor' ? 'Review Pull-Out' : (t.pull_out_status === 'approved' ? 'Pulled Out' : 'Pull-Out Rec.')}
+                </button>
+              ` : ''}
               ${t.company_user_id ? `
                 <button class="btn btn--outline btn--sm tr2-chat-co-btn" data-company-id="${t.company_user_id}" style="padding:4px 8px;font-size:0.72rem;gap:4px;color:#0284c7;border-color:rgba(2,132,199,0.35);" title="Message Host Company (${t.company || 'Company'})">
                   ${icon('building', 13)} Company
@@ -410,6 +419,23 @@ export default function traineesPage(container) {
         const t = allTrainees.find(x => x.id === studentId);
         if (t) {
           openReviewEmergencyModal({
+            trainee: t,
+            onReviewed: () => {
+              loadTrainees();
+            }
+          });
+        }
+      });
+    });
+
+    // Wire up pull-out review button clicks
+    tbody.querySelectorAll('.tr2-pullout-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const studentId = parseInt(btn.dataset.id, 10);
+        const t = allTrainees.find(x => x.id === studentId);
+        if (t) {
+          openReviewPullOutModal({
             trainee: t,
             onReviewed: () => {
               loadTrainees();

@@ -37,6 +37,7 @@ class OjtRecord extends Model
     public function user() { return $this->belongsTo(User::class); }
     public function timeLogs() { return $this->hasMany(TimeLog::class, 'ojt_record_id'); }
     public function emergencyRequests() { return $this->hasMany(OjtEmergencyRequest::class, 'ojt_record_id'); }
+    public function pullOutRequests() { return $this->hasMany(OjtPullOutRequest::class, 'ojt_record_id'); }
 
     public function getProgressPercentAttribute(): int
     {

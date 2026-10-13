@@ -93,4 +93,9 @@ class StudentOjtInterest extends Model
     {
         return $this->hasMany(OjtEmergencyRequest::class, 'ojt_interest_id');
     }
+
+    public function pullOutRequests()
+    {
+        return $this->hasMany(OjtPullOutRequest::class, 'ojt_interest_id');
+    }
 }

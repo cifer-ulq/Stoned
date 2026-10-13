@@ -14,6 +14,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\CompanyPublicController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\EvaluationController;
+use App\Http\Controllers\OjtPullOutController;
 use Illuminate\Support\Facades\Route;
 
 // ── Notifications (shared across all portals) ─────────────────────────────
@@ -143,6 +144,10 @@ Route::middleware('auth:sanctum')->prefix('supervisor')->group(function () {
     // Emergency Stoppage & Medical Leave
     Route::get('emergency-requests',                      [SupervisorController::class, 'getEmergencyRequests']);
     Route::put('emergency-requests/{id}/review',          [SupervisorController::class, 'reviewEmergencyRequest']);
+
+    // OJT Pull-Out Requests
+    Route::get('pull-out-requests',                       [OjtPullOutController::class, 'supervisorList']);
+    Route::put('pull-out-requests/{id}/recommend',        [OjtPullOutController::class, 'supervisorRecommend']);
 });
 
 // ── Student routes ────────────────────────────────────────────────────────────
@@ -196,6 +201,11 @@ Route::middleware('auth:sanctum')->prefix('student')->group(function () {
     Route::post('ojt-emergency',             [StudentController::class, 'submitEmergencyRequest']);
     Route::get('ojt-emergency',              [StudentController::class, 'getEmergencyRequest']);
     Route::post('ojt-emergency/fit-to-work', [StudentController::class, 'submitFitToWorkClearance']);
+
+    // OJT Pull-Out Request
+    Route::post('ojt-pull-out',              [OjtPullOutController::class, 'submitStudentRequest']);
+    Route::get('ojt-pull-out',               [OjtPullOutController::class, 'getStudentRequest']);
+    Route::post('ojt-pull-out/cancel',        [OjtPullOutController::class, 'cancelStudentRequest']);
 
     // Jobs, Applications & Interviews
     Route::get('jobs',                  [StudentController::class, 'jobs']);
@@ -330,4 +340,11 @@ Route::middleware('auth:sanctum')->prefix('admin')->group(function () {
 
     // Notifications & Broadcast
     Route::post('notifications/broadcast',         [NotificationController::class, 'broadcastToStudents']);
+
+    // OJT Pull-Out Management & Dean Endorsement
+    Route::get('pull-out-requests',                         [OjtPullOutController::class, 'adminList']);
+    Route::get('pull-out-requests/{id}/letter-preview',     [OjtPullOutController::class, 'adminLetterPreview']);
+    Route::post('pull-out-requests/{id}/record-printed',    [OjtPullOutController::class, 'adminRecordPrinted']);
+    Route::post('pull-out-requests/{id}/send-email',        [OjtPullOutController::class, 'adminSendEmail']);
+    Route::post('pull-out-requests/{id}/finalize',          [OjtPullOutController::class, 'adminFinalize']);
 });

@@ -1,6 +1,6 @@
-/* ── OJT Management Page — Admin Portal ── */
 import { apiGet, apiGetCached, getCached, apiPost, apiDelete, storageUrl } from '../api/client.js';
 import { icon, renderIcons } from '../components/icons.js';
+import { openAdminPullOutModal } from '../components/admin-pullout-modal.js';
 
 const STATUS_COLORS = {
   'On Track':                'success',
@@ -68,6 +68,47 @@ export default async function OjtManagementPage(container) {
       </div>
       <div class="table-wrapper anim-fade-in-up">
         <table class="table" id="sup-table"><thead><tr><th>Name</th><th>Email</th><th>Course</th><th>Registered</th><th style="width:70px;text-align:right;">Action</th></tr></thead><tbody id="sup-tbody"><tr><td colspan="5" style="text-align:center;color:var(--text-tertiary);padding:24px;">Loading…</td></tr></tbody></table>
+      </div>
+    </div>
+
+    <!-- OJT Pull-Out Requests & Dean Endorsement Section -->
+    <div style="margin:var(--space-6) 0 var(--space-4);" id="pullout-section">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-4);flex-wrap:wrap;gap:10px;">
+        <div>
+          <h2 style="font-size:var(--text-lg);font-weight:var(--weight-semibold);display:flex;align-items:center;gap:8px;margin:0;">
+            ${icon('file-text',18)} OJT Pull-Out Requests &amp; Dean Endorsement
+            <span id="pullout-badge-count" class="badge badge--warning" style="font-size:0.75rem;padding:2px 8px;border-radius:12px;display:none;">0 Pending</span>
+          </h2>
+          <p style="font-size:var(--text-xs);color:var(--text-tertiary);margin:2px 0 0;">Review coordinator-recommended pull-outs, generate official Dean letters, and dispatch via print or email.</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <select class="form-select" id="filter-pullout-status" style="width:auto;padding:6px 28px 6px 10px;font-size:var(--text-xs);">
+            <option value="">All Requests</option>
+            <option value="recommended_by_supervisor" selected>Awaiting Dean Letter / Action</option>
+            <option value="printed_pending_signature">Printed (Awaiting Physical Signature)</option>
+            <option value="emailed_to_dean">Emailed (Awaiting Dean Reply)</option>
+            <option value="approved">Approved by Dean</option>
+            <option value="pending_supervisor">Pending Coordinator Review</option>
+          </select>
+        </div>
+      </div>
+      <div class="table-wrapper anim-fade-in-up">
+        <table class="table" id="pullout-table">
+          <thead>
+            <tr>
+              <th>Student</th>
+              <th>Program &amp; Section</th>
+              <th>Company</th>
+              <th>Reason Category</th>
+              <th>Coordinator Recommendation</th>
+              <th>Status</th>
+              <th style="width:130px;text-align:right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="pullout-tbody">
+            <tr><td colspan="7" style="text-align:center;color:var(--text-tertiary);padding:24px;">Loading pull-out requests…</td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
 
@@ -331,6 +372,112 @@ export default async function OjtManagementPage(container) {
     }
   }
   loadSupervisors();
+
+  /* ── Load Pull-Out Requests ── */
+  let allPullOuts = [];
+
+  async function loadPullOutRequests(force = false) {
+    const ptbody = container.querySelector('#pullout-tbody');
+    const badgeCount = container.querySelector('#pullout-badge-count');
+    if (!ptbody) return;
+
+    try {
+      const res = await apiGet('/admin/pull-out-requests');
+      allPullOuts = Array.isArray(res?.data) ? res.data : [];
+      renderPullOutTable();
+    } catch (err) {
+      ptbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text-tertiary);padding:20px;">Could not load pull-out requests: ${err.message}</td></tr>`;
+    }
+  }
+
+  function renderPullOutTable() {
+    const ptbody = container.querySelector('#pullout-tbody');
+    const badgeCount = container.querySelector('#pullout-badge-count');
+    if (!ptbody) return;
+
+    const statusFilter = container.querySelector('#filter-pullout-status')?.value || '';
+
+    const pendingCount = allPullOuts.filter(p => p.status === 'recommended_by_supervisor' || p.status === 'pending_supervisor').length;
+    if (badgeCount) {
+      if (pendingCount > 0) {
+        badgeCount.style.display = 'inline-block';
+        badgeCount.textContent = `${pendingCount} Action Needed`;
+      } else {
+        badgeCount.style.display = 'none';
+      }
+    }
+
+    let filtered = allPullOuts;
+    if (statusFilter) {
+      filtered = allPullOuts.filter(p => p.status === statusFilter);
+    }
+
+    if (!filtered.length) {
+      ptbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text-tertiary);padding:24px;">No pull-out requests found in this filter view.</td></tr>`;
+      return;
+    }
+
+    ptbody.innerHTML = filtered.map(p => {
+      const statusBadge = 
+        p.status === 'recommended_by_supervisor' ? '<span class="badge badge--warning">Recommended &bull; Action Needed</span>' :
+        p.status === 'printed_pending_signature' ? '<span class="badge" style="background:#EEF2FF;color:#4338ca;font-weight:700;">Printed &bull; Awaiting Signature</span>' :
+        p.status === 'emailed_to_dean' ? '<span class="badge badge--info">Emailed to Dean &bull; Awaiting Reply</span>' :
+        p.status === 'approved' ? '<span class="badge badge--success">Approved by Dean</span>' :
+        p.status === 'rejected' ? '<span class="badge badge--error">Declined</span>' :
+        '<span class="badge badge--neutral">Pending Coordinator</span>';
+
+      return `
+        <tr>
+          <td>
+            <div style="font-weight:var(--weight-semibold);font-size:var(--text-sm);">${p.student_name}</div>
+            <div style="font-size:var(--text-xs);color:var(--text-tertiary);">${p.student_number || 'No ID'} &bull; ${p.student_email || ''}</div>
+          </td>
+          <td>
+            <div style="font-size:var(--text-xs);font-weight:var(--weight-medium);">${p.course}</div>
+            <div style="font-size:var(--text-xs);color:var(--text-tertiary);">${p.section || '—'}</div>
+          </td>
+          <td>
+            <div style="font-size:var(--text-sm);font-weight:var(--weight-medium);">${p.company_name}</div>
+            <div style="font-size:var(--text-xs);color:var(--text-tertiary);">${p.hours_rendered_snapshot} / ${p.required_hours_snapshot} hrs rendered</div>
+          </td>
+          <td>
+            <span class="badge badge--neutral" style="text-transform:capitalize;font-size:0.75rem;">
+              ${(p.reason_category || '').replace(/_/g, ' ')}
+            </span>
+          </td>
+          <td>
+            <div style="font-size:var(--text-xs);font-weight:var(--weight-medium);color:var(--text-primary);">${p.supervisor_name || 'Coordinator'}</div>
+            <div style="font-size:var(--text-xs);color:var(--text-tertiary);max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${p.supervisor_remarks || ''}">
+              ${p.supervisor_remarks || 'No remarks'}
+            </div>
+          </td>
+          <td>${statusBadge}</td>
+          <td style="text-align:right;">
+            <button class="btn btn--primary btn--sm btn-process-pullout" data-id="${p.id}" style="padding:4px 10px;font-size:var(--text-xs);gap:4px;background:#005930;border-color:#005930;">
+              ${icon('file-text', 12)} Process
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    renderIcons();
+
+    ptbody.querySelectorAll('.btn-process-pullout').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = parseInt(btn.dataset.id, 10);
+        const po = allPullOuts.find(x => x.id === id);
+        if (po) {
+          openAdminPullOutModal(po, () => {
+            loadPullOutRequests(true);
+          });
+        }
+      });
+    });
+  }
+
+  container.querySelector('#filter-pullout-status')?.addEventListener('change', renderPullOutTable);
+  loadPullOutRequests();
 
   /* ── Load Analytics ── */
   function renderAnalyticsData(res) {
