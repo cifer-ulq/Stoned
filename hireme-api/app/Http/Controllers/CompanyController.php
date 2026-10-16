@@ -672,13 +672,13 @@ class CompanyController extends Controller
             'estimated_end_date' => ['nullable', 'date'],
         ]);
 
-        // Parse required hours from posting duration
-        $requiredHours = 600;
-        if ($posting->duration) {
-            if (preg_match('/(\d+)\s*h(?:ours?|rs?)/i', $posting->duration, $m)) {
-                $requiredHours = (int) $m[1] ?: 600;
-            }
-        }
+        // Fixed university curriculum target: 600 hours less accredited hours from prior approved pull-outs
+        $curriculumTarget = 600;
+        $accreditedHours  = (float) \App\Models\OjtPullOutRequest::where('student_user_id', $interest->student_user_id)
+            ->where('status', 'approved')
+            ->sum('credited_hours');
+
+        $requiredHours = max(0, $curriculumTarget - $accreditedHours);
 
         $dailyHours  = isset($validated['daily_hours']) ? (float) $validated['daily_hours'] : 8.0;
         $weeklyHours = isset($validated['weekly_hours']) ? (float) $validated['weekly_hours'] : 40.0;
@@ -820,20 +820,13 @@ class CompanyController extends Controller
         // Sync remaining slots now that OJT is officially starting
         $posting->syncSlotsRemaining();
 
-        // Parse required hours from the posting's duration string (default 800).
-        // IMPORTANT: do NOT use FILTER_SANITIZE_NUMBER_INT — it strips non-digits and
-        // concatenates the remaining digits, so "5 months (800 hours)" → "5800" (wrong).
-        // Instead, match the explicit hours value with a regex.
-        $requiredHours = 800;
-        if ($posting->duration) {
-            // Match "800 hours", "486 hrs", "(800 hours)", "/ 800 hrs", etc.
-            if (preg_match('/(\d+)\s*h(?:ours?|rs?)/i', $posting->duration, $m)) {
-                $requiredHours = (int) $m[1] ?: 800;
-            } elseif (preg_match('/^\s*(\d+)\s*$/', trim($posting->duration), $m)) {
-                // Plain numeric string e.g. "800"
-                $requiredHours = (int) $m[1] ?: 800;
-            }
-        }
+        // Fixed university curriculum target: 600 hours less accredited hours from prior approved pull-outs
+        $curriculumTarget = 600;
+        $accreditedHours  = (float) \App\Models\OjtPullOutRequest::where('student_user_id', $interest->student_user_id)
+            ->where('status', 'approved')
+            ->sum('credited_hours');
+
+        $requiredHours = max(0, $curriculumTarget - $accreditedHours);
 
         // Create (or update) the student's OJT record
         OjtRecord::updateOrCreate(
@@ -2244,10 +2237,12 @@ class CompanyController extends Controller
                     'required_skills' => $required,
                     'salary_range'    => $salary,
                     'benefits'        => [],
-                    'company'         => $posting?->company_name ?? '',
-                    'is_ojt'          => true,
-                    'duration'        => $posting?->duration,
-                    'required_hours'  => ($posting?->duration && preg_match('/(\d+)\s*h(?:ours?|rs?)/i', $posting->duration, $m)) ? (int)$m[1] : 600,
+                    'company'          => $posting?->company_name ?? '',
+                    'is_ojt'           => true,
+                    'duration'         => $posting?->duration,
+                    'required_hours'   => max(0, 600 - (float) \App\Models\OjtPullOutRequest::where('student_user_id', $student?->id)->where('status', 'approved')->sum('credited_hours')),
+                    'accredited_hours' => (float) \App\Models\OjtPullOutRequest::where('student_user_id', $student?->id)->where('status', 'approved')->sum('credited_hours'),
+                    'curriculum_target'=> 600,
                 ],
                 'applicant' => [
                     'id'                  => $student?->id,
@@ -3030,6 +3025,226 @@ class CompanyController extends Controller
             'message' => 'Company exit clearance recorded successfully.',
             'data'    => $emergency,
         ]);
+    }
+
+    /* ══════════════════════════════════════════════════════════════════════
+       EMPLOYEES & STAFF ROSTER WORKFORCE MANAGEMENT
+       ══════════════════════════════════════════════════════════════════════ */
+
+    /**
+     * GET /api/company/employees
+     * Returns full workforce / staff roster of hired candidates for this company.
+     */
+    public function listEmployees(Request $request)
+    {
+        $userId = $request->user()->id;
+
+        $hiredApps = JobApplication::whereHas('jobListing', fn($q) => $q->where('company_user_id', $userId))
+            ->where('status', 'hired')
+            ->with([
+                'jobListing',
+                'applicant.graduateProfile',
+                'applicant.studentProfile',
+                'applicant.skills',
+                'applicant.jobseekerProfile',
+            ])
+            ->orderByDesc('offer_decided_at')
+            ->orderByDesc('updated_at')
+            ->get();
+
+        $employees = $hiredApps->map(function ($app) {
+            $applicant = $app->applicant;
+            $grad      = $applicant?->graduateProfile;
+            $stud      = $applicant?->studentProfile;
+            $job       = $app->jobListing;
+            $offer     = is_array($app->offer_details)
+                ? $app->offer_details
+                : (json_decode($app->offer_details ?? '{}', true) ?: []);
+
+            $empStatus = $offer['employment_status'] ?? 'Probationary';
+            $startDate = $offer['start_date'] ?? ($app->offer_decided_at ? $app->offer_decided_at->format('Y-m-d') : $app->created_at->format('Y-m-d'));
+
+            return [
+                'id'                => $app->id,
+                'application_id'    => $app->id,
+                'candidate_user_id' => $applicant?->id,
+                'employee_number'   => $offer['employee_number'] ?? ('EMP-' . str_pad($app->id, 4, '0', STR_PAD_LEFT)),
+                'name'              => $applicant?->name ?? 'Staff Member',
+                'email'             => $applicant?->email ?? '',
+                'avatar_url'        => $applicant?->avatar_url,
+                'role'              => $applicant?->role ?? 'graduate',
+                'job_id'            => $job?->id,
+                'job_title'         => $job?->title ?? 'Hired Position',
+                'department'        => $offer['department'] ?? ($job?->department ?? 'General'),
+                'employment_type'   => $offer['employment_type'] ?? ($job?->employment_type ?? 'Full-time'),
+                'salary'            => $offer['salary'] ?? ($job?->salary_range ?? 'Competitive'),
+                'start_date'        => $startDate,
+                'hired_date'        => $app->offer_decided_at ? $app->offer_decided_at->format('M d, Y') : $app->created_at->format('M d, Y'),
+                'employment_status' => $empStatus, // 'Probationary', 'Regular', 'Contractual', 'On Leave', 'Resigned'
+                'course'            => $grad?->course ?? ($stud?->program ?? 'Bachelor of Science in Information Technology'),
+                'campus'            => $grad?->campus ?? ($stud?->campus ?? 'Fortune Towne Campus'),
+                'year_graduated'    => $grad?->year_graduated ?? ($stud?->batch ?? 'Alumni'),
+                'section'           => $grad?->section ?? ($stud?->section ?? ''),
+                'skills'            => $applicant?->skills?->pluck('name')->filter()->values()->all() ?? [],
+                'employee_notes'    => $offer['employee_notes'] ?? ($app->notes ?? ''),
+                'supervisor_name'   => $offer['supervisor_name'] ?? '',
+                'work_email'        => $offer['work_email'] ?? $applicant?->email,
+            ];
+        });
+
+        $total        = $employees->count();
+        $regular      = $employees->where('employment_status', 'Regular')->count();
+        $probationary = $employees->where('employment_status', 'Probationary')->count();
+        $contractual  = $employees->where('employment_status', 'Contractual')->count();
+        $onLeave      = $employees->where('employment_status', 'On Leave')->count();
+        $departments  = $employees->pluck('department')->filter()->unique()->values()->all();
+
+        return response()->json([
+            'success' => true,
+            'data'    => $employees->values(),
+            'meta'    => [
+                'total'        => $total,
+                'regular'      => $regular,
+                'probationary' => $probationary,
+                'contractual'  => $contractual,
+                'on_leave'     => $onLeave,
+                'departments'  => $departments,
+            ]
+        ]);
+    }
+
+    /**
+     * PUT /api/company/employees/{id}
+     * Update employee employment details (status, salary, notes, department, start date, etc.)
+     */
+    public function updateEmployee(Request $request, $id)
+    {
+        $userId = $request->user()->id;
+
+        $app = JobApplication::whereHas('jobListing', fn($q) => $q->where('company_user_id', $userId))
+            ->where('status', 'hired')
+            ->findOrFail($id);
+
+        $validated = $request->validate([
+            'employment_status' => 'required|in:Probationary,Regular,Contractual,On Leave,Resigned,Terminated',
+            'employee_number'   => 'nullable|string|max:50',
+            'start_date'        => 'nullable|date',
+            'salary'            => 'nullable|string|max:100',
+            'department'        => 'nullable|string|max:150',
+            'employment_type'   => 'nullable|string|max:60',
+            'supervisor_name'   => 'nullable|string|max:150',
+            'work_email'        => 'nullable|email|max:150',
+            'employee_notes'    => 'nullable|string|max:2000',
+        ]);
+
+        $offer = is_array($app->offer_details)
+            ? $app->offer_details
+            : (json_decode($app->offer_details ?? '{}', true) ?: []);
+
+        foreach ($validated as $key => $val) {
+            if ($val !== null) {
+                $offer[$key] = $val;
+            }
+        }
+
+        $app->update([
+            'offer_details' => $offer,
+            'notes'         => $validated['employee_notes'] ?? $app->notes,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Employee employment record updated successfully.',
+            'data'    => $offer,
+        ]);
+    }
+
+    /**
+     * GET /api/company/employees/available-candidates
+     * List CHMSU graduates available for direct hiring into the roster.
+     */
+    public function availableCandidatesForHire(Request $request)
+    {
+        $graduates = User::where('role', 'graduate')
+            ->with(['graduateProfile', 'skills'])
+            ->orderBy('name')
+            ->take(50)
+            ->get()
+            ->map(function ($u) {
+                return [
+                    'id'             => $u->id,
+                    'name'           => $u->name,
+                    'email'          => $u->email,
+                    'avatar_url'     => $u->avatar_url,
+                    'course'         => $u->graduateProfile?->course ?? 'BS in Information Technology',
+                    'campus'         => $u->graduateProfile?->campus ?? 'Fortune Towne Campus',
+                    'year_graduated' => $u->graduateProfile?->year_graduated ?? '2021',
+                    'skills'         => $u->skills?->pluck('name')->take(5)->all() ?? [],
+                ];
+            });
+
+        $jobs = JobListing::where('company_user_id', $request->user()->id)
+            ->where('status', 'open')
+            ->get(['id', 'title', 'department', 'salary_range', 'employment_type']);
+
+        return response()->json([
+            'success'    => true,
+            'candidates' => $graduates,
+            'jobs'       => $jobs,
+        ]);
+    }
+
+    /**
+     * POST /api/company/employees
+     * Record an employee hire (creates or marks application as hired).
+     */
+    public function recordHire(Request $request)
+    {
+        $userId = $request->user()->id;
+
+        $validated = $request->validate([
+            'candidate_user_id' => 'required|exists:users,id',
+            'job_listing_id'    => 'required|exists:job_listings,id',
+            'start_date'        => 'required|date',
+            'salary'            => 'required|string|max:100',
+            'employment_status' => 'required|in:Probationary,Regular,Contractual',
+            'department'        => 'nullable|string|max:150',
+            'employee_number'   => 'nullable|string|max:50',
+            'supervisor_name'   => 'nullable|string|max:150',
+            'employee_notes'    => 'nullable|string|max:2000',
+        ]);
+
+        $job = JobListing::where('company_user_id', $userId)->findOrFail($validated['job_listing_id']);
+
+        $offerDetails = [
+            'salary'            => $validated['salary'],
+            'start_date'        => $validated['start_date'],
+            'employment_status' => $validated['employment_status'],
+            'department'        => $validated['department'] ?? $job->department,
+            'employee_number'   => $validated['employee_number'] ?? ('EMP-' . rand(1000, 9999)),
+            'supervisor_name'   => $validated['supervisor_name'] ?? '',
+            'employee_notes'    => $validated['employee_notes'] ?? '',
+        ];
+
+        $app = JobApplication::updateOrCreate(
+            [
+                'job_listing_id'    => $job->id,
+                'applicant_user_id' => $validated['candidate_user_id'],
+            ],
+            [
+                'status'           => 'hired',
+                'offer_decision'   => 'accepted',
+                'offer_decided_at' => now(),
+                'offer_details'    => $offerDetails,
+                'notes'            => $validated['employee_notes'] ?? null,
+            ]
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Candidate successfully added to Employee Roster.',
+            'data'    => $app,
+        ], 201);
     }
 }
 

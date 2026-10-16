@@ -497,11 +497,18 @@ class AdminController extends Controller
         $statusFilter  = $request->input('status', '');
         $sectionFilter = $request->input('section', '');
         $courseFilter  = $request->input('course', $request->input('program', ''));
-        $perPage       = max(1, min(100, (int) $request->input('per_page', 20)));
+        $perPage       = max(1, min(100, (int) $request->input('per_page', 8)));
 
         $query = User::with(['studentProfile', 'ojtRecord'])
-            ->whereIn('role', ['student', 'graduate'])
-            ->whereHas('studentProfile');
+            ->where('role', 'student')
+            ->whereDoesntHave('graduateProfile')
+            ->whereHas('studentProfile', function ($sp) {
+                $sp->where(function ($sq) {
+                    $sq->whereNull('status')->orWhere('status', '!=', 'alumni');
+                })->where(function ($sq) {
+                    $sq->whereNull('year_level')->orWhere('year_level', 'not ilike', '%graduat%');
+                });
+            });
 
         // Search: name, email, student ID, or course
         if ($search) {
@@ -538,83 +545,77 @@ class AdminController extends Controller
             });
         }
 
-        // Status filter: 'Active OJT', 'Alumni', 'Undeployed', 'Completed OJT'
+        // Status filter: 'Active OJT', 'Undeployed', 'Completed OJT', 'Eligible for Promotion', 'Needs Evaluation'
         if ($statusFilter) {
             $norm = strtolower(trim(str_replace([' ', '_', '-'], '', $statusFilter)));
-            if ($norm === 'alumni') {
-                $query->where(function ($q) {
-                    $q->where('role', 'graduate')
-                      ->orWhereHas('studentProfile', fn($sp) => $sp->where('status', 'alumni'));
+            if ($norm === 'completedojt' || $norm === 'completed') {
+                $query->whereHas('ojtRecord', function ($oq) {
+                    $oq->where('completed_hours', '>=', 600)
+                       ->orWhere('status', 'completed')
+                       ->orWhereRaw('completed_hours >= required_hours AND required_hours > 0');
                 });
-            } elseif ($norm === 'completedojt' || $norm === 'completed') {
-                $query->where('role', '!=', 'graduate')
-                    ->whereHas('studentProfile', fn($sp) => $sp->where('status', '!=', 'alumni'))
-                    ->whereHas('ojtRecord', function ($oq) {
-                        $oq->where('completed_hours', '>=', 600)
-                           ->orWhere('status', 'completed')
-                           ->orWhereRaw('completed_hours >= required_hours AND required_hours > 0');
-                    });
             } elseif ($norm === 'activeojt' || $norm === 'ojt') {
-                $query->where('role', '!=', 'graduate')
-                    ->whereHas('studentProfile', fn($sp) => $sp->where('status', '!=', 'alumni'))
-                    ->where(function ($sq) {
-                        $sq->whereHas('ojtRecord')
-                           ->orWhereHas('ojtInterests', fn($oi) => $oi->whereIn('status', ['ojt_started', 'accepted', 'ojt_confirmed']));
-                    });
+                $query->where(function ($sq) {
+                    $sq->whereHas('ojtRecord', fn($oq) => $oq->where('status', '!=', 'pulled_out'))
+                       ->orWhereHas('ojtInterests', fn($oi) => $oi->whereIn('status', ['ojt_started', 'accepted', 'ojt_confirmed']));
+                });
             } elseif ($norm === 'eligibleforpromotion' || $norm === 'eligible') {
-                $query->where('role', 'student')
-                    ->whereHas('studentProfile', fn($sp) => $sp->where('status', '!=', 'alumni'))
-                    ->whereHas('ojtRecord', function ($oq) {
-                        $oq->where('completed_hours', '>=', 600)
-                           ->orWhere('status', 'completed')
-                           ->orWhereRaw('completed_hours >= required_hours AND required_hours > 0');
-                    })
-                    ->whereHas('studentEvaluations', fn($eq) => $eq->where('status', 'submitted'));
+                $query->whereHas('ojtRecord', function ($oq) {
+                    $oq->where('completed_hours', '>=', 600)
+                       ->orWhere('status', 'completed')
+                       ->orWhereRaw('completed_hours >= required_hours AND required_hours > 0');
+                })
+                ->whereHas('studentEvaluations', fn($eq) => $eq->where('status', 'submitted'));
             } elseif ($norm === 'needsevaluation' || $norm === 'missingevaluation') {
-                $query->where('role', 'student')
-                    ->whereHas('studentProfile', fn($sp) => $sp->where('status', '!=', 'alumni'))
-                    ->whereHas('ojtRecord', function ($oq) {
-                        $oq->where('completed_hours', '>=', 600)
-                           ->orWhere('status', 'completed')
-                           ->orWhereRaw('completed_hours >= required_hours AND required_hours > 0');
-                    })
-                    ->whereDoesntHave('studentEvaluations', fn($eq) => $eq->where('status', 'submitted'));
+                $query->whereHas('ojtRecord', function ($oq) {
+                    $oq->where('completed_hours', '>=', 600)
+                       ->orWhere('status', 'completed')
+                       ->orWhereRaw('completed_hours >= required_hours AND required_hours > 0');
+                })
+                ->whereDoesntHave('studentEvaluations', fn($eq) => $eq->where('status', 'submitted'));
             } elseif ($norm === 'undeployed' || $norm === 'active') {
-                $query->where('role', '!=', 'graduate')
-                    ->whereHas('studentProfile', fn($sp) => $sp->where('status', '!=', 'alumni'))
-                    ->whereDoesntHave('ojtRecord')
-                    ->whereDoesntHave('ojtInterests', fn($oi) => $oi->whereIn('status', ['ojt_started', 'accepted', 'ojt_confirmed']));
+                $query->where(function ($sq) {
+                    $sq->whereDoesntHave('ojtRecord')
+                       ->orWhereHas('ojtRecord', fn($oq) => $oq->where('status', 'pulled_out'));
+                })
+                ->whereDoesntHave('ojtInterests', fn($oi) => $oi->whereIn('status', ['ojt_started', 'accepted', 'ojt_confirmed']));
             }
         }
 
         $users = $query->orderBy('name')->paginate($perPage);
 
-        // Available sections for the filter dropdown
+        // Available sections for active students
         $availableSections = StudentProfile::whereNotNull('section')
             ->where('section', '!=', '')
+            ->whereHas('user', function ($uq) {
+                $uq->where('role', 'student')
+                   ->whereDoesntHave('graduateProfile');
+            })
+            ->where(function ($sq) {
+                $sq->whereNull('status')->orWhere('status', '!=', 'alumni');
+            })
             ->distinct()
             ->pluck('section')
             ->sort()
             ->values()
             ->all();
 
-        // Courses that have students or alumni registered in the database
+        // Courses that have active students registered in the database
         $studentCourses = StudentProfile::whereNotNull('program')
             ->where('program', '!=', '')
+            ->whereHas('user', function ($uq) {
+                $uq->where('role', 'student')
+                   ->whereDoesntHave('graduateProfile');
+            })
+            ->where(function ($sq) {
+                $sq->whereNull('status')->orWhere('status', '!=', 'alumni');
+            })
             ->distinct()
             ->pluck('program')
             ->all();
 
-        $graduateCourses = \Illuminate\Support\Facades\DB::table('graduate_profiles')
-            ->whereNotNull('course')
-            ->where('course', '!=', '')
-            ->distinct()
-            ->pluck('course')
-            ->all();
-
-        $rawCourses = array_merge($studentCourses, $graduateCourses);
         $normalizedCourses = [];
-        foreach ($rawCourses as $c) {
+        foreach ($studentCourses as $c) {
             $c = trim((string)$c);
             if ($c === '' || $c === '—' || $c === 'N/A') {
                 continue;
@@ -656,11 +657,13 @@ class AdminController extends Controller
             $isAlumni = ($rawStatus === 'alumni' || $u->role === 'graduate');
 
             $activeInterest = ($interestsMap[$u->id] ?? collect())->first();
-            $companyName    = $ojt?->company_name ?? $activeInterest?->posting?->company_name ?? null;
+            $isPulledOut = ($ojt?->status === 'pulled_out') || ($activeInterest?->status === 'pulled_out');
+            $hasActivePlacement = ($ojt && $ojt->status !== 'pulled_out') || ($activeInterest && $activeInterest->status !== 'pulled_out');
+            $companyName = !$isPulledOut ? ($ojt?->company_name ?? $activeInterest?->posting?->company_name ?? null) : null;
 
             if ($isAlumni) {
                 $status = 'Alumni';
-            } elseif ($ojt || $activeInterest) {
+            } elseif ($hasActivePlacement) {
                 $status = 'Active OJT';
             } else {
                 $status = 'Undeployed';
@@ -798,7 +801,7 @@ class AdminController extends Controller
                 continue;
             }
 
-            // Calculate completed OJT hours
+            // Calculate completed OJT hours (including accredited hours from approved pull-outs)
             $completedHours = (float) ($ojt?->completed_hours ?? 0);
             if ($completedHours == 0) {
                 $logsSum = (float) \App\Models\TimeLog::where('user_id', $user->id)
@@ -809,44 +812,76 @@ class AdminController extends Controller
                 }
             }
 
+            $accreditedHours = (float) \App\Models\OjtPullOutRequest::where('student_user_id', $user->id)
+                ->where('status', 'approved')
+                ->sum('credited_hours');
+            $totalCurriculumRendered = $completedHours + $accreditedHours;
+
             $requiredHours = (int) ($ojt?->required_hours ?? 600);
             if ($requiredHours <= 0) {
                 $requiredHours = 600;
             }
 
             // Gate 1: Student MUST have completed the required hours (>= 600 hours goal)
-            $isHoursCompleted = ($completedHours >= 600) || ($completedHours >= $requiredHours && $completedHours > 0);
+            $isHoursCompleted = ($totalCurriculumRendered >= 600) || ($totalCurriculumRendered >= $requiredHours && $totalCurriculumRendered > 0);
 
             if (!$isHoursCompleted) {
                 $ineligible[] = [
                     'id'              => $user->id,
                     'name'            => $user->name,
-                    'completed_hours' => $completedHours,
+                    'completed_hours' => $totalCurriculumRendered,
                     'required_hours'  => $requiredHours,
-                    'reason'          => "Incomplete OJT hours ({$completedHours}/{$requiredHours}h logged)",
+                    'reason'          => "Incomplete OJT hours ({$totalCurriculumRendered}/{$requiredHours}h logged)",
                 ];
                 continue;
             }
 
-            // Gate 2: Student MUST have a verified evaluation submitted by the host company
-            $submittedEval = $user->studentEvaluations
-                ->where('status', 'submitted')
-                ->sortByDesc('submitted_at')
-                ->first();
+            // Gate 2: Student MUST have verified dual-term evaluations submitted/cleared
+            $midterm = $user->studentEvaluations->where('term', 'midterm')->sortByDesc('created_at')->first();
+            $endterm = $user->studentEvaluations->where('term', 'endterm')->sortByDesc('created_at')->first();
 
-            if (!$submittedEval) {
-                $hasPending = $user->studentEvaluations->where('status', 'pending')->isNotEmpty();
+            // Legacy fallback if evaluation was created without term
+            if (!$endterm && !$midterm) {
+                $legacy = $user->studentEvaluations->sortByDesc('created_at')->first();
+                if ($legacy && $legacy->status === 'submitted') {
+                    $endterm = $legacy;
+                }
+            }
+
+            if (!$endterm || $endterm->status !== 'submitted') {
+                $hasPendingEnd = $user->studentEvaluations->where('term', 'endterm')->where('status', 'pending')->isNotEmpty();
                 $ineligible[] = [
                     'id'              => $user->id,
                     'name'            => $user->name,
-                    'completed_hours' => $completedHours,
+                    'completed_hours' => $totalCurriculumRendered,
                     'required_hours'  => $requiredHours,
-                    'reason'          => $hasPending
-                        ? 'Host company performance evaluation is still pending'
-                        : 'No host company performance evaluation has been submitted',
+                    'reason'          => $hasPendingEnd
+                        ? 'Host company Final/Endterm performance evaluation is still pending'
+                        : 'No host company Final/Endterm performance evaluation has been submitted',
                 ];
                 continue;
             }
+
+            if ($midterm && !in_array($midterm->status, ['submitted', 'waived']) && !$midterm->is_waived) {
+                $ineligible[] = [
+                    'id'              => $user->id,
+                    'name'            => $user->name,
+                    'completed_hours' => $totalCurriculumRendered,
+                    'required_hours'  => $requiredHours,
+                    'reason'          => 'Midterm performance evaluation is still pending with company (or must be officially waived)',
+                ];
+                continue;
+            }
+
+            // Calculate composite final rating (50% Midterm + 50% Endterm or 100% Endterm if waived)
+            $compositeScore = null;
+            if ($midterm && $midterm->status === 'submitted') {
+                $compositeScore = round((((float) $midterm->overall_score) * 0.50) + (((float) $endterm->overall_score) * 0.50), 2);
+            } else {
+                $compositeScore = (float) $endterm->overall_score;
+            }
+
+            $submittedEval = $endterm;
 
             // Student passed both Gates! Proceed with promotion transaction
             $currentSchoolYear = (date('n') >= 6)
@@ -857,7 +892,7 @@ class AdminController extends Controller
                 ? trim($validated['batch'])
                 : ($sp?->batch ?: $currentSchoolYear);
 
-            \Illuminate\Support\Facades\DB::transaction(function () use ($user, $sp, $ojt, $submittedEval, $batchYear, $completedHours, $validated, &$promoted) {
+            \Illuminate\Support\Facades\DB::transaction(function () use ($user, $sp, $ojt, $submittedEval, $compositeScore, $batchYear, $totalCurriculumRendered, $validated, &$promoted) {
                 // 1. Promote User role to graduate
                 $user->update(['role' => 'graduate']);
 
@@ -874,7 +909,7 @@ class AdminController extends Controller
                 if ($ojt) {
                     $ojt->update([
                         'status'          => 'completed',
-                        'completed_hours' => max($completedHours, (float)$ojt->completed_hours),
+                        'completed_hours' => max($totalCurriculumRendered, (float)$ojt->completed_hours),
                         'end_date'        => $ojt->end_date ?? now(),
                     ]);
                 }
@@ -899,16 +934,16 @@ class AdminController extends Controller
                 );
 
                 // 6. Send congratulations in-app notification
-                $evalScore = $submittedEval->overall_score ? (float) $submittedEval->overall_score : null;
-                $evalScoreText = $evalScore ? " with an evaluation rating of {$evalScore}/5.0" : "";
+                $evalScore = $compositeScore ?? ($submittedEval->overall_score ? (float) $submittedEval->overall_score : null);
+                $evalScoreText = $evalScore ? " with a composite evaluation rating of {$evalScore}/5.0" : "";
                 \App\Models\AppNotification::send(
                     $user->id,
                     'graduation_promotion',
                     'Congratulations on your Graduation!',
-                    'You have successfully completed your OJT requirement (' . round($completedHours) . 'h) and your host company evaluation has been verified' . $evalScoreText . '. Your account has been promoted to Alumni/Graduate. Welcome to the CHMSU Alumni & Career Network!',
+                    'You have successfully completed your OJT requirement (' . round($totalCurriculumRendered) . 'h) and your host company evaluations have been verified' . $evalScoreText . '. Your account has been promoted to Alumni/Graduate. Welcome to the CHMSU Alumni & Career Network!',
                     [
                         'year_graduated'   => $batchYear,
-                        'completed_hours'  => $completedHours,
+                        'completed_hours'  => $totalCurriculumRendered,
                         'evaluation_score' => $evalScore,
                         'role'             => 'graduate',
                         'status'           => 'alumni',
@@ -923,8 +958,8 @@ class AdminController extends Controller
                 }
                 $companyName = $companyName ?: 'Host Training Establishment';
 
-                $evalRatingStr = $evalScore ? " (Evaluation Rating: {$evalScore}/5.0)" : '';
-                $hoursRenderedStr = round($completedHours);
+                $evalRatingStr = $evalScore ? " (Composite Evaluation Rating: {$evalScore}/5.0)" : '';
+                $hoursRenderedStr = round($totalCurriculumRendered);
                 $desc = "Completed {$hoursRenderedStr} hours of On-the-Job Training (OJT) practicum at {$companyName}{$evalRatingStr}. Verified by host company supervisor and academic coordinator.";
                 if (!empty($submittedEval?->recommendation)) {
                     $desc .= " Recommendation: " . $submittedEval->recommendation;
@@ -1061,10 +1096,11 @@ class AdminController extends Controller
         $sectionParam = $request->query('section');
         $courseParam  = $request->query('course');
 
-        // Eager-load graduate profile + experiences for all graduate users
+        // Eager-load graduate profile + student profile + experiences for all graduate users
         $graduates = User::where('role', 'graduate')
             ->with([
                 'graduateProfile',
+                'studentProfile',
                 'experiences' => fn($q) => $q->orderBy('sort_order'),
             ])
             ->get()
@@ -1147,33 +1183,85 @@ class AdminController extends Controller
             $notInPathRoles  = array_keys(array_slice($notPathTally, 0, 5));
             $notInPathCounts = array_values(array_slice($notPathTally, 0, 5));
 
-            // Trend: from graduation year up to current year
+            // Trend & Interactive Yearly Breakdown: from graduation year up to current year
             $startYear = max($batchGradYear, 2020);
             $endYear   = (int) date('Y');
 
-            $trend       = [];
-            $trendLabels = [];
+            $trend           = [];
+            $trendLabels     = [];
+            $yearlyBreakdown = [];
 
             for ($yr = $startYear; $yr <= $endYear; $yr++) {
-                $inPathThisYear = 0;
-                foreach ($batchGrads as $grad) {
-                    $gradYear = $this->extractGraduationYear($grad->graduateProfile?->year_graduated ?? $yearGrad, $grad->graduateProfile?->created_at);
-                    foreach ($grad->experiences as $exp) {
-                        if (!$exp->is_it_related) continue;
-                        if (!$this->isPostGraduationExperience($exp, $gradYear)) continue;
+                $inPathThisYear    = 0;
+                $notInPathThisYear = 0;
+                $yearRecords       = [];
 
+                foreach ($batchGrads as $grad) {
+                    $gp       = $grad->graduateProfile;
+                    $gradYear = $this->extractGraduationYear($gp?->year_graduated ?? $yearGrad, $gp?->created_at);
+
+                    // Find all post-grad experiences active in this calendar year
+                    $activeInYear = $grad->experiences->filter(function ($exp) use ($gradYear, $yr, $endYear) {
+                        if (!$this->isPostGraduationExperience($exp, $gradYear)) return false;
                         $expStart = $this->parseYear($exp->period_start);
-                        if ($expStart === null || $expStart > $yr) continue;
-                        $expEnd = $exp->is_current
-                            ? $endYear
-                            : $this->parseYear($exp->period_end);
-                        if ($expEnd === null || $expEnd < $yr) continue;
-                        $inPathThisYear++;
-                        break; // count each grad once per year
+                        if ($expStart === null || $expStart > $yr) return false;
+                        $expEnd = $exp->is_current ? $endYear : $this->parseYear($exp->period_end);
+                        if ($expEnd === null || $expEnd < $yr) return false;
+                        return true;
+                    });
+
+                    // Prefer IT-related active experience if available
+                    $primaryExp = $activeInYear->firstWhere('is_it_related', true)
+                               ?? $activeInYear->first();
+
+                    if ($primaryExp) {
+                        $isExpInPath = (bool) $primaryExp->is_it_related;
+                        $expRole     = $primaryExp->role ?: ($isExpInPath ? 'IT Professional' : 'Non-IT Professional');
+                        $expCompany  = $primaryExp->company ?: '—';
+                        $pStart      = $primaryExp->period_start ?: (string) $yr;
+                        $pEnd        = $primaryExp->is_current ? 'Present' : ($primaryExp->period_end ?: (string) $yr);
+                        $expPeriod   = "{$pStart} – {$pEnd}";
+                    } else {
+                        $isExpInPath = false;
+                        $empStatus   = strtolower(trim((string) ($gp?->employment_status ?? '')));
+                        $expRole     = match ($empStatus) {
+                            'studying'  => 'Pursuing Further Studies',
+                            'freelance' => 'Freelance / Self-Employed',
+                            default     => 'Seeking Employment / In Transition',
+                        };
+                        $expCompany  = '—';
+                        $expPeriod   = (string) $yr;
                     }
+
+                    if ($isExpInPath) {
+                        $inPathThisYear++;
+                    } else {
+                        $notInPathThisYear++;
+                    }
+
+                    $yearRecords[] = [
+                        'student_id'   => $grad->studentProfile?->student_id ?? '—',
+                        'student_name' => $grad->name,
+                        'avatar_url'   => $grad->avatar_url,
+                        'section'      => $gp?->section ?? '—',
+                        'role'         => $expRole,
+                        'company'      => $expCompany,
+                        'period'       => $expPeriod,
+                        'is_in_path'   => $isExpInPath,
+                    ];
                 }
+
                 $trend[]       = $total > 0 ? (int) round(($inPathThisYear / $total) * 100) : 0;
                 $trendLabels[] = (string) $yr;
+
+                $yearlyBreakdown[(string) $yr] = [
+                    'year'              => $yr,
+                    'total_alumni'      => $total,
+                    'in_path_count'     => $inPathThisYear,
+                    'not_in_path_count' => $notInPathThisYear,
+                    'in_path_rate'      => $total > 0 ? round(($inPathThisYear / $total) * 100, 1) : 0,
+                    'records'           => $yearRecords,
+                ];
             }
 
             // Build a clean label e.g. "2020-2021" -> "2020 – 2021"
@@ -1183,20 +1271,21 @@ class AdminController extends Controller
             $batchId = 'b' . preg_replace('/[^a-z0-9]/', '', strtolower($yearGrad . $course));
 
             $batchesOut[] = [
-                'id'             => $batchId,
-                'label'          => $label,
-                'course'         => $course,
-                'campus'         => $campus,
-                'total'          => $total,
-                'inPath'         => $inPath,
-                'notInPath'      => $total - $inPath,
-                'topRoles'       => $topRoles,
-                'topRoleCounts'  => $topRoleCounts,
-                'trend'          => $trend,
-                'trendLabels'    => $trendLabels,
-                'notInPathRoles' => $notInPathRoles,
-                'notInPathCounts'=> $notInPathCounts,
-                'students'       => $studentsOut,
+                'id'               => $batchId,
+                'label'            => $label,
+                'course'           => $course,
+                'campus'           => $campus,
+                'total'            => $total,
+                'inPath'           => $inPath,
+                'notInPath'        => $total - $inPath,
+                'topRoles'         => $topRoles,
+                'topRoleCounts'    => $topRoleCounts,
+                'trend'            => $trend,
+                'trendLabels'      => $trendLabels,
+                'yearly_breakdown' => $yearlyBreakdown,
+                'notInPathRoles'   => $notInPathRoles,
+                'notInPathCounts'  => $notInPathCounts,
+                'students'         => $studentsOut,
             ];
         }
 

@@ -68,7 +68,14 @@ function invalidateForMutation(path) {
     invalidateCache('/admin/students');
     invalidateCache('/admin/dashboard');
     invalidateCache('/admin/alumni-analytics');
+    invalidateCache('/admin/peo-analytics');
     invalidateCache('/admin/ojt');
+    invalidateCache('/admin/sidebar');
+  } else if (cleanPath.includes('/admin/alumni')) {
+    invalidateCache('/admin/alumni-analytics');
+    invalidateCache('/admin/peo-analytics');
+    invalidateCache('/admin/students');
+    invalidateCache('/admin/dashboard');
     invalidateCache('/admin/sidebar');
   } else if (cleanPath.includes('/admin/supervisors')) {
     invalidateCache('/admin/supervisors');
@@ -78,6 +85,12 @@ function invalidateForMutation(path) {
     invalidateCache('/admin/ojt');
     invalidateCache('/admin/dashboard');
     invalidateCache('/admin/sidebar');
+  } else if (cleanPath.includes('/admin/pull-out-requests')) {
+    invalidateCache('/admin/pull-out-requests');
+    invalidateCache('/admin/students');
+    invalidateCache('/admin/dashboard');
+    invalidateCache('/admin/sidebar');
+    invalidateCache('/admin/ojt');
   } else if (cleanPath.includes('/admin/jobs')) {
     invalidateCache('/admin/jobs');
     invalidateCache('/admin/dashboard');

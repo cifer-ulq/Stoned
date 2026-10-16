@@ -6,6 +6,31 @@ import { openAlumniImportModal } from '../components/alumni-import-modal.js';
    HELPERS & SVG GRAPH GENERATORS (ORIGINAL CAREER PATH)
    ───────────────────────────────────────────────────────────── */
 
+const COURSE_ACRONYM_MAP = {
+  'Bachelor of Science in Information Technology': 'BSIT',
+  'Bachelor of Science in Computer Science': 'BSCS',
+  'Bachelor of Science in Information Systems': 'BSIS',
+  'Bachelor of Science in Computer Engineering': 'BSCpE',
+  'Bachelor of Science in Entertainment and Multimedia Computing': 'BSEMC',
+  'Bachelor of Science in Industrial Technology': 'BSIndTech',
+  'Bachelor of Science in Business Administration': 'BSBA',
+  'Bachelor of Science in Accountancy': 'BSA',
+  'Bachelor of Science in Hospitality Management': 'BSHM',
+  'Bachelor of Science in Tourism Management': 'BSTM',
+  'Bachelor of Science in Criminology': 'BSCrim',
+  'Bachelor of Science in Nursing': 'BSN',
+  'Bachelor of Science in Civil Engineering': 'BSCE',
+  'Bachelor of Science in Mechanical Engineering': 'BSME',
+  'Bachelor of Science in Electrical Engineering': 'BSEE',
+  'Bachelor of Science in Electronics Engineering': 'BSECE',
+  'Bachelor of Science in Agriculture': 'BSA',
+  'Bachelor of Science in Fisheries': 'BSF',
+  'Bachelor of Science in Psychology': 'BSPsych',
+  'Bachelor of Secondary Education': 'BSED',
+  'Bachelor of Elementary Education': 'BEED',
+  'Bachelor of Technology and Livelihood Education': 'BTLED',
+};
+
 function pct(n, total) { return total > 0 ? Math.round((n / total) * 100) : 0; }
 
 function barChart(labels, values, max, color = '#6366F1') {
@@ -163,14 +188,18 @@ function renderBatchPanel(b) {
   const topMax = b.topRoleCounts.length ? Math.max(...b.topRoleCounts) : 1;
   const notMax = b.notInPathCounts.length ? Math.max(...b.notInPathCounts) : 1;
   const color  = inPct >= 70 ? '#6366F1' : inPct >= 50 ? '#F59E0B' : '#EF4444';
+  const courseAcr = COURSE_ACRONYM_MAP[b.course] || b.course;
 
   const trendRows = b.trendLabels.map((lbl, i) => `
-    <div class="an-trend-row">
-      <span class="an-trend-year">${lbl}</span>
+    <div class="an-trend-row an-trend-row--interactive" data-batch-id="${b.id}" data-year="${lbl}" title="Click to inspect all ${lbl} career experiences for Batch ${b.label}">
+      <span class="an-trend-year">
+        ${lbl}
+      </span>
       <div class="an-trend-bar-track">
         <div class="an-trend-bar-fill" style="width:${b.trend[i]}%;background:${color}"></div>
       </div>
       <span class="an-trend-pct">${b.trend[i]}%</span>
+      <span class="an-trend-inspect-tag">${icon('search', 11)} Inspect</span>
     </div>`).join('');
 
   const statusClass = inPct >= 70 ? 'an-card__status--good' : inPct >= 50 ? 'an-card__status--mid' : 'an-card__status--low';
@@ -179,16 +208,19 @@ function renderBatchPanel(b) {
 
   return `
     <div class="an-panel" id="${b.id}" data-campus="${b.campus}" data-course="${b.course}" data-status="${inPct >= 70 ? 'good' : inPct >= 50 ? 'mid' : 'low'}">
-      <button class="an-panel__trigger" aria-expanded="false" aria-controls="${b.id}-body">
+      <div class="an-panel__trigger" role="button" tabindex="0" aria-expanded="false" aria-controls="${b.id}-body">
         <div class="an-panel__trigger-left">
           <span class="an-panel__chevron">${icon('chevronRight', 16)}</span>
-          <div class="an-card__badge">${b.course}</div>
+          <div class="an-card__badge" title="${b.course}">${courseAcr}</div>
           <div class="an-panel__title-block">
             <span class="an-panel__title">Batch ${b.label}</span>
             <span class="an-panel__sub">${b.campus} &middot; ${b.total} alumni tracked</span>
           </div>
         </div>
         <div class="an-panel__trigger-right">
+          <button class="an-explore-btn btn-explore-batch" data-batch-id="${b.id}" type="button" title="Open Longitudinal Career Timeline for Batch ${b.label}">
+            ${icon('calendar', 13)} <span>Explore Years</span>
+          </button>
           <div class="an-panel__mini-bar">
             <div class="an-panel__mini-fill" style="width:${inPct}%;background:${color}"></div>
           </div>
@@ -197,7 +229,7 @@ function renderBatchPanel(b) {
             ${statusIcon} ${statusText}
           </span>
         </div>
-      </button>
+      </div>
 
       <div class="an-panel__body" id="${b.id}-body">
         <div class="an-panel__body-inner">
@@ -236,7 +268,12 @@ function renderBatchPanel(b) {
                 : '<p style="color:var(--text-secondary);font-size:.85rem">All graduates are in the IT path.</p>'}
             </div>
             <div class="an-detail-col">
-              <p class="an-section-label">${icon('barChart2', 12)} Year-by-Year Breakdown</p>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-2);">
+                <p class="an-section-label" style="margin:0;">${icon('barChart2', 12)} Year-by-Year Breakdown</p>
+                <button class="an-explore-btn btn-explore-batch" data-batch-id="${b.id}" type="button" style="padding:2px 8px;font-size:0.7rem;" title="Inspect Year Timeline">
+                  ${icon('calendar', 11)} <span>Inspect All</span>
+                </button>
+              </div>
               ${trendRows ? `<div class="an-trend-rows">${trendRows}</div>` : '<p style="color:var(--text-secondary);font-size:.85rem">No data.</p>'}
             </div>
           </div>
@@ -314,13 +351,337 @@ function renderCareerView(batches, overall) {
   `;
 }
 
+/* ─────────────────────────────────────────────────────────────
+   INTERACTIVE BATCH CAREER EXPLORER MODAL (LONGITUDINAL YEARS)
+   ───────────────────────────────────────────────────────────── */
+function openBatchTimelineModal(batch, initialYear = null) {
+  let modal = document.getElementById('batch-timeline-modal');
+  if (modal) modal.remove();
+
+  const yearly = batch.yearly_breakdown || {};
+  const years = Object.keys(yearly).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+
+  let activeYear = initialYear && yearly[initialYear]
+    ? String(initialYear)
+    : (years[years.length - 1] || '2026');
+  let searchFilter = '';
+  let statusFilter = 'all'; // 'all' | 'in_path' | 'not_in_path'
+  let page = 0;
+  const pageSize = 10;
+
+  modal = document.createElement('div');
+  modal.id = 'batch-timeline-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.65);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px;backdrop-filter:blur(3px);';
+
+  function renderModalContent() {
+    const yearData = yearly[activeYear] || {
+      year: activeYear,
+      total_alumni: batch.total,
+      in_path_count: 0,
+      not_in_path_count: batch.total,
+      in_path_rate: 0,
+      records: []
+    };
+
+    const inPct = yearData.in_path_rate ?? 0;
+    const outPct = Math.max(0, Math.round(100 - inPct));
+
+    // Filter records by status and search query
+    const allRecords = yearData.records || [];
+    const filteredRecords = allRecords.filter(r => {
+      if (statusFilter === 'in_path' && !r.is_in_path) return false;
+      if (statusFilter === 'not_in_path' && r.is_in_path) return false;
+      if (searchFilter) {
+        const q = searchFilter.toLowerCase();
+        const matchName = (r.student_name || '').toLowerCase().includes(q);
+        const matchRole = (r.role || '').toLowerCase().includes(q);
+        const matchComp = (r.company || '').toLowerCase().includes(q);
+        const matchSec  = (r.section || '').toLowerCase().includes(q);
+        const matchId   = (r.student_id || '').toLowerCase().includes(q);
+        if (!matchName && !matchRole && !matchComp && !matchSec && !matchId) return false;
+      }
+      return true;
+    });
+
+    const totalCount = filteredRecords.length;
+    const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+    if (page >= totalPages) page = totalPages - 1;
+    if (page < 0) page = 0;
+
+    const startIdx = page * pageSize;
+    const pageRecords = filteredRecords.slice(startIdx, startIdx + pageSize);
+
+    modal.innerHTML = `
+      <div class="anim-scale-in" style="background:var(--bg-elevated);border-radius:var(--radius-2xl);max-width:940px;width:100%;max-height:92vh;display:flex;flex-direction:column;box-shadow:var(--shadow-2xl);border:1px solid var(--border-default);overflow:hidden;">
+        <!-- Header -->
+        <div style="padding:var(--space-4) var(--space-5);border-bottom:1px solid var(--border-default);display:flex;justify-content:space-between;align-items:center;background:var(--bg-surface);">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="width:40px;height:40px;border-radius:var(--radius-lg);background:rgba(99,102,241,0.12);color:#4F46E5;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              ${icon('award', 22)}
+            </div>
+            <div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <h3 style="font-size:var(--text-lg);font-weight:700;color:var(--text-primary);margin:0;">
+                  Batch ${batch.label} Career Timeline
+                </h3>
+                <span class="badge badge--info" style="font-size:0.72rem;font-weight:600;">${batch.course}</span>
+              </div>
+              <p style="font-size:var(--text-xs);color:var(--text-secondary);margin:3px 0 0 0;">
+                ${batch.campus} &middot; <strong>${batch.total}</strong> Alumni Tracked &middot; Overall In-Path Rate: <strong>${pct(batch.inPath, batch.total)}%</strong>
+              </p>
+            </div>
+          </div>
+          <button id="batch-modal-close" style="background:none;border:none;cursor:pointer;color:var(--text-tertiary);padding:6px;border-radius:var(--radius-md);" aria-label="Close">
+            ${icon('x', 20)}
+          </button>
+        </div>
+
+        <!-- Year Timeline Bar -->
+        <div style="padding:12px var(--space-5);background:var(--bg-secondary);border-bottom:1px solid var(--border-default);">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <span style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-secondary);display:flex;align-items:center;gap:6px;">
+              ${icon('calendar', 13)} Select Year in Longitudinal Horizon
+            </span>
+            <span style="font-size:0.72rem;color:var(--text-tertiary);">Click any year to inspect cohort employment</span>
+          </div>
+          <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;" id="modal-year-pills">
+            ${years.map(yr => {
+              const yInfo = yearly[yr] || {};
+              const isActive = yr === activeYear;
+              const yRate = yInfo.in_path_rate ?? 0;
+              const badgeStyle = isActive
+                ? 'background:rgba(255,255,255,0.25);color:#fff;'
+                : (yRate >= 70 ? 'background:rgba(16,185,129,0.15);color:#059669;' : 'background:rgba(245,158,11,0.15);color:#D97706;');
+              return `
+                <button class="btm-year-pill ${isActive ? 'btm-year-pill--active' : ''}" data-year="${yr}" style="
+                  display:inline-flex;align-items:center;gap:8px;padding:7px 14px;border-radius:var(--radius-xl);
+                  border:1px solid ${isActive ? 'var(--color-primary)' : 'var(--border-default)'};
+                  background:${isActive ? 'var(--color-primary)' : 'var(--bg-surface)'};
+                  color:${isActive ? '#fff' : 'var(--text-primary)'};
+                  font-weight:${isActive ? '700' : '500'};
+                  font-size:0.82rem;cursor:pointer;white-space:nowrap;transition:all 0.15s ease;
+                ">
+                  <span>${yr}</span>
+                  <span style="font-size:0.7rem;padding:2px 6px;border-radius:10px;font-weight:600;${badgeStyle}">
+                    ${yRate}% In-Path
+                  </span>
+                </button>
+              `;
+            }).join('')}
+          </div>
+        </div>
+
+        <!-- Year Summary & Controls Strip -->
+        <div style="padding:12px var(--space-5);border-bottom:1px solid var(--border-default);background:var(--bg-surface);display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:center;">
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <div style="font-size:0.84rem;font-weight:700;color:var(--text-primary);">
+              Year ${activeYear} Cohort Status:
+            </div>
+            <div style="display:flex;gap:8px;">
+              <span class="badge" style="background:rgba(16,185,129,0.12);color:#059669;font-weight:700;display:inline-flex;align-items:center;gap:4px;padding:4px 8px;font-size:0.75rem;">
+                ${icon('checkCircle', 12)} ${yearData.in_path_count} in IT Path (${inPct}%)
+              </span>
+              <span class="badge" style="background:rgba(239,68,68,0.12);color:#DC2626;font-weight:700;display:inline-flex;align-items:center;gap:4px;padding:4px 8px;font-size:0.75rem;">
+                ${icon('alertCircle', 12)} ${yearData.not_in_path_count} Not in Path (${outPct}%)
+              </span>
+            </div>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <!-- Live Search -->
+            <div style="position:relative;width:220px;">
+              <span style="position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--text-tertiary);pointer-events:none;">
+                ${icon('search', 13)}
+              </span>
+              <input type="text" id="modal-filter-search" value="${searchFilter}" placeholder="Search name or role…" style="
+                width:100%;padding:6px 10px 6px 30px;font-size:0.78rem;border:1px solid var(--border-default);border-radius:var(--radius-md);background:var(--bg-primary);color:var(--text-primary);
+              " />
+            </div>
+
+            <!-- Path Status Filter -->
+            <div style="display:flex;border:1px solid var(--border-default);border-radius:var(--radius-md);overflow:hidden;background:var(--bg-primary);">
+              <button class="btm-filter-btn ${statusFilter === 'all' ? 'btm-filter-btn--active' : ''}" data-filter="all" style="padding:5px 10px;font-size:0.75rem;border:none;cursor:pointer;background:${statusFilter === 'all' ? 'var(--color-primary)' : 'transparent'};color:${statusFilter === 'all' ? '#fff' : 'var(--text-secondary)'};font-weight:${statusFilter === 'all' ? '600' : '400'};">
+                All (${yearData.records.length})
+              </button>
+              <button class="btm-filter-btn ${statusFilter === 'in_path' ? 'btm-filter-btn--active' : ''}" data-filter="in_path" style="padding:5px 10px;font-size:0.75rem;border:none;cursor:pointer;background:${statusFilter === 'in_path' ? 'var(--color-primary)' : 'transparent'};color:${statusFilter === 'in_path' ? '#fff' : 'var(--text-secondary)'};font-weight:${statusFilter === 'in_path' ? '600' : '400'};">
+                In-Path (${yearData.in_path_count})
+              </button>
+              <button class="btm-filter-btn ${statusFilter === 'not_in_path' ? 'btm-filter-btn--active' : ''}" data-filter="not_in_path" style="padding:5px 10px;font-size:0.75rem;border:none;cursor:pointer;background:${statusFilter === 'not_in_path' ? 'var(--color-primary)' : 'transparent'};color:${statusFilter === 'not_in_path' ? '#fff' : 'var(--text-secondary)'};font-weight:${statusFilter === 'not_in_path' ? '600' : '400'};">
+                Not in Path (${yearData.not_in_path_count})
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Experiences Table Body -->
+        <div style="flex:1;overflow-y:auto;padding:0;background:var(--bg-surface);">
+          <table class="an-tbl" style="width:100%;margin:0;">
+            <thead>
+              <tr>
+                <th class="an-tbl-th an-tbl-th--num" style="width:40px;">#</th>
+                <th class="an-tbl-th">Alumnus Name</th>
+                <th class="an-tbl-th" style="width:90px;">Section</th>
+                <th class="an-tbl-th">Role / Position in ${activeYear}</th>
+                <th class="an-tbl-th">Employer / Organization</th>
+                <th class="an-tbl-th" style="width:130px;">Period</th>
+                <th class="an-tbl-th" style="width:120px;text-align:right;">Path Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${pageRecords.length ? pageRecords.map((r, i) => `
+                <tr class="an-tbl-row">
+                  <td class="an-tbl-td an-tbl-td--num">${startIdx + i + 1}</td>
+                  <td class="an-tbl-td">
+                    <div class="an-tbl-name">
+                      <div class="an-tbl-avatar" style="${r.is_in_path ? 'background:rgba(16,185,129,0.15);color:#059669;' : 'background:rgba(239,68,68,0.12);color:#DC2626;'}">
+                        ${(r.student_name || 'Alum').split(' ').map(w => w[0]).slice(0, 2).join('')}
+                      </div>
+                      <div>
+                        <div style="font-weight:600;color:var(--text-primary);font-size:0.84rem;">${r.student_name}</div>
+                        <div style="font-size:0.68rem;color:var(--text-tertiary);font-family:monospace;">ID: ${r.student_id}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="an-tbl-td"><span class="an-tbl-section">${r.section}</span></td>
+                  <td class="an-tbl-td" style="font-weight:600;color:var(--text-primary);font-size:0.82rem;">${r.role}</td>
+                  <td class="an-tbl-td an-tbl-td--emp" style="font-size:0.8rem;">${r.company}</td>
+                  <td class="an-tbl-td" style="font-size:0.75rem;color:var(--text-secondary);">${r.period}</td>
+                  <td class="an-tbl-td" style="text-align:right;">
+                    <span class="an-path-badge ${r.is_in_path ? 'an-path-badge--yes' : 'an-path-badge--no'}" style="font-size:0.72rem;display:inline-flex;align-items:center;gap:4px;">
+                      ${r.is_in_path ? icon('checkCircle', 12) + ' In Path' : icon('alertCircle', 12) + ' Not in Path'}
+                    </span>
+                  </td>
+                </tr>
+              `).join('') : `
+                <tr>
+                  <td colspan="7" style="text-align:center;padding:48px 16px;color:var(--text-secondary);">
+                    ${icon('info', 28)}
+                    <p style="margin:8px 0 0 0;font-size:0.85rem;">No alumni records matching the selected filter for year ${activeYear}.</p>
+                  </td>
+                </tr>
+              `}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Footer with Pagination -->
+        <div style="padding:var(--space-3) var(--space-5);border-top:1px solid var(--border-default);background:var(--bg-secondary);display:flex;justify-content:space-between;align-items:center;">
+          <div style="font-size:0.75rem;color:var(--text-secondary);">
+            Showing <strong>${totalCount > 0 ? startIdx + 1 : 0}–${Math.min(startIdx + pageSize, totalCount)}</strong> of <strong>${totalCount}</strong> records in <strong>Year ${activeYear}</strong>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            ${totalPages > 1 ? `
+              <div class="an-pagination" style="margin:0;">
+                <button class="an-pg-btn an-pg-btn--nav" id="modal-pg-prev" ${page === 0 ? 'disabled' : ''}>${icon('chevronLeft', 14)}</button>
+                <span class="an-pg-info" style="font-size:0.75rem;margin:0 6px;">Page ${page + 1} of ${totalPages}</span>
+                <button class="an-pg-btn an-pg-btn--nav" id="modal-pg-next" ${page >= totalPages - 1 ? 'disabled' : ''}>${icon('chevronRight', 14)}</button>
+              </div>
+            ` : ''}
+            <button class="btn btn--outline btn--sm" id="modal-done-btn" style="padding:5px 14px;">Close</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    renderIcons();
+
+    // Event handlers inside modal
+    modal.querySelector('#batch-modal-close')?.addEventListener('click', () => modal.remove());
+    modal.querySelector('#modal-done-btn')?.addEventListener('click', () => modal.remove());
+
+    // Year selection
+    modal.querySelectorAll('.btm-year-pill').forEach(btn => {
+      btn.addEventListener('click', () => {
+        activeYear = btn.dataset.year;
+        page = 0;
+        renderModalContent();
+      });
+    });
+
+    // Search filter
+    const searchInput = modal.querySelector('#modal-filter-search');
+    let debounceTimer = null;
+    searchInput?.addEventListener('input', (e) => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        searchFilter = e.target.value.trim();
+        page = 0;
+        renderModalContent();
+        const newSearch = modal.querySelector('#modal-filter-search');
+        if (newSearch) {
+          newSearch.focus();
+          newSearch.selectionStart = newSearch.selectionEnd = newSearch.value.length;
+        }
+      }, 250);
+    });
+
+    // Status filter toggle
+    modal.querySelectorAll('.btm-filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        statusFilter = btn.dataset.filter;
+        page = 0;
+        renderModalContent();
+      });
+    });
+
+    // Pagination
+    modal.querySelector('#modal-pg-prev')?.addEventListener('click', () => {
+      if (page > 0) { page--; renderModalContent(); }
+    });
+    modal.querySelector('#modal-pg-next')?.addEventListener('click', () => {
+      if (page < totalPages - 1) { page++; renderModalContent(); }
+    });
+  }
+
+  renderModalContent();
+  document.body.appendChild(modal);
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) modal.remove();
+  });
+}
+
 function setupCareerViewListeners(container, batches) {
   /* Collapse toggle */
-  container.querySelectorAll('.an-panel__trigger').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const expanded = btn.getAttribute('aria-expanded') === 'true';
-      btn.setAttribute('aria-expanded', String(!expanded));
-      btn.closest('.an-panel').classList.toggle('an-panel--open', !expanded);
+  container.querySelectorAll('.an-panel__trigger').forEach(trigger => {
+    const toggleAccordion = () => {
+      const expanded = trigger.getAttribute('aria-expanded') === 'true';
+      trigger.setAttribute('aria-expanded', String(!expanded));
+      trigger.closest('.an-panel').classList.toggle('an-panel--open', !expanded);
+    };
+
+    trigger.addEventListener('click', (e) => {
+      // Don't toggle accordion if the user clicked the Explore Years button
+      if (e.target.closest('.btn-explore-batch')) return;
+      toggleAccordion();
+    });
+
+    trigger.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        if (e.target.closest('.btn-explore-batch')) return;
+        e.preventDefault();
+        toggleAccordion();
+      }
+    });
+  });
+
+  /* Open interactive timeline modal from Explore Years button */
+  container.querySelectorAll('.btn-explore-batch').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const bId = btn.dataset.batchId;
+      const batch = batches.find(b => b.id === bId);
+      if (batch) openBatchTimelineModal(batch);
+    });
+  });
+
+  /* Open interactive timeline modal from clicking a year breakdown row */
+  container.querySelectorAll('.an-trend-row--interactive').forEach(row => {
+    row.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const bId = row.dataset.batchId;
+      const yr  = row.dataset.year;
+      const batch = batches.find(b => b.id === bId);
+      if (batch) openBatchTimelineModal(batch, yr);
     });
   });
 
@@ -345,7 +706,7 @@ function setupCareerViewListeners(container, batches) {
     if (!pgBtn || pgBtn.disabled) return;
     const page    = parseInt(pgBtn.dataset.page, 10);
     const section = pgBtn.closest('.an-student-section');
-    const batchId = section.dataset.batchId;
+    const batchId = section?.dataset?.batchId;
     const batch   = batches.find(b => b.id === batchId);
     if (!batch) return;
     const tmp = document.createElement('div');
@@ -1012,7 +1373,7 @@ function renderAnalytics(container, batches, overall, peoData, onImportSuccess, 
         </div>
         <div style="display:flex;gap:10px;">
           <button class="btn btn--primary btn--sm" id="btn-batch-alumni" style="display:inline-flex;align-items:center;gap:6px;">
-            ${icon('upload', 14)} Batch Register Alumni
+            ${icon('award', 14)} Register Alumni
           </button>
         </div>
       </div>

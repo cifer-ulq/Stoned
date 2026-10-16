@@ -79,6 +79,12 @@ Route::middleware('auth:sanctum')->prefix('company')->group(function () {
     Route::put('jobs/{id}',         [CompanyController::class, 'updateJob']);
     Route::delete('jobs/{id}',      [CompanyController::class, 'deleteJob']);
 
+    // Employee & Staff Roster
+    Route::get('employees',                      [CompanyController::class, 'listEmployees']);
+    Route::post('employees',                     [CompanyController::class, 'recordHire']);
+    Route::put('employees/{id}',                 [CompanyController::class, 'updateEmployee']);
+    Route::get('employees/available-candidates', [CompanyController::class, 'availableCandidatesForHire']);
+
     // Job Applications (incoming)
     Route::get('applications',                   [CompanyController::class, 'listApplications']);
     Route::patch('applications/{id}/status',     [CompanyController::class, 'updateApplicationStatus']);
@@ -137,6 +143,7 @@ Route::middleware('auth:sanctum')->prefix('supervisor')->group(function () {
     Route::delete('evaluations/template/question/{id}',    [EvaluationController::class, 'deleteQuestion']);
     Route::get('evaluations/trainees',                     [EvaluationController::class, 'trainees']);
     Route::post('evaluations/send/{student_id}',           [EvaluationController::class, 'sendEvaluation']);
+    Route::post('evaluations/waive/{student_id}',          [EvaluationController::class, 'waiveEvaluation']);
     Route::post('evaluations/send-batch',                  [EvaluationController::class, 'sendBatch']);
     Route::post('evaluations/remind/{id}',                 [EvaluationController::class, 'remindCompany']);
     Route::get('evaluations/{id}/details',                 [EvaluationController::class, 'evaluationDetails']);

@@ -17,6 +17,10 @@ export function openReviewEmergencyModal({ trainee, onReviewed }) {
   const isOnLeave = trainee.emergency_status === 'on_leave';
   const isPending = trainee.emergency_status === 'pending' || em.coordinator_status === 'pending';
 
+  const medicalDocUrl = em.supporting_document_url || (em.document_path || em.supporting_document_path ? storageUrl(em.document_path || em.supporting_document_path) : null);
+  const fitToWorkUrl = em.fit_to_work_url || (em.fit_to_work_path || em.fit_to_work_document_path ? storageUrl(em.fit_to_work_path || em.fit_to_work_document_path) : null);
+  const hasFitToWork = Boolean(fitToWorkUrl || em.has_fit_to_work);
+
   const overlay = document.createElement('div');
   overlay.id = 'review-emergency-modal-overlay';
   overlay.className = 'modal-backdrop';
@@ -80,23 +84,51 @@ export function openReviewEmergencyModal({ trainee, onReviewed }) {
         </div>
 
         <!-- Documents Section -->
-        <div style="display:flex;flex-direction:column;gap:8px;">
+        <div style="display:flex;flex-direction:column;gap:10px;">
           <label style="display:block;font-size:0.82rem;font-weight:700;color:var(--text-primary);">Supporting Documents &amp; Clearances</label>
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-            ${em.document_path ? `
-              <a href="${storageUrl(em.document_path)}" target="_blank" rel="noopener noreferrer" class="btn btn--outline btn--sm" style="gap:6px;color:#0284c7;border-color:rgba(2,132,199,0.35);">
-                ${icon('fileText', 14)} View Medical / Excuse Document
+
+          <!-- Initial Medical / Excuse Notice Document -->
+          <div style="background:var(--bg-secondary);border:1px solid var(--border-default);border-radius:8px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="color:#0284c7;">${icon('fileText', 16)}</span>
+              <div>
+                <strong style="font-size:0.82rem;color:var(--text-primary);display:block;">Filing Proof / Medical Excuse Document</strong>
+                <span style="font-size:0.74rem;color:var(--text-secondary);">${em.supporting_document_name || 'Medical Certificate'}</span>
+              </div>
+            </div>
+            ${medicalDocUrl ? `
+              <a href="${medicalDocUrl}" target="_blank" rel="noopener noreferrer" class="btn btn--outline btn--sm" style="gap:6px;color:#0284c7;border-color:rgba(2,132,199,0.35);">
+                ${icon('fileText', 14)} View Document
               </a>
             ` : `
               <span style="font-size:0.78rem;color:var(--text-tertiary);font-style:italic;">No medical certificate attached at notice filing.</span>
             `}
+          </div>
 
-            ${em.fit_to_work_path ? `
-              <a href="${storageUrl(em.fit_to_work_path)}" target="_blank" rel="noopener noreferrer" class="btn btn--primary btn--sm" style="gap:6px;background:#059669;border-color:#059669;">
+          <!-- Medical Fit-to-Work Clearance Section -->
+          ${hasFitToWork && fitToWorkUrl ? `
+            <div style="background:rgba(16,185,129,0.06);border:1.5px solid rgba(16,185,129,0.35);border-radius:10px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:36px;height:36px;border-radius:8px;background:rgba(16,185,129,0.15);color:#059669;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                  ${icon('shieldCheck', 20)}
+                </div>
+                <div>
+                  <div style="display:flex;align-items:center;gap:6px;">
+                    <strong style="font-size:0.86rem;color:#065f46;">Medical Fit-to-Work Clearance</strong>
+                    <span class="badge" style="background:#D1FAE5;color:#065F46;font-size:0.68rem;padding:1px 6px;font-weight:700;">Submitted</span>
+                  </div>
+                  <span style="font-size:0.75rem;color:var(--text-secondary);">Uploaded ${em.fit_to_work_uploaded_at || 'by student'} &bull; Ready for verification</span>
+                </div>
+              </div>
+              <a href="${fitToWorkUrl}" target="_blank" rel="noopener noreferrer" class="btn btn--primary btn--sm" style="gap:6px;background:#059669;border-color:#059669;">
                 ${icon('shieldCheck', 14)} Inspect Fit-to-Work Clearance
               </a>
-            ` : ''}
-          </div>
+            </div>
+          ` : (isOnLeave ? `
+            <div style="background:var(--bg-secondary);border:1px dashed var(--border-default);border-radius:8px;padding:10px 14px;font-size:0.78rem;color:var(--text-secondary);display:flex;align-items:center;gap:8px;">
+              ${icon('clock', 14)} Trainee has not yet uploaded a Fit-to-Work clearance certificate.
+            </div>
+          ` : '')}
         </div>
 
         <!-- Host Company Clearance Status Banner -->
@@ -115,7 +147,7 @@ export function openReviewEmergencyModal({ trainee, onReviewed }) {
             <label style="display:block;font-size:0.82rem;font-weight:700;margin-bottom:8px;color:var(--text-primary);">Academic Action Decision <span style="color:#ef4444;">*</span></label>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
               <label style="border:1.5px solid var(--border-default);border-radius:10px;padding:10px 12px;cursor:pointer;display:flex;align-items:flex-start;gap:8px;" id="lbl-act-approve">
-                <input type="radio" name="action" value="approve" ${isPending ? 'checked' : ''} style="accent-color:var(--color-primary);margin-top:2px;">
+                <input type="radio" name="action" value="approve" ${(isPending && !hasFitToWork) ? 'checked' : ''} style="accent-color:var(--color-primary);margin-top:2px;">
                 <div>
                   <strong style="font-size:0.84rem;color:var(--text-primary);display:block;">
                     ${em.type === 'permanent_withdrawal' ? 'Approve Stoppage' : 'Approve Leave of Absence'}
@@ -126,9 +158,9 @@ export function openReviewEmergencyModal({ trainee, onReviewed }) {
                 </div>
               </label>
 
-              ${(isOnLeave || em.fit_to_work_path) ? `
+              ${(isOnLeave || hasFitToWork) ? `
                 <label style="border:1.5px solid var(--border-default);border-radius:10px;padding:10px 12px;cursor:pointer;display:flex;align-items:flex-start;gap:8px;" id="lbl-act-fit">
-                  <input type="radio" name="action" value="clear_fit_to_work" ${isOnLeave ? 'checked' : ''} style="accent-color:#0284c7;margin-top:2px;">
+                  <input type="radio" name="action" value="clear_fit_to_work" ${(hasFitToWork || (isOnLeave && !isPending)) ? 'checked' : ''} style="accent-color:#0284c7;margin-top:2px;">
                   <div>
                     <strong style="font-size:0.84rem;color:#0284c7;display:block;">Lift Leave &amp; Resume OJT</strong>
                     <span style="font-size:0.72rem;color:var(--text-secondary);">Accept Fit-to-Work clearance and unlock punch clock</span>

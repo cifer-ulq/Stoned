@@ -412,20 +412,75 @@ export function initChat(navEl) {
   window.openChat = (key) => {
     panelOpen = true;
     panel.classList.add('chat-panel--open');
-    openThread(key);
+    if (key) {
+      openThread(key);
+    } else {
+      viewThread.style.display = 'none';
+      viewList.style.display   = 'flex';
+      loadConversations();
+    }
   };
 
   // Public API: open chat with a company directly
   window.openCompanyChat = async (companyUserId) => {
     panelOpen = true;
     panel.classList.add('chat-panel--open');
+    if (!companyUserId) {
+      viewThread.style.display = 'none';
+      viewList.style.display   = 'flex';
+      loadConversations();
+      return;
+    }
+    viewList.style.display   = 'none';
+    viewThread.style.display = 'flex';
+    messagesEl.innerHTML = `<div class="chat-loading">${icon('loader', 20)} Connecting to company…</div>`;
+    inputEl.placeholder = 'Type a message to company…';
     try {
       const res = await apiGet(`/chat/init/company/${companyUserId}`, { bypassCache: true, forceRefresh: true });
       if (res?.key) {
         openThread(res.key);
+      } else {
+        viewThread.style.display = 'none';
+        viewList.style.display   = 'flex';
+        loadConversations();
       }
     } catch (err) {
       console.error('Failed to open company chat:', err);
+      viewThread.style.display = 'none';
+      viewList.style.display   = 'flex';
+      loadConversations();
+    }
+  };
+
+  // Public API: open chat with a student directly
+  window.openStudentChat = async (studentUserId) => {
+    panelOpen = true;
+    panel.classList.add('chat-panel--open');
+    if (!studentUserId) {
+      viewThread.style.display = 'none';
+      viewList.style.display   = 'flex';
+      loadConversations();
+      return;
+    }
+    viewList.style.display   = 'none';
+    viewThread.style.display = 'flex';
+    messagesEl.innerHTML = `<div class="chat-loading">${icon('loader', 20)} Connecting to student…</div>`;
+    inputEl.placeholder = 'Type a message to student…';
+    try {
+      const res = await apiGet(`/chat/init/coordinator/${studentUserId}`, { bypassCache: true, forceRefresh: true });
+      if (res?.key) {
+        openThread(res.key);
+      } else {
+        viewThread.style.display = 'none';
+        viewList.style.display   = 'flex';
+        loadConversations();
+      }
+    } catch (err) {
+      console.error('Failed to open student chat:', err);
+      viewThread.style.display = 'none';
+      viewList.style.display   = 'flex';
+      loadConversations();
     }
   };
 }
+

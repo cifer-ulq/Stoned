@@ -56,7 +56,7 @@ function cfg(type) {
   return TYPE_CFG[type] || { ic: 'bell', color: '#005930', defaultRoute: '#/' };
 }
 
-function normalizeSupervisorRoute(rawRoute, notifType = '') {
+function normalizeSupervisorRoute(rawRoute, notifType = '', notifData = {}) {
   if (notifType === 'chat_message') return '';
   const typeDefault = TYPE_CFG[notifType]?.defaultRoute || '';
   if (
@@ -71,6 +71,9 @@ function normalizeSupervisorRoute(rawRoute, notifType = '') {
     notifType === 'ojt_evaluation_reminder'
   ) {
     return typeDefault;
+  }
+  if ((notifType === 'fit_to_work_uploaded' || notifType === 'emergency_stoppage_filed') && notifData?.student_id) {
+    return `#/trainees?student_id=${notifData.student_id}&action=review_emergency`;
   }
   const src = rawRoute || typeDefault || '#/';
   if (src.startsWith('http')) return src;
@@ -151,7 +154,7 @@ function showToast(notif, onOpenAction) {
 
   const c = cfg(notif.type);
   const rawRoute = notif.data?.route || notif.data?.action_url || c.defaultRoute || '';
-  const actionUrl = normalizeSupervisorRoute(rawRoute, notif.type);
+  const actionUrl = normalizeSupervisorRoute(rawRoute, notif.type, notif.data || {});
 
   const toast = document.createElement('div');
   toast.className = 'hireme-toast';
@@ -461,9 +464,10 @@ export function initNotifications(triggerBtn) {
 
     notifs.forEach(n => {
       const t = n.type || '';
-      if (t.includes('requirements_') || t.includes('endorsement') || t.includes('time_') || t.includes('ojt')) {
+      if (t.includes('requirements_') || t.includes('endorsement') || t.includes('time_') || t.includes('ojt') || t.includes('pull_out')) {
         window.dispatchEvent(new CustomEvent('hireme:trainees-refresh', { detail: n }));
         invalidationPatterns.add('/supervisor/trainees*');
+        invalidationPatterns.add('/supervisor/pull-out-requests*');
         invalidationPatterns.add('/supervisor/interests*');
         invalidationPatterns.add('/supervisor/monitoring*');
         invalidationPatterns.add('/supervisor/dashboard*');
@@ -564,7 +568,7 @@ export function initNotifications(triggerBtn) {
 
     const c = cfg(n.type);
     const rawRoute = n.data?.route || n.data?.action_url || c.defaultRoute || '';
-    const actionUrl = normalizeSupervisorRoute(rawRoute, n.type);
+    const actionUrl = normalizeSupervisorRoute(rawRoute, n.type, n.data || {});
 
     const row = document.createElement('div');
     row.className = `notif-item ${n.is_read ? '' : 'notif-item--unread'}`;
@@ -666,7 +670,7 @@ export function initNotifications(triggerBtn) {
     listEl.innerHTML = list.map(n => {
       const c = cfg(n.type);
       const rawRoute = n.data?.route || n.data?.action_url || c.defaultRoute || '';
-      const actionUrl = normalizeSupervisorRoute(rawRoute, n.type);
+      const actionUrl = normalizeSupervisorRoute(rawRoute, n.type, n.data || {});
       const convAttr = n.data?.conversation_key ? `data-conv-key="${escapeHtml(n.data.conversation_key)}"` : '';
       return `
         <div class="notif-item ${n.is_read ? '' : 'notif-item--unread'}" data-id="${n.id}" data-type="${escapeHtml(n.type || '')}" ${convAttr} data-action="${actionUrl}">

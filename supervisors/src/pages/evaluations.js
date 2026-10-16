@@ -881,17 +881,18 @@ export default function evaluationsPage(container) {
                     <th style="width:36px;text-align:center;">
                       <input type="checkbox" id="eval-check-all" title="Select all eligible trainees" style="cursor:pointer;" />
                     </th>
-                    <th style="min-width:200px;">Trainee Dossier</th>
-                    <th style="width:110px;">Student ID</th>
-                    <th style="min-width:170px;">Host Company</th>
-                    <th style="min-width:160px;">Training Hours</th>
-                    <th style="width:130px;">Appraisal State</th>
-                    <th style="width:110px;">Score</th>
-                    <th style="width:120px;text-align:right;">Actions</th>
+                    <th style="min-width:190px;">Trainee Dossier</th>
+                    <th style="width:105px;">Student ID</th>
+                    <th style="min-width:160px;">Host Company</th>
+                    <th style="min-width:140px;">Training Hours</th>
+                    <th style="min-width:145px;">Midterm (50%)</th>
+                    <th style="min-width:145px;">Endterm (50%)</th>
+                    <th style="width:105px;">Composite</th>
+                    <th style="width:110px;text-align:right;">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="eval-trainee-tbody">
-                  ${[1, 2, 3, 4, 5].map(() => '<tr><td colspan="8"><div class="skeleton" style="height:38px;border-radius:6px;margin:4px 0;"></div></td></tr>').join('')}
+                  ${[1, 2, 3, 4, 5].map(() => '<tr><td colspan="9"><div class="skeleton" style="height:38px;border-radius:6px;margin:4px 0;"></div></td></tr>').join('')}
                 </tbody>
               </table>
             </div>
@@ -1336,7 +1337,7 @@ export default function evaluationsPage(container) {
           <h4 style="margin:0 0 4px;font-size:0.95rem;font-weight:600;color:var(--text-primary);">No matching trainees</h4>
           <p class="text-tertiary text-xs" style="margin:0;">Try adjusting your search criteria or stage filter.</p>
         </div>`;
-      traineeTbody.innerHTML = `<tr><td colspan="8">${emptyHtml}</td></tr>`;
+      traineeTbody.innerHTML = `<tr><td colspan="9">${emptyHtml}</td></tr>`;
       viewCardsWrap.innerHTML = emptyHtml;
       return;
     }
@@ -1350,54 +1351,83 @@ export default function evaluationsPage(container) {
       const isChecked = selectedStudentIds.has(String(t.id));
       const isInspected = selectedTraineeForDossier?.id === t.id;
 
-      // Status pill
-      let statusBadge = '';
-      if (t.evaluationStatus === 'submitted') {
-        statusBadge = `<span class="eval-status-badge eval-status-badge--submitted">${icon('checkCircle', 12)} Finalized</span>`;
-      } else if (t.evaluationStatus === 'pending') {
-        statusBadge = `<span class="eval-status-badge eval-status-badge--pending">${icon('clock', 12)} In Review</span>`;
-      } else if (t.isHoursCompleted) {
-        statusBadge = `<span class="eval-status-badge eval-status-badge--ready">${icon('zap', 12)} Ready</span>`;
+      // Midterm Status Cell
+      let midtermCell = '';
+      if (t.midterm?.status === 'submitted') {
+        const sc = Number(t.midterm.overall_score || 0).toFixed(1);
+        midtermCell = `<span class="eval-status-badge eval-status-badge--submitted" title="Midterm finalized">${icon('checkCircle', 12)} ${sc} ★</span>`;
+      } else if (t.midterm?.status === 'waived' || t.midterm?.is_waived) {
+        midtermCell = `<span class="eval-status-badge" style="background:#F3E8FF;color:#6B21A8;border:1px solid #D8B4FE;" title="Waived: ${t.midterm.waiver_reason || 'Officially waived'}">Waived</span>`;
+      } else if (t.midterm?.status === 'pending') {
+        midtermCell = `
+          <div style="display:inline-flex;align-items:center;gap:4px;">
+            <span class="eval-status-badge eval-status-badge--pending" title="Awaiting company appraisal">${icon('clock', 12)} In Review</span>
+            <button class="btn btn--ghost btn--xs btn-row-remind" data-eval-id="${t.midterm.id}" title="Send reminder to employer" style="padding:2px 4px;color:#B45309;">${icon('bell', 11)}</button>
+          </div>`;
+      } else if (t.isMidtermEligible) {
+        midtermCell = `
+          <div style="display:inline-flex;gap:4px;align-items:center;">
+            <button class="btn btn--primary btn--xs btn-send-midterm" data-student-id="${t.id}" data-name="${t.name}" data-company="${t.company}" style="padding:3px 7px;font-size:0.72rem;gap:3px;" title="Send Midterm Appraisal">
+              ${icon('send', 11)} Send
+            </button>
+            <button class="btn btn--ghost btn--xs btn-waive-midterm" data-student-id="${t.id}" data-name="${t.name}" style="padding:3px 5px;font-size:0.7rem;color:#6B21A8;border:1px solid rgba(107,33,168,0.25);" title="Waive Midterm (Early pull out)">
+              Waive
+            </button>
+          </div>`;
       } else {
-        statusBadge = `<span class="eval-status-badge eval-status-badge--in_progress">In Training</span>`;
+        midtermCell = `<span class="text-xs text-tertiary" style="font-size:0.72rem;">In Training (&lt;50%)</span>`;
       }
 
-      // Rating/Score display
+      // Endterm Status Cell
+      let endtermCell = '';
+      if (t.endterm?.status === 'submitted') {
+        const sc = Number(t.endterm.overall_score || 0).toFixed(1);
+        endtermCell = `<span class="eval-status-badge eval-status-badge--submitted" title="Endterm finalized">${icon('checkCircle', 12)} ${sc} ★</span>`;
+      } else if (t.endterm?.status === 'pending') {
+        endtermCell = `
+          <div style="display:inline-flex;align-items:center;gap:4px;">
+            <span class="eval-status-badge eval-status-badge--pending" title="Awaiting company appraisal">${icon('clock', 12)} In Review</span>
+            <button class="btn btn--ghost btn--xs btn-row-remind" data-eval-id="${t.endterm.id}" title="Send reminder to employer" style="padding:2px 4px;color:#B45309;">${icon('bell', 11)}</button>
+          </div>`;
+      } else if (t.isHoursCompleted) {
+        endtermCell = `
+          <button class="btn btn--primary btn--xs btn-send-endterm" data-student-id="${t.id}" data-name="${t.name}" data-company="${t.company}" style="padding:3px 8px;font-size:0.72rem;gap:3px;" title="Send Final Appraisal">
+            ${icon('send', 11)} Send Final
+          </button>`;
+      } else {
+        endtermCell = `<span class="text-xs text-tertiary" style="font-size:0.72rem;">In Training (&lt;100%)</span>`;
+      }
+
+      // Composite Rating display
       let scoreDisplay = '<span style="color:var(--text-tertiary);font-size:0.8rem;">—</span>';
-      if (t.evaluationStatus === 'submitted' && t.evaluationScore) {
-        const sc = Number(t.evaluationScore).toFixed(1);
-        const chipClass = t.evaluationScore >= 4.5 ? 'eval-score-chip--high' : 'eval-score-chip--mid';
+      if (t.compositeScore) {
+        const sc = Number(t.compositeScore).toFixed(2);
+        const chipClass = t.compositeScore >= 4.5 ? 'eval-score-chip--high' : 'eval-score-chip--mid';
         scoreDisplay = `
-          <div class="eval-score-chip ${chipClass}">
+          <div class="eval-score-chip ${chipClass}" title="50% Midterm + 50% Endterm Academic Rating">
             <span style="color:#F59E0B;font-size:0.85rem;">★</span> ${sc}
           </div>`;
       }
 
-      // Actions button
-      let actionBtn = '';
-      if (t.evaluationStatus === 'submitted') {
-        actionBtn = `
-          <button class="btn btn--outline btn--sm btn-row-inspect" data-student-id="${t.id}" style="padding:4px 9px;font-size:0.75rem;gap:4px;">
-            ${icon('eye', 13)} Dossier
-          </button>`;
-      } else if (t.evaluationStatus === 'pending') {
-        actionBtn = `
-          <button class="btn btn--outline btn--sm btn-row-remind" data-eval-id="${t.evaluationId}" style="padding:4px 9px;font-size:0.75rem;gap:4px;color:#B45309;border-color:rgba(245,158,11,0.4);" title="Send reminder to employer">
-            ${icon('bell', 13)} Remind
-          </button>`;
-      } else if (t.company_user_id) {
-        actionBtn = `
-          <button class="btn btn--primary btn--sm btn-row-send-single" data-student-id="${t.id}" data-name="${t.name}" data-company="${t.company}" style="padding:4px 11px;font-size:0.75rem;gap:4px;">
-            ${icon('send', 13)} Send
-          </button>`;
-      } else {
-        actionBtn = `<span class="text-xs text-tertiary" title="Company does not have an active employer portal account">No portal link</span>`;
+      // Multi-company indicator in Company column
+      let companyHtml = `
+        <div style="display:flex;align-items:center;gap:6px;font-size:0.83rem;font-weight:500;">
+          ${icon('building', 13)} <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px;" title="${t.company}">${t.company || '—'}</span>
+        </div>`;
+      if (t.has_multiple_companies) {
+        const count = t.companies_history?.length || 2;
+        companyHtml += `
+          <div style="margin-top:2px;">
+            <span class="badge badge--warning" style="font-size:0.65rem;padding:1px 5px;font-weight:600;" title="Student was pulled out and reassigned. Has ${count} host placements.">
+              Multi-Host (${count})
+            </span>
+          </div>`;
       }
 
       return `
         <tr data-student-id="${t.id}" class="${isChecked ? 'is-selected' : ''} ${isInspected ? 'is-active-inspected' : ''}">
           <td style="text-align:center;" onclick="event.stopPropagation();">
-            <input type="checkbox" class="eval-row-checkbox" data-student-id="${t.id}" ${selectable ? '' : 'disabled title="Evaluation already completed"'} ${isChecked ? 'checked' : ''} style="cursor:pointer;" />
+            <input type="checkbox" class="eval-row-checkbox" data-student-id="${t.id}" ${selectable ? '' : 'disabled title="All terms finalized"'} ${isChecked ? 'checked' : ''} style="cursor:pointer;" />
           </td>
           <td class="eval-td-inspect-trigger">
             <div style="display:flex;align-items:center;gap:10px;">
@@ -1405,17 +1435,13 @@ export default function evaluationsPage(container) {
                 ${init}
               </div>
               <div style="min-width:0;">
-                <div style="font-weight:600;color:var(--text-primary);font-size:0.86rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;">${t.name}</div>
+                <div style="font-weight:600;color:var(--text-primary);font-size:0.86rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px;">${t.name}</div>
                 <div style="font-size:0.72rem;color:var(--text-secondary);">${t.course} ${t.section ? `• ${t.section}` : ''}</div>
               </div>
             </div>
           </td>
           <td><span style="font-family:monospace;font-size:0.75rem;color:var(--text-secondary);">${t.studentId || '—'}</span></td>
-          <td>
-            <div style="display:flex;align-items:center;gap:6px;font-size:0.83rem;font-weight:500;">
-              ${icon('building', 13)} <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px;">${t.company || '—'}</span>
-            </div>
-          </td>
+          <td>${companyHtml}</td>
           <td>
             <div class="eval-hours-meter">
               <div class="eval-hours-meter__track">
@@ -1427,9 +1453,14 @@ export default function evaluationsPage(container) {
               </div>
             </div>
           </td>
-          <td>${statusBadge}</td>
+          <td>${midtermCell}</td>
+          <td>${endtermCell}</td>
           <td>${scoreDisplay}</td>
-          <td style="text-align:right;" onclick="event.stopPropagation();">${actionBtn}</td>
+          <td style="text-align:right;" onclick="event.stopPropagation();">
+            <button class="btn btn--outline btn--sm btn-row-inspect" data-student-id="${t.id}" style="padding:4px 9px;font-size:0.75rem;gap:4px;">
+              ${icon('eye', 13)} Dossier
+            </button>
+          </td>
         </tr>
       `;
     }).join('');
@@ -1442,8 +1473,10 @@ export default function evaluationsPage(container) {
       const isInspected = selectedTraineeForDossier?.id === t.id;
 
       let scoreBadge = '';
-      if (t.evaluationStatus === 'submitted' && t.evaluationScore) {
-        scoreBadge = `<div class="eval-score-chip eval-score-chip--high"><span style="color:#F59E0B;">★</span> ${Number(t.evaluationScore).toFixed(1)}</div>`;
+      if (t.compositeScore) {
+        scoreBadge = `<div class="eval-score-chip eval-score-chip--high"><span style="color:#F59E0B;">★</span> ${Number(t.compositeScore).toFixed(2)}</div>`;
+      } else if (t.endterm?.overall_score) {
+        scoreBadge = `<div class="eval-score-chip eval-score-chip--mid"><span style="color:#F59E0B;">★</span> ${Number(t.endterm.overall_score).toFixed(1)}</div>`;
       }
 
       return `
@@ -1464,6 +1497,7 @@ export default function evaluationsPage(container) {
           <div style="background:#FAFBFD;padding:8px 10px;border-radius:6px;border:1px solid #F1F4F9;display:flex;align-items:center;gap:6px;font-size:0.8rem;color:var(--text-secondary);">
             ${icon('building', 13)}
             <span style="font-weight:600;color:var(--text-primary);">${t.company || '—'}</span>
+            ${t.has_multiple_companies ? `<span class="badge badge--warning" style="font-size:0.65rem;margin-left:auto;">Multi-Host</span>` : ''}
           </div>
 
           <div class="eval-hours-meter">
@@ -1473,6 +1507,21 @@ export default function evaluationsPage(container) {
             <div class="eval-hours-meter__meta">
               <span>Completed Hours: ${t.completedHours} of ${t.requiredHours}</span>
               <span style="font-weight:700;color:var(--text-primary);">${pct}%</span>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px;font-size:0.72rem;">
+            <div style="padding:6px;background:#FAFBFD;border-radius:6px;border:1px solid #E2E8F0;text-align:center;">
+              <div style="color:var(--text-secondary);font-weight:600;">Midterm (50%)</div>
+              <div style="font-weight:700;margin-top:2px;">
+                ${t.midterm?.status === 'submitted' ? `${Number(t.midterm.overall_score).toFixed(1)} ★` : t.midterm?.is_waived ? 'Waived' : t.midterm?.status === 'pending' ? 'Pending' : 'Not sent'}
+              </div>
+            </div>
+            <div style="padding:6px;background:#FAFBFD;border-radius:6px;border:1px solid #E2E8F0;text-align:center;">
+              <div style="color:var(--text-secondary);font-weight:600;">Endterm (50%)</div>
+              <div style="font-weight:700;margin-top:2px;">
+                ${t.endterm?.status === 'submitted' ? `${Number(t.endterm.overall_score).toFixed(1)} ★` : t.endterm?.status === 'pending' ? 'Pending' : 'Not sent'}
+              </div>
             </div>
           </div>
         </div>
@@ -1518,12 +1567,29 @@ export default function evaluationsPage(container) {
       });
     });
 
-    traineeTbody.querySelectorAll('.btn-row-send-single').forEach(btn => {
+    traineeTbody.querySelectorAll('.btn-send-midterm').forEach(btn => {
       btn.addEventListener('click', () => {
         const sId   = btn.getAttribute('data-student-id');
         const name  = btn.getAttribute('data-name');
         const comp  = btn.getAttribute('data-company');
-        openSendConfirmModal(sId, name, comp);
+        openSendConfirmModal(sId, name, comp, 'midterm');
+      });
+    });
+
+    traineeTbody.querySelectorAll('.btn-waive-midterm').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const sId   = btn.getAttribute('data-student-id');
+        const name  = btn.getAttribute('data-name');
+        openWaiveModal(sId, name, 'midterm');
+      });
+    });
+
+    traineeTbody.querySelectorAll('.btn-send-endterm').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const sId   = btn.getAttribute('data-student-id');
+        const name  = btn.getAttribute('data-name');
+        const comp  = btn.getAttribute('data-company');
+        openSendConfirmModal(sId, name, comp, 'endterm');
       });
     });
 
@@ -1531,7 +1597,6 @@ export default function evaluationsPage(container) {
       btn.addEventListener('click', async () => {
         const evalId = btn.getAttribute('data-eval-id');
         btn.disabled = true;
-        btn.innerHTML = `${icon('loader', 12)} Reminding...`;
         try {
           const res = await apiPost(`/supervisor/evaluations/remind/${evalId}`, {});
           if (res?.success) {
@@ -1543,7 +1608,6 @@ export default function evaluationsPage(container) {
           showToast(e.message || 'Error sending reminder.', 'error');
         } finally {
           btn.disabled = false;
-          btn.innerHTML = `${icon('bell', 13)} Remind`;
         }
       });
     });
@@ -1572,78 +1636,159 @@ export default function evaluationsPage(container) {
     const pct = t.progressPercent || 0;
     const barColor = pct >= 100 ? 'var(--color-primary)' : pct >= 50 ? '#10B981' : '#F59E0B';
 
-    let statusPill = '';
-    if (t.evaluationStatus === 'submitted') {
-      statusPill = `<span class="badge badge--success" style="font-size:0.72rem;padding:3px 8px;">Finalized & Certified</span>`;
-    } else if (t.evaluationStatus === 'pending') {
-      statusPill = `<span class="badge badge--warning" style="font-size:0.72rem;padding:3px 8px;">Awaiting Host Company</span>`;
-    } else if (t.isHoursCompleted) {
-      statusPill = `<span class="badge badge--info" style="font-size:0.72rem;padding:3px 8px;">Ready for Dispatch</span>`;
-    } else {
-      statusPill = `<span class="badge badge--neutral" style="font-size:0.72rem;padding:3px 8px;">Rendering Hours (${pct}%)</span>`;
-    }
-
-    // Action button area based on state
-    let actionAreaHtml = '';
-    if (t.evaluationStatus === 'submitted') {
-      actionAreaHtml = `
+    // Composite Final Grade Highlight
+    let compositeHighlightHtml = '';
+    if (t.compositeScore) {
+      compositeHighlightHtml = `
         <div class="eval-dossier__score-highlight">
-          <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;color:var(--color-primary);letter-spacing:0.04em;">Official Performance Rating</div>
+          <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;color:var(--color-primary);letter-spacing:0.04em;">Composite Practicum Rating</div>
           <div style="display:flex;align-items:baseline;justify-content:center;gap:6px;margin:4px 0;">
-            <span style="font-size:2rem;font-weight:800;color:var(--color-primary);">${Number(t.evaluationScore || 5.0).toFixed(1)}</span>
+            <span style="font-size:2rem;font-weight:800;color:var(--color-primary);">${Number(t.compositeScore).toFixed(2)}</span>
             <span style="font-size:1rem;color:var(--text-secondary);font-weight:600;">/ 5.00</span>
           </div>
-          <div style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:12px;">
-            Evaluator: <strong>${t.evaluatorName || 'Company Mentor'}</strong>
-          </div>
-          <div style="display:flex;gap:8px;justify-content:center;">
-            <button class="btn btn--primary btn--sm" id="btn-dossier-view-scorecard" style="font-size:0.78rem;gap:6px;">
-              ${icon('clipboardCheck', 13)} Full Scorecard
-            </button>
+          <div style="font-size:0.72rem;color:var(--text-secondary);line-height:1.4;">
+            ${t.midterm?.status === 'submitted' 
+              ? `Weighted: Midterm (${Number(t.midterm.overall_score).toFixed(1)} &times; 50%) + Endterm (${Number(t.endterm?.overall_score || 0).toFixed(1)} &times; 50%)`
+              : `Final Endterm Appraisal (100% Weight • Midterm officially waived)`}
           </div>
         </div>`;
-    } else if (t.evaluationStatus === 'pending') {
-      actionAreaHtml = `
-        <div style="background:#FFFBEB;border:1px solid rgba(245,158,11,0.25);border-radius:10px;padding:14px;text-align:center;">
-          <div style="color:#B45309;font-weight:700;font-size:0.85rem;margin-bottom:4px;display:flex;align-items:center;justify-content:center;gap:6px;">
-            ${icon('clock', 14)} Form Dispatched
+    }
+
+    // Midterm Block
+    let midtermBlock = '';
+    if (t.midterm?.status === 'submitted') {
+      midtermBlock = `
+        <div style="background:#FAFBFD;border:1px solid #E2E8F0;border-radius:8px;padding:12px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+            <strong style="font-size:0.82rem;color:var(--text-primary);">Midterm Evaluation (50%)</strong>
+            <span class="badge badge--success" style="font-size:0.68rem;">Score: ${Number(t.midterm.overall_score).toFixed(1)} ★</span>
           </div>
-          <p style="font-size:0.75rem;color:var(--text-secondary);margin:0 0 10px;">
-            Sent on ${t.evaluationSentAt || 'recently'}. Waiting for employer mentor to complete scoring.
+          <div style="font-size:0.72rem;color:var(--text-secondary);margin-bottom:8px;">
+            Evaluator: ${t.midterm.evaluator_name || 'HR Supervisor'} &bull; Submitted ${t.midterm.submitted_at || ''}
+          </div>
+          <button class="btn btn--outline btn--xs btn-view-midterm-details" style="font-size:0.72rem;width:100%;gap:4px;">
+            ${icon('clipboardCheck', 12)} View Midterm Scorecard
+          </button>
+        </div>`;
+    } else if (t.midterm?.status === 'waived' || t.midterm?.is_waived) {
+      midtermBlock = `
+        <div style="background:#FAF5FF;border:1px solid #E9D5FF;border-radius:8px;padding:12px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+            <strong style="font-size:0.82rem;color:#6B21A8;">Midterm Evaluation (Waived)</strong>
+            <span class="badge" style="background:#F3E8FF;color:#6B21A8;font-size:0.68rem;">Exempted</span>
+          </div>
+          <p style="font-size:0.72rem;color:var(--text-secondary);margin:0;line-height:1.4;">
+            Reason: ${t.midterm.waiver_reason || 'Officially waived by coordinator.'}
+          </p>
+        </div>`;
+    } else if (t.midterm?.status === 'pending') {
+      midtermBlock = `
+        <div style="background:#FFFBEB;border:1px solid rgba(245,158,11,0.25);border-radius:8px;padding:12px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+            <strong style="font-size:0.82rem;color:#B45309;">Midterm Evaluation</strong>
+            <span class="badge badge--warning" style="font-size:0.68rem;">Pending Employer</span>
+          </div>
+          <div style="font-size:0.72rem;color:var(--text-secondary);margin-bottom:8px;">Sent on ${t.midterm.sent_at || 'recently'}</div>
+          <button class="btn btn--outline btn--xs btn-dossier-remind-midterm" style="font-size:0.72rem;width:100%;gap:4px;color:#B45309;border-color:rgba(245,158,11,0.4);">
+            ${icon('bell', 12)} Nudge Host Company
+          </button>
+        </div>`;
+    } else if (t.isMidtermEligible) {
+      midtermBlock = `
+        <div style="background:#F0FDF4;border:1px solid rgba(16,185,129,0.3);border-radius:8px;padding:12px;">
+          <div style="font-size:0.82rem;font-weight:700;color:var(--color-primary);margin-bottom:4px;">
+            Midterm Stage Reached (&ge;50% Hours)
+          </div>
+          <p style="font-size:0.72rem;color:var(--text-secondary);margin:0 0 10px;line-height:1.4;">
+            Trainee is ready for Midterm appraisal. If the student pulled out early with minimal hours, you may waive this term.
           </p>
           <div style="display:flex;gap:6px;">
-            <button class="btn btn--outline btn--sm" id="btn-dossier-remind" style="font-size:0.78rem;gap:6px;color:#B45309;border-color:rgba(245,158,11,0.4);flex:1;">
-              ${icon('bell', 13)} Send Nudge
+            <button class="btn btn--primary btn--xs btn-dossier-send-midterm" style="flex:1;font-size:0.72rem;gap:4px;">
+              ${icon('send', 11)} Send Midterm
             </button>
-            ${t.company_user_id ? `
-              <button class="btn btn--outline btn--sm" id="btn-dossier-chat-company" style="font-size:0.78rem;gap:6px;color:#0284c7;border-color:rgba(2,132,199,0.35);flex:1;" title="Chat with Company">
-                ${icon('messageCircle', 13)} Chat
-              </button>
-            ` : ''}
+            <button class="btn btn--ghost btn--xs btn-dossier-waive-midterm" style="font-size:0.72rem;color:#6B21A8;border:1px solid rgba(107,33,168,0.3);">
+              Waive
+            </button>
           </div>
         </div>`;
-    } else if (t.isHoursCompleted) {
-      actionAreaHtml = `
-        <div style="background:#F0F7F4;border:1px solid rgba(0,89,48,0.25);border-radius:10px;padding:14px;text-align:center;">
-          <div style="color:var(--color-primary);font-weight:700;font-size:0.85rem;margin-bottom:4px;display:flex;align-items:center;justify-content:center;gap:6px;">
-            ${icon('checkCircle', 14)} Hours Completed
+    } else {
+      midtermBlock = `
+        <div style="background:#FAFBFD;border:1px solid #E2E8F0;border-radius:8px;padding:12px;font-size:0.75rem;color:var(--text-secondary);">
+          <strong>Midterm (50% Weight):</strong> Locked until trainee reaches 50% hours (${Math.round((t.requiredHours || 600) * 0.5)}h).
+        </div>`;
+    }
+
+    // Endterm Block
+    let endtermBlock = '';
+    if (t.endterm?.status === 'submitted') {
+      endtermBlock = `
+        <div style="background:#FAFBFD;border:1px solid #E2E8F0;border-radius:8px;padding:12px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+            <strong style="font-size:0.82rem;color:var(--text-primary);">Final / Endterm Appraisal (50%)</strong>
+            <span class="badge badge--success" style="font-size:0.68rem;">Score: ${Number(t.endterm.overall_score).toFixed(1)} ★</span>
           </div>
-          <p style="font-size:0.75rem;color:var(--text-secondary);margin:0 0 10px;">
-            This trainee has met their required OJT hours. You can now dispatch the institutional evaluation form.
+          <div style="font-size:0.72rem;color:var(--text-secondary);margin-bottom:8px;">
+            Evaluator: ${t.endterm.evaluator_name || 'HR Supervisor'} &bull; Submitted ${t.endterm.submitted_at || ''}
+          </div>
+          <button class="btn btn--outline btn--xs btn-view-endterm-details" style="font-size:0.72rem;width:100%;gap:4px;">
+            ${icon('clipboardCheck', 12)} View Final Scorecard
+          </button>
+        </div>`;
+    } else if (t.endterm?.status === 'pending') {
+      endtermBlock = `
+        <div style="background:#FFFBEB;border:1px solid rgba(245,158,11,0.25);border-radius:8px;padding:12px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+            <strong style="font-size:0.82rem;color:#B45309;">Final / Endterm Appraisal</strong>
+            <span class="badge badge--warning" style="font-size:0.68rem;">Pending Employer</span>
+          </div>
+          <div style="font-size:0.72rem;color:var(--text-secondary);margin-bottom:8px;">Sent on ${t.endterm.sent_at || 'recently'}</div>
+          <button class="btn btn--outline btn--xs btn-dossier-remind-endterm" style="font-size:0.72rem;width:100%;gap:4px;color:#B45309;border-color:rgba(245,158,11,0.4);">
+            ${icon('bell', 12)} Nudge Host Company
+          </button>
+        </div>`;
+    } else if (t.isHoursCompleted) {
+      endtermBlock = `
+        <div style="background:#F0FDF4;border:1px solid rgba(16,185,129,0.3);border-radius:8px;padding:12px;">
+          <div style="font-size:0.82rem;font-weight:700;color:var(--color-primary);margin-bottom:4px;">
+            Final Hours Completed (100%)
+          </div>
+          <p style="font-size:0.72rem;color:var(--text-secondary);margin:0 0 10px;line-height:1.4;">
+            Trainee has completed their practicum hours. Dispatch the final institutional performance appraisal.
           </p>
-          <button class="btn btn--primary btn--sm" id="btn-dossier-dispatch" style="font-size:0.78rem;gap:6px;width:100%;">
-            ${icon('send', 13)} Dispatch Evaluation Form
+          <button class="btn btn--primary btn--xs btn-dossier-send-endterm" style="width:100%;font-size:0.72rem;gap:4px;">
+            ${icon('send', 11)} Dispatch Final Appraisal Form
           </button>
         </div>`;
     } else {
-      actionAreaHtml = `
-        <div style="background:#FAFBFD;border:1px solid var(--border-default);border-radius:10px;padding:14px;text-align:center;">
-          <div style="color:var(--text-secondary);font-weight:600;font-size:0.82rem;margin-bottom:4px;">
-            Currently Rendering Hours
+      endtermBlock = `
+        <div style="background:#FAFBFD;border:1px solid #E2E8F0;border-radius:8px;padding:12px;font-size:0.75rem;color:var(--text-secondary);">
+          <strong>Endterm (50% Weight):</strong> Locked until trainee renders 100% hours (${t.requiredHours || 600}h).
+        </div>`;
+    }
+
+    // Company Placement History (if multi-company)
+    let companyHistoryHtml = '';
+    if (t.has_multiple_companies && Array.isArray(t.companies_history)) {
+      companyHistoryHtml = `
+        <div class="eval-dossier__metric-box" style="background:#FFFDF7;border-color:#FDE68A;">
+          <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;color:#B45309;margin-bottom:6px;">
+            Placements & Transfer History (${t.companies_history.length})
           </div>
-          <p style="font-size:0.75rem;color:var(--text-tertiary);margin:0;">
-            ${t.completedHours} of ${t.requiredHours} hours rendered (${pct}%). Evaluation dispatch will be unlocked once required hours are fulfilled.
-          </p>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            ${t.companies_history.map(c => `
+              <div style="font-size:0.73rem;padding:6px 8px;background:#ffffff;border:1px solid #FCD34D;border-radius:6px;display:flex;justify-content:space-between;align-items:center;">
+                <div>
+                  <strong style="color:var(--text-primary);">${c.company_name}</strong>
+                  <div style="color:var(--text-secondary);font-size:0.68rem;">
+                    ${c.is_current ? 'Current Active Placement' : 'Prior Placement (Approved Pull-out)'}
+                  </div>
+                </div>
+                <span class="badge ${c.is_current ? 'badge--success' : 'badge--neutral'}" style="font-size:0.65rem;">
+                  ${c.hours} hrs
+                </span>
+              </div>
+            `).join('')}
+          </div>
         </div>`;
     }
 
@@ -1662,30 +1807,6 @@ export default function evaluationsPage(container) {
         </div>
       </div>
 
-      <!-- Stage Status Banner -->
-      <div style="display:flex;align-items:center;justify-content:space-between;background:#FAFBFD;padding:8px 12px;border-radius:8px;border:1px solid var(--border-default);">
-        <span style="font-size:0.72rem;font-weight:700;text-transform:uppercase;color:var(--text-secondary);">Workflow Status</span>
-        ${statusPill}
-      </div>
-
-      <!-- Host Company Deployment Card -->
-      <div class="eval-dossier__metric-box">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-          <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;color:var(--text-tertiary);">Host Organization</div>
-          ${t.company_user_id ? `
-            <button type="button" class="btn btn--ghost btn--xs btn-dossier-chat-direct" style="color:#0284c7;font-size:0.7rem;padding:2px 6px;gap:4px;font-weight:600;" title="Message Company">
-              ${icon('messageCircle', 12)} Message
-            </button>
-          ` : ''}
-        </div>
-        <div style="font-weight:700;font-size:0.88rem;color:var(--text-primary);display:flex;align-items:center;gap:6px;">
-          ${icon('building', 14)} ${t.company || '—'}
-        </div>
-        <div style="font-size:0.72rem;color:var(--text-secondary);margin-top:2px;">
-          ${t.company_user_id ? '✓ Linked Employer Account' : '⚠️ No portal account linked'}
-        </div>
-      </div>
-
       <!-- Training Hours Progress Meter -->
       <div class="eval-dossier__metric-box">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
@@ -1701,43 +1822,60 @@ export default function evaluationsPage(container) {
         </div>
       </div>
 
-      <!-- State Action Section -->
-      ${actionAreaHtml}
+      ${companyHistoryHtml}
+
+      ${compositeHighlightHtml}
+
+      <!-- Dual-Term Workflow Breakdown -->
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;color:var(--text-secondary);letter-spacing:0.04em;">
+          Academic Dual-Term Appraisals
+        </div>
+        ${midtermBlock}
+        ${endtermBlock}
+      </div>
     `;
 
-    // Attach action listeners inside dossier
-    dossierContent.querySelector('#btn-dossier-view-scorecard')?.addEventListener('click', () => {
-      if (t.evaluationId) openEvaluationDetailsModal(t.evaluationId);
+    // Attach dossier listeners
+    dossierContent.querySelector('.btn-view-midterm-details')?.addEventListener('click', () => {
+      if (t.midterm?.id) openEvaluationDetailsModal(t.midterm.id);
     });
 
-    dossierContent.querySelector('#btn-dossier-dispatch')?.addEventListener('click', () => {
-      openSendConfirmModal(t.id, t.name, t.company);
+    dossierContent.querySelector('.btn-view-endterm-details')?.addEventListener('click', () => {
+      if (t.endterm?.id) openEvaluationDetailsModal(t.endterm.id);
     });
 
-    const triggerCompanyChat = () => {
-      if (t.company_user_id && window.openCompanyChat) {
-        window.openCompanyChat(t.company_user_id);
-      }
-    };
-    dossierContent.querySelector('#btn-dossier-chat-company')?.addEventListener('click', triggerCompanyChat);
-    dossierContent.querySelector('.btn-dossier-chat-direct')?.addEventListener('click', triggerCompanyChat);
+    dossierContent.querySelector('.btn-dossier-send-midterm')?.addEventListener('click', () => {
+      openSendConfirmModal(t.id, t.name, t.company, 'midterm');
+    });
 
-    dossierContent.querySelector('#btn-dossier-remind')?.addEventListener('click', async () => {
-      const btn = dossierContent.querySelector('#btn-dossier-remind');
-      btn.disabled = true;
-      btn.innerHTML = `${icon('loader', 12)} Reminding...`;
-      try {
-        const res = await apiPost(`/supervisor/evaluations/remind/${t.evaluationId}`, {});
-        if (res?.success) {
-          showToast(res.message || 'Reminder sent to company.', 'success');
-        } else {
-          showToast(res?.message || 'Failed to send reminder.', 'error');
+    dossierContent.querySelector('.btn-dossier-waive-midterm')?.addEventListener('click', () => {
+      openWaiveModal(t.id, t.name, 'midterm');
+    });
+
+    dossierContent.querySelector('.btn-dossier-send-endterm')?.addEventListener('click', () => {
+      openSendConfirmModal(t.id, t.name, t.company, 'endterm');
+    });
+
+    dossierContent.querySelector('.btn-dossier-remind-midterm')?.addEventListener('click', async () => {
+      if (t.midterm?.id) {
+        try {
+          const res = await apiPost(`/supervisor/evaluations/remind/${t.midterm.id}`, {});
+          showToast(res?.message || 'Reminder sent!', 'success');
+        } catch (e) {
+          showToast(e.message, 'error');
         }
-      } catch (e) {
-        showToast(e.message || 'Error sending reminder.', 'error');
-      } finally {
-        btn.disabled = false;
-        btn.innerHTML = `${icon('bell', 13)} Send Nudge Reminder`;
+      }
+    });
+
+    dossierContent.querySelector('.btn-dossier-remind-endterm')?.addEventListener('click', async () => {
+      if (t.endterm?.id) {
+        try {
+          const res = await apiPost(`/supervisor/evaluations/remind/${t.endterm.id}`, {});
+          showToast(res?.message || 'Reminder sent!', 'success');
+        } catch (e) {
+          showToast(e.message, 'error');
+        }
       }
     });
   }
@@ -1998,12 +2136,14 @@ export default function evaluationsPage(container) {
   // =========================================================================
 
   // Single Evaluation Dispatch Modal
-  function openSendConfirmModal(studentId, name, company) {
+  function openSendConfirmModal(studentId, name, company, preselectedTerm = null) {
     if (!templatesList.length) {
       showToast('No evaluation forms available. Please create one first.', 'warning');
       return;
     }
 
+    const trainee = traineesList.find(item => String(item.id) === String(studentId));
+    const targetTerm = preselectedTerm || (trainee?.isMidtermEligible && trainee?.midterm?.status === 'not_sent' ? 'midterm' : 'endterm');
     const defaultTplId = currentTemplateId || templatesList[0].id;
 
     const html = `
@@ -2032,6 +2172,48 @@ export default function evaluationsPage(container) {
             <span class="badge badge--success" style="font-size:0.7rem;padding:3px 8px;">Active Deployment</span>
           </div>
 
+          <!-- Term Selector -->
+          <div class="form-group" style="margin-bottom:14px;">
+            <label class="form-label" style="font-weight:700;font-size:0.85rem;margin-bottom:6px;display:block;">
+              Appraisal Term (50% Academic Weighting):
+            </label>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              <label style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#FAFBFD;border:1px solid var(--border-default);border-radius:8px;cursor:pointer;font-size:0.83rem;">
+                <input type="radio" name="send-eval-term-radio" value="midterm" ${targetTerm === 'midterm' ? 'checked' : ''} style="cursor:pointer;" />
+                <div>
+                  <strong>Midterm (50%)</strong>
+                  <div style="font-size:0.7rem;color:var(--text-secondary);">&ge;50% Hours Progress</div>
+                </div>
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#FAFBFD;border:1px solid var(--border-default);border-radius:8px;cursor:pointer;font-size:0.83rem;">
+                <input type="radio" name="send-eval-term-radio" value="endterm" ${targetTerm === 'endterm' ? 'checked' : ''} style="cursor:pointer;" />
+                <div>
+                  <strong>Endterm / Final (50%)</strong>
+                  <div style="font-size:0.7rem;color:var(--text-secondary);">100% Practicum Target</div>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <!-- Multi-Company Assignment Selector (if student has multiple companies) -->
+          ${trainee?.has_multiple_companies && Array.isArray(trainee?.companies_history) && trainee.companies_history.length > 1 ? `
+            <div class="form-group" style="margin-bottom:14px;background:#FFFDF7;padding:12px;border-radius:8px;border:1px solid #FCD34D;">
+              <label class="form-label" style="font-weight:700;font-size:0.83rem;color:#B45309;margin-bottom:6px;display:block;">
+                ${icon('building', 13)} Assign Host Company Evaluator:
+              </label>
+              <select class="form-select" id="send-eval-company-select" style="width:100%;padding:8px 10px;border:1px solid #F59E0B;border-radius:6px;font-size:0.84rem;font-weight:600;">
+                ${trainee.companies_history.map(c => `
+                  <option value="${c.company_user_id || ''}" ${c.is_current ? 'selected' : ''}>
+                    ${c.company_name} (${c.is_current ? 'Current Host' : 'Previous Host [Approved Pull-out]'}, ${c.hours} hrs)
+                  </option>
+                `).join('')}
+              </select>
+              <span class="text-xs text-secondary" style="margin-top:4px;display:block;">
+                As Coordinator, you decide which company evaluates this term for transferred trainees.
+              </span>
+            </div>
+          ` : ''}
+
           <!-- Form Selector -->
           <div class="form-group" style="margin-bottom:14px;">
             <label class="form-label" style="font-weight:700;font-size:0.85rem;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;">
@@ -2044,7 +2226,8 @@ export default function evaluationsPage(container) {
               ${templatesList.map(tpl => {
                 const qCount = tpl.questions_count ?? (tpl.questions?.length || 0);
                 const isSel = tpl.id === defaultTplId;
-                return `<option value="${tpl.id}" ${isSel ? 'selected' : ''}>${tpl.title} (${qCount} Questions)</option>`;
+                const termTag = tpl.term ? ` [${tpl.term.toUpperCase()}]` : '';
+                return `<option value="${tpl.id}" ${isSel ? 'selected' : ''}>${tpl.title}${termTag} (${qCount} Questions)</option>`;
               }).join('')}
             </select>
           </div>
@@ -2058,7 +2241,7 @@ export default function evaluationsPage(container) {
           </div>
           
           <p class="text-xs text-tertiary" style="margin:0;line-height:1.4;">
-            The employer representative will receive an instant portal notification directing them to evaluate the trainee against this question set.
+            The designated employer representative will receive an instant portal notification directing them to evaluate the trainee against this question set.
           </p>
         </div>
         <div class="modal__footer" style="display:flex;justify-content:flex-end;gap:10px;padding:14px 24px;border-top:1px solid var(--border-default);background:#FAFBFD;flex-shrink:0;">
@@ -2099,13 +2282,23 @@ export default function evaluationsPage(container) {
 
     bd.querySelector('#confirm-send-btn').addEventListener('click', async () => {
       const chosenTemplateId = parseInt(sendTplSelect.value);
+      const chosenTerm = bd.querySelector('input[name="send-eval-term-radio"]:checked')?.value || 'endterm';
+      const companySelect = bd.querySelector('#send-eval-company-select');
+      const chosenCompanyUserId = companySelect ? parseInt(companySelect.value) : null;
+
       const btn = bd.querySelector('#confirm-send-btn');
       btn.disabled = true;
       btn.innerHTML = `${icon('loader', 14)} Dispatching...`;
       try {
-        const res = await apiPost(`/supervisor/evaluations/send/${studentId}`, {
-          template_id: chosenTemplateId
-        });
+        const payload = {
+          template_id: chosenTemplateId,
+          term: chosenTerm,
+        };
+        if (chosenCompanyUserId) {
+          payload.company_user_id = chosenCompanyUserId;
+        }
+
+        const res = await apiPost(`/supervisor/evaluations/send/${studentId}`, payload);
         if (res?.success) {
           close();
           showToast(res.message || 'Evaluation request sent successfully!', 'success');
@@ -2120,6 +2313,88 @@ export default function evaluationsPage(container) {
         showToast(err.message || 'Error occurred.', 'error');
         btn.disabled = false;
         btn.innerHTML = `${icon('send', 14)} Confirm & Dispatch`;
+      }
+    });
+  }
+
+  // Official Evaluation Waiver Modal (Coordinator Power)
+  function openWaiveModal(studentId, name, term = 'midterm') {
+    const termTitle = term === 'midterm' ? 'Midterm Evaluation' : 'Endterm Evaluation';
+
+    const html = `
+      <div class="modal" style="width:95vw;max-width:520px;max-height:88vh;display:flex;flex-direction:column;border-radius:14px;overflow:hidden;background:#ffffff;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);">
+        <div class="modal__header" style="border-bottom:1px solid var(--border-default);background:#FAF5FF;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="width:36px;height:36px;border-radius:8px;background:rgba(107,33,168,0.1);color:#6B21A8;display:flex;align-items:center;justify-content:center;">
+              ${icon('shield', 18)}
+            </div>
+            <div>
+              <h3 class="modal__title" style="margin:0;font-size:1.05rem;font-weight:700;color:#6B21A8;">Waive ${termTitle}</h3>
+              <p class="text-xs text-secondary" style="margin:2px 0 0;">Institutional Coordinator Exemption</p>
+            </div>
+          </div>
+          <button class="modal__close" data-dismiss="modal" title="Close">${icon('x', 18)}</button>
+        </div>
+        <div class="modal__body" style="padding:22px 24px;flex:1;min-height:0;overflow-y:auto;">
+          <div style="background:#FAFBFD;border:1px solid var(--border-default);border-radius:8px;padding:12px 14px;margin-bottom:16px;">
+            <div style="font-weight:700;color:var(--text-primary);font-size:0.9rem;">${name}</div>
+            <div style="font-size:0.75rem;color:var(--text-secondary);margin-top:2px;">
+              Exempting student from ${termTitle}. The subsequent Endterm appraisal will automatically carry 100% of their final OJT rating.
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom:12px;">
+            <label class="form-label" style="font-weight:700;font-size:0.85rem;margin-bottom:6px;display:block;">
+              Reason for Waiver (Required for Academic Audit) <span style="color:var(--color-error);">*</span>
+            </label>
+            <textarea class="form-textarea" id="waive-reason-input" rows="4" placeholder="e.g. Early pull-out under 50% hours rendered; supervisor approved full evaluation to be administered by Host Company B." style="width:100%;padding:10px 12px;border:1px solid var(--border-default);border-radius:8px;font-size:0.85rem;resize:vertical;"></textarea>
+          </div>
+          <p class="text-xs text-tertiary" style="margin:0;line-height:1.4;">
+            This decision will be officially logged in the student's academic OJT audit trail and both the student and admin will be notified.
+          </p>
+        </div>
+        <div class="modal__footer" style="display:flex;justify-content:flex-end;gap:10px;padding:14px 24px;border-top:1px solid var(--border-default);background:#FAFBFD;flex-shrink:0;">
+          <button class="btn btn--outline" data-dismiss="modal">Cancel</button>
+          <button class="btn btn--primary" id="confirm-waive-btn" style="background:#6B21A8;border-color:#6B21A8;gap:6px;">
+            ${icon('checkCircle', 14)} Confirm Waiver
+          </button>
+        </div>
+      </div>
+    `;
+
+    const { bd, close } = showModal(html, { backdropId: 'waive-eval-modal-backdrop' });
+
+    bd.querySelector('#confirm-waive-btn').addEventListener('click', async () => {
+      const reason = bd.querySelector('#waive-reason-input').value.trim();
+      if (!reason) {
+        showToast('Please enter an official waiver reason for academic auditing.', 'warning');
+        return;
+      }
+
+      const btn = bd.querySelector('#confirm-waive-btn');
+      btn.disabled = true;
+      btn.innerHTML = `${icon('loader', 14)} Submitting...`;
+
+      try {
+        const res = await apiPost(`/supervisor/evaluations/waive/${studentId}`, {
+          term,
+          waiver_reason: reason,
+        });
+
+        if (res?.success) {
+          close();
+          showToast(res.message || 'Evaluation waived successfully.', 'success');
+          apiCache.invalidate(['/supervisor/evaluations*']);
+          loadTraineesData();
+        } else {
+          showToast(res?.message || 'Failed to waive evaluation.', 'error');
+          btn.disabled = false;
+          btn.innerHTML = `${icon('checkCircle', 14)} Confirm Waiver`;
+        }
+      } catch (e) {
+        showToast(e.message || 'Error occurred.', 'error');
+        btn.disabled = false;
+        btn.innerHTML = `${icon('checkCircle', 14)} Confirm Waiver`;
       }
     });
   }
@@ -2166,6 +2441,16 @@ export default function evaluationsPage(container) {
           </div>
 
           <div class="form-group" style="margin-bottom:14px;">
+            <label class="form-label" style="font-weight:700;font-size:0.85rem;margin-bottom:6px;display:block;">
+              Appraisal Term for Batch:
+            </label>
+            <select class="form-select" id="batch-eval-term-select" style="width:100%;padding:9px 12px;border:1px solid var(--border-default);border-radius:8px;font-weight:600;font-size:0.86rem;">
+              <option value="midterm">Midterm Evaluation (50% Academic Weight)</option>
+              <option value="endterm" selected>Final / Endterm Evaluation (50% Academic Weight)</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin-bottom:14px;">
             <label class="form-label" style="font-weight:700;font-size:0.85rem;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;">
               <span>Choose Evaluation Form for Batch:</span>
               <button type="button" class="btn btn--ghost btn--sm" id="btn-preview-batch-form" style="font-size:0.75rem;padding:2px 8px;gap:4px;color:var(--color-primary);">
@@ -2190,7 +2475,7 @@ export default function evaluationsPage(container) {
           </div>
           
           <p class="text-xs text-tertiary" style="margin:0;line-height:1.4;">
-            All ${selectedIds.length} host companies will receive evaluation requests standardized on this selected form.
+            All selected host companies will receive evaluation requests standardized on this selected form.
           </p>
         </div>
         <div class="modal__footer" style="display:flex;justify-content:flex-end;gap:10px;padding:14px 24px;border-top:1px solid var(--border-default);background:#FAFBFD;flex-shrink:0;">
@@ -2231,13 +2516,15 @@ export default function evaluationsPage(container) {
 
     bd.querySelector('#confirm-batch-btn').addEventListener('click', async () => {
       const chosenTemplateId = parseInt(batchTplSelect.value);
+      const chosenTerm = bd.querySelector('#batch-eval-term-select').value;
       const btn = bd.querySelector('#confirm-batch-btn');
       btn.disabled = true;
       btn.innerHTML = `${icon('loader', 14)} Dispatching Batch...`;
       try {
         const res = await apiPost('/supervisor/evaluations/send-batch', {
           student_ids: selectedIds,
-          template_id: chosenTemplateId
+          template_id: chosenTemplateId,
+          term: chosenTerm,
         });
         if (res?.success) {
           close();
@@ -2279,6 +2566,16 @@ export default function evaluationsPage(container) {
           </div>
 
           <div class="form-group" style="margin-bottom:16px;">
+            <label class="form-label" style="font-weight:700;font-size:0.85rem;margin-bottom:6px;display:block;">Term Rubric Type</label>
+            <select class="form-select" id="new-tpl-term" style="width:100%;padding:9px 12px;border:1px solid var(--border-default);border-radius:8px;font-size:0.85rem;font-weight:600;">
+              <option value="both" selected>Both Midterm & Endterm (Universal Rubric)</option>
+              <option value="midterm">Midterm Evaluation Only</option>
+              <option value="endterm">Final / Endterm Evaluation Only</option>
+            </select>
+            <span class="text-xs text-secondary" style="margin-top:4px;display:block;">Specify which appraisal term this rubric applies to.</span>
+          </div>
+
+          <div class="form-group" style="margin-bottom:16px;">
             <label class="form-label" style="font-weight:700;font-size:0.85rem;margin-bottom:6px;display:block;">Instructions for Host Company</label>
             <textarea class="form-textarea" id="new-tpl-desc" rows="3" placeholder="Provide guidelines or criteria focus for the company supervisor..." style="width:100%;padding:9px 12px;border:1px solid var(--border-default);border-radius:8px;resize:vertical;"></textarea>
           </div>
@@ -2305,6 +2602,7 @@ export default function evaluationsPage(container) {
 
     bd.querySelector('#save-new-tpl-btn').addEventListener('click', async () => {
       const title = bd.querySelector('#new-tpl-title').value.trim();
+      const term = bd.querySelector('#new-tpl-term').value;
       const description = bd.querySelector('#new-tpl-desc').value.trim();
       const clone_template_id = bd.querySelector('#new-tpl-clone-select').value || null;
 
@@ -2320,6 +2618,7 @@ export default function evaluationsPage(container) {
       try {
         const res = await apiPost('/supervisor/evaluations/templates', {
           title,
+          term,
           description,
           clone_template_id: clone_template_id ? parseInt(clone_template_id) : null
         });
@@ -2358,6 +2657,15 @@ export default function evaluationsPage(container) {
             <input type="text" class="form-input" id="edit-tpl-title" value="${currentTemplate.title || ''}" style="width:100%;padding:9px 12px;border:1px solid var(--border-default);border-radius:8px;" />
           </div>
 
+          <div class="form-group" style="margin-bottom:16px;">
+            <label class="form-label" style="font-weight:700;font-size:0.85rem;margin-bottom:6px;display:block;">Term Rubric Type</label>
+            <select class="form-select" id="edit-tpl-term" style="width:100%;padding:9px 12px;border:1px solid var(--border-default);border-radius:8px;font-size:0.85rem;font-weight:600;">
+              <option value="both" ${currentTemplate.term === 'both' ? 'selected' : ''}>Both Midterm & Endterm (Universal Rubric)</option>
+              <option value="midterm" ${currentTemplate.term === 'midterm' ? 'selected' : ''}>Midterm Evaluation Only</option>
+              <option value="endterm" ${currentTemplate.term === 'endterm' ? 'selected' : ''}>Final / Endterm Evaluation Only</option>
+            </select>
+          </div>
+
           <div class="form-group" style="margin-bottom:14px;">
             <label class="form-label" style="font-weight:700;font-size:0.85rem;margin-bottom:6px;display:block;">Instructions for Host Company</label>
             <textarea class="form-textarea" id="edit-tpl-desc" rows="4" style="width:100%;padding:9px 12px;border:1px solid var(--border-default);border-radius:8px;resize:vertical;">${currentTemplate.description || ''}</textarea>
@@ -2376,6 +2684,7 @@ export default function evaluationsPage(container) {
 
     bd.querySelector('#save-edit-tpl-btn').addEventListener('click', async () => {
       const title = bd.querySelector('#edit-tpl-title').value.trim();
+      const term = bd.querySelector('#edit-tpl-term').value;
       const description = bd.querySelector('#edit-tpl-desc').value.trim();
 
       if (!title) {
@@ -2390,6 +2699,7 @@ export default function evaluationsPage(container) {
       try {
         const res = await apiPut(`/supervisor/evaluations/templates/${currentTemplateId}`, {
           title,
+          term,
           description
         });
 

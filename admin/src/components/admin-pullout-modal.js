@@ -187,6 +187,23 @@ ${preview?.letter_body || po.generated_letter_body || 'Letter memorandum preview
             <span style="font-size:0.72rem;color:var(--text-tertiary);">Once physical signature is obtained OR Dean replies via email</span>
           </div>
 
+          <!-- Verified DTR Audit Card -->
+          <div style="margin-bottom:14px;padding:12px 14px;border-radius:8px;background:rgba(0,89,48,0.06);border:1px solid rgba(0,89,48,0.2);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+            <div>
+              <div style="font-size:0.76rem;font-weight:700;color:#005930;display:flex;align-items:center;gap:5px;margin-bottom:2px;">
+                ${icon('clock', 13)} Verified Daily Time Record (DTR) Audit
+              </div>
+              <div style="font-size:0.8rem;color:var(--text-secondary);">
+                Verified Rendered: <strong style="color:var(--text-primary);">${po.dtr_total_hours !== undefined ? po.dtr_total_hours : (po.hours_rendered_snapshot || 0)} hrs</strong> 
+                &bull; Valid Logged Days: <strong>${po.dtr_days_count !== undefined ? po.dtr_days_count : 0} days</strong>
+                <span style="display:block;font-size:0.71rem;color:var(--text-tertiary);margin-top:2px;">*Unclosed single-punch check-ins on pull-out day are automatically voided and excluded.</span>
+              </div>
+            </div>
+            <button type="button" class="btn btn--outline" id="btn-sync-dtr" style="padding:4px 10px;font-size:0.72rem;height:auto;gap:4px;border-color:rgba(0,89,48,0.3);color:#005930;">
+              ${icon('refresh-cw', 12)} Reset to DTR
+            </button>
+          </div>
+
           <div style="display:grid;grid-template-columns:1fr 1fr 1.4fr;gap:14px;align-items:flex-end;">
             <div>
               <label class="ac-label" style="font-size:0.75rem;">Dean's Verdict <span class="ac-req">*</span></label>
@@ -197,7 +214,7 @@ ${preview?.letter_body || po.generated_letter_body || 'Letter memorandum preview
             </div>
             <div>
               <label class="ac-label" style="font-size:0.75rem;">Credited Hours (hrs)</label>
-              <input class="ac-input" id="admin-po-credited-hours" type="number" step="0.5" value="${po.hours_rendered_snapshot || 0}" style="padding:6px 10px;font-size:0.82rem;" />
+              <input class="ac-input" id="admin-po-credited-hours" type="number" step="0.5" value="${po.dtr_total_hours !== undefined ? po.dtr_total_hours : (po.hours_rendered_snapshot || 0)}" style="padding:6px 10px;font-size:0.82rem;" />
             </div>
             <div>
               <label class="ac-label" style="font-size:0.75rem;">Admin Directives / Conforme Notes</label>
@@ -333,6 +350,19 @@ ${preview?.letter_body || po.generated_letter_body || 'Letter memorandum preview
         showMsg(err.message || 'Error dispatching email to Dean.', 'error');
         emailBtn.disabled = false;
         emailBtn.innerHTML = `${icon('send', 15)} Email to Dean`;
+      }
+    });
+  }
+
+  // Reset to verified DTR
+  const syncDtrBtn = modalContainer.querySelector('#btn-sync-dtr');
+  if (syncDtrBtn) {
+    syncDtrBtn.addEventListener('click', () => {
+      const dtrVal = po.dtr_total_hours !== undefined ? po.dtr_total_hours : (po.hours_rendered_snapshot || 0);
+      const inputEl = modalContainer.querySelector('#admin-po-credited-hours');
+      if (inputEl) {
+        inputEl.value = dtrVal;
+        showMsg(`Credited hours reset to verified DTR sum (${dtrVal} hrs).`, 'success');
       }
     });
   }

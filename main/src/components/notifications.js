@@ -519,10 +519,11 @@ export function initNotifications(triggerBtn) {
         invalidationPatterns.add('/ojt/my-interests*');
         invalidationPatterns.add('/student/dashboard*');
       }
-      if (t.includes('ojt') || t.includes('endorsement') || t.includes('time_') || t.includes('evaluation')) {
+      if (t.includes('ojt') || t.includes('endorsement') || t.includes('time_') || t.includes('evaluation') || t.includes('pull_out')) {
         window.dispatchEvent(new CustomEvent('hireme:ojt-updated', { detail: n }));
         window.dispatchEvent(new CustomEvent('hireme:trainees-refresh', { detail: n }));
         invalidationPatterns.add('/student/ojt-tracker*');
+        invalidationPatterns.add('/student/ojt-pull-out*');
         invalidationPatterns.add('/student/evaluation*');
         invalidationPatterns.add('/student/employment-status*');
         invalidationPatterns.add('/student/dashboard*');

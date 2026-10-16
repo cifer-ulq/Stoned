@@ -506,6 +506,25 @@
   z-index: var(--z-modal);
 }
 
+.modal--scrollable {
+  display: flex !important;
+  flex-direction: column !important;
+  max-height: 88vh !important;
+  overflow: hidden !important;
+}
+
+.modal--scrollable .modal__body {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+.modal--scrollable .modal__header,
+.modal--scrollable .modal__footer {
+  flex-shrink: 0 !important;
+}
+
 .modal__header {
   display: flex;
   align-items: center;

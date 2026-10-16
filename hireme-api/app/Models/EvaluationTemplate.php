@@ -14,6 +14,7 @@ class EvaluationTemplate extends Model
         'program',
         'title',
         'description',
+        'term',
         'is_active',
     ];
 

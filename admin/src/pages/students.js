@@ -1,12 +1,10 @@
 import { apiGet, apiGetCached, getCached, apiPost, storageUrl } from '../api/client.js';
 import { icon, renderIcons } from '../components/icons.js';
 import { openStudentImportModal } from '../components/student-import-modal.js';
-import { openAlumniImportModal } from '../components/alumni-import-modal.js';
 import { openBroadcastModal } from '../components/broadcast-modal.js';
 
 const STATUS_COLORS = {
   'Active OJT': 'success',
-  'Alumni': 'neutral',
   'Undeployed': 'warning',
 };
 
@@ -194,9 +192,7 @@ function showModal(s, container, onRefresh) {
     ? Math.min(100, Math.round((s.ojt_hours / s.ojt_required) * 100))
     : 0;
 
-  const statusKey = s.status === 'Active OJT' ? 'ojt'
-    : s.status === 'Alumni' ? 'alumni'
-    : 'other';
+  const statusKey = s.status === 'Active OJT' ? 'ojt' : 'other';
 
   const backdrop = document.createElement('div');
   backdrop.className = 'modal-backdrop';
@@ -344,11 +340,11 @@ function showModal(s, container, onRefresh) {
             <button class="btn btn--primary btn--sm" id="modal-promote-btn" style="display:inline-flex;align-items:center;gap:6px;">
               ${icon('graduation-cap', 14)} Promote to Graduate
             </button>
-          ` : s.status !== 'Alumni' ? `
+          ` : `
             <span class="badge badge--neutral" title="${s.ineligible_reason || 'Dual-gate requirements not met'}" style="font-size:0.75rem;padding:6px 10px;cursor:help;display:inline-flex;align-items:center;gap:5px;background:var(--bg-secondary);border:1px solid var(--border-default);color:var(--text-secondary);">
               ${icon('lock', 12)} Promotion Locked: ${s.evaluation_status !== 'submitted' ? 'Evaluation Required' : 'Hours Incomplete'}
             </span>
-          ` : ''}
+          `}
           <button class="btn btn--outline btn--sm" id="modal-cancel">Close</button>
           <a href="mailto:${s.email}" class="btn btn--primary btn--sm">${icon('mail', 13)} Contact</a>
         </div>
@@ -408,7 +404,6 @@ function renderTable(tbody, list, container, selectedStudents, updateSelectionUI
     const badgeColor = STATUS_COLORS[s.status] || 'neutral';
     const barColor = pct >= 100 ? '#3B82F6' : pct >= 40 ? '#10B981' : '#F59E0B';
     const isEligible = Boolean(s.is_eligible_for_promotion);
-    const isAlumni = s.status === 'Alumni';
     const isChecked = selectedStudents ? selectedStudents.has(s.id) : false;
 
     return `
@@ -416,9 +411,7 @@ function renderTable(tbody, list, container, selectedStudents, updateSelectionUI
         <td style="text-align:center;width:44px;">
           ${isEligible
             ? `<input type="checkbox" class="student-select-cb" data-id="${s.id}" ${isChecked ? 'checked' : ''} title="Eligible: Completed ${s.ojt_hours}h / ${s.ojt_required || 600}h OJT + Company Evaluated (${Number(s.evaluation_score || 5).toFixed(1)}★)" style="cursor:pointer;width:16px;height:16px;" />`
-            : isAlumni
-              ? `<span title="Already Alumni / Graduated" style="display:inline-flex;align-items:center;justify-content:center;color:#0F766E;">${icon('check-circle', 15)}</span>`
-              : `<input type="checkbox" disabled title="Ineligible: ${s.ineligible_reason || 'Requirements not met'}" style="cursor:not-allowed;opacity:0.3;width:16px;height:16px;" />`}
+            : `<input type="checkbox" disabled title="Ineligible: ${s.ineligible_reason || 'Requirements not met'}" style="cursor:not-allowed;opacity:0.3;width:16px;height:16px;" />`}
         </td>
         <td>
           <div style="display:flex;align-items:center;gap:12px;">
@@ -455,9 +448,7 @@ function renderTable(tbody, list, container, selectedStudents, updateSelectionUI
               <div class="progress-bar__fill" style="width:${pct}%;background:${barColor};"></div>
             </div>
             <span style="font-size:var(--text-xs);font-weight:var(--weight-semibold);white-space:nowrap;">${s.ojt_hours}/${s.ojt_required}h</span>
-          </div>` : s.status === 'Alumni' ? `
-            <span style="font-size:var(--text-xs);color:var(--text-secondary);font-weight:var(--weight-medium);display:flex;align-items:center;gap:4px;">${icon('check-circle', 12)} Completed</span>
-          ` : `
+          </div>` : `
             <span style="font-size:var(--text-xs);color:var(--text-tertiary);">—</span>
           `}
         </td>
@@ -561,7 +552,6 @@ export default async function StudentsPage(container) {
           <option value="Needs Evaluation">Needs Company Evaluation</option>
           <option value="Completed OJT">Completed OJT (600h+)</option>
           <option value="Active OJT">Active OJT</option>
-          <option value="Alumni">Alumni</option>
           <option value="Undeployed">Undeployed</option>
         </select>
       </div>
@@ -569,9 +559,6 @@ export default async function StudentsPage(container) {
         <span id="student-count" style="font-size:var(--text-sm);color:var(--text-tertiary);"></span>
         <button class="btn btn--outline btn--sm" id="broadcast-students-btn" style="display:inline-flex;align-items:center;gap:6px;">
           ${icon('bell', 13)} Broadcast Notice
-        </button>
-        <button class="btn btn--outline btn--sm" id="import-alumni-btn" style="display:inline-flex;align-items:center;gap:6px;">
-          ${icon('award', 13)} Register Alumni
         </button>
         <button class="btn btn--primary btn--sm" id="import-students-btn" style="display:inline-flex;align-items:center;gap:6px;">
           ${icon('upload', 14)} Import Students
@@ -718,7 +705,7 @@ export default async function StudentsPage(container) {
     const status  = container.querySelector('#filter-status').value;
     const section = container.querySelector('#filter-section').value;
 
-    const params = new URLSearchParams({ per_page: 20, page: currentPage });
+    const params = new URLSearchParams({ per_page: 8, page: currentPage });
     if (search)  params.set('search', search);
     if (course)  params.set('course', course);
     if (status)  params.set('status', status);
@@ -831,14 +818,7 @@ export default async function StudentsPage(container) {
     });
   });
 
-  /* ── Import buttons ── */
-  container.querySelector('#import-alumni-btn')?.addEventListener('click', () => {
-    openAlumniImportModal(() => {
-      currentPage = 1;
-      fetchAndRender(true);
-    });
-  });
-
+  /* ── Import students button ── */
   container.querySelector('#import-students-btn').addEventListener('click', () => {
     openStudentImportModal(() => {
       currentPage = 1;

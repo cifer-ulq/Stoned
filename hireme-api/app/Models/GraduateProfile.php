@@ -14,4 +14,9 @@ class GraduateProfile extends Model
         'section',
         'employment_status',
     ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }

@@ -479,6 +479,20 @@ export default async function OjtManagementPage(container) {
   container.querySelector('#filter-pullout-status')?.addEventListener('change', renderPullOutTable);
   loadPullOutRequests();
 
+  // Real-time reactive updates when supervisor recommends or pull-out updates occur
+  const onPullOutNotification = (e) => {
+    if (!document.body.contains(container)) {
+      window.removeEventListener('hireme:notification-received', onPullOutNotification);
+      return;
+    }
+    const notifs = Array.isArray(e.detail) ? e.detail : [e.detail];
+    const hasPullOutEvent = notifs.some(n => (n?.type || '').includes('pull_out'));
+    if (hasPullOutEvent) {
+      loadPullOutRequests();
+    }
+  };
+  window.addEventListener('hireme:notification-received', onPullOutNotification);
+
   /* ── Load Analytics ── */
   function renderAnalyticsData(res) {
     if (!res || res.message) return;

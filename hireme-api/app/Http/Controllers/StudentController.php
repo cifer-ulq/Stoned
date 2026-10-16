@@ -968,10 +968,10 @@ class StudentController extends Controller
     {
         $user = $request->user();
 
-        // Find active, confirmed, or emergency-paused OJT interest
+        // Find active, confirmed, emergency-paused, or pull-out pending OJT interest
         $interest = StudentOjtInterest::with(['posting.company', 'endorser'])
             ->where('student_user_id', $user->id)
-            ->whereIn('status', ['ojt_started', 'accepted', 'ojt_confirmed', 'stoppage_requested', 'on_leave', 'withdrawn_emergency'])
+            ->whereIn('status', ['ojt_started', 'accepted', 'ojt_confirmed', 'stoppage_requested', 'on_leave', 'withdrawn_emergency', 'pull_out_requested'])
             ->latest()
             ->first();
 
@@ -1053,9 +1053,14 @@ class StudentController extends Controller
             ->whereIn('status', ['active', 'completed', 'on_leave', 'withdrawn_emergency'])
             ->first();
 
-        // Derive schedule info from posting
-        // OJT training is fixed at 600 hours
-        $totalHours = 600;
+        // University curriculum target and carry-forward accredited hours
+        $curriculumTarget = 600;
+        $accreditedHours  = (float) \App\Models\OjtPullOutRequest::where('student_user_id', $user->id)
+            ->where('status', 'approved')
+            ->sum('credited_hours');
+
+        // Total hours for this active deployment
+        $totalHours = (float) ($ojtRecord?->required_hours ?? max(0, $curriculumTarget - $accreditedHours));
 
         // Parse duration months from posting (e.g. "6 months / 486 hours"), default to 6
         $durationMonths = 6;
@@ -1246,6 +1251,14 @@ class StudentController extends Controller
         $isEmergencyPending = ($interest->status === 'stoppage_requested' || ($latestEmergency && $latestEmergency->coordinator_status === 'pending'));
         $isWithdrawn = ($interest->status === 'withdrawn_emergency' || $ojtRecord?->status === 'withdrawn_emergency');
 
+        $latestPullOut = \App\Models\OjtPullOutRequest::where('student_user_id', $user->id)->latest()->first();
+        $isPullOutPending = ($interest->status === 'pull_out_requested') || in_array($latestPullOut?->status, [
+            'pending_supervisor',
+            'recommended_by_supervisor',
+            'printed_pending_signature',
+            'emailed_to_dean',
+        ]);
+
         return response()->json([
             'deployment'    => [
                 'company'         => $posting->company_name,
@@ -1259,13 +1272,15 @@ class StudentController extends Controller
                 'postingTitle'    => $posting->title,
                 'duration'        => $posting->duration,
                 'scheduleType'    => $posting->schedule_type ?? 'Full Day · Mon–Fri',
-                'supervisor'      => $ojtRecord?->supervisor_name ?? null,
-                'supervisorEmail' => $ojtRecord?->supervisor_email ?? null,
-                'requiredHours'   => (int) $totalHours,
-                'interestId'      => $interest->id,
-                'interestStatus'  => $interest->status,
-                'recordStatus'    => $ojtRecord?->status ?? 'active',
-                'schedule'        => [
+                'supervisor'       => $ojtRecord?->supervisor_name ?? null,
+                'supervisorEmail'  => $ojtRecord?->supervisor_email ?? null,
+                'requiredHours'    => (int) $totalHours,
+                'curriculumTarget' => (float) $curriculumTarget,
+                'accreditedHours'  => (float) $accreditedHours,
+                'interestId'       => $interest->id,
+                'interestStatus'   => $interest->status,
+                'recordStatus'     => $ojtRecord?->status ?? 'active',
+                'schedule'         => [
                     'days'             => $interest->schedule_days ?? $ojtRecord?->schedule_days ?? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
                     'shiftStart'       => $shiftStart,
                     'shiftEnd'         => $shiftEnd,
@@ -1308,16 +1323,43 @@ class StudentController extends Controller
                 'has_fit_to_work'         => !empty($latestEmergency->fit_to_work_document_path),
                 'company_status'          => $latestEmergency->company_status,
                 'assets_returned'         => (bool) $latestEmergency->assets_returned,
+                'actual_return_date'      => $latestEmergency->actual_return_date ? $latestEmergency->actual_return_date->format('M d, Y') : null,
+                'cleared_to_resume_at'    => $latestEmergency->cleared_to_resume_at ? $latestEmergency->cleared_to_resume_at->format('M d, Y h:i A') : null,
+                'is_cleared'              => !empty($latestEmergency->cleared_to_resume_at),
                 'created_at'              => $latestEmergency->created_at ? $latestEmergency->created_at->diffForHumans() : null,
             ] : null,
             'is_on_leave'         => $isOnLeave,
             'emergency_pending'   => $isEmergencyPending,
             'is_withdrawn'        => $isWithdrawn,
+            'pull_out'            => $latestPullOut ? [
+                'id'                      => $latestPullOut->id,
+                'status'                  => $latestPullOut->status,
+                'reason_category'         => $latestPullOut->reason_category,
+                'reason'                  => $latestPullOut->reason,
+                'student_letter_url'      => $latestPullOut->student_letter_url,
+                'student_letter_name'     => $latestPullOut->student_letter_name,
+                'hours_rendered_snapshot' => (float) $latestPullOut->hours_rendered_snapshot,
+                'required_hours_snapshot' => (float) $latestPullOut->required_hours_snapshot,
+                'supervisor_remarks'      => $latestPullOut->supervisor_remarks,
+                'supervisor_action_at'    => $latestPullOut->supervisor_action_at?->format('M d, Y h:i A'),
+                'dean_name'               => $latestPullOut->dean_name,
+                'delivery_method'         => $latestPullOut->delivery_method,
+                'emailed_at'              => $latestPullOut->emailed_at?->format('M d, Y h:i A'),
+                'dean_verdict'            => $latestPullOut->dean_verdict,
+                'credited_hours'          => $latestPullOut->credited_hours !== null ? (float) $latestPullOut->credited_hours : null,
+                'admin_remarks'           => $latestPullOut->admin_remarks,
+                'created_at'              => $latestPullOut->created_at?->format('M d, Y h:i A'),
+                'created_at_human'        => $latestPullOut->created_at?->diffForHumans(),
+            ] : null,
+            'is_pull_out_pending' => (bool) $isPullOutPending,
             'progress' => [
-                'hoursRendered' => (float) $hoursRendered,
-                'totalHours'    => (float) $totalHours,
-                'daysCompleted' => $daysCompleted,
-                'totalDays'     => $totalDays,
+                'hoursRendered'      => (float) $hoursRendered,
+                'totalHours'         => (float) $totalHours,
+                'daysCompleted'      => $daysCompleted,
+                'totalDays'          => $totalDays,
+                'curriculumTarget'   => (float) $curriculumTarget,
+                'accreditedHours'    => (float) $accreditedHours,
+                'cumulativeRendered' => (float) ($hoursRendered + $accreditedHours),
             ],
             'studentLocation' => $lastGeo ? [
                 'lat' => (float) ($lastGeo->time_in_lat ?? $lastGeo->latitude),
@@ -1452,7 +1494,7 @@ class StudentController extends Controller
 
         $activeInterest = StudentOjtInterest::with('posting')
             ->where('student_user_id', $student->id)
-            ->whereIn('status', ['accepted', 'ojt_started', 'ojt_confirmed', 'stoppage_requested', 'on_leave'])
+            ->whereIn('status', ['accepted', 'ojt_started', 'ojt_confirmed', 'stoppage_requested', 'on_leave', 'pull_out_requested'])
             ->latest()
             ->first();
 
@@ -1493,6 +1535,12 @@ class StudentController extends Controller
         // 0. Enforce emergency leave / stoppage guards
         $rawInterest = StudentOjtInterest::where('student_user_id', $user->id)->latest()->first();
         if ($rawInterest) {
+            if ($rawInterest->status === 'pull_out_requested') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Attendance time-in is paused while your OJT pull-out request is undergoing review.',
+                ], 403);
+            }
             if ($rawInterest->status === 'on_leave') {
                 return response()->json([
                     'success' => false,
@@ -1859,7 +1907,7 @@ class StudentController extends Controller
 
         $interest = StudentOjtInterest::with('posting')
             ->where('student_user_id', $user->id)
-            ->whereIn('status', ['accepted', 'ojt_started', 'ojt_confirmed'])
+            ->whereIn('status', ['accepted', 'ojt_started', 'ojt_confirmed', 'pull_out_requested'])
             ->latest()->first();
 
         $ojtRecord = OjtRecord::where('user_id', $user->id)
@@ -2625,7 +2673,7 @@ class StudentController extends Controller
 
         // Active OJT: student has an accepted OJT interest (this is what drives the "Active OJT" badge)
         $activeOjtInterest = StudentOjtInterest::where('student_user_id', $user->id)
-            ->whereIn('status', ['accepted', 'ojt_confirmed', 'ojt_started'])
+            ->whereIn('status', ['accepted', 'ojt_confirmed', 'ojt_started', 'pull_out_requested', 'stoppage_requested', 'on_leave'])
             ->with('posting')
             ->latest()
             ->first();
@@ -3252,6 +3300,7 @@ class StudentController extends Controller
                     'student_name' => $user->name,
                     'type'         => $request->type,
                     'category'     => $request->category,
+                    'route'        => "#/trainees?student_id={$user->id}&action=review_emergency",
                 ]
             );
         }
@@ -3341,6 +3390,7 @@ class StudentController extends Controller
                     'emergency_id' => $emergency->id,
                     'student_id'   => $user->id,
                     'student_name' => $user->name,
+                    'route'        => "#/trainees?student_id={$user->id}&action=review_emergency",
                 ]
             );
         }

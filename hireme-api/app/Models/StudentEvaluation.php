@@ -11,12 +11,16 @@ class StudentEvaluation extends Model
 
     protected $fillable = [
         'template_id',
+        'term',
         'student_user_id',
         'company_user_id',
         'supervisor_user_id',
         'ojt_record_id',
         'ojt_posting_id',
         'status',
+        'is_waived',
+        'waiver_reason',
+        'weight',
         'overall_score',
         'general_feedback',
         'recommendation',
@@ -30,6 +34,8 @@ class StudentEvaluation extends Model
     {
         return [
             'overall_score' => 'decimal:2',
+            'weight'        => 'decimal:2',
+            'is_waived'     => 'boolean',
             'sent_at'       => 'datetime',
             'submitted_at'  => 'datetime',
         ];

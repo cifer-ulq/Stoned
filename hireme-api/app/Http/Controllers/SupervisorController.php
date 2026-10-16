@@ -41,21 +41,23 @@ class SupervisorController extends Controller
         $profile = $user->supervisorProfile;
         $course  = $this->getSupervisorCourse($request);
 
-        // Trainees endorsed by this supervisor that got accepted (new: ojt_started; legacy: accepted)
-        $endorsedAcceptedQuery = StudentOjtInterest::where('endorsed_by', $userId)
-            ->whereIn('status', ['ojt_started', 'accepted']);
+        // Trainees in this supervisor's assigned course (or endorsed by this supervisor if unassigned)
+        $endorsedAcceptedQuery = StudentOjtInterest::whereIn('status', ['ojt_started', 'accepted']);
         if ($course) {
             $endorsedAcceptedQuery->whereHas('student.studentProfile', fn($q) => $q->where('program', $course));
+        } else {
+            $endorsedAcceptedQuery->where('endorsed_by', $userId);
         }
         $endorsedAccepted = $endorsedAcceptedQuery
             ->with(['student', 'student.studentProfile', 'student.ojtRecord', 'posting'])
             ->get();
 
-        // All endorsements by this supervisor
-        $totalEndorsedQuery = StudentOjtInterest::where('endorsed_by', $userId)
-            ->whereIn('status', ['endorsed', 'ojt_started', 'accepted', 'rejected']);
+        // All endorsements in this supervisor's course
+        $totalEndorsedQuery = StudentOjtInterest::whereIn('status', ['endorsed', 'ojt_started', 'accepted', 'rejected']);
         if ($course) {
             $totalEndorsedQuery->whereHas('student.studentProfile', fn($q) => $q->where('program', $course));
+        } else {
+            $totalEndorsedQuery->where('endorsed_by', $userId);
         }
         $totalEndorsed = $totalEndorsedQuery->count();
 
@@ -74,29 +76,32 @@ class SupervisorController extends Controller
         $pendingApprovals = $pendingApprovalsQuery->count();
 
         // Endorsed students waiting for company to start OJT
-        $pendingEndorsementsQuery = StudentOjtInterest::where('endorsed_by', $userId)
-            ->where('status', 'endorsed');
+        $pendingEndorsementsQuery = StudentOjtInterest::where('status', 'endorsed');
         if ($course) {
             $pendingEndorsementsQuery->whereHas('student.studentProfile', fn($q) => $q->where('program', $course));
+        } else {
+            $pendingEndorsementsQuery->where('endorsed_by', $userId);
         }
         $pendingEndorsements = $pendingEndorsementsQuery->count();
 
-        // Accepted (active trainees) from this supervisor's endorsements
+        // Accepted (active trainees)
         $activeTrainees = $endorsedAccepted->count();
 
         // Rejected by company
-        $rejectedByCompanyQuery = StudentOjtInterest::where('endorsed_by', $userId)
-            ->where('status', 'rejected');
+        $rejectedByCompanyQuery = StudentOjtInterest::where('status', 'rejected');
         if ($course) {
             $rejectedByCompanyQuery->whereHas('student.studentProfile', fn($q) => $q->where('program', $course));
+        } else {
+            $rejectedByCompanyQuery->where('endorsed_by', $userId);
         }
         $rejectedByCompany = $rejectedByCompanyQuery->count();
 
-        // Recent activity feed — letters sent by this supervisor
-        $recentActivityQuery = StudentOjtInterest::where('endorsed_by', $userId)
-            ->whereIn('status', ['endorsed', 'ojt_started', 'accepted', 'rejected']);
+        // Recent activity feed — updates for students in this course
+        $recentActivityQuery = StudentOjtInterest::whereIn('status', ['endorsed', 'ojt_started', 'accepted', 'rejected']);
         if ($course) {
             $recentActivityQuery->whereHas('student.studentProfile', fn($q) => $q->where('program', $course));
+        } else {
+            $recentActivityQuery->where('endorsed_by', $userId);
         }
         $recentActivity = $recentActivityQuery
             ->with(['student', 'posting'])
@@ -697,6 +702,8 @@ class SupervisorController extends Controller
             // Resolve OJT pull-out request status
             $latestPullOut = OjtPullOutRequest::where('student_user_id', $student->id)->latest()->first();
             $pullOutStatus = 'none';
+            $isPulledOut = ($record?->status === 'pulled_out' || $latestPullOut?->status === 'approved');
+
             if ($latestPullOut) {
                 if ($latestPullOut->status === 'pending_supervisor') {
                     $status = 'Pull-Out Requested';
@@ -705,8 +712,21 @@ class SupervisorController extends Controller
                     $status = 'Pull-Out Recommended';
                     $pullOutStatus = $latestPullOut->status;
                 } elseif ($latestPullOut->status === 'approved') {
-                    $status = 'Pulled Out (Approved)';
+                    $status = 'Undeployed';
                     $pullOutStatus = 'approved';
+                }
+            }
+
+            if ($isPulledOut) {
+                $status         = 'Undeployed';
+                $pullOutStatus  = 'approved';
+                $hasPlacement   = false;
+                $hasActiveOjt   = false;
+                $companyName    = null;
+                $companyUserId  = null;
+                $companyAddress = null;
+                if ($latestPullOut?->credited_hours !== null) {
+                    $completedHours = (float) $latestPullOut->credited_hours;
                 }
             }
 
@@ -751,13 +771,20 @@ class SupervisorController extends Controller
                     'academic_verdict'        => $latestEmer->academic_verdict,
                     'supporting_document_url' => $latestEmer->supporting_document_url,
                     'supporting_document_name'=> $latestEmer->supporting_document_name,
+                    'supporting_document_path'=> $latestEmer->supporting_document_path,
+                    'document_path'           => $latestEmer->supporting_document_path,
                     'fit_to_work_url'         => $latestEmer->fit_to_work_url,
+                    'fit_to_work_path'        => $latestEmer->fit_to_work_document_path,
+                    'fit_to_work_document_path' => $latestEmer->fit_to_work_document_path,
                     'has_fit_to_work'         => !empty($latestEmer->fit_to_work_document_path),
+                    'fit_to_work_uploaded_at' => $latestEmer->updated_at?->format('M d, Y h:i A'),
                     'company_status'          => $latestEmer->company_status,
                     'assets_returned'         => (bool) $latestEmer->assets_returned,
                     'created_at'              => $latestEmer->created_at?->diffForHumans(),
                 ] : null,
                 'pull_out_status' => $pullOutStatus,
+                'is_pulled_out'   => $isPulledOut,
+                'previous_company'=> $record?->company_name ?? $posting?->company_name,
                 'pull_out_request' => $latestPullOut ? [
                     'id'                      => $latestPullOut->id,
                     'reason_category'         => $latestPullOut->reason_category,
@@ -851,6 +878,10 @@ class SupervisorController extends Controller
                         : null;
                 }
 
+                $accredited = (float) \App\Models\OjtPullOutRequest::where('student_user_id', $user?->id)
+                    ->where('status', 'approved')
+                    ->sum('credited_hours');
+
                 $completed = $record?->completed_hours;
                 if ($completed === null || $completed == 0) {
                     // Recompute from time logs
@@ -859,7 +890,7 @@ class SupervisorController extends Controller
                         : ($user ? TimeLog::where('user_id', $user->id)->sum('hours_rendered') : 0);
                     $completed = $logsSum > 0 ? $logsSum : ($record?->completed_hours ?? 0);
                 }
-                $required  = $record?->required_hours  ?? 500;
+                $required  = $record?->required_hours ?? max(0, 600 - $accredited);
 
                 $name     = $user?->name ?? 'Unknown';
                 $initials = collect(explode(' ', $name))
@@ -868,14 +899,16 @@ class SupervisorController extends Controller
                     ->implode('');
 
                 return [
-                    'id'             => $user?->id,
-                    'name'           => $name,
-                    'initials'       => $initials,
-                    'course'         => $profile?->program ?? 'N/A',
-                    'studentId'      => $profile?->student_id ?? '',
-                    'completedHours' => (float) $completed,
-                    'requiredHours'  => (float) $required,
-                    'status'         => $record?->status === 'flagged' ? 'flagged' : 'active',
+                    'id'              => $user?->id,
+                    'name'            => $name,
+                    'initials'        => $initials,
+                    'course'          => $profile?->program ?? 'N/A',
+                    'studentId'       => $profile?->student_id ?? '',
+                    'completedHours'  => (float) $completed,
+                    'requiredHours'   => (float) $required,
+                    'accreditedHours' => $accredited,
+                    'curriculumTarget'=> 600,
+                    'status'          => $record?->status === 'flagged' ? 'flagged' : 'active',
                     'flag'           => null,
                     'lastSeen'       => $lastLog ? (function () use ($lastLog) {
                         $lat = $lastLog->time_out_lat ?? $lastLog->afternoon_out_lat ?? $lastLog->morning_out_lat ?? $lastLog->time_in_lat ?? $lastLog->morning_in_lat ?? $lastLog->latitude;
@@ -980,10 +1013,12 @@ class SupervisorController extends Controller
         $userId = $request->user()->id;
         $course = $this->getSupervisorCourse($request);
 
-        // All interests endorsed by this supervisor
-        $allEndorsedQuery = StudentOjtInterest::where('endorsed_by', $userId);
+        // All interests in this supervisor's course (or endorsed by supervisor if unassigned)
+        $allEndorsedQuery = StudentOjtInterest::query();
         if ($course) {
             $allEndorsedQuery->whereHas('student.studentProfile', fn($q) => $q->where('program', $course));
+        } else {
+            $allEndorsedQuery->where('endorsed_by', $userId);
         }
 
         $allEndorsed = $allEndorsedQuery
@@ -1000,23 +1035,31 @@ class SupervisorController extends Controller
         $trainees = $activeInterests->map(function ($i) {
             $sp     = $i->student?->studentProfile;
             $record = $i->student?->ojtRecord;
+            $accredited = (float) \App\Models\OjtPullOutRequest::where('student_user_id', $i->student?->id)
+                ->where('status', 'approved')
+                ->sum('credited_hours');
+
             $completed = (float) ($record?->completed_hours ?? 0);
             if ($completed == 0) {
-                $completed = (float) TimeLog::where('user_id', $i->student->id)->sum('hours_rendered');
+                $completed = $record
+                    ? (float) TimeLog::where('ojt_record_id', $record->id)->sum('hours_rendered')
+                    : (float) TimeLog::where('user_id', $i->student->id)->sum('hours_rendered');
             }
-            $required = (int) ($record?->required_hours ?? 600);
+            $required = (int) ($record?->required_hours ?? max(0, 600 - $accredited));
             $pct = $required > 0 ? min(100, round(($completed / $required) * 100)) : 0;
             return [
-                'id'             => $i->student?->id,
-                'name'           => $i->student?->name ?? '—',
-                'course'         => $sp?->program ?? '—',
-                'company'        => $record?->company_name ?? $i->posting?->company_name ?? '—',
-                'completedHours' => $completed,
-                'requiredHours'  => $required,
-                'pct'            => $pct,
-                'status'         => $record?->status === 'flagged' ? 'flagged' : 'active',
-                'startDate'      => $record?->start_date?->format('M d, Y'),
-                'endDate'        => $record?->end_date?->format('M d, Y'),
+                'id'              => $i->student?->id,
+                'name'            => $i->student?->name ?? '—',
+                'course'          => $sp?->program ?? '—',
+                'company'         => $record?->company_name ?? $i->posting?->company_name ?? '—',
+                'completedHours'  => $completed,
+                'requiredHours'   => $required,
+                'accreditedHours' => $accredited,
+                'curriculumTarget'=> 600,
+                'pct'             => $pct,
+                'status'          => $record?->status === 'flagged' ? 'flagged' : 'active',
+                'startDate'       => $record?->start_date?->format('M d, Y'),
+                'endDate'         => $record?->end_date?->format('M d, Y'),
             ];
         })->values();
 
@@ -1615,8 +1658,13 @@ class SupervisorController extends Controller
                 'academic_verdict'        => $em->academic_verdict,
                 'supporting_document_url' => $em->supporting_document_url,
                 'supporting_document_name'=> $em->supporting_document_name,
+                'supporting_document_path'=> $em->supporting_document_path,
+                'document_path'           => $em->supporting_document_path,
                 'fit_to_work_url'         => $em->fit_to_work_url,
+                'fit_to_work_path'        => $em->fit_to_work_document_path,
+                'fit_to_work_document_path' => $em->fit_to_work_document_path,
                 'has_fit_to_work'         => !empty($em->fit_to_work_document_path),
+                'fit_to_work_uploaded_at' => $em->updated_at?->format('M d, Y h:i A'),
                 'company_status'          => $em->company_status,
                 'assets_returned'         => (bool) $em->assets_returned,
                 'created_at'              => $em->created_at?->diffForHumans(),

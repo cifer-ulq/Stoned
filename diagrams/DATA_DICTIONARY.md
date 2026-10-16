@@ -1,738 +1,799 @@
 # Carlos Hilado Memorial State University (CHMSU)
-## CHMSU HireMe Platform — System Data Dictionary & Database Specification
+## CHMSU HireMe Integrated OJT & Placement Platform — Complete System Data Dictionary
 
-> **Document Type:** Academic Research Paper Technical Appendix / Database Specification  
+> **Document Type:** Technical Appendix / Comprehensive Database Specification  
 > **Target System:** CHMSU HireMe Integrated OJT & Career Placement Management System  
-> **Database Engine:** PostgreSQL 16 (Laravel 12 Eloquent ORM Architecture)  
-> **Total Application Entities:** 27 Core Tables  
-> **Date of Specification:** October 2026  
+> **Database Engine:** PostgreSQL 16 (Laravel 12/13 Eloquent ORM Architecture)  
+> **Total Core Entities:** 29 System Entities  
+> **Total Attributes:** 481 Total Database Fields (100% Complete, No Exemptions)  
+> **Notation:** Crow's Foot Entity-Relationship Model (1:1, 1:N, N:1)  
+> **Specification Date:** October 14, 2026 (Reflecting Live Active Production PostgreSQL Schema)  
 
 ---
 
-### 1. Architectural Overview & Domain Classification
+### 1. Architectural Domain Classification
 
-The database schema of the CHMSU HireMe platform is structured into seven distinct architectural domains:
-
-1. **Authentication & Core Access Control (`auth`):** Manages user identities (`users`), API tokens (`personal_access_tokens`), and password security.
-2. **User Profiles & Role Metadata (`profile`):** Specializes actors into Students (`student_profiles`), Host Training Establishments (`company_profiles`), Faculty Supervisors (`supervisor_profiles`), Alumni (`graduate_profiles`), and Jobseekers (`jobseeker_profiles`).
-3. **Student Portfolio & Career Credentials (`portfolio`):** Houses verified digital resumes including academic history (`student_education`), technical proficiencies (`student_skills`), work history (`student_experiences`), certifications (`student_achievements`), and repositories (`portfolio_projects`).
-4. **OJT Internship Lifecycle & DTR Tracking (`ojt`):** Powers internship vacancy creation (`ojt_postings`), matching/endorsements (`student_ojt_interests`), clearance packets (`student_ojt_requirements`), placement records (`ojt_records`), and GPS-geofenced daily time records (`time_logs`).
-5. **Trainee Evaluation System (`eval`):** Manages standardized university rubrics (`evaluation_templates`), question banks (`evaluation_questions`), host employer appraisals (`student_evaluations`), and itemized question scores (`student_evaluation_answers`).
-6. **Recruitment & Job Hiring Pipeline (`job`):** Supports graduate hiring via job openings (`job_listings`), candidate applications (`job_applications`), and interview schedules (`interviews`).
-7. **System Communication & Alerts (`comm`):** Facilitates real-time thread communication (`chat_messages`) and event-driven notifications (`app_notifications`).
-
----
-
-### 2. Comprehensive Entity Data Dictionary
-
-#### 2.1. Entity: `student_education`
-
-- **Functional Domain:** Student Portfolio & Credentials
-- **Entity Description:** Educational history records displayed on the student verified resume and portfolio.
-- **Total Attributes:** 12 columns
-
-| Column Name | Data Type | Nullable | Key / Constraint | Description & Business Rules |
-| :--- | :--- | :---: | :--- | :--- |
-| `id` | `bigint` | NOT NULL | **PK** (Primary Key) | Unique surrogate primary key. |
-| `user_id` | `bigint` | NOT NULL | **FK** &rarr; `users.id` | Foreign key referencing the student user in users.id. |
-| `school` | `character varying(255)` | NOT NULL | - | Name of academic institution attended. |
-| `degree` | `character varying(255)` | NOT NULL | - | Degree title or certification earned (e.g. "BS in Information Technology"). |
-| `year_start` | `character varying(255)` | NULL | - | Start year of attendance. |
-| `year_end` | `character varying(255)` | NULL | - | Completion or expected graduation year. |
-| `gpa` | `character varying(255)` | NULL | - | Grade Point Average or academic distinction. |
-| `description` | `text` | NULL | - | Notable academic projects, electives, or honors. |
-| `is_current` | `boolean` | NOT NULL | - | Boolean flag indicating current enrollment. |
-| `sort_order` | `integer` | NOT NULL | - | Display sequence index on the resume view. |
-| `created_at` | `timestamp without time zone` | NULL | - | Timestamp of creation. |
-| `updated_at` | `timestamp without time zone` | NULL | - | Timestamp of update. |
+The relational database schema is structured into eight operational domains:
+1. **Authentication & Core Access Control (`auth`):** Central user identity management across all user actors (`User`).
+2. **Actor Profiles & Role Metadata (`profile`):** Entity specialization for students (`StudentProfile`), host companies (`CompanyProfile`), faculty supervisors (`SupervisorProfile`), graduates (`GraduateProfile`), and jobseekers (`JobseekerProfile`).
+3. **Program Educational Objectives & Accreditation (`peo`):** Institutional competency rubrics (`PeoDefinition`) and alumni graduate outcome assessments (`AlumniPeoAssessment`).
+4. **Verified Digital Portfolio & Credentials (`portfolio`):** Verified academic credentials (`StudentEducation`), technical proficiencies (`StudentSkill`), work history (`StudentExperience`), verified achievements (`StudentAchievement`), and project repositories (`PortfolioProject`).
+5. **OJT Internship Lifecycle & Daily Monitoring (`ojt`):** Internship vacancy postings (`OjtPosting`), application pipeline (`StudentOjtInterest`), pre-deployment clearance (`StudentOjtRequirement`), active training contracts (`OjtRecord`), and geofenced attendance logs (`TimeLog`).
+6. **OJT Academic Safety & Exception Governance (`safety`):** Emergency medical/family leave tracking (`OjtEmergencyRequest`) and multi-tier institutional withdrawal pull-out requests (`OjtPullOutRequest`).
+7. **Trainee Performance Evaluation (`eval`):** Standardized rubrics (`EvaluationTemplate`), question criteria (`EvaluationQuestion`), employer performance appraisals (`StudentEvaluation`), and itemized Likert scores (`StudentEvaluationAnswer`).
+8. **Career Recruitment & Placement (`job`) & System Alerts (`comm`):** Industry career openings (`JobListing`), candidate job applications (`JobApplication`), interview sessions (`Interview`), direct chats (`ChatMessage`), and automated alerts (`AppNotification`).
 
 ---
 
-#### 2.2. Entity: `student_skills`
+### 2. Comprehensive Entity Specifications
 
-- **Functional Domain:** Student Portfolio & Credentials
-- **Entity Description:** Itemized technical and soft skills, competency level ratings, and peer/supervisor endorsements.
-- **Total Attributes:** 9 columns
+#### 2.1. Entity: `StudentEducation` (Table: `student_education`)
+- **Domain:** Student Portfolio & Verified Credentials
+- **Table Description:** Educational history records displayed on the student verified resume.
+- **Total Fields:** 12 columns
 
-| Column Name | Data Type | Nullable | Key / Constraint | Description & Business Rules |
-| :--- | :--- | :---: | :--- | :--- |
-| `id` | `bigint` | NOT NULL | **PK** (Primary Key) | Unique surrogate primary key. |
-| `user_id` | `bigint` | NOT NULL | **FK** &rarr; `users.id` | Foreign key referencing the student user in users.id. |
-| `name` | `character varying(255)` | NOT NULL | - | Skill title (e.g. "Laravel", "React", "PostgreSQL", "UI/UX Design"). |
-| `level` | `smallint` | NOT NULL | - | Self-assessed or verified proficiency score (0 to 100). |
-| `category` | `character varying(255)` | NOT NULL | - | Skill domain: "language", "framework", "tool", "database", "soft_skill". |
-| `endorsed_count` | `integer` | NOT NULL | - | Number of validated endorsements from supervisors or instructors. |
-| `sort_order` | `integer` | NOT NULL | - | Display sequence index. |
-| `created_at` | `timestamp without time zone` | NULL | - | Timestamp of creation. |
-| `updated_at` | `timestamp without time zone` | NULL | - | Timestamp of update. |
-
----
-
-#### 2.3. Entity: `student_experiences`
-
-- **Functional Domain:** Student Portfolio & Credentials
-- **Entity Description:** Work experience entries including prior internships, freelance gigs, and volunteer projects.
-- **Total Attributes:** 15 columns
-
-| Column Name | Data Type | Nullable | Key / Constraint | Description & Business Rules |
-| :--- | :--- | :---: | :--- | :--- |
-| `id` | `bigint` | NOT NULL | **PK** (Primary Key) | Unique surrogate primary key. |
-| `user_id` | `bigint` | NOT NULL | **FK** &rarr; `users.id` | Foreign key referencing the student user in users.id. |
-| `role` | `character varying(255)` | NOT NULL | - | Position or title held (e.g. "Junior Web Developer Intern"). |
-| `company` | `character varying(255)` | NOT NULL | - | Organization or client name. |
-| `type` | `character varying(255)` | NOT NULL | - | Employment classification: "OJT", "Freelance", "Volunteer", "Full-time", "Part-time". |
-| `period_start` | `character varying(255)` | NULL | - | Start date of engagement. |
-| `period_end` | `character varying(255)` | NULL | - | End date (null if ongoing). |
-| `description` | `text` | NULL | - | Key duties, responsibilities, and achievements. |
-| `skills` | `json` | NULL | - | JSON array of technology tags utilized during the role. |
-| `is_current` | `boolean` | NOT NULL | - | Boolean indicating ongoing engagement. |
-| `sort_order` | `integer` | NOT NULL | - | Display sequence ordering. |
-| `created_at` | `timestamp without time zone` | NULL | - | Timestamp of creation. |
-| `updated_at` | `timestamp without time zone` | NULL | - | Timestamp of update. |
-| `location` | `character varying(255)` | NULL | - | Workplace city or remote status. |
-| `is_it_related` | `boolean` | NOT NULL | - | Boolean flag indicating relevance to IT curriculum. |
+| Field Name | Field Type | Length | Description |
+| :--- | :---: | :---: | :--- |
+| `id` | `int` | 10 | Primary key. Unique auto-incrementing identifier for the `StudentEducation` record. |
+| `user_id` | `int` | 10 | Foreign key referencing `users.id`. |
+| `school` | `varchar` | 255 | Academic institution or college attended. |
+| `degree` | `varchar` | 255 | Degree earned or pursued (e.g. BS in Information Technology). |
+| `year_start` | `varchar` | 255 | Enrollment matriculation year. |
+| `year_end` | `varchar` | 255 | Graduation or anticipated completion year. |
+| `gpa` | `varchar` | 255 | Stores gpa information for `StudentEducation`. |
+| `description` | `text` | -- | Stores description information for `StudentEducation`. |
+| `is_current` | `bool` | 1 | Flag indicating whether student is actively enrolled. |
+| `sort_order` | `int` | 10 | Stores sort order information for `StudentEducation`. |
+| `created_at` | `timestamp` | -- | System audit timestamp recording when the StudentEducation entry was created. |
+| `updated_at` | `timestamp` | -- | System audit timestamp recording when the StudentEducation entry was last modified. |
 
 ---
 
-#### 2.4. Entity: `student_achievements`
+#### 2.2. Entity: `StudentSkill` (Table: `student_skills`)
+- **Domain:** Student Portfolio & Verified Credentials
+- **Table Description:** Itemized technical proficiencies, soft skills, and competency level ratings.
+- **Total Fields:** 9 columns
 
-- **Functional Domain:** Student Portfolio & Credentials
-- **Entity Description:** Honors, certifications, hackathon awards, and verified credentials.
-- **Total Attributes:** 17 columns
-
-| Column Name | Data Type | Nullable | Key / Constraint | Description & Business Rules |
-| :--- | :--- | :---: | :--- | :--- |
-| `id` | `bigint` | NOT NULL | **PK** (Primary Key) | Unique surrogate primary key. |
-| `user_id` | `bigint` | NOT NULL | **FK** &rarr; `users.id` | Foreign key referencing the student user in users.id. |
-| `title` | `character varying(255)` | NOT NULL | - | Award or certification title (e.g. "Dean's Lister", "AWS Certified Cloud Practitioner"). |
-| `description` | `text` | NULL | - | Issuing body and context for the achievement. |
-| `type` | `character varying(255)` | NOT NULL | - | Category: "academic", "certification", "competition", "professional". |
-| `icon` | `character varying(255)` | NOT NULL | - | UI icon identifier string for rendering. |
-| `date` | `character varying(255)` | NULL | - | Date issued or awarded. |
-| `sort_order` | `integer` | NOT NULL | - | Display sequence ordering. |
-| `created_at` | `timestamp without time zone` | NULL | - | Timestamp of creation. |
-| `updated_at` | `timestamp without time zone` | NULL | - | Timestamp of update. |
-| `issuer` | `character varying(255)` | NULL | - | Issuing organization or university department. |
-| `credential_id` | `character varying(255)` | NULL | - | Official certificate serial or credential number. |
-| `credential_url` | `character varying(255)` | NULL | - | Online verification link or badge URL. |
-| `certificate_url` | `character varying(255)` | NULL | - | Stores attribute value for certificate_url. |
-| `award_level` | `character varying(255)` | NULL | - | Stores attribute value for award_level. |
-| `expires_at` | `character varying(255)` | NULL | - | Stores attribute value for expires_at. |
-| `does_not_expire` | `boolean` | NOT NULL | - | Stores attribute value for does_not_expire. |
+| Field Name | Field Type | Length | Description |
+| :--- | :---: | :---: | :--- |
+| `id` | `int` | 10 | Primary key. Unique auto-incrementing identifier for the `StudentSkill` record. |
+| `user_id` | `int` | 10 | Foreign key referencing `users.id`. |
+| `name` | `varchar` | 255 | Skill or technology name (e.g. Laravel, React, PostgreSQL). |
+| `level` | `smallint` | 5 | Competency rating level (0 to 100). |
+| `category` | `varchar` | 255 | Domain classification (language, framework, database, tool, soft_skill). |
+| `endorsed_count` | `int` | 10 | Number of validated endorsements received from supervisors. |
+| `sort_order` | `int` | 10 | Stores sort order information for `StudentSkill`. |
+| `created_at` | `timestamp` | -- | System audit timestamp recording when the StudentSkill entry was created. |
+| `updated_at` | `timestamp` | -- | System audit timestamp recording when the StudentSkill entry was last modified. |
 
 ---
 
-#### 2.5. Entity: `portfolio_projects`
+#### 2.3. Entity: `StudentExperience` (Table: `student_experiences`)
+- **Domain:** Student Portfolio & Verified Credentials
+- **Table Description:** Past work history, freelance contracts, and prior practical internships.
+- **Total Fields:** 15 columns
 
-- **Functional Domain:** Student Portfolio & Credentials
-- **Entity Description:** Showcase projects completed by students with screenshots, live URLs, and source repository links.
-- **Total Attributes:** 16 columns
-
-| Column Name | Data Type | Nullable | Key / Constraint | Description & Business Rules |
-| :--- | :--- | :---: | :--- | :--- |
-| `id` | `bigint` | NOT NULL | **PK** (Primary Key) | Unique surrogate primary key. |
-| `user_id` | `bigint` | NOT NULL | **FK** &rarr; `users.id` | Foreign key referencing the student user in users.id. |
-| `title` | `character varying(255)` | NOT NULL | - | Project title (e.g. "Campus Asset Tracking System"). |
-| `description` | `text` | NULL | - | Summary of project purpose, problem statement, and solution. |
-| `tech_stack` | `json` | NULL | - | JSON array of technologies utilized (e.g. ["PHP", "Vue", "Tailwind"]). |
-| `project_url` | `character varying(255)` | NULL | - | Live deployment or demonstration URL. |
-| `repo_url` | `character varying(255)` | NULL | - | Source code repository link (GitHub/GitLab). |
-| `image_url` | `character varying(255)` | NULL | - | Thumbnail preview image path. |
-| `is_featured` | `boolean` | NOT NULL | - | Boolean flag to highlight project in prominent showcase. |
-| `sort_order` | `integer` | NOT NULL | - | Display sequence ordering. |
-| `created_at` | `timestamp without time zone` | NULL | - | Timestamp of creation. |
-| `updated_at` | `timestamp without time zone` | NULL | - | Timestamp of update. |
-| `category` | `character varying(255)` | NULL | - | Stores attribute value for category. |
-| `role` | `character varying(255)` | NULL | - | Student role in project: "Lead Developer", "UI Designer", "Full Stack". |
-| `date_completed` | `character varying(255)` | NULL | - | Stores attribute value for date_completed. |
-| `outcomes` | `text` | NULL | - | Stores attribute value for outcomes. |
+| Field Name | Field Type | Length | Description |
+| :--- | :---: | :---: | :--- |
+| `id` | `int` | 10 | Primary key. Unique auto-incrementing identifier for the `StudentExperience` record. |
+| `user_id` | `int` | 10 | Foreign key referencing `users.id`. |
+| `role` | `varchar` | 255 | Position title held during engagement. |
+| `company` | `varchar` | 255 | Employing enterprise or client name. |
+| `type` | `varchar` | 255 | Classification (OJT, Freelance, Part-time, Full-time). |
+| `period_start` | `varchar` | 255 | Commencement date string. |
+| `period_end` | `varchar` | 255 | Stores period end information for `StudentExperience`. |
+| `description` | `text` | -- | Stores description information for `StudentExperience`. |
+| `skills` | `json` | -- | Stores skills information for `StudentExperience`. |
+| `is_current` | `bool` | 1 | Stores is current information for `StudentExperience`. |
+| `sort_order` | `int` | 10 | Stores sort order information for `StudentExperience`. |
+| `created_at` | `timestamp` | -- | System audit timestamp recording when the StudentExperience entry was created. |
+| `updated_at` | `timestamp` | -- | System audit timestamp recording when the StudentExperience entry was last modified. |
+| `location` | `varchar` | 255 | Stores location information for `StudentExperience`. |
+| `is_it_related` | `bool` | 1 | Audit flag determining IT curriculum alignment for tracer statistics. |
 
 ---
 
-#### 2.6. Entity: `student_profiles`
+#### 2.4. Entity: `StudentAchievement` (Table: `student_achievements`)
+- **Domain:** Student Portfolio & Verified Credentials
+- **Table Description:** Honors, certifications, hackathon awards, and recognized credentials.
+- **Total Fields:** 17 columns
 
-- **Functional Domain:** User Profiles & Roles
-- **Entity Description:** Academic information, contact details, career headline, and OJT readiness profile for enrolled student trainees.
-- **Total Attributes:** 23 columns
-
-| Column Name | Data Type | Nullable | Key / Constraint | Description & Business Rules |
-| :--- | :--- | :---: | :--- | :--- |
-| `id` | `bigint` | NOT NULL | **PK** (Primary Key) | Unique surrogate primary key. |
-| `user_id` | `bigint` | NOT NULL | **FK** &rarr; `users.id` | Foreign key referencing the core user account in users.id. |
-| `school` | `character varying(255)` | NULL | - | College or University name (e.g. "Carlos Hilado Memorial State University"). |
-| `campus` | `character varying(255)` | NULL | - | Campus location (e.g. "Talisay", "Alijis", "Fortune Towne", "Binalbagan"). |
-| `program` | `character varying(255)` | NULL | - | Degree program abbreviation (e.g. "BSIT", "BSCS", "BSIS"). |
-| `year_level` | `character varying(255)` | NULL | - | Academic year standing (e.g. "4th Year", "3rd Year"). |
-| `student_id` | `character varying(255)` | NULL | - | Official university-issued student identification number. |
-| `created_at` | `timestamp without time zone` | NULL | - | Timestamp of profile creation. |
-| `updated_at` | `timestamp without time zone` | NULL | - | Timestamp of profile last update. |
-| `headline` | `character varying(255)` | NULL | - | Short professional bio/headline for job matching. |
-| `bio` | `text` | NULL | - | Expanded narrative description of student interests, career focus, and aspirations. |
-| `location` | `character varying(255)` | NULL | - | City or municipality of residence (e.g. "Talisay City", "Bacolod City"). |
-| `github_url` | `character varying(255)` | NULL | - | External hyperlink to student public GitHub profile. |
-| `linkedin_url` | `character varying(255)` | NULL | - | External hyperlink to student LinkedIn profile. |
-| `portfolio_url` | `character varying(255)` | NULL | - | External link to student personal website or hosted showcase. |
-| `status` | `character varying(255)` | NOT NULL | - | Academic lifecycle status: "active_ojt", "seeking", "placed", "alumni". |
-| `phone` | `character varying(255)` | NULL | - | Contact mobile/telephone number. |
-| `cover_color` | `character varying(255)` | NULL | - | Hex color code or theme gradient chosen for profile header. |
-| `resume_type` | `character varying(255)` | NOT NULL | - | Resume format style: "objective" or "summary". |
-| `resume_objective` | `text` | NULL | - | Custom statement summarizing professional intent and qualifications. |
-| `section` | `character varying(255)` | NULL | - | Academic class section code (e.g. "4-A", "4-B"). |
-| `batch` | `character varying(255)` | NULL | - | Graduating academic school year or batch year (e.g. "2026"). |
-| `requirements_drive_url` | `text` | NULL | - | Google Drive link hosting the student pre-deployment clearance documents. |
+| Field Name | Field Type | Length | Description |
+| :--- | :---: | :---: | :--- |
+| `id` | `int` | 10 | Primary key. Unique auto-incrementing identifier for the `StudentAchievement` record. |
+| `user_id` | `int` | 10 | Foreign key referencing `users.id`. |
+| `title` | `varchar` | 255 | Award or certification title (e.g. AWS Certified Cloud Practitioner). |
+| `description` | `text` | -- | Stores description information for `StudentAchievement`. |
+| `type` | `varchar` | 255 | Classification (certification, competition, academic, leadership). |
+| `icon` | `varchar` | 255 | Stores icon information for `StudentAchievement`. |
+| `date` | `varchar` | 255 | Date or year of credential issuance. |
+| `sort_order` | `int` | 10 | Stores sort order information for `StudentAchievement`. |
+| `created_at` | `timestamp` | -- | System audit timestamp recording when the StudentAchievement entry was created. |
+| `updated_at` | `timestamp` | -- | System audit timestamp recording when the StudentAchievement entry was last modified. |
+| `issuer` | `varchar` | 255 | Issuing accreditation entity or organization. |
+| `credential_id` | `varchar` | 10 | Official certificate serial or verification badge license number. |
+| `credential_url` | `varchar` | 255 | Stores credential url information for `StudentAchievement`. |
+| `certificate_url` | `varchar` | 255 | Stores certificate url information for `StudentAchievement`. |
+| `award_level` | `varchar` | 255 | Stores award level information for `StudentAchievement`. |
+| `expires_at` | `varchar` | 255 | Stores expires at information for `StudentAchievement`. |
+| `does_not_expire` | `bool` | 1 | Stores does not expire information for `StudentAchievement`. |
 
 ---
 
-#### 2.7. Entity: `student_ojt_interests`
+#### 2.5. Entity: `PortfolioProject` (Table: `portfolio_projects`)
+- **Domain:** Student Portfolio & Verified Credentials
+- **Table Description:** Software repositories, capstone projects, and deployed web systems.
+- **Total Fields:** 16 columns
 
-- **Functional Domain:** OJT Internship & DTR Tracking
-- **Entity Description:** Application matching table tracking student interest expressions, endorsement requests, and company acceptance.
-- **Total Attributes:** 33 columns
-
-| Column Name | Data Type | Nullable | Key / Constraint | Description & Business Rules |
-| :--- | :--- | :---: | :--- | :--- |
-| `id` | `bigint` | NOT NULL | **PK** (Primary Key) | Unique surrogate primary key. |
-| `student_user_id` | `bigint` | NOT NULL | **FK** &rarr; `users.id` | Foreign key referencing student applicant in users.id. |
-| `ojt_posting_id` | `bigint` | NOT NULL | **FK** &rarr; `ojt_postings.id` | Foreign key referencing target internship vacancy in ojt_postings.id. |
-| `status` | `character varying(255)` | NOT NULL | - | Pipeline status: "interested", "pending_endorsement", "endorsed", "accepted", "rejected", "withdrawn". |
-| `student_message` | `text` | NULL | - | Cover message or justification submitted by the student. |
-| `endorsed_by` | `bigint` | NULL | **FK** &rarr; `users.id` | Foreign key referencing faculty supervisor who endorsed the student in users.id. |
-| `endorsed_at` | `timestamp without time zone` | NULL | - | Timestamp of supervisor endorsement issuance. |
-| `created_at` | `timestamp without time zone` | NULL | - | Timestamp of interest submission. |
-| `updated_at` | `timestamp without time zone` | NULL | - | Timestamp of latest status transition. |
-| `endorsement_letter` | `character varying(255)` | NULL | - | Stores attribute value for endorsement_letter. |
-| `company_accepted_at` | `timestamp without time zone` | NULL | - | Timestamp when company accepted the student for placement. |
-| `endorsement_requested_at` | `timestamp without time zone` | NULL | - | Timestamp when student requested supervisor endorsement. |
-| `ojt_started_at` | `timestamp without time zone` | NULL | - | Stores attribute value for ojt_started_at. |
-| `resume_viewed_at` | `timestamp without time zone` | NULL | - | Stores attribute value for resume_viewed_at. |
-| `company_note` | `text` | NULL | - | Stores attribute value for company_note. |
-| `interview_scheduled_at` | `timestamp without time zone` | NULL | - | Stores attribute value for interview_scheduled_at. |
-| `interview_type` | `character varying(255)` | NULL | - | Stores attribute value for interview_type. |
-| `interview_location` | `text` | NULL | - | Stores attribute value for interview_location. |
-| `coordinator_note` | `text` | NULL | - | Stores attribute value for coordinator_note. |
-| `endorsement_letter_sent_at` | `timestamp without time zone` | NULL | - | Stores attribute value for endorsement_letter_sent_at. |
-| `ojt_start_date` | `date` | NULL | - | Stores attribute value for ojt_start_date. |
-| `ojt_instructions` | `text` | NULL | - | Specific onboarding instructions sent by company to intern. |
-| `schedule_days` | `json` | NULL | - | Stores attribute value for schedule_days. |
-| `shift_start` | `character varying(10)` | NULL | - | Stores attribute value for shift_start. |
-| `shift_end` | `character varying(10)` | NULL | - | Stores attribute value for shift_end. |
-| `lunch_start` | `character varying(10)` | NULL | - | Stores attribute value for lunch_start. |
-| `lunch_end` | `character varying(10)` | NULL | - | Stores attribute value for lunch_end. |
-| `has_lunch_break` | `boolean` | NOT NULL | - | Stores attribute value for has_lunch_break. |
-| `daily_hours` | `numeric` | NULL | - | Stores attribute value for daily_hours. |
-| `weekly_hours` | `numeric` | NULL | - | Stores attribute value for weekly_hours. |
-| `allow_overtime` | `boolean` | NOT NULL | - | Stores attribute value for allow_overtime. |
-| `max_overtime_hours` | `numeric` | NULL | - | Stores attribute value for max_overtime_hours. |
-| `estimated_end_date` | `date` | NULL | - | Stores attribute value for estimated_end_date. |
+| Field Name | Field Type | Length | Description |
+| :--- | :---: | :---: | :--- |
+| `id` | `int` | 10 | Primary key. Unique auto-incrementing identifier for the `PortfolioProject` record. |
+| `user_id` | `int` | 10 | Foreign key referencing `users.id`. |
+| `title` | `varchar` | 255 | Software project or repository name. |
+| `description` | `text` | -- | System architecture overview and feature contributions. |
+| `tech_stack` | `json` | -- | Key technologies utilized (e.g. Laravel, Vue.js, Tailwind). |
+| `project_url` | `varchar` | 255 | Public web URL or GitHub code repository link. |
+| `repo_url` | `varchar` | 255 | Stores repo url information for `PortfolioProject`. |
+| `image_url` | `varchar` | 255 | Stores image url information for `PortfolioProject`. |
+| `is_featured` | `bool` | 1 | Stores is featured information for `PortfolioProject`. |
+| `sort_order` | `int` | 10 | Stores sort order information for `PortfolioProject`. |
+| `created_at` | `timestamp` | -- | System audit timestamp recording when the PortfolioProject entry was created. |
+| `updated_at` | `timestamp` | -- | System audit timestamp recording when the PortfolioProject entry was last modified. |
+| `category` | `varchar` | 255 | Stores category information for `PortfolioProject`. |
+| `role` | `varchar` | 255 | Stores role information for `PortfolioProject`. |
+| `date_completed` | `varchar` | 255 | Stores date completed information for `PortfolioProject`. |
+| `outcomes` | `text` | -- | Stores outcomes information for `PortfolioProject`. |
 
 ---
 
-#### 2.8. Entity: `student_ojt_requirements`
+#### 2.6. Entity: `StudentProfile` (Table: `student_profiles`)
+- **Domain:** Actor Metadata & Academic Profiles
+- **Table Description:** Extended student academic profile for enrolled undergraduates.
+- **Total Fields:** 23 columns
 
-- **Functional Domain:** OJT Internship & DTR Tracking
-- **Entity Description:** Checklist packet of mandatory pre-deployment clearance documents (Medical Certificate, Parents Consent, Barangay Clearance, MOA Acknowledgement).
-- **Total Attributes:** 16 columns
-
-| Column Name | Data Type | Nullable | Key / Constraint | Description & Business Rules |
-| :--- | :--- | :---: | :--- | :--- |
-| `id` | `bigint` | NOT NULL | **PK** (Primary Key) | Unique surrogate primary key. |
-| `student_user_id` | `bigint` | NOT NULL | **FK** &rarr; `users.id` | Foreign key referencing student trainee in users.id. |
-| `supervisor_user_id` | `bigint` | NOT NULL | **FK** &rarr; `users.id` | Foreign key referencing reviewing supervisor in users.id. |
-| `interest_id` | `bigint` | NULL | **FK** &rarr; `student_ojt_interests.id` | Foreign key referencing student_ojt_interests.id. |
-| `posting_id` | `bigint` | NULL | **FK** &rarr; `ojt_postings.id` | Foreign key referencing ojt_postings.id. |
-| `title` | `character varying(255)` | NOT NULL | - | Requirement packet title (e.g. "Pre-Deployment OJT Document Packet"). |
-| `items` | `json` | NOT NULL | - | JSON array of required document checklist items and compliance flags. |
-| `instructions` | `text` | NULL | - | Supervisor guidelines for document submission. |
-| `due_date` | `date` | NULL | - | Submission deadline date. |
-| `status` | `character varying(255)` | NOT NULL | - | Verification status: "pending", "submitted", "verified", "needs_revision". |
-| `drive_url` | `text` | NULL | - | External Google Drive folder URL containing digital copies of documents. |
-| `supervisor_remarks` | `text` | NULL | - | Feedback or corrective instructions from reviewing coordinator. |
-| `submitted_at` | `timestamp without time zone` | NULL | - | Timestamp of packet upload. |
-| `verified_at` | `timestamp without time zone` | NULL | - | Timestamp of supervisor formal verification and sign-off. |
-| `created_at` | `timestamp without time zone` | NULL | - | Timestamp of requirement creation. |
-| `updated_at` | `timestamp without time zone` | NULL | - | Timestamp of requirement update. |
-
----
-
-#### 2.9. Entity: `password_reset_tokens`
-
-- **Functional Domain:** Authentication & Core Security
-- **Entity Description:** Time-limited recovery tokens generated during the forgot-password security workflow.
-- **Total Attributes:** 3 columns
-
-| Column Name | Data Type | Nullable | Key / Constraint | Description & Business Rules |
-| :--- | :--- | :---: | :--- | :--- |
-| `email` | `character varying(255)` | NOT NULL | **PK** (Primary Key) | User account email address requesting password reset. |
-| `token` | `character varying(255)` | NOT NULL | - | One-time secure hashed cryptographic recovery token. |
-| `created_at` | `timestamp without time zone` | NULL | - | Timestamp of token creation; used to check expiry (e.g. 60 minutes). |
+| Field Name | Field Type | Length | Description |
+| :--- | :---: | :---: | :--- |
+| `id` | `int` | 10 | Primary key. Unique auto-incrementing identifier for the `StudentProfile` record. |
+| `user_id` | `int` | 10 | Foreign key referencing `users.id`. |
+| `school` | `varchar` | 255 | University name (Carlos Hilado Memorial State University). |
+| `campus` | `varchar` | 255 | Campus location (Talisay, Fortune Towne, Binalbagan, Alijis). |
+| `program` | `varchar` | 255 | Degree program (BS Information Technology, BS Computer Science, etc.). |
+| `year_level` | `varchar` | 255 | Current academic standing (e.g. 4th Year, Graduating, Alumni). |
+| `student_id` | `varchar` | 10 | Official university student identification number (e.g. 2022-0145). |
+| `created_at` | `timestamp` | -- | System audit timestamp recording when the StudentProfile entry was created. |
+| `updated_at` | `timestamp` | -- | System audit timestamp recording when the StudentProfile entry was last modified. |
+| `headline` | `varchar` | 255 | Stores headline information for `StudentProfile`. |
+| `bio` | `text` | -- | Stores bio information for `StudentProfile`. |
+| `location` | `varchar` | 255 | Stores location information for `StudentProfile`. |
+| `github_url` | `varchar` | 255 | Stores github url information for `StudentProfile`. |
+| `linkedin_url` | `varchar` | 255 | Stores linkedin url information for `StudentProfile`. |
+| `portfolio_url` | `varchar` | 255 | Stores portfolio url information for `StudentProfile`. |
+| `status` | `varchar` | 255 | Academic placement eligibility status. |
+| `phone` | `varchar` | 255 | Stores phone information for `StudentProfile`. |
+| `cover_color` | `varchar` | 255 | Stores cover color information for `StudentProfile`. |
+| `resume_type` | `varchar` | 255 | Stores resume type information for `StudentProfile`. |
+| `resume_objective` | `text` | -- | Stores resume objective information for `StudentProfile`. |
+| `section` | `varchar` | 255 | Assigned class section block (e.g. 4A, 4B). |
+| `batch` | `varchar` | 255 | Stores batch information for `StudentProfile`. |
+| `requirements_drive_url` | `text` | -- | Google Drive folder link for submitted clearance requirements. |
 
 ---
 
-#### 2.10. Entity: `company_profiles`
+#### 2.7. Entity: `StudentOjtRequirement` (Table: `student_ojt_requirements`)
+- **Domain:** OJT Pre-Deployment Clearance Compliance
+- **Table Description:** Mandatory pre-internship clearance checklist reviewed by supervisors.
+- **Total Fields:** 16 columns
 
-- **Functional Domain:** User Profiles & Roles
-- **Entity Description:** Partner host training establishments (HTE) and employer directory information including MOA accreditation compliance.
-- **Total Attributes:** 27 columns
-
-| Column Name | Data Type | Nullable | Key / Constraint | Description & Business Rules |
-| :--- | :--- | :---: | :--- | :--- |
-| `id` | `bigint` | NOT NULL | **PK** (Primary Key) | Unique surrogate primary key. |
-| `user_id` | `bigint` | NOT NULL | **FK** &rarr; `users.id` | Foreign key referencing the associated employer account in users.id. |
-| `company_name` | `character varying(255)` | NULL | - | Registered business or corporate legal name. |
-| `company_location` | `character varying(255)` | NULL | - | Primary city or region (e.g. "Bacolod City", "Metro Manila"). |
-| `company_type` | `character varying(255)` | NULL | - | Industry classification (e.g. "Information Technology", "FinTech"). |
-| `website` | `character varying(255)` | NULL | - | Official company website URL. |
-| `created_at` | `timestamp without time zone` | NULL | - | Timestamp of company registration. |
-| `updated_at` | `timestamp without time zone` | NULL | - | Timestamp of latest company profile update. |
-| `company_size` | `character varying(255)` | NULL | - | Employee bracket (e.g. "1-10", "11-50", "51-200", "200+"). |
-| `contact_email` | `character varying(255)` | NULL | - | Official HR or internship coordinator electronic mail address. |
-| `contact_phone` | `character varying(255)` | NULL | - | Official contact phone or hotline. |
-| `description` | `text` | NULL | - | Detailed narrative about company missions, services, and work culture. |
-| `logo_url` | `character varying(255)` | NULL | - | File storage path or URL to company corporate logo. |
-| `profile_completed` | `boolean` | NOT NULL | - | Boolean indicating whether corporate registration profile is complete. |
-| `contact_person` | `character varying(255)` | NULL | - | Full name of authorized company representative / HR lead. |
-| `moa_file_path` | `character varying(255)` | NULL | - | Secure storage path of signed Memorandum of Agreement (MOA) PDF. |
-| `moa_start_date` | `date` | NULL | - | Effective validity commencement date of the MOA agreement. |
-| `moa_end_date` | `date` | NULL | - | Expiry date of institutional MOA partnership. |
-| `moa_status` | `character varying(255)` | NOT NULL | - | Accreditation status: "Pending", "Active", "Expired", "Renewing". |
-| `status` | `character varying(255)` | NOT NULL | - | Platform approval status: "Pending", "Approved", "Rejected". |
-| `ownership_type` | `character varying(255)` | NULL | - | Corporate structure (e.g. "Private", "Public", "Government"). |
-| `year_founded` | `character varying(255)` | NULL | - | Calendar year of establishment. |
-| `full_address` | `character varying(255)` | NULL | - | Complete street address, building, and postal code. |
-| `contact_title` | `character varying(255)` | NULL | - | Job title of representative (e.g. "HR Director", "Talent Acquisition"). |
-| `registration_source` | `character varying(255)` | NOT NULL | - | Origin of profile: "self_registered", "admin_created", "invited". |
-| `moa_requested_at` | `timestamp without time zone` | NULL | - | Stores attribute value for moa_requested_at. |
-| `moa_request_notes` | `text` | NULL | - | Administrator or supervisor comments regarding MOA documentation. |
+| Field Name | Field Type | Length | Description |
+| :--- | :---: | :---: | :--- |
+| `id` | `int` | 10 | Primary key. Unique auto-incrementing identifier for the `StudentOjtRequirement` record. |
+| `student_user_id` | `int` | 10 | Foreign key referencing `users.id`. |
+| `supervisor_user_id` | `int` | 10 | Foreign key referencing `users.id`. |
+| `interest_id` | `int` | 10 | Foreign key referencing `student_ojt_interests.id`. |
+| `posting_id` | `int` | 10 | Foreign key referencing `ojt_postings.id`. |
+| `title` | `varchar` | 255 | Clearance document title (e.g. Pre-Deployment Document Packet). |
+| `items` | `json` | -- | Array of mandatory compliance item checklists. |
+| `instructions` | `text` | -- | Stores instructions information for `StudentOjtRequirement`. |
+| `due_date` | `date` | -- | Mandatory deadline for pre-deployment compliance submission. |
+| `status` | `varchar` | 255 | Verification state (pending, submitted, verified, needs_revision). |
+| `drive_url` | `text` | -- | Cloud storage verification link to uploaded documents. |
+| `supervisor_remarks` | `text` | -- | Stores supervisor remarks information for `StudentOjtRequirement`. |
+| `submitted_at` | `timestamp` | -- | Stores submitted at information for `StudentOjtRequirement`. |
+| `verified_at` | `timestamp` | -- | Stores verified at information for `StudentOjtRequirement`. |
+| `created_at` | `timestamp` | -- | System audit timestamp recording when the StudentOjtRequirement entry was created. |
+| `updated_at` | `timestamp` | -- | System audit timestamp recording when the StudentOjtRequirement entry was last modified. |
 
 ---
 
-#### 2.11. Entity: `ojt_postings`
+#### 2.8. Entity: `AppNotification` (Table: `app_notifications`)
+- **Domain:** System Communication & Alerts
+- **Table Description:** Real-time transactional notifications alerting users to events.
+- **Total Fields:** 9 columns
 
-- **Functional Domain:** OJT Internship & DTR Tracking
-- **Entity Description:** Internship vacancy notices published by accredited partner companies for student trainees.
-- **Total Attributes:** 26 columns
-
-| Column Name | Data Type | Nullable | Key / Constraint | Description & Business Rules |
-| :--- | :--- | :---: | :--- | :--- |
-| `id` | `bigint` | NOT NULL | **PK** (Primary Key) | Unique surrogate primary key. |
-| `company_user_id` | `bigint` | NOT NULL | **FK** &rarr; `users.id` | Foreign key referencing the company in users.id. |
-| `title` | `character varying(255)` | NOT NULL | - | OJT position title (e.g. "Software QA Intern", "Network Support Trainee"). |
-| `company_name` | `character varying(255)` | NOT NULL | - | Denormalized company name for fast listing query. |
-| `company_initial` | `character varying(4)` | NULL | - | Single or double letter avatar initial. |
-| `company_color` | `character varying(20)` | NOT NULL | - | Hex badge color for UI rendering. |
-| `department` | `character varying(255)` | NULL | - | Target department (e.g. "IT Operations", "Engineering"). |
-| `industry` | `character varying(255)` | NULL | - | Sector classification (e.g. "Software Services"). |
-| `location` | `character varying(255)` | NOT NULL | - | Workplace city or modality. |
-| `description` | `text` | NULL | - | Comprehensive job role description and learning duties. |
-| `required_skills` | `json` | NULL | - | JSON array of prerequisites and desired technologies. |
-| `preferred_courses` | `json` | NULL | - | JSON array of eligible university degree programs (e.g. ["BSIT", "BSIS"]). |
-| `slots_total` | `integer` | NOT NULL | - | Total trainee quota authorized for this posting. |
-| `slots_remaining` | `integer` | NOT NULL | - | Currently available unfilled trainee slots. |
-| `duration` | `character varying(255)` | NULL | - | Estimated duration text (e.g. "486 Hours / 3 Months"). |
-| `schedule_type` | `character varying(255)` | NOT NULL | - | Working schedule: "full_day", "half_day", "flexible". |
-| `status` | `character varying(255)` | NOT NULL | - | Listing lifecycle status: "open", "filling_up", "closed", "draft". |
-| `expires_at` | `timestamp without time zone` | NULL | - | Application deadline timestamp. |
-| `created_at` | `timestamp without time zone` | NULL | - | Timestamp of posting creation. |
-| `updated_at` | `timestamp without time zone` | NULL | - | Timestamp of posting update. |
-| `branch_name` | `character varying(255)` | NULL | - | Specific company facility or branch site. |
-| `latitude` | `numeric` | NULL | - | Geographical latitude for GPS attendance geofencing boundary. |
-| `longitude` | `numeric` | NULL | - | Geographical longitude for GPS attendance geofencing boundary. |
-| `learning_outcomes` | `text` | NULL | - | Specific CHMSU syllabus learning outcomes achieved during internship. |
-| `required_documents` | `json` | NULL | - | Stores attribute value for required_documents. |
-| `qualifications` | `json` | NULL | - | Minimum academic and technical requirements. |
+| Field Name | Field Type | Length | Description |
+| :--- | :---: | :---: | :--- |
+| `id` | `int` | 10 | Primary key. Unique auto-incrementing identifier for the `AppNotification` record. |
+| `user_id` | `int` | 10 | Foreign key referencing `users.id`. |
+| `type` | `varchar` | 255 | Event classification (endorsement_issued, eval_submitted, pull_out_updated). |
+| `title` | `varchar` | 255 | Alert headline message. |
+| `message` | `text` | -- | Detailed descriptive alert explanation. |
+| `data` | `json` | -- | Stores data information for `AppNotification`. |
+| `read_at` | `timestamp` | -- | Timestamp indicating acknowledgement by user. |
+| `created_at` | `timestamp` | -- | System audit timestamp recording when the AppNotification entry was created. |
+| `updated_at` | `timestamp` | -- | System audit timestamp recording when the AppNotification entry was last modified. |
 
 ---
 
-#### 2.12. Entity: `ojt_records`
+#### 2.9. Entity: `ChatMessage` (Table: `chat_messages`)
+- **Domain:** System Communication & Alerts
+- **Table Description:** Direct messaging exchange between students, supervisors, and mentors.
+- **Total Fields:** 8 columns
 
-- **Functional Domain:** OJT Internship & DTR Tracking
-- **Entity Description:** Active internship placement contract tracking cumulative hours rendered against the degree requirement.
-- **Total Attributes:** 25 columns
-
-| Column Name | Data Type | Nullable | Key / Constraint | Description & Business Rules |
-| :--- | :--- | :---: | :--- | :--- |
-| `id` | `bigint` | NOT NULL | **PK** (Primary Key) | Unique surrogate primary key. |
-| `user_id` | `bigint` | NOT NULL | **FK** &rarr; `users.id` | Foreign key referencing the student trainee in users.id. |
-| `company_name` | `character varying(255)` | NOT NULL | - | Host company name where trainee is stationed. |
-| `supervisor_name` | `character varying(255)` | NULL | - | Name of designated industry supervisor/mentor at company. |
-| `supervisor_email` | `character varying(255)` | NULL | - | Contact email of company mentor. |
-| `location` | `character varying(255)` | NULL | - | Physical training site or branch address. |
-| `start_date` | `date` | NULL | - | Formal internship start date. |
-| `end_date` | `date` | NULL | - | Projected or actual completion date. |
-| `required_hours` | `integer` | NOT NULL | - | Total required training hours mandated by university curriculum (e.g. 486). |
-| `completed_hours` | `numeric` | NOT NULL | - | Cumulative approved hours rendered to date (decimal precision). |
-| `status` | `character varying(255)` | NOT NULL | - | Placement status: "active", "completed", "withdrawn", "suspended". |
-| `created_at` | `timestamp without time zone` | NULL | - | Timestamp of placement creation. |
-| `updated_at` | `timestamp without time zone` | NULL | - | Timestamp of latest update. |
-| `company_instructions` | `text` | NULL | - | Standing workplace guidelines and emergency contacts. |
-| `schedule_days` | `json` | NULL | - | JSON array of agreed weekly working days (e.g. ["Mon","Tue","Wed","Thu","Fri"]). |
-| `shift_start` | `character varying(10)` | NULL | - | Stores attribute value for shift_start. |
-| `shift_end` | `character varying(10)` | NULL | - | Stores attribute value for shift_end. |
-| `lunch_start` | `character varying(10)` | NULL | - | Stores attribute value for lunch_start. |
-| `lunch_end` | `character varying(10)` | NULL | - | Stores attribute value for lunch_end. |
-| `has_lunch_break` | `boolean` | NOT NULL | - | Stores attribute value for has_lunch_break. |
-| `daily_hours` | `numeric` | NULL | - | Stores attribute value for daily_hours. |
-| `weekly_hours` | `numeric` | NULL | - | Stores attribute value for weekly_hours. |
-| `allow_overtime` | `boolean` | NOT NULL | - | Stores attribute value for allow_overtime. |
-| `max_overtime_hours` | `numeric` | NULL | - | Stores attribute value for max_overtime_hours. |
-| `estimated_end_date` | `date` | NULL | - | Stores attribute value for estimated_end_date. |
+| Field Name | Field Type | Length | Description |
+| :--- | :---: | :---: | :--- |
+| `id` | `int` | 10 | Primary key. Unique auto-incrementing identifier for the `ChatMessage` record. |
+| `conversation_key` | `varchar` | 255 | Stores conversation key information for `ChatMessage`. |
+| `sender_id` | `int` | 10 | Foreign key referencing `users.id`. |
+| `receiver_id` | `int` | 10 | Foreign key referencing `users.id`. |
+| `message` | `text` | -- | Message text payload content. |
+| `read_at` | `timestamp` | -- | Timestamp when recipient viewed the message. |
+| `created_at` | `timestamp` | -- | Transmission timestamp. |
+| `updated_at` | `timestamp` | -- | System audit timestamp recording when the ChatMessage entry was last modified. |
 
 ---
 
-#### 2.13. Entity: `users`
+#### 2.10. Entity: `User` (Table: `users`)
+- **Domain:** Authentication & Core Access Control
+- **Table Description:** Central user identity record for all system actors and role assignments.
+- **Total Fields:** 11 columns
 
-- **Functional Domain:** Authentication & Core Security
-- **Entity Description:** Primary authentication identity table storing all authenticated platform actors (Students, Company HR, OJT Supervisors, Jobseekers, and System Administrators).
-- **Total Attributes:** 11 columns
-
-| Column Name | Data Type | Nullable | Key / Constraint | Description & Business Rules |
-| :--- | :--- | :---: | :--- | :--- |
-| `id` | `bigint` | NOT NULL | **PK** (Primary Key) | Auto-incrementing unique user surrogate identifier. |
-| `name` | `character varying(255)` | NOT NULL | - | Full legal name or authorized contact name of the user. |
-| `email` | `character varying(255)` | NOT NULL | - | Primary unique electronic mail address used for authentication and communications. |
-| `email_verified_at` | `timestamp without time zone` | NULL | - | Timestamp indicating when the email was confirmed via verification token. |
-| `password` | `character varying(255)` | NOT NULL | - | Bcrypt salted and hashed credential string. |
-| `remember_token` | `character varying(100)` | NULL | - | Laravel Sanctum / Session persistent cookie token. |
-| `created_at` | `timestamp without time zone` | NULL | - | Record insertion timestamp. |
-| `updated_at` | `timestamp without time zone` | NULL | - | Record modification timestamp. |
-| `role` | `character varying(255)` | NOT NULL | - | System access control role: "student", "company", "supervisor", "jobseeker", "admin". |
-| `onboarding_completed` | `boolean` | NOT NULL | - | Boolean flag indicating whether initial profile setup wizard was finished. |
-| `avatar_url` | `character varying(255)` | NULL | - | Relative path or CDN URL pointing to the user profile avatar photo. |
-
----
-
-#### 2.14. Entity: `personal_access_tokens`
-
-- **Functional Domain:** Authentication & Core Security
-- **Entity Description:** Laravel Sanctum API tokens utilized for stateless Bearer token authentication in API calls.
-- **Total Attributes:** 10 columns
-
-| Column Name | Data Type | Nullable | Key / Constraint | Description & Business Rules |
-| :--- | :--- | :---: | :--- | :--- |
-| `id` | `bigint` | NOT NULL | **PK** (Primary Key) | Unique surrogate key for the access token record. |
-| `tokenable_type` | `character varying(255)` | NOT NULL | - | Polymorphic model type (typically "App\Models\User"). |
-| `tokenable_id` | `bigint` | NOT NULL | - | Foreign ID of the associated entity in the tokenable model. |
-| `name` | `text` | NOT NULL | - | Descriptor for the token (e.g. "auth-token", "mobile-app"). |
-| `token` | `character varying(64)` | NOT NULL | - | SHA-256 hashed 64-character token string. |
-| `abilities` | `text` | NULL | - | JSON array defining specific authorization permissions or scopes. |
-| `last_used_at` | `timestamp without time zone` | NULL | - | Timestamp indicating the most recent API request executed with this token. |
-| `expires_at` | `timestamp without time zone` | NULL | - | Expiration timestamp after which token is invalid. |
-| `created_at` | `timestamp without time zone` | NULL | - | Timestamp when token was issued. |
-| `updated_at` | `timestamp without time zone` | NULL | - | Timestamp when token attributes were updated. |
+| Field Name | Field Type | Length | Description |
+| :--- | :---: | :---: | :--- |
+| `id` | `int` | 10 | Primary key. Unique auto-incrementing identifier for the `User` record. |
+| `name` | `varchar` | 255 | Full legal name or display name of the user. |
+| `email` | `varchar` | 255 | Unique corporate, university, or personal email used for login credentials. |
+| `email_verified_at` | `timestamp` | -- | Stores email verified at information for `User`. |
+| `password` | `varchar` | 255 | Bcrypt-hashed password string. |
+| `remember_token` | `varchar` | 100 | Stores remember token information for `User`. |
+| `created_at` | `timestamp` | -- | System audit timestamp recording when the User entry was created. |
+| `updated_at` | `timestamp` | -- | System audit timestamp recording when the User entry was last modified. |
+| `role` | `varchar` | 255 | Primary authorization role (student, company, supervisor, graduate, jobseeker, admin). |
+| `onboarding_completed` | `bool` | 1 | Flag indicating whether mandatory onboarding profile wizard was completed. |
+| `avatar_url` | `varchar` | 255 | Relative or CDN URL pointing to user profile photo image. |
 
 ---
 
-#### 2.15. Entity: `supervisor_profiles`
+#### 2.11. Entity: `JobseekerProfile` (Table: `jobseeker_profiles`)
+- **Domain:** Actor Metadata & Career Seekers
+- **Table Description:** Career profile for external applicants and graduates seeking employment.
+- **Total Fields:** 15 columns
 
-- **Functional Domain:** User Profiles & Roles
-- **Entity Description:** Faculty coordinators and university supervisors assigned to monitor student intern batches.
-- **Total Attributes:** 7 columns
-
-| Column Name | Data Type | Nullable | Key / Constraint | Description & Business Rules |
-| :--- | :--- | :---: | :--- | :--- |
-| `id` | `bigint` | NOT NULL | **PK** (Primary Key) | Unique surrogate primary key. |
-| `user_id` | `bigint` | NOT NULL | **FK** &rarr; `users.id` | Foreign key referencing university supervisor account in users.id. |
-| `company_name` | `character varying(255)` | NULL | - | Department, College, or assigned industry linkage unit. |
-| `position` | `character varying(255)` | NULL | - | Academic faculty title (e.g. "OJT Coordinator", "Department Chair"). |
-| `created_at` | `timestamp without time zone` | NULL | - | Timestamp of creation. |
-| `updated_at` | `timestamp without time zone` | NULL | - | Timestamp of latest update. |
-| `course` | `character varying(255)` | NULL | - | Assigned degree program monitored by supervisor (e.g. "BSIT", "BSCS"). |
-
----
-
-#### 2.16. Entity: `time_logs`
-
-- **Functional Domain:** OJT Internship & DTR Tracking
-- **Entity Description:** Daily Time Record (DTR) entries with morning/afternoon split sessions and GPS location geofencing validation.
-- **Total Attributes:** 36 columns
-
-| Column Name | Data Type | Nullable | Key / Constraint | Description & Business Rules |
-| :--- | :--- | :---: | :--- | :--- |
-| `id` | `bigint` | NOT NULL | **PK** (Primary Key) | Unique surrogate primary key. |
-| `user_id` | `bigint` | NOT NULL | **FK** &rarr; `users.id` | Foreign key referencing student intern in users.id. |
-| `ojt_record_id` | `bigint` | NULL | **FK** &rarr; `ojt_records.id` | Foreign key referencing parent placement contract in ojt_records.id. |
-| `log_date` | `date` | NOT NULL | - | Calendar date of duty rendered. |
-| `time_in` | `time without time zone` | NULL | - | Morning session clock-in timestamp. |
-| `time_out` | `time without time zone` | NULL | - | Morning session clock-out timestamp. |
-| `hours_rendered` | `numeric` | NOT NULL | - | Calculated net hours rendered for the day (excluding unpaid meal breaks). |
-| `description` | `text` | NULL | - | Daily narrative summary of tasks performed and accomplishments. |
-| `latitude` | `numeric` | NULL | - | Captured device latitude at clock event. |
-| `longitude` | `numeric` | NULL | - | Captured device longitude at clock event. |
-| `status` | `character varying(255)` | NOT NULL | - | Log approval status: "pending", "approved", "rejected". |
-| `created_at` | `timestamp without time zone` | NULL | - | Timestamp of log submission. |
-| `updated_at` | `timestamp without time zone` | NULL | - | Timestamp of log modification. |
-| `time_in_lat` | `numeric` | NULL | - | Latitude recorded during check-in event. |
-| `time_in_lon` | `numeric` | NULL | - | Longitude recorded during check-in event. |
-| `time_out_lat` | `numeric` | NULL | - | Latitude recorded during check-out event. |
-| `time_out_lon` | `numeric` | NULL | - | Longitude recorded during check-out event. |
-| `location_validity` | `character varying(255)` | NULL | - | Geofencing status: "valid", "outside_geofence", "unverified". |
-| `distance_meters` | `integer` | NULL | - | Calculated radial distance in meters from designated company office coordinate. |
-| `morning_in` | `time without time zone` | NULL | - | Timestamp of morning session start. |
-| `morning_out` | `time without time zone` | NULL | - | Timestamp of morning session end. |
-| `afternoon_in` | `time without time zone` | NULL | - | Timestamp of afternoon session start. |
-| `afternoon_out` | `time without time zone` | NULL | - | Timestamp of afternoon session end. |
-| `morning_hours` | `numeric` | NOT NULL | - | Stores attribute value for morning_hours. |
-| `afternoon_hours` | `numeric` | NOT NULL | - | Stores attribute value for afternoon_hours. |
-| `morning_in_lat` | `numeric` | NULL | - | Stores attribute value for morning_in_lat. |
-| `morning_in_lon` | `numeric` | NULL | - | Stores attribute value for morning_in_lon. |
-| `morning_out_lat` | `numeric` | NULL | - | Stores attribute value for morning_out_lat. |
-| `morning_out_lon` | `numeric` | NULL | - | Stores attribute value for morning_out_lon. |
-| `afternoon_in_lat` | `numeric` | NULL | - | Stores attribute value for afternoon_in_lat. |
-| `afternoon_in_lon` | `numeric` | NULL | - | Stores attribute value for afternoon_in_lon. |
-| `afternoon_out_lat` | `numeric` | NULL | - | Stores attribute value for afternoon_out_lat. |
-| `afternoon_out_lon` | `numeric` | NULL | - | Stores attribute value for afternoon_out_lon. |
-| `morning_validity` | `character varying(255)` | NULL | - | Stores attribute value for morning_validity. |
-| `afternoon_validity` | `character varying(255)` | NULL | - | Stores attribute value for afternoon_validity. |
-| `auto_morning_timeout` | `boolean` | NOT NULL | - | Stores attribute value for auto_morning_timeout. |
+| Field Name | Field Type | Length | Description |
+| :--- | :---: | :---: | :--- |
+| `id` | `int` | 10 | Primary key. Unique auto-incrementing identifier for the `JobseekerProfile` record. |
+| `user_id` | `int` | 10 | Foreign key referencing `users.id`. |
+| `desired_job_title` | `varchar` | 255 | Target career role (e.g. Full-Stack Developer, QA Analyst). |
+| `work_preference` | `varchar` | 255 | Preferred workplace modality (Remote, Hybrid, On-site). |
+| `years_of_experience` | `varchar` | 255 | Total cumulative years of professional work experience. |
+| `headline` | `varchar` | 255 | Stores headline information for `JobseekerProfile`. |
+| `bio` | `text` | -- | Stores bio information for `JobseekerProfile`. |
+| `location` | `varchar` | 255 | Current residential city or province. |
+| `portfolio_url` | `varchar` | 255 | External web portfolio or GitHub profile link. |
+| `linkedin_url` | `varchar` | 255 | Stores linkedin url information for `JobseekerProfile`. |
+| `phone` | `varchar` | 255 | Stores phone information for `JobseekerProfile`. |
+| `avatar_url` | `varchar` | 255 | Stores avatar url information for `JobseekerProfile`. |
+| `profile_completed` | `bool` | 1 | Status flag indicating full profile readiness for recruiters. |
+| `created_at` | `timestamp` | -- | System audit timestamp recording when the JobseekerProfile entry was created. |
+| `updated_at` | `timestamp` | -- | System audit timestamp recording when the JobseekerProfile entry was last modified. |
 
 ---
 
-#### 2.17. Entity: `app_notifications`
+#### 2.12. Entity: `SupervisorProfile` (Table: `supervisor_profiles`)
+- **Domain:** Academic Faculty & OJT Coordination
+- **Table Description:** Faculty internship coordinators and designated academic supervisors.
+- **Total Fields:** 8 columns
 
-- **Functional Domain:** Communication & Alerts
-- **Entity Description:** In-app event notifications for endorsements, approvals, evaluation dispatches, and job offers.
-- **Total Attributes:** 9 columns
-
-| Column Name | Data Type | Nullable | Key / Constraint | Description & Business Rules |
-| :--- | :--- | :---: | :--- | :--- |
-| `id` | `bigint` | NOT NULL | **PK** (Primary Key) | Unique surrogate primary key. |
-| `user_id` | `bigint` | NOT NULL | **FK** &rarr; `users.id` | Foreign key referencing recipient in users.id. |
-| `type` | `character varying(255)` | NOT NULL | - | Event classification (e.g. "endorsement_granted", "evaluation_received"). |
-| `title` | `character varying(255)` | NOT NULL | - | Concise notification alert heading. |
-| `message` | `text` | NOT NULL | - | Descriptive notification body text. |
-| `data` | `json` | NULL | - | JSON payload containing contextual identifiers for deep-linking. |
-| `read_at` | `timestamp without time zone` | NULL | - | Timestamp when user dismissed or read the notification. |
-| `created_at` | `timestamp without time zone` | NULL | - | Timestamp of notification generation. |
-| `updated_at` | `timestamp without time zone` | NULL | - | Timestamp of notification update. |
+| Field Name | Field Type | Length | Description |
+| :--- | :---: | :---: | :--- |
+| `id` | `int` | 10 | Primary key. Unique auto-incrementing identifier for the `SupervisorProfile` record. |
+| `user_id` | `int` | 10 | Foreign key referencing `users.id`. |
+| `company_name` | `varchar` | 255 | University branch or affiliated industry training organization. |
+| `position` | `varchar` | 255 | Academic designation (OJT Coordinator, Department Chair, Faculty Mentor). |
+| `created_at` | `timestamp` | -- | System audit timestamp recording when the SupervisorProfile entry was created. |
+| `updated_at` | `timestamp` | -- | System audit timestamp recording when the SupervisorProfile entry was last modified. |
+| `course` | `varchar` | 255 | Supervised degree program course code (BSIT, BSIS, BSCS). |
+| `phone` | `varchar` | 50 | Official institutional contact phone/mobile number. |
 
 ---
 
-#### 2.18. Entity: `chat_messages`
+#### 2.13. Entity: `GraduateProfile` (Table: `graduate_profiles`)
+- **Domain:** Alumni & Graduate Tracer Studies
+- **Table Description:** Alumni graduation metadata used for institutional tracer studies.
+- **Total Fields:** 9 columns
 
-- **Functional Domain:** Communication & Alerts
-- **Entity Description:** Real-time conversational messaging between students, supervisors, and corporate recruiters.
-- **Total Attributes:** 8 columns
-
-| Column Name | Data Type | Nullable | Key / Constraint | Description & Business Rules |
-| :--- | :--- | :---: | :--- | :--- |
-| `id` | `bigint` | NOT NULL | **PK** (Primary Key) | Unique surrogate primary key. |
-| `conversation_key` | `character varying(255)` | NOT NULL | - | Compound contextual key grouping thread (e.g. "ojt_interest_15", "job_app_4"). |
-| `sender_id` | `bigint` | NOT NULL | **FK** &rarr; `users.id` | Foreign key referencing sender account in users.id. |
-| `receiver_id` | `bigint` | NOT NULL | **FK** &rarr; `users.id` | Foreign key referencing recipient account in users.id. |
-| `message` | `text` | NOT NULL | - | Text message payload content. |
-| `read_at` | `timestamp without time zone` | NULL | - | Timestamp when recipient viewed message (null if unread). |
-| `created_at` | `timestamp without time zone` | NULL | - | Timestamp when message was dispatched. |
-| `updated_at` | `timestamp without time zone` | NULL | - | Timestamp of message record modification. |
-
----
-
-#### 2.19. Entity: `evaluation_templates`
-
-- **Functional Domain:** Trainee Evaluation Rubrics
-- **Entity Description:** Standardized evaluation rubrics established by the university or customized per degree program.
-- **Total Attributes:** 8 columns
-
-| Column Name | Data Type | Nullable | Key / Constraint | Description & Business Rules |
-| :--- | :--- | :---: | :--- | :--- |
-| `id` | `bigint` | NOT NULL | **PK** (Primary Key) | Unique surrogate primary key. |
-| `supervisor_id` | `bigint` | NULL | **FK** &rarr; `users.id` | Foreign key referencing authoring faculty coordinator in users.id (null for global). |
-| `program` | `character varying(50)` | NULL | - | Specific academic program code ("BSIT", "BSCS", "BSIS") or null for all. |
-| `title` | `character varying(255)` | NOT NULL | - | Evaluation instrument title (e.g. "CHMSU CIER OJT Performance Evaluation"). |
-| `description` | `text` | NULL | - | Instructions and scoring guidance for host company evaluators. |
-| `is_active` | `boolean` | NOT NULL | - | Boolean flag indicating whether rubric is available for active dispatch. |
-| `created_at` | `timestamp without time zone` | NULL | - | Timestamp of template creation. |
-| `updated_at` | `timestamp without time zone` | NULL | - | Timestamp of template update. |
+| Field Name | Field Type | Length | Description |
+| :--- | :---: | :---: | :--- |
+| `id` | `int` | 10 | Primary key. Unique auto-incrementing identifier for the `GraduateProfile` record. |
+| `user_id` | `int` | 10 | Foreign key referencing `users.id`. |
+| `year_graduated` | `varchar` | 255 | Academic graduation batch year (e.g. 2024-2025). |
+| `campus` | `varchar` | 255 | Graduating campus branch. |
+| `course` | `varchar` | 255 | Completed degree program. |
+| `section` | `varchar` | 255 | Graduating cohort section. |
+| `employment_status` | `varchar` | 255 | Current tracer status (employed, looking, freelance, studying). |
+| `created_at` | `timestamp` | -- | System audit timestamp recording when the GraduateProfile entry was created. |
+| `updated_at` | `timestamp` | -- | System audit timestamp recording when the GraduateProfile entry was last modified. |
 
 ---
 
-#### 2.20. Entity: `evaluation_questions`
+#### 2.14. Entity: `CompanyProfile` (Table: `company_profiles`)
+- **Domain:** Host Training Establishment & MOA
+- **Table Description:** Host Training Establishment corporate profile and MOA agreement tracking.
+- **Total Fields:** 27 columns
 
-- **Functional Domain:** Trainee Evaluation Rubrics
-- **Entity Description:** Individual rubric criteria items grouped by competence category with rating scales or qualitative answers.
-- **Total Attributes:** 12 columns
-
-| Column Name | Data Type | Nullable | Key / Constraint | Description & Business Rules |
-| :--- | :--- | :---: | :--- | :--- |
-| `id` | `bigint` | NOT NULL | **PK** (Primary Key) | Unique surrogate primary key. |
-| `template_id` | `bigint` | NOT NULL | **FK** &rarr; `evaluation_templates.id` | Foreign key referencing parent evaluation_templates.id. |
-| `category` | `character varying(100)` | NOT NULL | - | Evaluation dimension: "Technical Competence", "Professionalism & Work Ethic", "Communication & Teamwork", "Overall Recommendation". |
-| `question_text` | `text` | NOT NULL | - | The prompt or assessment statement evaluated by the rater. |
-| `question_type` | `character varying(30)` | NOT NULL | - | Response format: "rating" (1-5 likert), "multiple_choice", "text". |
-| `options` | `json` | NULL | - | JSON array of multiple choice options for qualitative recommendation items. |
-| `scale_min` | `integer` | NOT NULL | - | Minimum numerical score on rating scale (typically 1). |
-| `scale_max` | `integer` | NOT NULL | - | Maximum numerical score on rating scale (typically 5). |
-| `is_required` | `boolean` | NOT NULL | - | Boolean flag requiring response before form submission. |
-| `sort_order` | `integer` | NOT NULL | - | Display sequence index in rubric form. |
-| `created_at` | `timestamp without time zone` | NULL | - | Timestamp of criterion creation. |
-| `updated_at` | `timestamp without time zone` | NULL | - | Timestamp of criterion update. |
-
----
-
-#### 2.21. Entity: `student_evaluation_answers`
-
-- **Functional Domain:** Trainee Evaluation Rubrics
-- **Entity Description:** Itemized question-level responses and score values recorded for an evaluation.
-- **Total Attributes:** 7 columns
-
-| Column Name | Data Type | Nullable | Key / Constraint | Description & Business Rules |
-| :--- | :--- | :---: | :--- | :--- |
-| `id` | `bigint` | NOT NULL | **PK** (Primary Key) | Unique surrogate primary key. |
-| `student_evaluation_id` | `bigint` | NOT NULL | **FK** &rarr; `student_evaluations.id` | Foreign key referencing parent student_evaluations.id. |
-| `evaluation_question_id` | `bigint` | NOT NULL | **FK** &rarr; `evaluation_questions.id` | Foreign key referencing specific criterion in evaluation_questions.id. |
-| `rating_value` | `integer` | NULL | - | Integer score assigned (1 to 5) for rating questions. |
-| `text_value` | `text` | NULL | - | Written textual feedback or selected multiple-choice answer. |
-| `created_at` | `timestamp without time zone` | NULL | - | Timestamp of response insertion. |
-| `updated_at` | `timestamp without time zone` | NULL | - | Timestamp of response modification. |
+| Field Name | Field Type | Length | Description |
+| :--- | :---: | :---: | :--- |
+| `id` | `int` | 10 | Primary key. Unique auto-incrementing identifier for the `CompanyProfile` record. |
+| `user_id` | `int` | 10 | Foreign key referencing `users.id`. |
+| `company_name` | `varchar` | 255 | Registered business name of the Host Training Establishment. |
+| `company_location` | `varchar` | 255 | Stores company location information for `CompanyProfile`. |
+| `company_type` | `varchar` | 255 | Enterprise classification (Private Corporation, Government, NGO, Startup). |
+| `website` | `varchar` | 255 | Stores website information for `CompanyProfile`. |
+| `created_at` | `timestamp` | -- | System audit timestamp recording when the CompanyProfile entry was created. |
+| `updated_at` | `timestamp` | -- | System audit timestamp recording when the CompanyProfile entry was last modified. |
+| `company_size` | `varchar` | 255 | Workforce size tier (1-10, 11-50, 51-200, 201+ employees). |
+| `contact_email` | `varchar` | 255 | Official HR / internship coordinator email address. |
+| `contact_phone` | `varchar` | 255 | Stores contact phone information for `CompanyProfile`. |
+| `description` | `text` | -- | Stores description information for `CompanyProfile`. |
+| `logo_url` | `varchar` | 255 | Stores logo url information for `CompanyProfile`. |
+| `profile_completed` | `bool` | 1 | Stores profile completed information for `CompanyProfile`. |
+| `contact_person` | `varchar` | 255 | Stores contact person information for `CompanyProfile`. |
+| `moa_file_path` | `varchar` | 255 | Storage path to verified bilateral MOA agreement PDF document. |
+| `moa_start_date` | `date` | -- | Official effective commencement date of partnership MOA. |
+| `moa_end_date` | `date` | -- | Expiration date of MOA contract duration. |
+| `moa_status` | `varchar` | 255 | Partnership validity state (active, pending, expired, for_renewal). |
+| `status` | `varchar` | 255 | Stores status information for `CompanyProfile`. |
+| `ownership_type` | `varchar` | 255 | Stores ownership type information for `CompanyProfile`. |
+| `year_founded` | `varchar` | 255 | Stores year founded information for `CompanyProfile`. |
+| `full_address` | `varchar` | 255 | Stores full address information for `CompanyProfile`. |
+| `contact_title` | `varchar` | 255 | Stores contact title information for `CompanyProfile`. |
+| `registration_source` | `varchar` | 255 | Stores registration source information for `CompanyProfile`. |
+| `moa_requested_at` | `timestamp` | -- | Stores moa requested at information for `CompanyProfile`. |
+| `moa_request_notes` | `text` | -- | Stores moa request notes information for `CompanyProfile`. |
 
 ---
 
-#### 2.22. Entity: `jobseeker_profiles`
+#### 2.15. Entity: `PeoDefinition` (Table: `peo_definitions`)
+- **Domain:** Accreditation & Curriculum Objectives
+- **Table Description:** Program Educational Objectives defined for BSIT/BSCS degree accreditation.
+- **Total Fields:** 10 columns
 
-- **Functional Domain:** User Profiles & Roles
-- **Entity Description:** Employment seeking profile for CHMSU alumni and graduated trainees seeking full-time or contract roles.
-- **Total Attributes:** 15 columns
-
-| Column Name | Data Type | Nullable | Key / Constraint | Description & Business Rules |
-| :--- | :--- | :---: | :--- | :--- |
-| `id` | `bigint` | NOT NULL | **PK** (Primary Key) | Unique surrogate primary key. |
-| `user_id` | `bigint` | NOT NULL | **FK** &rarr; `users.id` | Foreign key referencing jobseeker account in users.id. |
-| `desired_job_title` | `character varying(255)` | NULL | - | Target profession or role (e.g. "Full Stack Developer", "Data Analyst"). |
-| `work_preference` | `character varying(255)` | NULL | - | Work environment choice: "remote", "hybrid", "onsite". |
-| `years_of_experience` | `character varying(255)` | NULL | - | Estimated professional experience in years. |
-| `headline` | `character varying(255)` | NULL | - | Professional tagline summary for hiring managers. |
-| `bio` | `text` | NULL | - | Expanded career bio, capabilities, and objectives. |
-| `location` | `character varying(255)` | NULL | - | Current residential city or province. |
-| `portfolio_url` | `character varying(255)` | NULL | - | External portfolio website link. |
-| `linkedin_url` | `character varying(255)` | NULL | - | LinkedIn profile URL. |
-| `phone` | `character varying(255)` | NULL | - | Contact telephone number. |
-| `avatar_url` | `character varying(255)` | NULL | - | Specific avatar image override for jobseeker profile. |
-| `profile_completed` | `boolean` | NOT NULL | - | Boolean flag confirming complete jobseeker profile. |
-| `created_at` | `timestamp without time zone` | NULL | - | Timestamp of registration. |
-| `updated_at` | `timestamp without time zone` | NULL | - | Timestamp of latest update. |
+| Field Name | Field Type | Length | Description |
+| :--- | :---: | :---: | :--- |
+| `id` | `int` | 10 | Primary key. Unique auto-incrementing identifier for the `PeoDefinition` record. |
+| `program` | `varchar` | 100 | Academic degree program (e.g. Bachelor of Science in Information Technology). |
+| `code` | `varchar` | 20 | Standard PEO identifier code (e.g. PEO 1, PEO 2, PEO 3, PEO 4). |
+| `title` | `varchar` | 255 | Descriptive competency title of the objective. |
+| `description` | `text` | -- | Comprehensive narrative definition and graduate expectations. |
+| `target_benchmark` | `numeric` | 5,2 | Institutional target attainment benchmark percentage (e.g. 70.00%). |
+| `indicators` | `json` | -- | JSON array of measurable performance indicator criteria. |
+| `sort_order` | `int` | 10 | Display sequence ordering on tracer assessment dashboards. |
+| `created_at` | `timestamp` | -- | System audit timestamp recording when the PeoDefinition entry was created. |
+| `updated_at` | `timestamp` | -- | System audit timestamp recording when the PeoDefinition entry was last modified. |
 
 ---
 
-#### 2.23. Entity: `graduate_profiles`
+#### 2.16. Entity: `AlumniPeoAssessment` (Table: `alumni_peo_assessments`)
+- **Domain:** Accreditation & Curriculum Objectives
+- **Table Description:** Graduate tracer evaluations assessing alumni attainment against defined PEOs.
+- **Total Fields:** 9 columns
 
-- **Functional Domain:** User Profiles & Roles
-- **Entity Description:** Institutional alumni tracer records linking graduates to employment outcomes and university batches.
-- **Total Attributes:** 9 columns
-
-| Column Name | Data Type | Nullable | Key / Constraint | Description & Business Rules |
-| :--- | :--- | :---: | :--- | :--- |
-| `id` | `bigint` | NOT NULL | **PK** (Primary Key) | Unique surrogate primary key. |
-| `user_id` | `bigint` | NOT NULL | **FK** &rarr; `users.id` | Foreign key referencing graduate account in users.id. |
-| `year_graduated` | `character varying(255)` | NULL | - | Calendar year of graduation from the university. |
-| `campus` | `character varying(255)` | NULL | - | CHMSU campus graduated from (e.g. "Alijis Campus"). |
-| `course` | `character varying(255)` | NULL | - | Degree program completed (e.g. "BS Information Technology"). |
-| `section` | `character varying(255)` | NULL | - | Final academic class section graduated from. |
-| `employment_status` | `character varying(255)` | NULL | - | Current status: "employed", "looking", "freelance", "studying". |
-| `created_at` | `timestamp without time zone` | NULL | - | Timestamp of graduate record insertion. |
-| `updated_at` | `timestamp without time zone` | NULL | - | Timestamp of record update. |
-
----
-
-#### 2.24. Entity: `student_evaluations`
-
-- **Functional Domain:** Trainee Evaluation Rubrics
-- **Entity Description:** Evaluation dispatches issued to host company mentors and final submitted appraisal summaries.
-- **Total Attributes:** 17 columns
-
-| Column Name | Data Type | Nullable | Key / Constraint | Description & Business Rules |
-| :--- | :--- | :---: | :--- | :--- |
-| `id` | `bigint` | NOT NULL | **PK** (Primary Key) | Unique surrogate primary key. |
-| `template_id` | `bigint` | NOT NULL | **FK** &rarr; `evaluation_templates.id` | Foreign key referencing evaluation_templates.id. |
-| `student_user_id` | `bigint` | NOT NULL | **FK** &rarr; `users.id` | Foreign key referencing student trainee in users.id. |
-| `company_user_id` | `bigint` | NOT NULL | **FK** &rarr; `users.id` | Foreign key referencing host employer in users.id. |
-| `supervisor_user_id` | `bigint` | NULL | **FK** &rarr; `users.id` | Foreign key referencing observing university coordinator in users.id. |
-| `ojt_record_id` | `bigint` | NULL | **FK** &rarr; `ojt_records.id` | Foreign key referencing associated ojt_records.id. |
-| `ojt_posting_id` | `bigint` | NULL | **FK** &rarr; `ojt_postings.id` | Foreign key referencing associated ojt_postings.id. |
-| `status` | `character varying(30)` | NOT NULL | - | Evaluation status: "pending", "submitted", "reviewed". |
-| `overall_score` | `numeric` | NULL | - | Calculated mean numerical score across all rating criteria (out of 5.00). |
-| `general_feedback` | `text` | NULL | - | Qualitative appraisal of student strengths and growth areas. |
-| `recommendation` | `character varying(100)` | NULL | - | Employment readiness recommendation choice. |
-| `evaluator_name` | `character varying(255)` | NULL | - | Full name of company supervisor executing the evaluation. |
-| `evaluator_position` | `character varying(255)` | NULL | - | Designation/title of company evaluator. |
-| `sent_at` | `timestamp without time zone` | NULL | - | Timestamp when evaluation request was dispatched to company. |
-| `submitted_at` | `timestamp without time zone` | NULL | - | Timestamp when company completed and signed the evaluation. |
-| `created_at` | `timestamp without time zone` | NULL | - | Timestamp of evaluation record creation. |
-| `updated_at` | `timestamp without time zone` | NULL | - | Timestamp of update. |
+| Field Name | Field Type | Length | Description |
+| :--- | :---: | :---: | :--- |
+| `id` | `int` | 10 | Primary key. Unique auto-incrementing identifier for the `AlumniPeoAssessment` record. |
+| `user_id` | `int` | 10 | Foreign key referencing `users.id`. |
+| `peo_id` | `int` | 10 | Foreign key referencing `peo_definitions.id`. |
+| `score` | `numeric` | 4,2 | Attainment rating score on 1.00 to 5.00 Likert scale. |
+| `assessment_source` | `varchar` | 50 | Collection method (direct_survey, automated_heuristic, employer_evaluation). |
+| `survey_year` | `varchar` | 20 | Annual tracer survey collection period (e.g. 2026). |
+| `evidence_summary` | `text` | -- | Qualitative evidence narrative describing professional application. |
+| `created_at` | `timestamp` | -- | System audit timestamp recording when the AlumniPeoAssessment entry was created. |
+| `updated_at` | `timestamp` | -- | System audit timestamp recording when the AlumniPeoAssessment entry was last modified. |
 
 ---
 
-#### 2.25. Entity: `job_listings`
+#### 2.17. Entity: `OjtPosting` (Table: `ojt_postings`)
+- **Domain:** OJT Vacancies & Capacity Quotas
+- **Table Description:** Internship openings posted by verified Host Training Establishments.
+- **Total Fields:** 26 columns
 
-- **Functional Domain:** Recruitment & Job Pipeline
-- **Entity Description:** Employment vacancy notices for graduates and alumni posted by accredited corporate partners.
-- **Total Attributes:** 17 columns
-
-| Column Name | Data Type | Nullable | Key / Constraint | Description & Business Rules |
-| :--- | :--- | :---: | :--- | :--- |
-| `id` | `bigint` | NOT NULL | **PK** (Primary Key) | Unique surrogate primary key. |
-| `company_user_id` | `bigint` | NOT NULL | **FK** &rarr; `users.id` | Foreign key referencing posting employer in users.id. |
-| `title` | `character varying(255)` | NOT NULL | - | Job title (e.g. "Junior Backend Developer", "Systems Administrator"). |
-| `department` | `character varying(255)` | NULL | - | Corporate division or department. |
-| `location` | `character varying(255)` | NOT NULL | - | Workplace city or remote status. |
-| `employment_type` | `character varying(255)` | NOT NULL | - | Contract type: "full_time", "part_time", "contract", "internship". |
-| `salary_range` | `character varying(255)` | NULL | - | Expected remuneration compensation bracket. |
-| `description` | `text` | NULL | - | Full narrative job overview and organization profile. |
-| `responsibilities` | `json` | NULL | - | JSON array of primary operational duties. |
-| `requirements` | `json` | NULL | - | JSON array of mandatory qualifications and degree prerequisites. |
-| `benefits` | `json` | NULL | - | JSON array of corporate perks, health plans, and allowances. |
-| `required_skills` | `json` | NULL | - | JSON array of necessary technical skills. |
-| `status` | `character varying(255)` | NOT NULL | - | Listing status: "open", "closed", "draft", "filled". |
-| `expires_at` | `timestamp without time zone` | NULL | - | Vacancy closing date. |
-| `created_at` | `timestamp without time zone` | NULL | - | Timestamp of job creation. |
-| `updated_at` | `timestamp without time zone` | NULL | - | Timestamp of job update. |
-| `experience_level` | `character varying(60)` | NULL | - | Seniority category: "Entry Level", "Mid Level", "Senior". |
-
----
-
-#### 2.26. Entity: `job_applications`
-
-- **Functional Domain:** Recruitment & Job Pipeline
-- **Entity Description:** Candidate application submissions, automated skill-match scores, and formal employment offers.
-- **Total Attributes:** 12 columns
-
-| Column Name | Data Type | Nullable | Key / Constraint | Description & Business Rules |
-| :--- | :--- | :---: | :--- | :--- |
-| `id` | `bigint` | NOT NULL | **PK** (Primary Key) | Unique surrogate primary key. |
-| `job_listing_id` | `bigint` | NOT NULL | **FK** &rarr; `job_listings.id` | Foreign key referencing job_listings.id. |
-| `applicant_user_id` | `bigint` | NOT NULL | **FK** &rarr; `users.id` | Foreign key referencing applicant in users.id. |
-| `status` | `character varying(255)` | NOT NULL | - | Application stage: "applied", "screened", "interviewed", "offered", "hired", "rejected". |
-| `match_score` | `integer` | NULL | - | Calculated algorithm skill match percentage (0 to 100%). |
-| `cover_letter` | `text` | NULL | - | Candidate letter of intent text. |
-| `notes` | `text` | NULL | - | Internal HR notes regarding applicant qualifications. |
-| `created_at` | `timestamp without time zone` | NULL | - | Timestamp of application submission. |
-| `updated_at` | `timestamp without time zone` | NULL | - | Timestamp of status change. |
-| `offer_details` | `json` | NULL | - | JSON structure specifying salary, start date, benefits, and position terms. |
-| `offer_decision` | `character varying(20)` | NULL | - | Applicant response to job offer: "accepted", "rejected". |
-| `offer_decided_at` | `timestamp without time zone` | NULL | - | Timestamp of candidate offer acceptance or rejection. |
+| Field Name | Field Type | Length | Description |
+| :--- | :---: | :---: | :--- |
+| `id` | `int` | 10 | Primary key. Unique auto-incrementing identifier for the `OjtPosting` record. |
+| `company_user_id` | `int` | 10 | Foreign key referencing `users.id`. |
+| `title` | `varchar` | 255 | Internship job title (e.g. Web Developer Trainee). |
+| `company_name` | `varchar` | 255 | Stores company name information for `OjtPosting`. |
+| `company_initial` | `varchar` | 4 | Stores company initial information for `OjtPosting`. |
+| `company_color` | `varchar` | 20 | Stores company color information for `OjtPosting`. |
+| `department` | `varchar` | 255 | Operating business unit (e.g. IT Solutions, QA Dept). |
+| `industry` | `varchar` | 255 | Stores industry information for `OjtPosting`. |
+| `location` | `varchar` | 255 | Workplace office location or remote arrangement. |
+| `description` | `text` | -- | Stores description information for `OjtPosting`. |
+| `required_skills` | `json` | -- | Stores required skills information for `OjtPosting`. |
+| `preferred_courses` | `json` | -- | Stores preferred courses information for `OjtPosting`. |
+| `slots_total` | `int` | 10 | Total allotted trainee capacity quota. |
+| `slots_remaining` | `int` | 10 | Real-time remaining uncommitted placement slots. |
+| `duration` | `varchar` | 255 | Expected internship timeframe (e.g. 486 Hours / 3 Months). |
+| `schedule_type` | `varchar` | 255 | Stores schedule type information for `OjtPosting`. |
+| `status` | `varchar` | 255 | Posting state (open, closed, filled, paused). |
+| `expires_at` | `timestamp` | -- | Stores expires at information for `OjtPosting`. |
+| `created_at` | `timestamp` | -- | System audit timestamp recording when the OjtPosting entry was created. |
+| `updated_at` | `timestamp` | -- | System audit timestamp recording when the OjtPosting entry was last modified. |
+| `branch_name` | `varchar` | 255 | Stores branch name information for `OjtPosting`. |
+| `latitude` | `numeric` | 10,7 | Stores latitude information for `OjtPosting`. |
+| `longitude` | `numeric` | 10,7 | Stores longitude information for `OjtPosting`. |
+| `learning_outcomes` | `text` | -- | Stores learning outcomes information for `OjtPosting`. |
+| `required_documents` | `json` | -- | Stores required documents information for `OjtPosting`. |
+| `qualifications` | `json` | -- | Stores qualifications information for `OjtPosting`. |
 
 ---
 
-#### 2.27. Entity: `interviews`
+#### 2.18. Entity: `StudentOjtInterest` (Table: `student_ojt_interests`)
+- **Domain:** OJT Application & Matching Pipeline
+- **Table Description:** Formal internship application pipeline tracking coordinator endorsements.
+- **Total Fields:** 33 columns
 
-- **Functional Domain:** Recruitment & Job Pipeline
-- **Entity Description:** Recruitment interview schedules, virtual meeting links, and interviewer evaluations.
-- **Total Attributes:** 14 columns
-
-| Column Name | Data Type | Nullable | Key / Constraint | Description & Business Rules |
-| :--- | :--- | :---: | :--- | :--- |
-| `id` | `bigint` | NOT NULL | **PK** (Primary Key) | Unique surrogate primary key. |
-| `job_application_id` | `bigint` | NOT NULL | **FK** &rarr; `job_applications.id` | Foreign key referencing job_applications.id. |
-| `company_user_id` | `bigint` | NOT NULL | **FK** &rarr; `users.id` | Foreign key referencing scheduling employer in users.id. |
-| `type` | `character varying(255)` | NOT NULL | - | Interview round: "Technical", "HR Screening", "Final Panel". |
-| `scheduled_date` | `date` | NOT NULL | - | Date of scheduled interview. |
-| `scheduled_time` | `time without time zone` | NOT NULL | - | Time of scheduled interview. |
-| `platform` | `character varying(255)` | NULL | - | Medium: "Google Meet", "Zoom", "On-site", "Phone". |
-| `status` | `character varying(255)` | NOT NULL | - | Session status: "upcoming", "pending", "done", "cancelled". |
-| `notes` | `text` | NULL | - | Preparation notes or meeting instructions for candidate. |
-| `created_at` | `timestamp without time zone` | NULL | - | Timestamp of schedule creation. |
-| `updated_at` | `timestamp without time zone` | NULL | - | Timestamp of schedule update. |
-| `interviewer_name` | `character varying(255)` | NULL | - | Name of lead interviewer. |
-| `duration` | `character varying(255)` | NULL | - | Scheduled duration (e.g. "45 minutes"). |
-| `meeting_link` | `character varying(255)` | NULL | - | Virtual conferencing video URL. |
+| Field Name | Field Type | Length | Description |
+| :--- | :---: | :---: | :--- |
+| `id` | `int` | 10 | Primary key. Unique auto-incrementing identifier for the `StudentOjtInterest` record. |
+| `student_user_id` | `int` | 10 | Foreign key referencing `users.id`. |
+| `ojt_posting_id` | `int` | 10 | Foreign key referencing `ojt_postings.id`. |
+| `status` | `varchar` | 255 | Pipeline workflow status (applied, endorsed, company_accepted, ojt_confirmed). |
+| `student_message` | `text` | -- | Stores student message information for `StudentOjtInterest`. |
+| `endorsed_by` | `int` | 10 | Foreign key referencing `users.id`. |
+| `endorsed_at` | `timestamp` | -- | Stores endorsed at information for `StudentOjtInterest`. |
+| `created_at` | `timestamp` | -- | System audit timestamp recording when the StudentOjtInterest entry was created. |
+| `updated_at` | `timestamp` | -- | System audit timestamp recording when the StudentOjtInterest entry was last modified. |
+| `endorsement_letter` | `varchar` | 255 | Stores endorsement letter information for `StudentOjtInterest`. |
+| `company_accepted_at` | `timestamp` | -- | Stores company accepted at information for `StudentOjtInterest`. |
+| `endorsement_requested_at` | `timestamp` | -- | Stores endorsement requested at information for `StudentOjtInterest`. |
+| `ojt_started_at` | `timestamp` | -- | Stores ojt started at information for `StudentOjtInterest`. |
+| `resume_viewed_at` | `timestamp` | -- | Stores resume viewed at information for `StudentOjtInterest`. |
+| `company_note` | `text` | -- | Stores company note information for `StudentOjtInterest`. |
+| `interview_scheduled_at` | `timestamp` | -- | Stores interview scheduled at information for `StudentOjtInterest`. |
+| `interview_type` | `varchar` | 255 | Stores interview type information for `StudentOjtInterest`. |
+| `interview_location` | `text` | -- | Stores interview location information for `StudentOjtInterest`. |
+| `coordinator_note` | `text` | -- | Stores coordinator note information for `StudentOjtInterest`. |
+| `endorsement_letter_sent_at` | `timestamp` | -- | Stores endorsement letter sent at information for `StudentOjtInterest`. |
+| `ojt_start_date` | `date` | -- | Agreed upon internship duty start date. |
+| `ojt_instructions` | `text` | -- | Stores ojt instructions information for `StudentOjtInterest`. |
+| `schedule_days` | `json` | -- | Stores schedule days information for `StudentOjtInterest`. |
+| `shift_start` | `varchar` | 10 | Stores shift start information for `StudentOjtInterest`. |
+| `shift_end` | `varchar` | 10 | Stores shift end information for `StudentOjtInterest`. |
+| `lunch_start` | `varchar` | 10 | Stores lunch start information for `StudentOjtInterest`. |
+| `lunch_end` | `varchar` | 10 | Stores lunch end information for `StudentOjtInterest`. |
+| `has_lunch_break` | `bool` | 1 | Stores has lunch break information for `StudentOjtInterest`. |
+| `daily_hours` | `numeric` | 4,2 | Standard contracted working hours per day. |
+| `weekly_hours` | `numeric` | 5,2 | Total cumulative contracted hours per week. |
+| `allow_overtime` | `bool` | 1 | Stores allow overtime information for `StudentOjtInterest`. |
+| `max_overtime_hours` | `numeric` | 4,2 | Stores max overtime hours information for `StudentOjtInterest`. |
+| `estimated_end_date` | `date` | -- | Calculated expected completion target date. |
 
 ---
 
+#### 2.19. Entity: `OjtRecord` (Table: `ojt_records`)
+- **Domain:** OJT Placement & Progress Tracking
+- **Table Description:** Active training contract tracking required curriculum hours versus rendered progress.
+- **Total Fields:** 25 columns
+
+| Field Name | Field Type | Length | Description |
+| :--- | :---: | :---: | :--- |
+| `id` | `int` | 10 | Primary key. Unique auto-incrementing identifier for the `OjtRecord` record. |
+| `user_id` | `int` | 10 | Foreign key referencing `users.id`. |
+| `company_name` | `varchar` | 255 | Official name of the Host Training Establishment. |
+| `supervisor_name` | `varchar` | 255 | Designated industry mentor / supervisor name. |
+| `supervisor_email` | `varchar` | 255 | Stores supervisor email information for `OjtRecord`. |
+| `location` | `varchar` | 255 | Stores location information for `OjtRecord`. |
+| `start_date` | `date` | -- | Official commencement date of active duty. |
+| `end_date` | `date` | -- | Stores end date information for `OjtRecord`. |
+| `required_hours` | `int` | 10 | Curricular internship requirement (e.g. 486 Hours for BSIT). |
+| `completed_hours` | `numeric` | 8,2 | Verified cumulative hours logged by trainee. |
+| `status` | `varchar` | 255 | Placement lifecycle state (active, completed, dropped, pull_out, emergency_leave). |
+| `created_at` | `timestamp` | -- | System audit timestamp recording when the OjtRecord entry was created. |
+| `updated_at` | `timestamp` | -- | System audit timestamp recording when the OjtRecord entry was last modified. |
+| `company_instructions` | `text` | -- | Stores company instructions information for `OjtRecord`. |
+| `schedule_days` | `json` | -- | Stores schedule days information for `OjtRecord`. |
+| `shift_start` | `varchar` | 10 | Stores shift start information for `OjtRecord`. |
+| `shift_end` | `varchar` | 10 | Stores shift end information for `OjtRecord`. |
+| `lunch_start` | `varchar` | 10 | Stores lunch start information for `OjtRecord`. |
+| `lunch_end` | `varchar` | 10 | Stores lunch end information for `OjtRecord`. |
+| `has_lunch_break` | `bool` | 1 | Stores has lunch break information for `OjtRecord`. |
+| `daily_hours` | `numeric` | 4,2 | Stores daily hours information for `OjtRecord`. |
+| `weekly_hours` | `numeric` | 5,2 | Stores weekly hours information for `OjtRecord`. |
+| `allow_overtime` | `bool` | 1 | Stores allow overtime information for `OjtRecord`. |
+| `max_overtime_hours` | `numeric` | 4,2 | Stores max overtime hours information for `OjtRecord`. |
+| `estimated_end_date` | `date` | -- | Forecasted conclusion date based on schedule shift parameters. |
+
+---
+
+#### 2.20. Entity: `TimeLog` (Table: `time_logs`)
+- **Domain:** Daily Attendance & Geofenced Timekeeping
+- **Table Description:** Daily Time Record morning/afternoon split-session check-ins with GPS geofencing.
+- **Total Fields:** 36 columns
+
+| Field Name | Field Type | Length | Description |
+| :--- | :---: | :---: | :--- |
+| `id` | `int` | 10 | Primary key. Unique auto-incrementing identifier for the `TimeLog` record. |
+| `user_id` | `int` | 10 | Foreign key referencing `users.id`. |
+| `ojt_record_id` | `int` | 10 | Foreign key referencing `ojt_records.id`. |
+| `log_date` | `date` | -- | Calendar date of duty rendered. |
+| `time_in` | `time` | -- | Stores time in information for `TimeLog`. |
+| `time_out` | `time` | -- | Stores time out information for `TimeLog`. |
+| `hours_rendered` | `numeric` | 4,2 | Total verified daily credit hours. |
+| `description` | `text` | -- | Stores description information for `TimeLog`. |
+| `latitude` | `numeric` | 10,7 | Stores latitude information for `TimeLog`. |
+| `longitude` | `numeric` | 10,7 | Stores longitude information for `TimeLog`. |
+| `status` | `varchar` | 255 | Audit verification state (pending, approved, rejected). |
+| `created_at` | `timestamp` | -- | System audit timestamp recording when the TimeLog entry was created. |
+| `updated_at` | `timestamp` | -- | System audit timestamp recording when the TimeLog entry was last modified. |
+| `time_in_lat` | `numeric` | 10,7 | Stores time in lat information for `TimeLog`. |
+| `time_in_lon` | `numeric` | 10,7 | Stores time in lon information for `TimeLog`. |
+| `time_out_lat` | `numeric` | 10,7 | Stores time out lat information for `TimeLog`. |
+| `time_out_lon` | `numeric` | 10,7 | Stores time out lon information for `TimeLog`. |
+| `location_validity` | `varchar` | 255 | GPS validation result (In Site [<=100m], Too Far, Verified). |
+| `distance_meters` | `int` | 10 | Stores distance meters information for `TimeLog`. |
+| `morning_in` | `time` | -- | Stores morning in information for `TimeLog`. |
+| `morning_out` | `time` | -- | Stores morning out information for `TimeLog`. |
+| `afternoon_in` | `time` | -- | Stores afternoon in information for `TimeLog`. |
+| `afternoon_out` | `time` | -- | Stores afternoon out information for `TimeLog`. |
+| `morning_hours` | `numeric` | 4,2 | Total credit hours rendered during morning session. |
+| `afternoon_hours` | `numeric` | 4,2 | Total credit hours rendered during afternoon session. |
+| `morning_in_lat` | `numeric` | 10,7 | Stores morning in lat information for `TimeLog`. |
+| `morning_in_lon` | `numeric` | 10,7 | Stores morning in lon information for `TimeLog`. |
+| `morning_out_lat` | `numeric` | 10,7 | Stores morning out lat information for `TimeLog`. |
+| `morning_out_lon` | `numeric` | 10,7 | Stores morning out lon information for `TimeLog`. |
+| `afternoon_in_lat` | `numeric` | 10,7 | Stores afternoon in lat information for `TimeLog`. |
+| `afternoon_in_lon` | `numeric` | 10,7 | Stores afternoon in lon information for `TimeLog`. |
+| `afternoon_out_lat` | `numeric` | 10,7 | Stores afternoon out lat information for `TimeLog`. |
+| `afternoon_out_lon` | `numeric` | 10,7 | Stores afternoon out lon information for `TimeLog`. |
+| `morning_validity` | `varchar` | 255 | Stores morning validity information for `TimeLog`. |
+| `afternoon_validity` | `varchar` | 255 | Stores afternoon validity information for `TimeLog`. |
+| `auto_morning_timeout` | `bool` | 1 | Stores auto morning timeout information for `TimeLog`. |
+
+---
+
+#### 2.21. Entity: `OjtEmergencyRequest` (Table: `ojt_emergency_requests`)
+- **Domain:** OJT Safety Governance & Exceptions
+- **Table Description:** Formal emergency interruption filing for medical crises, family emergencies, or accidents.
+- **Total Fields:** 28 columns
+
+| Field Name | Field Type | Length | Description |
+| :--- | :---: | :---: | :--- |
+| `id` | `int` | 10 | Primary key. Unique auto-incrementing identifier for the `OjtEmergencyRequest` record. |
+| `student_user_id` | `int` | 10 | Foreign key referencing `users.id`. |
+| `ojt_record_id` | `int` | 10 | Foreign key referencing `ojt_records.id`. |
+| `ojt_interest_id` | `int` | 10 | Foreign key referencing `student_ojt_interests.id`. |
+| `type` | `varchar` | 30 | Interruption category (temporary_leave, permanent_withdrawal). |
+| `category` | `varchar` | 50 | Emergency ground (medical, family_emergency, accident, other). |
+| `reason` | `text` | -- | Stores reason information for `OjtEmergencyRequest`. |
+| `supporting_document_path` | `varchar` | 255 | Stores supporting document path information for `OjtEmergencyRequest`. |
+| `supporting_document_name` | `varchar` | 255 | Stores supporting document name information for `OjtEmergencyRequest`. |
+| `start_date` | `date` | -- | Beginning date of excused absence or withdrawal. |
+| `expected_return_date` | `date` | -- | Stores expected return date information for `OjtEmergencyRequest`. |
+| `actual_return_date` | `date` | -- | Stores actual return date information for `OjtEmergencyRequest`. |
+| `hours_rendered_snapshot` | `numeric` | 6,2 | Snapshot of hours rendered at time of filing. |
+| `required_hours_snapshot` | `numeric` | 6,2 | Stores required hours snapshot information for `OjtEmergencyRequest`. |
+| `coordinator_status` | `varchar` | 30 | Academic supervisor status (pending, approved, rejected). |
+| `coordinator_remarks` | `text` | -- | Stores coordinator remarks information for `OjtEmergencyRequest`. |
+| `coordinator_action_by` | `int` | 10 | Foreign key referencing `users.id`. |
+| `coordinator_action_at` | `timestamp` | -- | Stores coordinator action at information for `OjtEmergencyRequest`. |
+| `credited_hours` | `numeric` | 6,2 | Stores credited hours information for `OjtEmergencyRequest`. |
+| `academic_verdict` | `varchar` | 50 | Final academic standing (excused_leave, incomplete_inc, official_drop). |
+| `company_status` | `varchar` | 30 | Host enterprise clearance status (pending, notified, cleared). |
+| `company_clearance_notes` | `text` | -- | Stores company clearance notes information for `OjtEmergencyRequest`. |
+| `company_cleared_at` | `timestamp` | -- | Stores company cleared at information for `OjtEmergencyRequest`. |
+| `assets_returned` | `bool` | 1 | Stores assets returned information for `OjtEmergencyRequest`. |
+| `fit_to_work_document_path` | `varchar` | 255 | Stores fit to work document path information for `OjtEmergencyRequest`. |
+| `cleared_to_resume_at` | `timestamp` | -- | Stores cleared to resume at information for `OjtEmergencyRequest`. |
+| `created_at` | `timestamp` | -- | System audit timestamp recording when the OjtEmergencyRequest entry was created. |
+| `updated_at` | `timestamp` | -- | System audit timestamp recording when the OjtEmergencyRequest entry was last modified. |
+
+---
+
+#### 2.22. Entity: `OjtPullOutRequest` (Table: `ojt_pull_out_requests`)
+- **Domain:** OJT Safety Governance & Exceptions
+- **Table Description:** Official student internship pull-out request with multi-tiered recommendations and clearances.
+- **Total Fields:** 27 columns
+
+| Field Name | Field Type | Length | Description |
+| :--- | :---: | :---: | :--- |
+| `id` | `int` | 10 | Primary key. Unique auto-incrementing identifier for the `OjtPullOutRequest` record. |
+| `student_user_id` | `int` | 10 | Foreign key referencing `users.id`. |
+| `ojt_record_id` | `int` | 10 | Foreign key referencing `ojt_records.id`. |
+| `ojt_interest_id` | `int` | 10 | Foreign key referencing `student_ojt_interests.id`. |
+| `reason_category` | `varchar` | 50 | Classification (breach_of_moa, safety_hostile, task_mismatch, medical_personal). |
+| `reason` | `text` | -- | Stores reason information for `OjtPullOutRequest`. |
+| `student_letter_path` | `varchar` | 255 | Stores student letter path information for `OjtPullOutRequest`. |
+| `student_letter_name` | `varchar` | 255 | Stores student letter name information for `OjtPullOutRequest`. |
+| `hours_rendered_snapshot` | `numeric` | 8,2 | Hours completed prior to requested pull-out. |
+| `required_hours_snapshot` | `numeric` | 8,2 | Stores required hours snapshot information for `OjtPullOutRequest`. |
+| `status` | `varchar` | 40 | Lifecycle status (pending_supervisor, recommended, emailed_to_dean, approved). |
+| `supervisor_id` | `int` | 10 | Foreign key referencing `users.id`. |
+| `supervisor_remarks` | `text` | -- | Stores supervisor remarks information for `OjtPullOutRequest`. |
+| `supervisor_action_at` | `timestamp` | -- | Stores supervisor action at information for `OjtPullOutRequest`. |
+| `dean_name` | `varchar` | 255 | Stores dean name information for `OjtPullOutRequest`. |
+| `dean_email` | `varchar` | 255 | Stores dean email information for `OjtPullOutRequest`. |
+| `generated_letter_body` | `text` | -- | Stores generated letter body information for `OjtPullOutRequest`. |
+| `delivery_method` | `varchar` | 30 | Stores delivery method information for `OjtPullOutRequest`. |
+| `emailed_at` | `timestamp` | -- | Stores emailed at information for `OjtPullOutRequest`. |
+| `admin_action_by` | `int` | 10 | Foreign key referencing `users.id`. |
+| `admin_remarks` | `text` | -- | Stores admin remarks information for `OjtPullOutRequest`. |
+| `admin_action_at` | `timestamp` | -- | Stores admin action at information for `OjtPullOutRequest`. |
+| `dean_verdict` | `varchar` | 30 | Official decision of the College Dean (approved, rejected). |
+| `credited_hours` | `numeric` | 8,2 | Final approved hours credited toward curricular completion. |
+| `allow_redeployment` | `bool` | 1 | Flag authorizing student trainee for secondary company reassignment. |
+| `created_at` | `timestamp` | -- | System audit timestamp recording when the OjtPullOutRequest entry was created. |
+| `updated_at` | `timestamp` | -- | System audit timestamp recording when the OjtPullOutRequest entry was last modified. |
+
+---
+
+#### 2.23. Entity: `EvaluationTemplate` (Table: `evaluation_templates`)
+- **Domain:** Trainee Performance Evaluation & Rubrics
+- **Table Description:** Standardized university performance evaluation rubrics created by faculty.
+- **Total Fields:** 9 columns
+
+| Field Name | Field Type | Length | Description |
+| :--- | :---: | :---: | :--- |
+| `id` | `int` | 10 | Primary key. Unique auto-incrementing identifier for the `EvaluationTemplate` record. |
+| `supervisor_id` | `int` | 10 | Foreign key referencing `users.id`. |
+| `program` | `varchar` | 50 | Academic degree program (e.g. BSIT 486-Hour Rubric). |
+| `title` | `varchar` | 255 | Official evaluation title (e.g. OJT Performance Appraisal). |
+| `description` | `text` | -- | Evaluation guidelines and score calculation weighting criteria. |
+| `is_active` | `bool` | 1 | Flag designating if rubric is currently active for evaluations. |
+| `created_at` | `timestamp` | -- | System audit timestamp recording when the EvaluationTemplate entry was created. |
+| `updated_at` | `timestamp` | -- | System audit timestamp recording when the EvaluationTemplate entry was last modified. |
+| `term` | `varchar` | 20 | Target academic evaluation period (midterm, endterm, both). |
+
+---
+
+#### 2.24. Entity: `EvaluationQuestion` (Table: `evaluation_questions`)
+- **Domain:** Trainee Performance Evaluation & Rubrics
+- **Table Description:** Itemized criteria and Likert rating questions belonging to an evaluation rubric.
+- **Total Fields:** 12 columns
+
+| Field Name | Field Type | Length | Description |
+| :--- | :---: | :---: | :--- |
+| `id` | `int` | 10 | Primary key. Unique auto-incrementing identifier for the `EvaluationQuestion` record. |
+| `template_id` | `int` | 10 | Foreign key referencing `evaluation_templates.id`. |
+| `category` | `varchar` | 100 | Competency category (Technical Competence, Work Ethic, Teamwork). |
+| `question_text` | `text` | -- | Specific performance criterion question prompt. |
+| `question_type` | `varchar` | 30 | Input format (scale, rating, text, boolean). |
+| `options` | `json` | -- | Stores options information for `EvaluationQuestion`. |
+| `scale_min` | `int` | 10 | Stores scale min information for `EvaluationQuestion`. |
+| `scale_max` | `int` | 10 | Maximum Likert scale value (e.g. 5 for a 1-5 scale). |
+| `is_required` | `bool` | 1 | Flag mandating question response before submission. |
+| `sort_order` | `int` | 10 | Stores sort order information for `EvaluationQuestion`. |
+| `created_at` | `timestamp` | -- | System audit timestamp recording when the EvaluationQuestion entry was created. |
+| `updated_at` | `timestamp` | -- | System audit timestamp recording when the EvaluationQuestion entry was last modified. |
+
+---
+
+#### 2.25. Entity: `StudentEvaluation` (Table: `student_evaluations`)
+- **Domain:** Trainee Performance Evaluation & Rubrics
+- **Table Description:** Comprehensive trainee performance appraisal submitted by host employer evaluator.
+- **Total Fields:** 21 columns
+
+| Field Name | Field Type | Length | Description |
+| :--- | :---: | :---: | :--- |
+| `id` | `int` | 10 | Primary key. Unique auto-incrementing identifier for the `StudentEvaluation` record. |
+| `template_id` | `int` | 10 | Foreign key referencing `evaluation_templates.id`. |
+| `student_user_id` | `int` | 10 | Foreign key referencing `users.id`. |
+| `company_user_id` | `int` | 10 | Foreign key referencing `users.id`. |
+| `supervisor_user_id` | `int` | 10 | Foreign key referencing `users.id`. |
+| `ojt_record_id` | `int` | 10 | Foreign key referencing `ojt_records.id`. |
+| `ojt_posting_id` | `int` | 10 | Foreign key referencing `ojt_postings.id`. |
+| `status` | `varchar` | 30 | Appraisal workflow state (sent, submitted, verified). |
+| `overall_score` | `numeric` | 5,2 | Composite percentage score computed across all criteria (0 to 100%). |
+| `general_feedback` | `text` | -- | Stores general feedback information for `StudentEvaluation`. |
+| `recommendation` | `varchar` | 100 | Stores recommendation information for `StudentEvaluation`. |
+| `evaluator_name` | `varchar` | 255 | Stores evaluator name information for `StudentEvaluation`. |
+| `evaluator_position` | `varchar` | 255 | Stores evaluator position information for `StudentEvaluation`. |
+| `sent_at` | `timestamp` | -- | Stores sent at information for `StudentEvaluation`. |
+| `submitted_at` | `timestamp` | -- | Stores submitted at information for `StudentEvaluation`. |
+| `created_at` | `timestamp` | -- | System audit timestamp recording when the StudentEvaluation entry was created. |
+| `updated_at` | `timestamp` | -- | System audit timestamp recording when the StudentEvaluation entry was last modified. |
+| `term` | `varchar` | 20 | Evaluation period term (midterm, endterm). |
+| `is_waived` | `bool` | 1 | Flag indicating if evaluation requirement was waived by supervisor. |
+| `waiver_reason` | `text` | -- | Stores waiver reason information for `StudentEvaluation`. |
+| `weight` | `numeric` | 4,2 | Academic weighting coefficient (e.g. 0.50 for 50% grade contribution). |
+
+---
+
+#### 2.26. Entity: `StudentEvaluationAnswer` (Table: `student_evaluation_answers`)
+- **Domain:** Trainee Performance Evaluation & Rubrics
+- **Table Description:** Itemized rating scores and qualitative feedback recorded per rubric criterion.
+- **Total Fields:** 7 columns
+
+| Field Name | Field Type | Length | Description |
+| :--- | :---: | :---: | :--- |
+| `id` | `int` | 10 | Primary key. Unique auto-incrementing identifier for the `StudentEvaluationAnswer` record. |
+| `student_evaluation_id` | `int` | 10 | Foreign key referencing `student_evaluations.id`. |
+| `evaluation_question_id` | `int` | 10 | Foreign key referencing `evaluation_questions.id`. |
+| `rating_value` | `int` | 10 | Numeric score assigned by evaluator on Likert scale. |
+| `text_value` | `text` | -- | Qualitative commendation or constructive remarks. |
+| `created_at` | `timestamp` | -- | System audit timestamp recording when the StudentEvaluationAnswer entry was created. |
+| `updated_at` | `timestamp` | -- | System audit timestamp recording when the StudentEvaluationAnswer entry was last modified. |
+
+---
+
+#### 2.27. Entity: `JobListing` (Table: `job_listings`)
+- **Domain:** Career Recruitment & Job Placement
+- **Table Description:** Full-time, contractual, and graduate career vacancies posted by partner companies.
+- **Total Fields:** 17 columns
+
+| Field Name | Field Type | Length | Description |
+| :--- | :---: | :---: | :--- |
+| `id` | `int` | 10 | Primary key. Unique auto-incrementing identifier for the `JobListing` record. |
+| `company_user_id` | `int` | 10 | Foreign key referencing `users.id`. |
+| `title` | `varchar` | 255 | Professional job title (e.g. Associate Software Engineer). |
+| `department` | `varchar` | 255 | Organizational department. |
+| `location` | `varchar` | 255 | Office location or remote job classification. |
+| `employment_type` | `varchar` | 255 | Contract structure (Full-time, Part-time, Contract, Internship). |
+| `salary_range` | `varchar` | 255 | Remuneration compensation package bracket. |
+| `description` | `text` | -- | Stores description information for `JobListing`. |
+| `responsibilities` | `json` | -- | Stores responsibilities information for `JobListing`. |
+| `requirements` | `json` | -- | Stores requirements information for `JobListing`. |
+| `benefits` | `json` | -- | Stores benefits information for `JobListing`. |
+| `required_skills` | `json` | -- | Stores required skills information for `JobListing`. |
+| `status` | `varchar` | 255 | Vacancy status (active, closed, archived). |
+| `expires_at` | `timestamp` | -- | Stores expires at information for `JobListing`. |
+| `created_at` | `timestamp` | -- | System audit timestamp recording when the JobListing entry was created. |
+| `updated_at` | `timestamp` | -- | System audit timestamp recording when the JobListing entry was last modified. |
+| `experience_level` | `varchar` | 60 | Stores experience level information for `JobListing`. |
+
+---
+
+#### 2.28. Entity: `JobApplication` (Table: `job_applications`)
+- **Domain:** Career Recruitment & Job Placement
+- **Table Description:** Career applications submitted by graduates, students, or registered jobseekers.
+- **Total Fields:** 12 columns
+
+| Field Name | Field Type | Length | Description |
+| :--- | :---: | :---: | :--- |
+| `id` | `int` | 10 | Primary key. Unique auto-incrementing identifier for the `JobApplication` record. |
+| `job_listing_id` | `int` | 10 | Foreign key referencing `job_listings.id`. |
+| `applicant_user_id` | `int` | 10 | Foreign key referencing `users.id`. |
+| `status` | `varchar` | 255 | Recruitment pipeline state (applied, screening, interview, offered, hired, rejected). |
+| `match_score` | `int` | 10 | Algorithmically computed resume-to-job competency match percentage. |
+| `cover_letter` | `text` | -- | Candidate letter of intent and qualification summary. |
+| `notes` | `text` | -- | Stores notes information for `JobApplication`. |
+| `created_at` | `timestamp` | -- | System audit timestamp recording when the JobApplication entry was created. |
+| `updated_at` | `timestamp` | -- | System audit timestamp recording when the JobApplication entry was last modified. |
+| `offer_details` | `json` | -- | Stores offer details information for `JobApplication`. |
+| `offer_decision` | `varchar` | 20 | Final applicant response to job offer (accepted, declined, pending). |
+| `offer_decided_at` | `timestamp` | -- | Stores offer decided at information for `JobApplication`. |
+
+---
+
+#### 2.29. Entity: `Interview` (Table: `interviews`)
+- **Domain:** Career Recruitment & Job Placement
+- **Table Description:** Recruitment interview sessions scheduled between corporate hiring teams and candidates.
+- **Total Fields:** 14 columns
+
+| Field Name | Field Type | Length | Description |
+| :--- | :---: | :---: | :--- |
+| `id` | `int` | 10 | Primary key. Unique auto-incrementing identifier for the `Interview` record. |
+| `job_application_id` | `int` | 10 | Foreign key referencing `job_applications.id`. |
+| `company_user_id` | `int` | 10 | Foreign key referencing `users.id`. |
+| `type` | `varchar` | 255 | Session mode (Technical, Initial HR, Final Panel Interview). |
+| `scheduled_date` | `date` | -- | Calendar date of interview meeting. |
+| `scheduled_time` | `time` | -- | Stores scheduled time information for `Interview`. |
+| `platform` | `varchar` | 255 | Interview platform (Google Meet, Zoom, On-site Office). |
+| `status` | `varchar` | 255 | Interview outcome (scheduled, completed, cancelled, rescheduled). |
+| `notes` | `text` | -- | Stores notes information for `Interview`. |
+| `created_at` | `timestamp` | -- | System audit timestamp recording when the Interview entry was created. |
+| `updated_at` | `timestamp` | -- | System audit timestamp recording when the Interview entry was last modified. |
+| `interviewer_name` | `varchar` | 255 | Stores interviewer name information for `Interview`. |
+| `duration` | `varchar` | 255 | Stores duration information for `Interview`. |
+| `meeting_link` | `varchar` | 255 | Stores meeting link information for `Interview`. |
+
+---

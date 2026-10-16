@@ -26,6 +26,7 @@ import { renderProfileSetup } from './pages/profile-setup.js';
 import { renderCompanyProfile } from './pages/profile.js';
 import { renderOjtSlots } from './pages/ojt-slots.js';
 import { renderOjtTrainees } from './pages/ojt-trainees.js';
+import { renderEmployees } from './pages/employees.js';
 
 /* ─────────────────────────────────────────
    SMART PAGE VIEW & CACHING MANAGER
@@ -40,6 +41,7 @@ const routeEndpointMap = {
   '/post-job':     ['/company/jobs'],
   '/ojt-slots':    ['/company/ojt-postings'],
   '/ojt-trainees': ['/company/ojt-trainees'],
+  '/employees':    ['/company/employees'],
   '/applicants':   ['/company/applications'],
   '/interviews':   ['/company/interviews'],
   '/analytics':    ['/company/analytics'],
@@ -326,6 +328,7 @@ async function initApp() {
   registerRoute('/post-job', renderPage('/post-job', renderPostJob));
   registerRoute('/ojt-slots', renderPage('/ojt-slots', renderOjtSlots));
   registerRoute('/ojt-trainees', renderPage('/ojt-trainees', renderOjtTrainees));
+  registerRoute('/employees', renderPage('/employees', renderEmployees));
   registerRoute('/applicants', renderPage('/applicants', renderApplicants));
   registerRoute('/interviews', renderPage('/interviews', renderInterviews));
   registerRoute('/analytics', renderPage('/analytics', renderAnalytics));
@@ -333,7 +336,7 @@ async function initApp() {
   registerRoute('/profile', renderPage('/profile', renderCompanyProfile));
 
   // Profile-guard: routes that require profile to be set up
-  const GUARDED_ROUTES = ['/jobs', '/post-job', '/ojt-slots', '/ojt-trainees', '/applicants', '/interviews', '/analytics'];
+  const GUARDED_ROUTES = ['/jobs', '/post-job', '/ojt-slots', '/ojt-trainees', '/employees', '/applicants', '/interviews', '/analytics'];
   window.addEventListener('hashchange', () => {
     const raw = window.location.hash.slice(1) || '/';
     const path = raw.split('?')[0];

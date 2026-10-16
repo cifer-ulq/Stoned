@@ -136,6 +136,7 @@ export default function traineesPage(container) {
       }
       renderKpis(allTrainees);
       renderTable();
+      handleDeepLink();
     } catch (err) {
       tbody.innerHTML = `
         <tr>
@@ -146,6 +147,26 @@ export default function traineesPage(container) {
             </div>
           </td>
         </tr>`;
+    }
+  }
+
+  function handleDeepLink() {
+    const raw = window.location.hash.slice(1);
+    if (!raw.includes('?')) return;
+    const search = raw.slice(raw.indexOf('?') + 1);
+    const params = new URLSearchParams(search);
+    const targetStudentId = parseInt(params.get('student_id'), 10);
+    const action = params.get('action');
+
+    if (targetStudentId && action === 'review_emergency') {
+      const target = allTrainees.find(x => x.id === targetStudentId);
+      if (target && target.emergency_request) {
+        openReviewEmergencyModal({
+          trainee: target,
+          onReviewed: () => loadTrainees(),
+        });
+        window.history.replaceState(null, '', '#/trainees');
+      }
     }
   }
 
@@ -350,7 +371,9 @@ export default function traineesPage(container) {
           <td>
             ${REAL(t.company)
               ? `<div style="display:flex;align-items:center;gap:6px;font-size:var(--text-sm);font-weight:500;color:var(--text-primary);">${icon('building', 13)} <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;">${t.company}</span></div>`
-              : `<span style="color:var(--text-tertiary);font-size:var(--text-xs);font-style:italic;">Undeployed</span>`}
+              : (t.is_pulled_out && t.previous_company
+                  ? `<div><span style="color:var(--text-tertiary);font-size:var(--text-xs);font-style:italic;display:block;">Undeployed</span><span style="font-size:0.7rem;color:var(--text-tertiary);">(Prev: ${t.previous_company})</span></div>`
+                  : `<span style="color:var(--text-tertiary);font-size:var(--text-xs);font-style:italic;">Undeployed</span>`)}
           </td>
           <td>
             ${t.hasPlacement && t.requiredHours > 0 ? `
@@ -358,7 +381,7 @@ export default function traineesPage(container) {
                 <div class="tr2-prog-bar">
                   <div class="tr2-prog-fill" style="width:${pct}%;background:${barColor};"></div>
                 </div>
-                <span class="tr2-prog-val">${t.completedHours}/${t.requiredHours}h</span>
+                <span class="tr2-prog-val">${t.completedHours}/${t.requiredHours}h${t.accreditedHours > 0 ? ` <span style="font-size:0.65rem;color:#005930;font-weight:700;" title="${t.accreditedHours}h accredited from prior OJT">(+${t.accreditedHours}h)</span>` : ''}</span>
               </div>
             ` : `
               <span style="font-size:var(--text-xs);color:var(--text-tertiary);">—</span>
@@ -366,6 +389,13 @@ export default function traineesPage(container) {
           </td>
           <td>
             <span class="tr2-badge ${badgeCfg.cls}">${badgeCfg.text}</span>
+            ${t.is_pulled_out ? `
+              <div style="margin-top:3px;">
+                <span class="badge" style="background:#FEE2E2;color:#991B1B;font-size:0.65rem;padding:2px 6px;font-weight:700;">
+                  Pulled Out
+                </span>
+              </div>
+            ` : ''}
             ${t.requirements ? `
               <div style="margin-top:3px;">
                 <span class="badge ${
@@ -382,8 +412,8 @@ export default function traineesPage(container) {
           <td style="text-align:right;">
             <div style="display:flex;align-items:center;justify-content:flex-end;gap:4px;">
               ${t.emergency_status && t.emergency_status !== 'none' ? `
-                <button class="btn btn--outline btn--sm tr2-emer-btn" data-id="${t.id}" style="padding:4px 8px;font-size:0.72rem;gap:4px;color:${t.emergency_status === 'pending' ? '#b45309' : (t.emergency_status === 'on_leave' ? '#0284c7' : '#dc2626')};border-color:${t.emergency_status === 'pending' ? 'rgba(245,158,11,0.45)' : (t.emergency_status === 'on_leave' ? 'rgba(2,132,199,0.4)' : 'rgba(239,68,68,0.4)')};font-weight:600;background:${t.emergency_status === 'pending' ? 'rgba(245,158,11,0.06)' : 'transparent'};" title="Review Emergency / Leave Notice">
-                  ${icon('alertTriangle', 13)} ${t.emergency_status === 'pending' ? 'Review Notice' : (t.emergency_status === 'on_leave' ? 'On Leave' : 'Withdrawn')}
+                <button class="btn btn--outline btn--sm tr2-emer-btn" data-id="${t.id}" style="padding:4px 8px;font-size:0.72rem;gap:4px;color:${t.emergency_status === 'pending' ? '#b45309' : (t.emergency_status === 'on_leave' ? (t.emergency_request?.has_fit_to_work ? '#059669' : '#0284c7') : '#dc2626')};border-color:${t.emergency_status === 'pending' ? 'rgba(245,158,11,0.45)' : (t.emergency_status === 'on_leave' ? (t.emergency_request?.has_fit_to_work ? 'rgba(16,185,129,0.5)' : 'rgba(2,132,199,0.4)') : 'rgba(239,68,68,0.4)')};font-weight:600;background:${t.emergency_status === 'pending' ? 'rgba(245,158,11,0.06)' : (t.emergency_request?.has_fit_to_work ? 'rgba(16,185,129,0.08)' : 'transparent')};" title="${t.emergency_request?.has_fit_to_work ? 'Fit-to-Work Clearance Uploaded — Click to Inspect' : 'Review Emergency / Leave Notice'}">
+                  ${icon(t.emergency_request?.has_fit_to_work ? 'shieldCheck' : 'alertTriangle', 13)} ${t.emergency_status === 'pending' ? 'Review Notice' : (t.emergency_status === 'on_leave' ? (t.emergency_request?.has_fit_to_work ? 'Clearance Uploaded' : 'On Leave') : 'Withdrawn')}
                 </button>
               ` : ''}
               ${t.pull_out_status && t.pull_out_status !== 'none' ? `
@@ -568,12 +598,12 @@ export default function traineesPage(container) {
 
     root.innerHTML = `
       <div class="modal-backdrop" id="tr2-modal-bd">
-        <div class="modal" style="max-width:640px;border-radius:var(--radius-xl);overflow:hidden;">
-          <div class="modal__header" style="border-bottom:1px solid var(--border-default);padding:var(--space-4) var(--space-6);">
+        <div class="modal modal--scrollable" style="width:95vw;max-width:680px;border-radius:var(--radius-xl);box-shadow:var(--shadow-2xl);">
+          <div class="modal__header" style="border-bottom:1px solid var(--border-default);padding:var(--space-4) var(--space-6);flex-shrink:0;">
             <span class="modal__title" style="font-size:var(--text-base);font-weight:700;">Trainee Academic Profile</span>
             <button class="modal__close" id="tr2-cls" style="cursor:pointer;" aria-label="Close modal">${icon('x', 18)}</button>
           </div>
-          <div class="modal__body" style="padding:var(--space-6);">
+          <div class="modal__body" style="padding:var(--space-6);flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;">
 
             <!-- Identity Header -->
             <div class="tr2-modal-id">
@@ -609,6 +639,11 @@ export default function traineesPage(container) {
                       <p style="margin:4px 0 0;font-size:0.78rem;color:var(--text-secondary);line-height:1.4;">
                         ${t.emergency_request?.type === 'permanent_withdrawal' ? 'Permanent OJT Stoppage Notice' : 'Temporary Leave of Absence'} &bull; Category: <strong>${(t.emergency_request?.category || '').replace(/_/g, ' ').toUpperCase()}</strong>
                       </p>
+                      ${t.emergency_request?.has_fit_to_work ? `
+                        <div style="margin-top:6px;display:inline-flex;align-items:center;gap:6px;background:rgba(16,185,129,0.12);color:#065f46;border:1px solid rgba(16,185,129,0.3);padding:4px 8px;border-radius:6px;font-size:0.75rem;font-weight:600;">
+                          ${icon('shieldCheck', 14)} Fit-to-Work Clearance certificate submitted and awaiting review
+                        </div>
+                      ` : ''}
                       ${t.emergency_request?.reason ? `
                         <div style="margin-top:6px;font-size:0.76rem;color:var(--text-primary);background:var(--bg-card);padding:6px 10px;border-radius:6px;border:1px solid var(--border-default);">
                           <em>&ldquo;${t.emergency_request.reason}&rdquo;</em>
@@ -616,8 +651,38 @@ export default function traineesPage(container) {
                       ` : ''}
                     </div>
                   </div>
-                  <button class="btn btn--primary btn--sm tr2-modal-rev-emer-btn" style="gap:6px;background:#dc2626;border-color:#dc2626;font-size:0.74rem;">
-                    ${icon('alertTriangle', 13)} Review Emergency Decision
+                  <button class="btn btn--primary btn--sm tr2-modal-rev-emer-btn" style="gap:6px;background:${t.emergency_request?.has_fit_to_work ? '#059669' : '#dc2626'};border-color:${t.emergency_request?.has_fit_to_work ? '#059669' : '#dc2626'};font-size:0.74rem;">
+                    ${icon(t.emergency_request?.has_fit_to_work ? 'shieldCheck' : 'alertTriangle', 13)} ${t.emergency_request?.has_fit_to_work ? 'Inspect Fit-to-Work Clearance' : 'Review Emergency Decision'}
+                  </button>
+                </div>
+              </div>
+            ` : ''}
+
+            <!-- Pull-Out Status Banner if applicable -->
+            ${t.pull_out_status && t.pull_out_status !== 'none' ? `
+              <div style="background:${t.pull_out_status === 'approved' ? 'rgba(16,185,129,0.06)' : 'rgba(245,158,11,0.06)'};border:1.5px solid ${t.pull_out_status === 'approved' ? 'rgba(16,185,129,0.3)' : 'rgba(245,158,11,0.3)'};border-left:4px solid ${t.pull_out_status === 'approved' ? '#059669' : '#d97706'};border-radius:var(--radius-lg);padding:14px 16px;margin-bottom:var(--space-4);">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+                  <div style="display:flex;align-items:flex-start;gap:10px;">
+                    <div style="width:34px;height:34px;border-radius:8px;background:${t.pull_out_status === 'approved' ? 'rgba(16,185,129,0.12)' : 'rgba(245,158,11,0.12)'};color:${t.pull_out_status === 'approved' ? '#059669' : '#d97706'};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                      ${icon('fileText', 18)}
+                    </div>
+                    <div>
+                      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                        <strong style="font-size:0.86rem;color:${t.pull_out_status === 'approved' ? '#065F46' : '#92400e'};">
+                          ${t.pull_out_status === 'approved' ? 'OJT Pull-Out Approved &middot; Cleared for Re-deployment' : (t.pull_out_status === 'pending_supervisor' ? 'Pull-Out Request Awaiting Your Review' : 'Pull-Out Under Dean Review')}
+                        </strong>
+                        <span class="badge" style="font-size:0.68rem;padding:2px 6px;background:${t.pull_out_status === 'approved' ? '#D1FAE5' : '#FEF3C7'};color:${t.pull_out_status === 'approved' ? '#065F46' : '#92400e'};">
+                          ${t.pull_out_status.replace(/_/g, ' ').toUpperCase()}
+                        </span>
+                      </div>
+                      <p style="margin:4px 0 0;font-size:0.78rem;color:var(--text-secondary);line-height:1.4;">
+                        ${t.previous_company ? `Previous Host: <strong>${t.previous_company}</strong> &bull; ` : ''}Category: <strong>${(t.pull_out_request?.reason_category || '').replace(/_/g, ' ').toUpperCase()}</strong>
+                        ${t.pull_out_request?.credited_hours !== null && t.pull_out_request?.credited_hours !== undefined ? ` &bull; Credited: <strong>${t.pull_out_request.credited_hours} hrs</strong>` : ''}
+                      </p>
+                    </div>
+                  </div>
+                  <button class="btn btn--outline btn--sm tr2-modal-rev-pullout-btn" style="gap:6px;color:#b91c1c;border-color:rgba(185,28,28,0.4);font-size:0.74rem;">
+                    ${icon('fileText', 13)} ${t.pull_out_status === 'pending_supervisor' ? 'Review & Recommend' : 'View Pull-Out Details'}
                   </button>
                 </div>
               </div>
@@ -752,20 +817,19 @@ export default function traineesPage(container) {
               <div class="tr2-logs">${logsHtml}</div>
             </div>
 
-            <!-- Actions Footer -->
-            <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:var(--space-5);padding-top:var(--space-4);border-top:1px solid var(--border-default);">
-              <button class="btn btn--outline btn--sm" id="modal-close-btn">Close</button>
-              ${t.company_user_id ? `
-                <button class="btn btn--outline btn--sm tr2-modal-chat-co-btn" data-company-id="${t.company_user_id}" style="gap:6px;color:#0284c7;border-color:rgba(2,132,199,0.35);">
-                  ${icon('building', 13)} Message Company
-                </button>
-              ` : ''}
-              <button class="btn btn--primary btn--sm tr2-modal-chat-btn" data-id="${t.id}" style="gap:6px;">
-                ${icon('messageCircle', 13)} Message Student
-              </button>
-              ${t.email ? `<a href="mailto:${t.email}" class="btn btn--outline btn--sm" style="gap:6px;">${icon('mail', 13)} Email Student</a>` : ''}
-            </div>
+          </div><!-- /.modal__body -->
 
+          <!-- Actions Footer (Pinned) -->
+          <div class="modal__footer" style="flex-shrink:0;border-top:1px solid var(--border-default);padding:var(--space-3) var(--space-6);display:flex;justify-content:flex-end;gap:8px;background:var(--bg-secondary);">
+            <button class="btn btn--outline btn--sm" id="modal-close-btn" type="button">Close</button>
+            ${(t.company_user_id || (t.company && t.company !== '—')) ? `
+              <button type="button" class="btn btn--outline btn--sm tr2-modal-chat-co-btn" data-company-id="${t.company_user_id || ''}" style="gap:6px;color:#0284c7;border-color:rgba(2,132,199,0.35);" title="Message Host Company (${t.company || 'Company'})">
+                ${icon('building', 13)} Message Company
+              </button>
+            ` : ''}
+            <button type="button" class="btn btn--primary btn--sm tr2-modal-chat-btn" data-id="${t.id}" style="gap:6px;" title="Message Student (${t.name})">
+              ${icon('messageCircle', 13)} Message Student
+            </button>
           </div>
         </div>
       </div>`;
@@ -782,11 +846,34 @@ export default function traineesPage(container) {
         }
       });
     });
-    root.querySelector('.tr2-modal-chat-co-btn')?.addEventListener('click', () => {
-      const compId = t.company_user_id;
+    root.querySelector('.tr2-modal-rev-pullout-btn')?.addEventListener('click', () => {
+      close();
+      openReviewPullOutModal({
+        trainee: t,
+        onReviewed: () => {
+          loadTrainees();
+        }
+      });
+    });
+    root.querySelector('.tr2-modal-chat-co-btn')?.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      let compId = t.company_user_id;
+      if (!compId && t.company && t.company !== '—') {
+        try {
+          const companiesRes = await apiGet('/chat/companies', { bypassCache: true });
+          const found = (companiesRes?.data || []).find(c =>
+            (c.name && c.name.toLowerCase().includes(t.company.toLowerCase())) ||
+            (c.company_name && c.company_name.toLowerCase().includes(t.company.toLowerCase()))
+          );
+          if (found) compId = found.id;
+        } catch (_) {}
+      }
       close();
       if (compId && window.openCompanyChat) {
         window.openCompanyChat(compId);
+      } else if (window.openChat) {
+        window.openChat();
       }
     });
     root.querySelector('#tr2-open-req-btn')?.addEventListener('click', () => {
@@ -821,9 +908,15 @@ export default function traineesPage(container) {
         });
       }
     });
-    root.querySelector('.tr2-modal-chat-btn')?.addEventListener('click', () => {
+    root.querySelector('.tr2-modal-chat-btn')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
       close();
-      openStudentChat(t.id);
+      if (window.openStudentChat) {
+        window.openStudentChat(t.id);
+      } else {
+        openStudentChat(t.id);
+      }
     });
     root.querySelector('#tr2-modal-bd').addEventListener('click', e => {
       if (e.target.id === 'tr2-modal-bd') close();
@@ -831,6 +924,10 @@ export default function traineesPage(container) {
   }
 
   async function openStudentChat(studentId) {
+    if (window.openStudentChat) {
+      window.openStudentChat(studentId);
+      return;
+    }
     try {
       const res = await apiGet(`/chat/init/coordinator/${studentId}`);
       if (res?.key && window.openChat) {

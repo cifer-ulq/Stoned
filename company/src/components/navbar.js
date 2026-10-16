@@ -46,6 +46,10 @@ export function createNavbar() {
           ${icon('graduationCap', 22)}
           <span class="navbar__tab-indicator"></span>
         </a>
+        <a class="navbar__tab" href="#/employees" data-route="/employees" title="Employees & Staff Roster">
+          ${icon('userCheck', 22)}
+          <span class="navbar__tab-indicator"></span>
+        </a>
         <a class="navbar__tab" href="#/applicants" data-route="/applicants" title="Applicants">
           ${icon('users', 22)}
           <span class="navbar__tab-indicator"></span>

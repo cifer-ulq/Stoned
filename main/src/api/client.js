@@ -56,11 +56,12 @@ function handleMutationInvalidation(path) {
       '/student/jobs*',
       '/ojt/postings*'
     ]);
-  } else if (p.includes('/ojt')) {
+  } else if (p.includes('/ojt') || p.includes('/pull-out')) {
     apiCache.invalidate([
       '/ojt/my-interests*',
       '/ojt/postings*',
       '/student/ojt-tracker*',
+      '/student/ojt-pull-out*',
       '/student/employment-status*',
       '/student/applications*',
       '/student/dashboard*'

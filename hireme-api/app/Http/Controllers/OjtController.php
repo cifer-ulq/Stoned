@@ -159,6 +159,34 @@ class OjtController extends Controller
             ], 403);
         }
 
+        // Enforce university curriculum target and carry-forward deduction
+        $curriculumTarget = 600;
+        $accreditedHours  = (float) \App\Models\OjtPullOutRequest::where('student_user_id', $user->id)
+            ->where('status', 'approved')
+            ->sum('credited_hours');
+
+        $remainingRequired = max(0, $curriculumTarget - $accreditedHours);
+
+        // Parse posting's duration in hours
+        $postingHours = 600;
+        if ($posting->duration) {
+            if (preg_match('/(\d+)\s*h(?:ours?|rs?)/i', $posting->duration, $m)) {
+                $postingHours = (int) $m[1];
+            } elseif (preg_match('/^\s*(\d+)\s*$/', trim($posting->duration), $m)) {
+                $postingHours = (int) $m[1];
+            }
+        }
+
+        // Student can only apply if the listing has enough or equal hours
+        if ($postingHours < $remainingRequired) {
+            $creditNote = $accreditedHours > 0 ? " (You have {$accreditedHours} hours accredited from prior OJT)" : "";
+            return response()->json([
+                'success' => false,
+                'code'    => 'INSUFFICIENT_HOURS',
+                'message' => "This OJT listing offers {$postingHours} hours, but you require at least {$remainingRequired} remaining hours to satisfy your university curriculum requirement of {$curriculumTarget} hours{$creditNote}.",
+            ], 422);
+        }
+
         $exists = StudentOjtInterest::where('student_user_id', $user->id)
             ->where('ojt_posting_id', $id)
             ->exists();

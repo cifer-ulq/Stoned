@@ -1,4 +1,4 @@
-﻿/**
+/**
  * CHMSU HireMe — Company Portal Left Sidebar
  */
 import { icon } from './icons.js';
@@ -44,6 +44,11 @@ export function createLeftSidebar() {
          href="${profileCompleted ? '#/ojt-trainees' : '#/'}" data-route="/ojt-trainees">
         <span class="sidebar-nav__icon" style="background:rgba(16,185,129,.12);color:#10B981;">${icon('clipboardList',20)}</span>
         <span class="sidebar-nav__label">OJT Trainees</span>
+      </a>
+      <a class="sidebar-nav__item${profileCompleted ? '' : ' sidebar-nav__item--disabled'}"
+         href="${profileCompleted ? '#/employees' : '#/'}" data-route="/employees">
+        <span class="sidebar-nav__icon" style="background:rgba(0,89,48,.12);color:#005930;">${icon('userCheck',20)}</span>
+        <span class="sidebar-nav__label">Employees</span>
       </a>
       <a class="sidebar-nav__item${profileCompleted ? '' : ' sidebar-nav__item--disabled'}"
          href="${profileCompleted ? '#/applicants' : '#/'}" data-route="/applicants">

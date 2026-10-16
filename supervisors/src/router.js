@@ -16,8 +16,9 @@ export function navigate(path) {
 function resolveRoute() {
   let raw = window.location.hash.slice(1) || '/';
   if (!raw.startsWith('/')) raw = '/' + raw;
-  if (raw === '/dashboard' || raw === '/home') raw = '/';
-  const hash = raw;
+  const [cleanPath] = raw.split('?');
+  const routeKey = (cleanPath === '/dashboard' || cleanPath === '/home') ? '/' : cleanPath;
+  const hash = routeKey;
   const handler = routes[hash];
   const mainContent = document.getElementById('main-content');
 

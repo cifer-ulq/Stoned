@@ -4,7 +4,7 @@
  * No tasks column — logs only show date, time in, time out, hours, status.
  */
 import { icon } from '../components/icons.js';
-import { apiGet, apiPost, apiUpload, apiCache } from '../api/client.js';
+import { apiGet, apiPost, apiUpload, apiCache, storageUrl } from '../api/client.js';
 
 // Haversine distance in metres (client-side, for quick UI check)
 function haversineMeters(lat1, lon1, lat2, lon2) {
@@ -211,7 +211,7 @@ function renderPrestartOJT(container, res) {
             <div class="ojt-stepper__content">
               <span class="ojt-stepper__step-num">Step 4</span>
               <span class="ojt-stepper__step-name">Completion</span>
-              <span class="ojt-stepper__step-status">${requiredHours} Hours</span>
+              <span class="ojt-stepper__step-status">${requiredHours} Hours${dep.accreditedHours > 0 ? ` (${dep.accreditedHours}h credited)` : ''}</span>
             </div>
           </div>
         </div>
@@ -249,7 +249,7 @@ function renderPrestartOJT(container, res) {
             </div>
             <div class="ojt-field">
               <span class="ojt-field__label">${icon('clock', 12)} Required Hours</span>
-              <span class="ojt-field__val">${requiredHours} Hours</span>
+              <span class="ojt-field__val">${requiredHours} Hours${dep.accreditedHours > 0 ? ` <span style="font-size:0.75rem;color:#005930;font-weight:600;">(${dep.accreditedHours}h accredited)</span>` : ''}</span>
             </div>
             <div class="ojt-field">
               <span class="ojt-field__label">${icon('user', 12)} Supervisor</span>
@@ -416,10 +416,26 @@ export async function renderOJTTracker(container) {
     <div class="skeleton skeleton--card" style="height:220px;"></div>
   `;
 
+  // Attach reactive refresh listener if not already bound on container
+  if (!container._trackerNotifBound) {
+    container._trackerNotifBound = true;
+    const handleReactiveUpdate = () => {
+      if (!document.body.contains(container)) {
+        window.removeEventListener('hireme:ojt-updated', handleReactiveUpdate);
+        window.removeEventListener('hireme:notification-received', handleReactiveUpdate);
+        container._trackerNotifBound = false;
+        return;
+      }
+      renderOJTTracker(container);
+    };
+    window.addEventListener('hireme:ojt-updated', handleReactiveUpdate);
+    window.addEventListener('hireme:notification-received', handleReactiveUpdate);
+  }
+
   const [res, evalRes, pullOutRes] = await Promise.all([
-    apiGet('/student/ojt-tracker').catch(() => null),
+    apiGet('/student/ojt-tracker', { forceRefresh: true }).catch(() => null),
     apiGet('/student/evaluation').catch(() => null),
-    apiGet('/student/ojt-pull-out').catch(() => null),
+    apiGet('/student/ojt-pull-out', { forceRefresh: true }).catch(() => null),
   ]);
   const evaluation = evalRes?.data || null;
   const pullOut = pullOutRes?.data || null;
@@ -447,10 +463,11 @@ export async function renderOJTTracker(container) {
     ...res.deployment,
     ...res.progress,
     emergency: res.emergency || null,
-    pull_out: pullOut || null,
+    pull_out: pullOut || res.pull_out || null,
     is_on_leave: Boolean(res.is_on_leave),
     emergency_pending: Boolean(res.emergency_pending),
     is_withdrawn: Boolean(res.is_withdrawn),
+    is_pull_out_pending: Boolean(res.is_pull_out_pending || (pullOut && ['pending_supervisor', 'recommended_by_supervisor', 'printed_pending_signature', 'emailed_to_dean'].includes(pullOut.status))),
   };
   const logs = res.logs || [];
 
@@ -479,7 +496,50 @@ function renderEmergencyBannerHtml(ojt) {
   const em = ojt.emergency;
   if (!em) return '';
 
-  if (ojt.is_on_leave || (em.coordinator_status === 'approved' && em.type === 'temporary_leave')) {
+  const isActivelyOnLeave = ojt.is_on_leave && !em.cleared_to_resume_at && !em.is_cleared;
+  const isResumedFromLeave = !ojt.is_on_leave && Boolean(em.cleared_to_resume_at || em.is_cleared);
+
+  if (isResumedFromLeave) {
+    return `
+      <section class="page-section animate-fade-in-up" style="margin-bottom:14px;" id="sec-resumed-banner">
+        <div class="jp-card" style="background:linear-gradient(135deg, rgba(16,185,129,0.07) 0%, rgba(2,132,199,0.05) 100%);border:1.5px solid rgba(16,185,129,0.3);border-left:5px solid #059669;padding:16px 20px;border-radius:12px;">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:14px;">
+            <div style="display:flex;align-items:flex-start;gap:14px;">
+              <div style="width:42px;height:42px;border-radius:10px;background:rgba(16,185,129,0.15);color:#059669;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                ${icon('shieldCheck', 22)}
+              </div>
+              <div>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                  <h3 style="margin:0;font-size:1.02rem;font-weight:700;color:#065f46;">Fit-to-Work Clearance Accepted &middot; Training Resumed</h3>
+                  <span class="badge" style="background:#D1FAE5;color:#065F46;font-weight:700;font-size:0.7rem;padding:2px 8px;">Active OJT</span>
+                </div>
+                <p style="margin:4px 0 0;font-size:0.83rem;color:#047857;line-height:1.45;">
+                  Your medical clearance was accepted by your Coordinator. Attendance logging and time-in are fully reactivated.
+                </p>
+                ${em.coordinator_remarks ? `
+                  <div style="margin-top:6px;padding:6px 10px;background:rgba(16,185,129,0.08);border-radius:6px;font-size:0.78rem;color:#065f46;">
+                    <strong>Coordinator Note:</strong> &ldquo;${esc(em.coordinator_remarks)}&rdquo;
+                  </div>
+                ` : ''}
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              ${em.fit_to_work_url ? `
+                <a href="${em.fit_to_work_url}" target="_blank" rel="noopener noreferrer" class="btn btn--outline btn--sm" style="gap:6px;color:#059669;border-color:rgba(16,185,129,0.4);font-weight:600;">
+                  ${icon('fileText', 14)} View Clearance Certificate
+                </a>
+              ` : ''}
+              <button class="btn btn--ghost btn--sm" style="color:var(--text-secondary);padding:6px;" onclick="this.closest('#sec-resumed-banner').remove();" title="Dismiss">
+                ${icon('x', 16)}
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+    `;
+  }
+
+  if (isActivelyOnLeave) {
     return `
       <section class="page-section animate-fade-in-up" style="margin-bottom:14px;">
         <div class="jp-card" style="background:linear-gradient(135deg, rgba(2,132,199,0.06) 0%, rgba(16,185,129,0.06) 100%);border:1.5px solid rgba(2,132,199,0.3);border-left:5px solid #0284c7;padding:16px 20px;border-radius:12px;">
@@ -499,6 +559,14 @@ function renderEmergencyBannerHtml(ojt) {
                 <p style="margin:2px 0 0;font-size:0.8rem;color:#0284c7;">
                   Attendance time-in is paused. Rendered hours remain safe and preserved (${ojt.hoursRendered} / ${ojt.totalHours} hrs). Take care!
                 </p>
+                ${(em.has_fit_to_work || em.fit_to_work_url) ? `
+                  <div style="margin-top:8px;padding:8px 12px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);border-radius:8px;display:flex;align-items:center;gap:8px;">
+                    <span style="color:#059669;">${icon('shieldCheck', 16)}</span>
+                    <span style="font-size:0.8rem;color:#065f46;font-weight:600;">
+                      Fit-to-Work Clearance submitted &bull; Awaiting coordinator review &amp; time-in reactivation.
+                    </span>
+                  </div>
+                ` : ''}
                 ${em.coordinator_remarks ? `
                   <div style="margin-top:6px;padding:6px 10px;background:rgba(2,132,199,0.08);border-radius:6px;font-size:0.78rem;color:#0369a1;">
                     <strong>Coordinator Note:</strong> &ldquo;${esc(em.coordinator_remarks)}&rdquo;
@@ -507,10 +575,24 @@ function renderEmergencyBannerHtml(ojt) {
               </div>
             </div>
             <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
-              <button class="btn btn--primary btn--sm" id="btn-upload-fit-to-work" style="gap:6px;background:#0284c7;border-color:#0284c7;font-weight:600;">
-                ${icon('upload', 14)} Submit Fit-to-Work Clearance
-              </button>
-              <span class="text-xs text-secondary">Upload doctor's clearance to resume early</span>
+              ${(em.has_fit_to_work || em.fit_to_work_url) ? `
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
+                  ${em.fit_to_work_url ? `
+                    <a href="${em.fit_to_work_url}" target="_blank" rel="noopener noreferrer" class="btn btn--outline btn--sm" style="gap:6px;color:#0284c7;border-color:rgba(2,132,199,0.4);font-weight:600;">
+                      ${icon('fileText', 14)} View Submitted Clearance
+                    </a>
+                  ` : ''}
+                  <button class="btn btn--primary btn--sm" id="btn-upload-fit-to-work" style="gap:6px;background:#059669;border-color:#059669;font-weight:600;">
+                    ${icon('upload', 14)} Re-upload Clearance
+                  </button>
+                </div>
+                <span class="text-xs text-secondary">Clearance is waiting for coordinator acceptance</span>
+              ` : `
+                <button class="btn btn--primary btn--sm" id="btn-upload-fit-to-work" style="gap:6px;background:#0284c7;border-color:#0284c7;font-weight:600;">
+                  ${icon('upload', 14)} Submit Fit-to-Work Clearance
+                </button>
+                <span class="text-xs text-secondary">Upload doctor's clearance to resume early</span>
+              `}
             </div>
           </div>
         </div>
@@ -694,7 +776,7 @@ function renderPullOutBannerHtml(ojt) {
         <div class="jp-card" style="background:linear-gradient(135deg, rgba(0,89,48,0.06) 0%, rgba(16,185,129,0.08) 100%);border:1.5px solid rgba(0,89,48,0.25);border-left:5px solid #005930;padding:16px 20px;border-radius:12px;">
           <div style="display:flex;align-items:flex-start;gap:14px;">
             <div style="width:40px;height:40px;border-radius:10px;background:rgba(0,89,48,0.12);color:#005930;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-              ${icon('checkCheck', 20)}
+              ${icon('checkCircle', 20)}
             </div>
             <div>
               <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
@@ -1095,6 +1177,230 @@ function openFitToWorkModal(emergency, onSubmitted) {
   });
 }
 
+// ── Dual-Term Evaluation Presentation ─────────────────────────────────────────
+function renderEvaluationBannerHtml(evaluation) {
+  if (!evaluation) return '';
+
+  const midterm = evaluation.midterm;
+  const endterm = evaluation.endterm;
+  const compositeScore = evaluation.composite_score !== null && evaluation.composite_score !== undefined ? Number(evaluation.composite_score) : null;
+
+  const hasMidterm = midterm && (midterm.status === 'submitted' || midterm.is_waived || midterm.status === 'sent');
+  const hasEndterm = endterm && (endterm.status === 'submitted' || endterm.is_waived || endterm.status === 'sent');
+  const hasLegacy  = !hasMidterm && !hasEndterm && evaluation.overall_score;
+
+  if (!hasMidterm && !hasEndterm && !hasLegacy) return '';
+
+  // Legacy single evaluation fallback
+  if (hasLegacy) {
+    return `
+      <section class="page-section animate-fade-in-up" style="animation-delay:40ms;margin-bottom:16px;">
+        <div class="jp-card" style="background:linear-gradient(135deg, rgba(0,89,48,0.06) 0%, rgba(16,185,129,0.08) 100%);border:1.5px solid rgba(0,89,48,0.25);border-radius:var(--radius-lg);padding:20px 24px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;">
+            <div style="display:flex;align-items:center;gap:14px;">
+              <div style="width:48px;height:48px;border-radius:50%;background:#005930;color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.3rem;font-weight:700;">
+                ★
+              </div>
+              <div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <h3 style="margin:0;font-size:1.05rem;font-weight:700;color:var(--text-primary);">OJT Performance Evaluation Completed</h3>
+                  <span class="badge badge--success" style="font-size:0.7rem;padding:2px 8px;">Official Rating</span>
+                </div>
+                <p class="text-sm text-secondary" style="margin:2px 0 0;">
+                  Submitted by <strong>${esc(evaluation.company?.name || 'Host Company')}</strong> &bull; Evaluated by ${esc(evaluation.evaluator_name || 'HR Supervisor')} (${esc(evaluation.evaluator_position || 'Company Representative')})
+                </p>
+              </div>
+            </div>
+            <div style="text-align:right;">
+              <div class="text-xs text-secondary" style="font-weight:600;text-transform:uppercase;">Overall Score</div>
+              <div style="font-size:1.75rem;font-weight:800;color:var(--color-primary);margin-top:2px;">
+                ${Number(evaluation.overall_score).toFixed(1)} <span style="font-size:0.9rem;font-weight:600;color:var(--text-secondary);">/ 5.0</span>
+              </div>
+            </div>
+          </div>
+          ${evaluation.recommendation ? `
+            <div style="margin-top:12px;padding:8px 12px;background:rgba(0,89,48,0.08);border-radius:6px;font-size:0.85rem;font-weight:600;color:var(--color-primary);">
+              Recommendation: ${esc(evaluation.recommendation)}
+            </div>
+          ` : ''}
+          ${evaluation.general_feedback ? `
+            <p class="text-sm" style="margin:10px 0 0;font-style:italic;color:var(--text-secondary);line-height:1.5;">
+              &ldquo;${esc(evaluation.general_feedback)}&rdquo;
+            </p>
+          ` : ''}
+        </div>
+      </section>
+    `;
+  }
+
+  // Dual-Term Evaluation Presentation
+  return `
+    <section class="page-section animate-fade-in-up" style="animation-delay:40ms;margin-bottom:16px;">
+      <div class="jp-card" style="background:var(--bg-card,#fff);border:1.5px solid var(--border-light,#e2e8f0);border-radius:var(--radius-lg);padding:22px 24px;box-shadow:0 4px 15px rgba(0,0,0,0.03);">
+        
+        <!-- Header & Composite Score Badge -->
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;border-bottom:1px solid var(--border-light,#e2e8f0);padding-bottom:16px;margin-bottom:16px;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="width:44px;height:44px;border-radius:10px;background:rgba(0,89,48,0.1);color:#005930;display:flex;align-items:center;justify-content:center;">
+              ${icon('award', 24)}
+            </div>
+            <div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <h3 style="margin:0;font-size:1.08rem;font-weight:700;color:var(--text-primary);">Academic OJT Performance Evaluations</h3>
+                <span class="badge" style="background:#e0f2fe;color:#0369a1;font-size:0.7rem;font-weight:700;padding:2px 8px;">Dual-Term System</span>
+              </div>
+              <p class="text-xs text-secondary" style="margin:3px 0 0;">
+                Official appraisal conducted across Midterm (50%) and Endterm (50%) academic milestones.
+              </p>
+            </div>
+          </div>
+          ${compositeScore !== null ? `
+            <div style="background:linear-gradient(135deg, rgba(0,89,48,0.08) 0%, rgba(16,185,129,0.1) 100%);border:1.5px solid rgba(0,89,48,0.25);border-radius:10px;padding:8px 16px;text-align:right;">
+              <div class="text-xs text-secondary" style="font-weight:700;text-transform:uppercase;color:#005930;">Official Composite Grade</div>
+              <div style="font-size:1.6rem;font-weight:800;color:var(--color-primary);line-height:1.1;margin-top:2px;">
+                ${compositeScore.toFixed(2)} <span style="font-size:0.85rem;font-weight:600;color:var(--text-secondary);">/ 5.0</span>
+              </div>
+              <div style="font-size:0.7rem;color:var(--text-secondary);margin-top:2px;">
+                ${midterm?.is_waived ? '100% Weight (Midterm Waived)' : '50% Midterm + 50% Endterm'}
+              </div>
+            </div>
+          ` : `
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:6px 12px;font-size:0.75rem;color:var(--text-secondary);">
+              <em>Composite grade calculated upon completion of both terms</em>
+            </div>
+          `}
+        </div>
+
+        <!-- Two Columns: Midterm & Endterm Cards -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:16px;">
+          
+          <!-- Midterm Card -->
+          <div style="border:1.5px solid ${midterm?.status === 'submitted' ? 'rgba(0,89,48,0.25)' : (midterm?.is_waived ? 'rgba(245,158,11,0.3)' : 'var(--border-light,#e2e8f0)')};border-radius:10px;padding:16px;background:${midterm?.status === 'submitted' ? 'rgba(0,89,48,0.03)' : (midterm?.is_waived ? '#FFFBEB' : '#fafafa')};">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+              <span style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-secondary);">
+                Midterm Evaluation (50%)
+              </span>
+              ${(() => {
+                if (midterm?.status === 'submitted') return '<span class="badge badge--success" style="font-size:0.7rem;padding:2px 8px;">Submitted</span>';
+                if (midterm?.is_waived) return '<span class="badge" style="background:#FEF3C7;color:#92400E;font-size:0.7rem;font-weight:700;padding:2px 8px;">Waived by Coordinator</span>';
+                if (midterm?.status === 'sent') return '<span class="badge" style="background:#DBEAFE;color:#1E40AF;font-size:0.7rem;font-weight:700;padding:2px 8px;">Dispatched</span>';
+                return '<span class="badge" style="background:#F1F5F9;color:#64748B;font-size:0.7rem;font-weight:600;padding:2px 8px;">Pending (&ge;50% Hrs)</span>';
+              })()}
+            </div>
+
+            ${(() => {
+              if (midterm?.status === 'submitted') {
+                return `
+                  <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;">
+                    <div style="font-size:1.5rem;font-weight:800;color:var(--color-primary);">
+                      ${Number(midterm.overall_score).toFixed(2)} <span style="font-size:0.8rem;font-weight:600;color:var(--text-secondary);">/ 5.0</span>
+                    </div>
+                    <div style="font-size:0.75rem;color:var(--text-secondary);">
+                      ${esc(midterm.submitted_at || '')}
+                    </div>
+                  </div>
+                  <p class="text-xs text-secondary" style="margin:0 0 6px;">
+                    <strong>${esc(midterm.company?.name || 'Host Company')}</strong> &bull; ${esc(midterm.evaluator_name || 'HR Supervisor')} (${esc(midterm.evaluator_position || 'Representative')})
+                  </p>
+                  ${midterm.recommendation ? `
+                    <div style="margin-top:8px;padding:6px 10px;background:rgba(0,89,48,0.06);border-radius:6px;font-size:0.75rem;font-weight:600;color:#005930;">
+                      Recommendation: ${esc(midterm.recommendation)}
+                    </div>
+                  ` : ''}
+                  ${midterm.general_feedback ? `
+                    <p class="text-xs" style="margin:8px 0 0;font-style:italic;color:var(--text-secondary);line-height:1.4;">
+                      &ldquo;${esc(midterm.general_feedback)}&rdquo;
+                    </p>
+                  ` : ''}
+                `;
+              }
+              if (midterm?.is_waived) {
+                return `
+                  <div style="font-size:0.82rem;color:#92400E;line-height:1.45;">
+                    <strong>Midterm Appraisal Waived:</strong> Weight reallocated 100% to Endterm evaluation.
+                  </div>
+                  ${midterm.waiver_reason ? `
+                    <div style="margin-top:8px;padding:6px 10px;background:rgba(245,158,11,0.12);border-radius:6px;font-size:0.75rem;color:#78350F;">
+                      <strong>Reason:</strong> ${esc(midterm.waiver_reason)}
+                    </div>
+                  ` : ''}
+                `;
+              }
+              if (midterm?.status === 'sent') {
+                return `
+                  <div style="font-size:0.82rem;color:#1E40AF;line-height:1.45;">
+                    Sent to <strong>${esc(midterm.company?.name || 'Host Company')}</strong>. Awaiting supervisor appraisal.
+                  </div>
+                `;
+              }
+              return `
+                <div style="font-size:0.82rem;color:var(--text-secondary);line-height:1.45;">
+                  Your coordinator can dispatch this evaluation once 50% of placement hours are completed.
+                </div>
+              `;
+            })()}
+          </div>
+
+          <!-- Endterm Card -->
+          <div style="border:1.5px solid ${endterm?.status === 'submitted' ? 'rgba(0,89,48,0.25)' : 'var(--border-light,#e2e8f0)'};border-radius:10px;padding:16px;background:${endterm?.status === 'submitted' ? 'rgba(0,89,48,0.03)' : '#fafafa'};">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+              <span style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-secondary);">
+                Endterm Evaluation (${midterm?.is_waived ? '100%' : '50%'})
+              </span>
+              ${(() => {
+                if (endterm?.status === 'submitted') return '<span class="badge badge--success" style="font-size:0.7rem;padding:2px 8px;">Submitted</span>';
+                if (endterm?.status === 'sent') return '<span class="badge" style="background:#DBEAFE;color:#1E40AF;font-size:0.7rem;font-weight:700;padding:2px 8px;">Dispatched</span>';
+                return '<span class="badge" style="background:#F1F5F9;color:#64748B;font-size:0.7rem;font-weight:600;padding:2px 8px;">Pending (100% Hrs)</span>';
+              })()}
+            </div>
+
+            ${(() => {
+              if (endterm?.status === 'submitted') {
+                return `
+                  <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;">
+                    <div style="font-size:1.5rem;font-weight:800;color:var(--color-primary);">
+                      ${Number(endterm.overall_score).toFixed(2)} <span style="font-size:0.8rem;font-weight:600;color:var(--text-secondary);">/ 5.0</span>
+                    </div>
+                    <div style="font-size:0.75rem;color:var(--text-secondary);">
+                      ${esc(endterm.submitted_at || '')}
+                    </div>
+                  </div>
+                  <p class="text-xs text-secondary" style="margin:0 0 6px;">
+                    <strong>${esc(endterm.company?.name || 'Host Company')}</strong> &bull; ${esc(endterm.evaluator_name || 'HR Supervisor')} (${esc(endterm.evaluator_position || 'Representative')})
+                  </p>
+                  ${endterm.recommendation ? `
+                    <div style="margin-top:8px;padding:6px 10px;background:rgba(0,89,48,0.06);border-radius:6px;font-size:0.75rem;font-weight:600;color:#005930;">
+                      Recommendation: ${esc(endterm.recommendation)}
+                    </div>
+                  ` : ''}
+                  ${endterm.general_feedback ? `
+                    <p class="text-xs" style="margin:8px 0 0;font-style:italic;color:var(--text-secondary);line-height:1.4;">
+                      &ldquo;${esc(endterm.general_feedback)}&rdquo;
+                    </p>
+                  ` : ''}
+                `;
+              }
+              if (endterm?.status === 'sent') {
+                return `
+                  <div style="font-size:0.82rem;color:#1E40AF;line-height:1.45;">
+                    Sent to <strong>${esc(endterm.company?.name || 'Host Company')}</strong>. Awaiting final appraisal.
+                  </div>
+                `;
+              }
+              return `
+                <div style="font-size:0.82rem;color:var(--text-secondary);line-height:1.45;">
+                  Final evaluation unlocked upon 100% completion of curriculum OJT hours.
+                </div>
+              `;
+            })()}
+          </div>
+
+        </div>
+      </div>
+    </section>
+  `;
+}
+
 // ── Main render ───────────────────────────────────────────────────────────────
 function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, evaluation = null) {
   // Use raw float so the ring always reflects real progress (Math.round kills <0.5%)
@@ -1134,6 +1440,12 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
     punchClockHtml = `
       <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(239,68,68,0.1);color:#dc2626;border:1px solid rgba(239,68,68,0.25);padding:8px 16px;border-radius:99px;font-size:0.83rem;font-weight:600;">
         ${icon('alertCircle', 15)} OJT Withdrawn (Emergency Discontinuation)
+      </div>
+    `;
+  } else if (ojt.is_pull_out_pending) {
+    punchClockHtml = `
+      <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(245,158,11,0.12);color:#b45309;border:1px solid rgba(245,158,11,0.28);padding:8px 16px;border-radius:99px;font-size:0.83rem;font-weight:600;">
+        ${icon('clock', 15)} Pull-Out Request In Process &middot; Attendance Paused
       </div>
     `;
   } else if (ojt.is_on_leave) {
@@ -1257,44 +1569,29 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
     <!-- ── OJT Pull-Out Status Banner ── -->
     ${renderPullOutBannerHtml(ojt)}
 
-    <!-- ── Completed Evaluation Card (if submitted by company) ── -->
-    ${evaluation && evaluation.overall_score ? `
-    <section class="page-section animate-fade-in-up" style="animation-delay:40ms;">
-      <div class="jp-card" style="background:linear-gradient(135deg, rgba(0,89,48,0.06) 0%, rgba(16,185,129,0.08) 100%);border:1.5px solid rgba(0,89,48,0.25);border-radius:var(--radius-lg);padding:20px 24px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;">
-          <div style="display:flex;align-items:center;gap:14px;">
-            <div style="width:48px;height:48px;border-radius:50%;background:#005930;color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.3rem;font-weight:700;">
-              ★
-            </div>
-            <div>
-              <div style="display:flex;align-items:center;gap:8px;">
-                <h3 style="margin:0;font-size:1.05rem;font-weight:700;color:var(--text-primary);">OJT Performance Evaluation Completed</h3>
-                <span class="badge badge--success" style="font-size:0.7rem;padding:2px 8px;">Official Rating</span>
-              </div>
-              <p class="text-sm text-secondary" style="margin:2px 0 0;">
-                Submitted by <strong>${esc(evaluation.company?.name || 'Host Company')}</strong> &bull; Evaluated by ${esc(evaluation.evaluator_name || 'HR Supervisor')} (${esc(evaluation.evaluator_position || 'Company Representative')})
-              </p>
-            </div>
-          </div>
-          <div style="text-align:right;">
-            <div class="text-xs text-secondary" style="font-weight:600;text-transform:uppercase;">Overall Score</div>
-            <div style="font-size:1.75rem;font-weight:800;color:var(--color-primary);margin-top:2px;">
-              ${Number(evaluation.overall_score).toFixed(1)} <span style="font-size:0.9rem;font-weight:600;color:var(--text-secondary);">/ 5.0</span>
-            </div>
-          </div>
+    <!-- ── Academic Performance Evaluations (Dual-Term & Composite Rating) ── -->
+    ${renderEvaluationBannerHtml(evaluation)}
+
+    <!-- ── Academic Credit Applied Banner ── -->
+    ${ojt.accreditedHours > 0 ? `
+    <div class="animate-fade-in-up" style="margin-bottom:14px;padding:12px 18px;border-radius:10px;background:rgba(0,89,48,0.06);border:1.5px solid rgba(0,89,48,0.22);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="width:36px;height:36px;border-radius:8px;background:#005930;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          ${icon('award', 20)}
         </div>
-        ${evaluation.recommendation ? `
-          <div style="margin-top:12px;padding:8px 12px;background:rgba(0,89,48,0.08);border-radius:6px;font-size:0.85rem;font-weight:600;color:var(--color-primary);">
-            Recommendation: ${esc(evaluation.recommendation)}
-          </div>
-        ` : ''}
-        ${evaluation.general_feedback ? `
-          <p class="text-sm" style="margin:10px 0 0;font-style:italic;color:var(--text-secondary);line-height:1.5;">
-            &ldquo;${esc(evaluation.general_feedback)}&rdquo;
-          </p>
-        ` : ''}
+        <div>
+          <span style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:#005930;display:block;">
+            Academic OJT Credit Applied
+          </span>
+          <span style="font-size:0.84rem;color:var(--text-secondary);">
+            <strong>${ojt.accreditedHours} hours</strong> accredited from your prior approved OJT. Remaining requirement for this placement: <strong>${totalHours} hours</strong> (Curriculum Target: ${ojt.curriculumTarget || 600} hrs).
+          </span>
+        </div>
       </div>
-    </section>
+      <div style="font-size:0.8rem;font-weight:700;padding:5px 12px;border-radius:99px;background:#005930;color:#fff;">
+        Overall: ${(hoursRendered + ojt.accreditedHours).toFixed(1)} / ${ojt.curriculumTarget || 600} hrs
+      </div>
+    </div>
     ` : ''}
 
     <!-- ── Hours Progress + OJT Info ── -->

@@ -466,6 +466,9 @@ class OjtPullOutController extends Controller
                 'dean_verdict'            => $p->dean_verdict,
                 'credited_hours'          => $p->credited_hours !== null ? (float) $p->credited_hours : null,
                 'allow_redeployment'      => (bool) $p->allow_redeployment,
+                'dtr_total_hours'         => $this->calculateVerifiedDtrStats($p)['dtr_total_hours'],
+                'dtr_days_count'          => $this->calculateVerifiedDtrStats($p)['dtr_days_count'],
+                'dtr_valid_hours'         => $this->calculateVerifiedDtrStats($p)['dtr_valid_hours'],
                 'created_at'              => $p->created_at?->format('M d, Y h:i A'),
                 'created_at_human'        => $p->created_at?->diffForHumans(),
             ];
@@ -475,6 +478,39 @@ class OjtPullOutController extends Controller
             'success' => true,
             'data'    => $requests,
         ]);
+    }
+
+    /**
+     * Calculate verified DTR hours for a pull-out request.
+     * Excludes open/in-progress logs (e.g. morning check-in without check-out before filing).
+     */
+    private function calculateVerifiedDtrStats(OjtPullOutRequest $pullOut): array
+    {
+        $studentId   = $pullOut->student_user_id;
+        $ojtRecordId = $pullOut->ojt_record_id;
+
+        $query = \App\Models\TimeLog::where('user_id', $studentId)
+            ->when($ojtRecordId, fn($q) => $q->where('ojt_record_id', $ojtRecordId))
+            ->where('hours_rendered', '>', 0)
+            ->where(function ($q) {
+                // Must have a valid check-out. Single-punch or unclosed logs are void/excluded.
+                $q->whereNotNull('time_out')
+                  ->orWhereNotNull('afternoon_out');
+            });
+
+        $logs = $query->get();
+
+        $totalHours = round((float) $logs->sum('hours_rendered'), 2);
+        $daysCount  = $logs->count();
+        $validHours = round((float) $logs->filter(function ($l) {
+            return in_array($l->location_validity, ['In Site', 'valid']) || $l->status === 'valid';
+        })->sum('hours_rendered'), 2);
+
+        return [
+            'dtr_total_hours' => $totalHours,
+            'dtr_days_count'  => $daysCount,
+            'dtr_valid_hours' => $validHours,
+        ];
     }
 
     /**
@@ -492,9 +528,18 @@ class OjtPullOutController extends Controller
             'supervisor',
         ])->findOrFail($id);
 
+        $dtrStats  = $this->calculateVerifiedDtrStats($pullOut);
         $adminName = $request->user()->name;
         $deanName  = $pullOut->dean_name ?: 'Dean of College';
-        $letterText = $this->generateDeanLetterText($pullOut, $pullOut->supervisor?->name ?? 'OJT Coordinator', $pullOut->supervisor_remarks, $adminName, $deanName);
+        $letterText = $this->generateDeanLetterText(
+            $pullOut,
+            $pullOut->supervisor?->name ?? 'OJT Coordinator',
+            $pullOut->supervisor_remarks,
+            $adminName,
+            $deanName,
+            $dtrStats['dtr_total_hours'],
+            $dtrStats['dtr_days_count']
+        );
 
         return response()->json([
             'success'     => true,
@@ -507,6 +552,9 @@ class OjtPullOutController extends Controller
                 'company_name'      => $pullOut->ojtRecord?->company_name ?? $pullOut->ojtInterest?->posting?->company_name ?? 'Host Company',
                 'hours_rendered'    => (float) $pullOut->hours_rendered_snapshot,
                 'hours_required'    => (float) $pullOut->required_hours_snapshot,
+                'dtr_total_hours'   => $dtrStats['dtr_total_hours'],
+                'dtr_days_count'    => $dtrStats['dtr_days_count'],
+                'dtr_valid_hours'   => $dtrStats['dtr_valid_hours'],
                 'reason_category'   => $pullOut->reason_category,
                 'reason'            => $pullOut->reason,
                 'supervisor_name'   => $pullOut->supervisor?->name ?? 'OJT Coordinator',
@@ -577,13 +625,16 @@ class OjtPullOutController extends Controller
             'supervisor',
         ])->findOrFail($id);
 
+        $dtrStats    = $this->calculateVerifiedDtrStats($pullOut);
         $adminUser   = $request->user();
         $letterBody  = $this->generateDeanLetterText(
             $pullOut,
             $pullOut->supervisor?->name ?? 'OJT Coordinator',
             $pullOut->supervisor_remarks,
             $adminUser->name,
-            $validated['dean_name']
+            $validated['dean_name'],
+            $dtrStats['dtr_total_hours'],
+            $dtrStats['dtr_days_count']
         );
 
         // Send Email via Mailable
@@ -653,9 +704,10 @@ class OjtPullOutController extends Controller
             $allowRe = $validated['allow_redeployment'] ?? true;
 
             if ($verdict === 'approved') {
+                $dtrStats = $this->calculateVerifiedDtrStats($pullOut);
                 $credited = isset($validated['credited_hours']) && $validated['credited_hours'] !== null
                     ? (float) $validated['credited_hours']
-                    : (float) $pullOut->hours_rendered_snapshot;
+                    : (float) $dtrStats['dtr_total_hours'];
 
                 $pullOut->update([
                     'status'             => 'approved',
@@ -705,12 +757,17 @@ class OjtPullOutController extends Controller
                     );
                 }
 
-                if ($pullOut->supervisor_id) {
+                $supervisorIds = $this->getSupervisorIdsForStudent($student);
+                if ($pullOut->supervisor_id && !$supervisorIds->contains($pullOut->supervisor_id)) {
+                    $supervisorIds->push($pullOut->supervisor_id);
+                }
+
+                foreach ($supervisorIds as $supId) {
                     AppNotification::send(
-                        $pullOut->supervisor_id,
+                        $supId,
                         'pull_out_approved_supervisor',
                         '✅ Dean Approved Trainee Pull-Out',
-                        "Dean approved official pull-out for {$student->name} ({$compName}). Student is eligible for new endorsement.",
+                        "Dean approved official pull-out for {$student->name} ({$compName}). Student status updated to Undeployed and eligible for re-endorsement.",
                         ['pull_out_id' => $pullOut->id, 'student_id' => $student->id]
                     );
                 }
@@ -739,6 +796,22 @@ class OjtPullOutController extends Controller
                     "Dean did not authorize the pull-out. Remarks: " . ($remarks ?: 'Please consult your OJT Coordinator.'),
                     ['pull_out_id' => $pullOut->id]
                 );
+
+                // Notify Program Supervisors
+                $supervisorIds = $this->getSupervisorIdsForStudent($student);
+                if ($pullOut->supervisor_id && !$supervisorIds->contains($pullOut->supervisor_id)) {
+                    $supervisorIds->push($pullOut->supervisor_id);
+                }
+
+                foreach ($supervisorIds as $supId) {
+                    AppNotification::send(
+                        $supId,
+                        'pull_out_rejected_supervisor',
+                        '⚠️ Dean Declined Trainee Pull-Out Request',
+                        "Dean declined official pull-out for {$student->name} ({$compName}). Active training status restored. Remarks: " . ($remarks ?: 'No remarks provided.'),
+                        ['pull_out_id' => $pullOut->id, 'student_id' => $student->id]
+                    );
+                }
             }
         });
 
@@ -758,15 +831,18 @@ class OjtPullOutController extends Controller
         string $supervisorName,
         ?string $supervisorRemarks = null,
         string $programChair = 'Program Chairperson',
-        string $deanName = 'Dean of College'
+        string $deanName = 'Dean of College',
+        ?float $dtrHours = null,
+        ?int $dtrDays = null
     ): string {
         $studentName = $pullOut->student?->name ?? 'Student';
         $studentId   = $pullOut->student?->studentProfile?->student_id ?? 'N/A';
         $program     = $pullOut->student?->studentProfile?->program ?? 'N/A';
         $section     = $pullOut->student?->studentProfile?->section ?? 'N/A';
         $companyName = $pullOut->ojtRecord?->company_name ?? $pullOut->ojtInterest?->posting?->company_name ?? 'Host Company';
-        $rendered    = (float) $pullOut->hours_rendered_snapshot;
+        $rendered    = $dtrHours !== null ? $dtrHours : (float) $pullOut->hours_rendered_snapshot;
         $required    = (float) $pullOut->required_hours_snapshot;
+        $daysNote    = $dtrDays !== null ? " ({$dtrDays} completed days logged in DTR)" : "";
         $category    = ucwords(str_replace('_', ' ', $pullOut->reason_category));
         $dateStr     = now()->format('F d, Y');
 
@@ -792,7 +868,7 @@ Respectfully submitting for your official approval the request for Pull-Out from
   • Student ID Number:  {$studentId}
   • Degree & Section:   {$program} ({$section})
   • Host Establishment: {$companyName}
-  • Progress Snapshot:  {$rendered} of {$required} Hours Rendered
+  • Verified DTR Hours: {$rendered} of {$required} Hours Rendered{$daysNote}
   • Category:           {$category}
 
 JUSTIFICATION & REASON FOR PULL-OUT:

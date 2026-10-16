@@ -1036,7 +1036,7 @@ export async function renderOjtTrainees(container) {
       let statusBadge = '';
       if (t.status === 'withdrawn_emergency' || (t.emergency_request?.type === 'permanent_withdrawal' && t.emergency_request?.coordinator_status === 'approved')) {
         statusBadge = `<span class="co-status-pill" style="background:#FEE2E2;color:#991B1B;border-color:rgba(239,68,68,0.3);">${icon('alertTriangle', 11)} Withdrawn (Emergency)</span>`;
-      } else if (t.status === 'on_leave' || (t.emergency_request?.type === 'temporary_leave' && t.emergency_request?.coordinator_status === 'approved')) {
+      } else if (t.status === 'on_leave') {
         statusBadge = `<span class="co-status-pill" style="background:#E0F2FE;color:#0369a1;border-color:rgba(2,132,199,0.3);">${icon('shieldCheck', 11)} On Medical Leave</span>`;
       } else if (t.status === 'stoppage_requested' || t.emergency_request?.coordinator_status === 'pending') {
         statusBadge = `<span class="co-status-pill co-status-pill--action" style="background:#FEF3C7;color:#92400e;border-color:rgba(245,158,11,0.35);">${icon('clock', 11)} Emergency Notice Filed</span>`;
@@ -1148,7 +1148,7 @@ export async function renderOjtTrainees(container) {
 
     if (t.status === 'withdrawn_emergency' || (t.emergency_request?.type === 'permanent_withdrawal' && t.emergency_request?.coordinator_status === 'approved')) {
       statusPill = `<span class="co-status-pill" style="background:#FEE2E2;color:#991B1B;border-color:rgba(239,68,68,0.3);">${icon('alertTriangle', 11)} Withdrawn (Emergency)</span>`;
-    } else if (t.status === 'on_leave' || (t.emergency_request?.type === 'temporary_leave' && t.emergency_request?.coordinator_status === 'approved')) {
+    } else if (t.status === 'on_leave') {
       statusPill = `<span class="co-status-pill" style="background:#E0F2FE;color:#0369a1;border-color:rgba(2,132,199,0.3);">${icon('shieldCheck', 11)} On Medical Leave</span>`;
     } else if (t.status === 'stoppage_requested' || t.emergency_request?.coordinator_status === 'pending') {
       statusPill = `<span class="co-status-pill co-status-pill--action" style="background:#FEF3C7;color:#92400e;border-color:rgba(245,158,11,0.35);">${icon('clock', 11)} Emergency Notice Filed</span>`;
@@ -1859,6 +1859,11 @@ async function openCompanyEvaluationModal(evalId, onComplete) {
       5: 'Excellent / Outstanding',
     };
 
+    const termTitle = ev.term === 'midterm' ? 'Midterm OJT Performance Appraisal' : 'Final / Endterm Performance Appraisal';
+    const termBadge = ev.term === 'midterm'
+      ? `<span class="badge" style="background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE;font-size:0.7rem;font-weight:700;padding:2px 8px;margin-left:8px;">MIDTERM (50% WEIGHT)</span>`
+      : `<span class="badge" style="background:#ECFDF5;color:#047857;border:1px solid #A7F3D0;font-size:0.7rem;font-weight:700;padding:2px 8px;margin-left:8px;">FINAL (50% WEIGHT)</span>`;
+
     backdrop.innerHTML = `
       <div class="modal modal--visible" style="max-width:780px;border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);max-height:90vh;display:flex;flex-direction:column;">
         <!-- Header -->
@@ -1868,7 +1873,10 @@ async function openCompanyEvaluationModal(evalId, onComplete) {
               ★
             </div>
             <div>
-              <h3 class="modal__title" style="margin:0;font-size:1.15rem;font-weight:700;">OJT Performance Appraisal</h3>
+              <div style="display:flex;align-items:center;">
+                <h3 class="modal__title" style="margin:0;font-size:1.15rem;font-weight:700;">${termTitle}</h3>
+                ${termBadge}
+              </div>
               <p style="font-size:0.8rem;color:var(--text-secondary);margin:2px 0 0;">
                 Evaluating <strong>${escapeHtml(st.name || 'Intern')}</strong> &bull; ${escapeHtml(st.program || '')} &bull; ${ev.ojt?.completed_hours}/${ev.ojt?.required_hours}h completed
               </p>
@@ -2152,11 +2160,19 @@ async function openCompanyViewSubmittedModal(evalId) {
     const ansMap = {};
     answers.forEach(a => { ansMap[a.evaluation_question_id] = a; });
 
+    const termTitle = ev.term === 'midterm' ? 'Submitted Midterm OJT Appraisal' : 'Submitted Final / Endterm Appraisal';
+    const termBadge = ev.term === 'midterm'
+      ? `<span class="badge" style="background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE;font-size:0.7rem;font-weight:700;padding:2px 8px;margin-left:8px;">MIDTERM (50% WEIGHT)</span>`
+      : `<span class="badge" style="background:#ECFDF5;color:#047857;border:1px solid #A7F3D0;font-size:0.7rem;font-weight:700;padding:2px 8px;margin-left:8px;">FINAL (50% WEIGHT)</span>`;
+
     backdrop.innerHTML = `
       <div class="modal modal--visible" style="max-width:720px;border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);max-height:88vh;display:flex;flex-direction:column;">
         <div class="modal__header" style="border-bottom:1px solid #E2E8F0;background:#FAFBFD;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
           <div>
-            <h3 class="modal__title" style="margin:0;font-size:1.1rem;font-weight:700;">Submitted OJT Performance Appraisal</h3>
+            <div style="display:flex;align-items:center;">
+              <h3 class="modal__title" style="margin:0;font-size:1.1rem;font-weight:700;">${termTitle}</h3>
+              ${termBadge}
+            </div>
             <p class="text-sm text-secondary" style="margin:2px 0 0;">${escapeHtml(st.name || 'Intern')} &bull; ${escapeHtml(st.program || '')}</p>
           </div>
           <button class="modal__close" id="comp-view-close">${icon('x', 18)}</button>

@@ -41,4 +41,5 @@ hireme-api/.phpunit.result.cache
 .DS_Store
 Thumbs.db
 cloudflared.exe
-
+__pycache__/
+*.pyc

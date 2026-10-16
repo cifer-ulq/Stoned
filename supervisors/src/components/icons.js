@@ -71,15 +71,33 @@ const icons = {
   alertTriangle: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>',
 };
 
+/* Pre-indexed normalized alphanumeric dictionary (all lowercase, no dashes/underscores) */
+const normalizedIcons = {};
+Object.entries(icons).forEach(([key, svg]) => {
+  const normKey = key.toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (!normalizedIcons[normKey]) {
+    normalizedIcons[normKey] = svg;
+  }
+});
+
+/* Universal fallback SVG (clean circle-dot) to ensure no empty broken square can ever appear */
+const fallbackSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="1"/></svg>';
+
 export function renderIcons() {}
 
 export function icon(name, size = 20) {
-  const camelName = name.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
-  const kebabName = name.replace(/([A-Z])/g, '-$1').toLowerCase();
-  const svg = icons[name] || icons[camelName] || icons[kebabName] || icons.bell || '';
-  if (!svg) return '';
-  return svg.replace(/width="\d+"/, `width="${size}"`).replace(/height="\d+"/, `height="${size}"`);
+  if (!name) return '';
+  let svg = icons[name];
+  if (!svg) {
+    const norm = String(name).toLowerCase().replace(/[^a-z0-9]/g, '');
+    svg = normalizedIcons[norm];
+  }
+  if (!svg) {
+    svg = icons.bell || icons.info || fallbackSvg;
+  }
+  return svg.replace(/width="[^"]*"/, `width="${size}"`).replace(/height="[^"]*"/, `height="${size}"`);
 }
 
 export default icons;
+
 
