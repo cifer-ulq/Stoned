@@ -1,31 +1,33 @@
-FROM php:8.3-cli-alpine
+FROM php:8.3-cli
 
-# Install system dependencies & PostgreSQL / XML / Image dev libraries
-RUN apk add --no-cache \
-    postgresql-dev \
-    libzip-dev \
-    zip \
-    unzip \
+# Non-interactive environment and Composer superuser permissions
+ENV DEBIAN_FRONTEND=noninteractive
+ENV COMPOSER_ALLOW_SUPERUSER=1
+ENV COMPOSER_MEMORY_LIMIT=-1
+
+# Install required system libraries and PHP extensions
+RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
+    unzip \
+    zip \
     curl \
+    libpq-dev \
+    libzip-dev \
     libpng-dev \
-    libjpeg-turbo-dev \
-    freetype-dev \
-    oniguruma-dev \
-    libxml2-dev
-
-# Install PHP extensions required by Laravel & PostgreSQL
-RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
+    libjpeg-dev \
+    libfreetype6-dev \
+    libicu-dev \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) \
         pdo \
         pdo_pgsql \
         pgsql \
-        mbstring \
+        bcmath \
         zip \
         gd \
-        bcmath \
+        intl \
         opcache \
-        xml
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install Composer
 COPY --from=composer:2.7 /usr/bin/composer /usr/bin/composer
@@ -36,8 +38,8 @@ WORKDIR /var/www/html
 # Copy application files
 COPY . .
 
-# Install dependencies (production mode with --no-scripts to prevent build-time boot errors)
-RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts --ignore-platform-reqs
+# Install composer dependencies
+RUN composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction --no-scripts --ignore-platform-reqs
 
 # Prepare storage directories and permissions
 RUN mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
