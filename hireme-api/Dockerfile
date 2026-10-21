@@ -1,11 +1,10 @@
 FROM php:8.3-cli
 
-# Non-interactive environment and Composer superuser permissions
 ENV DEBIAN_FRONTEND=noninteractive
 ENV COMPOSER_ALLOW_SUPERUSER=1
 ENV COMPOSER_MEMORY_LIMIT=-1
 
-# Install required system libraries and PHP extensions
+# Install required system packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     unzip \
@@ -32,14 +31,26 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Install Composer
 COPY --from=composer:2.7 /usr/bin/composer /usr/bin/composer
 
-# Set working directory
 WORKDIR /var/www/html
 
-# Copy application files
-COPY . .
+# Copy all build files to temporary staging area
+COPY . /tmp/app/
 
-# Install composer dependencies
-RUN composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction --no-scripts --ignore-platform-reqs
+# Normalize directory structure: handles both root repo context and subfolder context
+RUN if [ -f "/tmp/app/hireme-api/composer.json" ]; then \
+        echo "==> Detected repository root context. Deploying hireme-api..." && \
+        cp -a /tmp/app/hireme-api/. /var/www/html/; \
+    else \
+        echo "==> Detected subfolder context. Deploying directly..." && \
+        cp -a /tmp/app/. /var/www/html/; \
+    fi && rm -rf /tmp/app
+
+# Verify composer.json is present
+RUN test -f /var/www/html/composer.json || (echo "ERROR: composer.json not found in /var/www/html" && ls -la /var/www/html && exit 1)
+
+# Install Composer dependencies (with auto-fallback to composer update if lockfile mismatches)
+RUN composer install --prefer-dist --no-dev --optimize-autoloader --no-interaction --no-scripts --ignore-platform-reqs \
+    || composer update --prefer-dist --no-dev --optimize-autoloader --no-interaction --no-scripts --ignore-platform-reqs
 
 # Prepare storage directories and permissions
 RUN mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
