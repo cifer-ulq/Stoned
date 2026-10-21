@@ -2,6 +2,81 @@
 
 use Illuminate\Support\Facades\Route;
 
+Route::get('/reset-to-admin-only', function () {
+    try {
+        \Illuminate\Support\Facades\DB::transaction(function () {
+            $tables = [
+                'time_logs',
+                'ojt_emergency_requests',
+                'ojt_pull_out_requests',
+                'student_evaluation_answers',
+                'student_evaluations',
+                'evaluation_questions',
+                'evaluation_templates',
+                'alumni_peo_assessments',
+                'peo_definitions',
+                'student_ojt_requirements',
+                'student_ojt_interests',
+                'ojt_records',
+                'ojt_postings',
+                'job_applications',
+                'interviews',
+                'job_listings',
+                'chat_messages',
+                'app_notifications',
+                'student_skills',
+                'student_education',
+                'student_experiences',
+                'portfolio_projects',
+                'student_achievements',
+                'student_profiles',
+                'company_profiles',
+                'supervisor_profiles',
+                'graduate_profiles',
+                'jobseeker_profiles',
+                'personal_access_tokens',
+            ];
+
+            foreach ($tables as $tbl) {
+                if (\Illuminate\Support\Facades\Schema::hasTable($tbl)) {
+                    \Illuminate\Support\Facades\DB::statement("TRUNCATE TABLE \"{$tbl}\" RESTART IDENTITY CASCADE;");
+                }
+            }
+
+            // Remove all non-admin users
+            \App\Models\User::where('email', '!=', 'admin@chmsu.edu.ph')->delete();
+
+            // Ensure Admin user exists and is reset to clean state
+            \App\Models\User::updateOrCreate(
+                ['email' => 'admin@chmsu.edu.ph'],
+                [
+                    'name'                 => 'Marites Manganti',
+                    'password'             => \Illuminate\Support\Facades\Hash::make('Admin@CHMSU2026!'),
+                    'role'                 => 'admin',
+                    'onboarding_completed' => true,
+                    'must_change_password' => false,
+                ]
+            );
+        });
+
+        return response()->json([
+            'success'         => true,
+            'message'         => 'All student, company, and coordinator data cleared. Only the Admin account remains.',
+            'remaining_users' => \App\Models\User::select('id', 'name', 'email', 'role')->get(),
+            'admin_login'     => [
+                'email'     => 'admin@chmsu.edu.ph',
+                'password'  => 'Admin@CHMSU2026!',
+                'login_url' => 'https://stoned-two.vercel.app/login/admin-login.html',
+            ],
+        ]);
+    } catch (\Throwable $e) {
+        return response()->json([
+            'success' => false,
+            'error'   => $e->getMessage(),
+        ], 500);
+    }
+});
+
 Route::get('/', function () {
     $dbStatus = 'Testing...';
     try {
