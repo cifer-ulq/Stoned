@@ -188,7 +188,339 @@ function launchConfetti() {
    ══════════════════════════════════════ */
 const app = document.getElementById('app');
 
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function renderTemporaryPasswordFlow(cachedUser) {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const token = localStorage.getItem('hireme_token');
+
+  if (!token) {
+    window.location.href = './';
+    return;
+  }
+
+  const studentName = cachedUser?.name ? escapeHtml(cachedUser.name) : 'Student';
+  const studentEmail = cachedUser?.email ? escapeHtml(cachedUser.email) : '';
+
+  app.innerHTML = `
+    <div class="ob-page">
+      <div class="ob-bg-orb ob-bg-orb--1"></div>
+      <div class="ob-bg-orb ob-bg-orb--2"></div>
+      <div class="ob-card">
+
+        <!-- ═══ LEFT PANEL ═══ -->
+        <aside class="ob-panel">
+          <div class="ob-panel__logo">
+            <div class="ob-panel__logo-icon">H</div>
+            <span class="ob-panel__logo-text">HireMe</span>
+          </div>
+          <nav class="ob-panel__steps">
+            <div class="ob-panel__step ob-panel__step--active">
+              <div class="ob-panel__step-dot">
+                <span>1</span>
+              </div>
+              <div class="ob-panel__step-info">
+                <div class="ob-panel__step-num">Step 1</div>
+                <div class="ob-panel__step-name">Change Password</div>
+              </div>
+            </div>
+            <div class="ob-panel__step ob-panel__step--upcoming">
+              <div class="ob-panel__step-dot">
+                <span>2</span>
+              </div>
+              <div class="ob-panel__step-info">
+                <div class="ob-panel__step-num">Step 2</div>
+                <div class="ob-panel__step-name">Access Dashboard</div>
+              </div>
+            </div>
+          </nav>
+          <div class="ob-panel__footer">
+            <p><strong>Security Notice:</strong> Your temporary password must be updated before accessing your account.</p>
+          </div>
+        </aside>
+
+        <!-- ═══ RIGHT MAIN ═══ -->
+        <main class="ob-main" style="display: flex; flex-direction: column; justify-content: space-between;">
+          <div class="ob-main__topbar">
+            <span class="ob-main__step-badge" style="background: rgba(74, 108, 247, 0.12); color: #4A6CF7; border: 1px solid rgba(74, 108, 247, 0.25);">
+              Required Security Setup
+            </span>
+            <button class="ob-theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+              ${isDark ? icon('sun', 16) : icon('moon', 16)}
+            </button>
+          </div>
+
+          <div class="ob-main__body" style="padding-top: 1rem; padding-bottom: 1.5rem;">
+            <div class="ob-step-wrapper ob-slide-in-right">
+              
+              <!-- Title & Header -->
+              <div style="margin-bottom: 20px;">
+                <div style="display: inline-flex; align-items: center; gap: 8px; color: #4A6CF7; font-weight: 700; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px;">
+                  ${icon('lock', 16)} Temporary Password Detected
+                </div>
+                <h1 style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary); margin-bottom: 6px;">
+                  Welcome, ${studentName}! 👋
+                </h1>
+                <p style="font-size: 0.86rem; color: var(--text-secondary); line-height: 1.5;">
+                  Your student account was created by the CIER Admin with a temporary password.
+                  Please create a personal, secure password to continue to your dashboard.
+                </p>
+              </div>
+
+              <!-- Form -->
+              <form id="temp-pwd-form" onsubmit="return false;" style="display: flex; flex-direction: column; gap: 16px;">
+                
+                <!-- Email (Read-only) -->
+                <div>
+                  <label class="ob-field__label--static">Account Email</label>
+                  <div class="ob-field__input-wrap" style="background: var(--bg-secondary); border-color: var(--border-light); cursor: not-allowed; opacity: 0.85;">
+                    <span class="ob-field__icon">${icon('mail', 18)}</span>
+                    <input type="text" class="ob-field__input" value="${studentEmail}" disabled style="color: var(--text-secondary); cursor: not-allowed; padding-top: 14px; padding-bottom: 14px;" />
+                  </div>
+                </div>
+
+                <!-- New Password -->
+                <div>
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                    <label class="ob-field__label--static" style="margin-bottom: 0;">New Password</label>
+                    <span id="pwd-strength-badge" style="font-size: 0.72rem; font-weight: 600; color: var(--text-tertiary);"></span>
+                  </div>
+                  <div class="ob-field__input-wrap" id="wrap-new-pwd" style="position: relative;">
+                    <span class="ob-field__icon">${icon('lock', 18)}</span>
+                    <input type="password" id="temp-new-pwd" class="ob-field__input" placeholder="Enter at least 8 characters" autocomplete="new-password" style="padding-top: 14px; padding-bottom: 14px; padding-right: 42px;" />
+                    <button type="button" id="toggle-new-pwd" aria-label="Toggle password visibility" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-tertiary); display: flex; align-items: center; padding: 4px;">
+                      ${icon('eye', 18)}
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Confirm Password -->
+                <div>
+                  <label class="ob-field__label--static">Confirm New Password</label>
+                  <div class="ob-field__input-wrap" id="wrap-confirm-pwd" style="position: relative;">
+                    <span class="ob-field__icon">${icon('shield-check', 18)}</span>
+                    <input type="password" id="temp-confirm-pwd" class="ob-field__input" placeholder="Repeat your new password" autocomplete="new-password" style="padding-top: 14px; padding-bottom: 14px; padding-right: 42px;" />
+                    <button type="button" id="toggle-confirm-pwd" aria-label="Toggle password visibility" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-tertiary); display: flex; align-items: center; padding: 4px;">
+                      ${icon('eye', 18)}
+                    </button>
+                  </div>
+                  <div id="pwd-match-hint" style="font-size: 0.72rem; color: var(--text-tertiary); margin-top: 4px; min-height: 16px;"></div>
+                </div>
+
+                <!-- Error feedback banner -->
+                <div id="temp-pwd-error" style="display: none; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 10px; padding: 10px 14px; color: #DC2626; font-size: 0.8rem; align-items: center; gap: 8px;">
+                  <span style="flex-shrink: 0;">${icon('alert-triangle', 16)}</span>
+                  <span id="temp-pwd-error-text"></span>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="button" id="btn-submit-pwd" class="ob-btn ob-btn--primary" style="width: 100%; justify-content: center; padding: 14px 20px; font-size: 0.92rem; font-weight: 600; margin-top: 4px;">
+                  <span id="btn-submit-lbl">Update Password & Continue</span>
+                  ${svg.arrowRight}
+                </button>
+
+              </form>
+
+            </div>
+          </div>
+
+          <div class="ob-main__footer" style="display: flex; justify-content: center; border-top: 1px solid var(--border-light); padding-top: 14px;">
+            <button type="button" id="btn-temp-signout" style="background: none; border: none; color: var(--text-tertiary); font-size: 0.8rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 6px;">
+              Not you? Sign out & return to login
+            </button>
+          </div>
+
+        </main>
+
+      </div>
+    </div>
+  `;
+
+  attachTemporaryPasswordEvents(cachedUser);
+  createParticles();
+}
+
+function attachTemporaryPasswordEvents(cachedUser) {
+  document.getElementById('theme-toggle')?.addEventListener('click', () => {
+    const html = document.documentElement;
+    const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    html.setAttribute('data-theme', next);
+    localStorage.setItem('hireme-theme', next);
+    renderTemporaryPasswordFlow(cachedUser);
+  });
+
+  const newPwdInput = document.getElementById('temp-new-pwd');
+  const confirmPwdInput = document.getElementById('temp-confirm-pwd');
+  const toggleNewBtn = document.getElementById('toggle-new-pwd');
+  const toggleConfirmBtn = document.getElementById('toggle-confirm-pwd');
+
+  toggleNewBtn?.addEventListener('click', () => {
+    const isText = newPwdInput.type === 'text';
+    newPwdInput.type = isText ? 'password' : 'text';
+    toggleNewBtn.innerHTML = isText ? icon('eye', 18) : icon('eye-off', 18);
+  });
+
+  toggleConfirmBtn?.addEventListener('click', () => {
+    const isText = confirmPwdInput.type === 'text';
+    confirmPwdInput.type = isText ? 'password' : 'text';
+    toggleConfirmBtn.innerHTML = isText ? icon('eye', 18) : icon('eye-off', 18);
+  });
+
+  const matchHint = document.getElementById('pwd-match-hint');
+  const strengthBadge = document.getElementById('pwd-strength-badge');
+  const errorBox = document.getElementById('temp-pwd-error');
+  const errorText = document.getElementById('temp-pwd-error-text');
+
+  function updateMatchStatus() {
+    const val1 = newPwdInput?.value || '';
+    const val2 = confirmPwdInput?.value || '';
+
+    if (val1.length > 0) {
+      if (val1.length < 8) {
+        strengthBadge.textContent = 'Too short (min 8 chars)';
+        strengthBadge.style.color = '#EF4444';
+      } else {
+        strengthBadge.textContent = '✓ Length OK';
+        strengthBadge.style.color = '#10B981';
+      }
+    } else {
+      strengthBadge.textContent = '';
+    }
+
+    if (!val2) {
+      matchHint.textContent = '';
+      return;
+    }
+    if (val1 === val2) {
+      matchHint.textContent = '✓ Passwords match';
+      matchHint.style.color = '#10B981';
+    } else {
+      matchHint.textContent = '✕ Passwords do not match';
+      matchHint.style.color = '#EF4444';
+    }
+  }
+
+  newPwdInput?.addEventListener('input', updateMatchStatus);
+  confirmPwdInput?.addEventListener('input', updateMatchStatus);
+
+  const submitBtn = document.getElementById('btn-submit-pwd');
+  const submitLbl = document.getElementById('btn-submit-lbl');
+
+  async function handleSubmit() {
+    const p1 = newPwdInput?.value || '';
+    const p2 = confirmPwdInput?.value || '';
+
+    if (errorBox) errorBox.style.display = 'none';
+
+    if (p1.length < 8) {
+      if (errorText) errorText.textContent = 'Password must be at least 8 characters long.';
+      if (errorBox) errorBox.style.display = 'flex';
+      newPwdInput?.focus();
+      return;
+    }
+
+    if (p1 !== p2) {
+      if (errorText) errorText.textContent = 'New passwords do not match. Please verify.';
+      if (errorBox) errorBox.style.display = 'flex';
+      confirmPwdInput?.focus();
+      return;
+    }
+
+    if (submitBtn) submitBtn.disabled = true;
+    if (submitLbl) submitLbl.textContent = 'Updating password…';
+
+    try {
+      const token = localStorage.getItem('hireme_token');
+      const res = await fetch('http://localhost:8000/api/auth/change-temporary-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          password: p1,
+          password_confirmation: p2,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        const msg = data.errors?.password?.[0] || data.message || 'Failed to update password.';
+        if (errorText) errorText.textContent = msg;
+        if (errorBox) errorBox.style.display = 'flex';
+        if (submitBtn) submitBtn.disabled = false;
+        if (submitLbl) submitLbl.textContent = 'Update Password & Continue';
+        return;
+      }
+
+      // Success
+      const updatedUser = {
+        ...cachedUser,
+        ...(data.user || {}),
+        must_change_password: false,
+      };
+      localStorage.setItem('hireme_user', JSON.stringify(updatedUser));
+
+      triggerConfetti();
+      if (submitLbl) submitLbl.textContent = '✓ Password Updated!';
+      if (submitBtn) submitBtn.style.background = 'linear-gradient(135deg, #10B981 0%, #059669 100%)';
+
+      setTimeout(() => {
+        const destinations = {
+          student:    '/main/',
+          graduate:   '/jobseeker/',
+          jobseeker:  '/jobseeker/',
+          company:    '/company/',
+          supervisor: '/supervisors/',
+          admin:      '/admin/',
+        };
+        window.location.href = destinations[updatedUser.role] || '/main/';
+      }, 1200);
+
+    } catch (err) {
+      if (errorText) errorText.textContent = 'Network error. Please verify the backend server is running.';
+      if (errorBox) errorBox.style.display = 'flex';
+      if (submitBtn) submitBtn.disabled = false;
+      if (submitLbl) submitLbl.textContent = 'Update Password & Continue';
+    }
+  }
+
+  submitBtn?.addEventListener('click', handleSubmit);
+  newPwdInput?.addEventListener('keydown', (e) => { if (e.key === 'Enter') confirmPwdInput?.focus(); });
+  confirmPwdInput?.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleSubmit(); });
+
+  document.getElementById('btn-temp-signout')?.addEventListener('click', () => {
+    localStorage.removeItem('hireme_token');
+    localStorage.removeItem('hireme_user');
+    sessionStorage.clear();
+    window.location.href = './';
+  });
+}
+
 function render(animate = true) {
+  const urlParams = new URLSearchParams(window.location.search);
+  const cachedUserStr = localStorage.getItem('hireme_user');
+  let cachedUser = null;
+  try {
+    cachedUser = cachedUserStr ? JSON.parse(cachedUserStr) : null;
+  } catch (_) {}
+
+  const isTemporaryPassword = urlParams.get('mode') === 'temporary-password' || Boolean(cachedUser?.must_change_password);
+
+  if (isTemporaryPassword) {
+    renderTemporaryPasswordFlow(cachedUser);
+    return;
+  }
   const slideClass = animate
     ? (direction > 0 ? 'ob-slide-in-right' : 'ob-slide-in-left')
     : '';

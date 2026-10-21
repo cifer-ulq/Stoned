@@ -15,7 +15,7 @@ class TimeLog extends Model
         'morning_hours', 'afternoon_hours',
         'morning_in_lat', 'morning_in_lon', 'morning_out_lat', 'morning_out_lon',
         'afternoon_in_lat', 'afternoon_in_lon', 'afternoon_out_lat', 'afternoon_out_lon',
-        'morning_validity', 'afternoon_validity', 'auto_morning_timeout',
+        'morning_validity', 'afternoon_validity', 'auto_morning_timeout', 'auto_afternoon_timeout',
         'hours_rendered', 'description', 'latitude', 'longitude', 'status',
         'time_in_lat', 'time_in_lon', 'time_out_lat', 'time_out_lon',
         'location_validity', 'distance_meters',
@@ -28,7 +28,8 @@ class TimeLog extends Model
             'hours_rendered'       => 'decimal:2',
             'morning_hours'        => 'decimal:2',
             'afternoon_hours'      => 'decimal:2',
-            'auto_morning_timeout' => 'boolean',
+            'auto_morning_timeout'   => 'boolean',
+            'auto_afternoon_timeout' => 'boolean',
         ];
     }
 

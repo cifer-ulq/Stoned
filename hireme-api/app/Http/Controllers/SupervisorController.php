@@ -974,7 +974,8 @@ class SupervisorController extends Controller
                     'afternoonOut'       => $log->afternoon_out ? \Carbon\Carbon::parse($log->afternoon_out)->format('g:i A') : null,
                     'morningHours'       => (float) ($log->morning_hours ?? 0),
                     'afternoonHours'     => (float) ($log->afternoon_hours ?? 0),
-                    'autoMorningTimeout' => (bool) ($log->auto_morning_timeout ?? false),
+                    'autoMorningTimeout'   => (bool) ($log->auto_morning_timeout ?? false),
+                    'autoAfternoonTimeout' => (bool) ($log->auto_afternoon_timeout ?? false),
                     'hours'              => (float) $log->hours_rendered,
                     'status'             => $log->status,
                     'task'               => $log->description,
@@ -1348,13 +1349,16 @@ class SupervisorController extends Controller
 
             // ── Create records ───────────────────────────────────────────────
             try {
+                $tempPassword = 'CHMSU-' . strtoupper(\Illuminate\Support\Str::random(6));
+
                 DB::transaction(function () use (
-                    $name, $email, $studentId, $course, $year, $section, $campus, $batch
+                    $name, $email, $studentId, $course, $year, $section, $campus, $batch, $tempPassword
                 ) {
                     $user = User::create([
                         'name'                 => $name,
                         'email'                => $email,
-                        'password'             => Hash::make($studentId),
+                        'password'             => Hash::make($tempPassword),
+                        'must_change_password' => true,
                         'role'                 => 'student',
                         'onboarding_completed' => true,
                     ]);
@@ -1373,15 +1377,16 @@ class SupervisorController extends Controller
 
                     // Send welcome email with credentials
                     try {
-                        Mail::to($email)->queue(new StudentWelcome(
-                            studentName: $name,
-                            email:       $email,
-                            studentId:   $studentId,
-                            program:     $course,
-                            campus:      $campus ?? 'Main Campus',
+                        Mail::to($email)->send(new StudentWelcome(
+                            studentName:       $name,
+                            email:             $email,
+                            studentId:         $studentId,
+                            program:           $course,
+                            campus:            $campus ?? 'Main Campus',
+                            temporaryPassword: $tempPassword,
                         ));
                     } catch (\Throwable $mErr) {
-                        Log::warning("Student welcome email failed to queue: " . $mErr->getMessage());
+                        Log::warning("Student welcome email failed to send: " . $mErr->getMessage());
                     }
                 });
 

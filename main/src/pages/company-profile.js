@@ -501,8 +501,8 @@ function renderTabView(container, company, jobs, ojt, tab) {
 
                 <div style="display: flex; align-items: center; gap: 10px;">
                   ${p.slots_remaining != null ? `
-                    <span style="padding: 5px 12px; background: rgba(175, 82, 222, 0.12); color: #af52de; border-radius: 8px; font-size: 0.84rem; font-weight: 700;">
-                      ${p.slots_remaining} Slots Remaining
+                    <span style="padding: 5px 12px; background: ${p.slots_remaining <= 0 ? 'rgba(239, 68, 68, 0.12)' : 'rgba(175, 82, 222, 0.12)'}; color: ${p.slots_remaining <= 0 ? 'var(--color-error)' : '#af52de'}; border-radius: 8px; font-size: 0.84rem; font-weight: 700;">
+                      ${p.slots_remaining <= 0 ? 'No Slots Available (0)' : `${p.slots_remaining} Slots Remaining`}
                     </span>
                   ` : ''}
                 </div>
@@ -528,8 +528,8 @@ function renderTabView(container, company, jobs, ojt, tab) {
                   `).join('')}
                 </div>
 
-                <a href="#/ojt" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 16px; border-radius: 8px; background: rgba(175, 82, 222, 0.12); color: #af52de; font-size: 0.84rem; font-weight: 600; text-decoration: none;">
-                  Apply on OJT List ${icon('arrowRight', 13)}
+                <a href="#/ojt" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 16px; border-radius: 8px; background: ${p.slots_remaining <= 0 ? 'var(--bg-secondary)' : 'rgba(175, 82, 222, 0.12)'}; color: ${p.slots_remaining <= 0 ? 'var(--text-tertiary)' : '#af52de'}; font-size: 0.84rem; font-weight: 600; text-decoration: none;">
+                  ${p.slots_remaining <= 0 ? 'View on OJT List (Full)' : `Apply on OJT List ${icon('arrowRight', 13)}`}
                 </a>
               </div>
             </div>

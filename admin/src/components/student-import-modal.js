@@ -394,7 +394,7 @@ export function openStudentImportModal(onSuccess) {
       ${success ? `
       <div class="sim-credential-note">
         ${icon('key', 13)}
-        <span>Default password for each student is their <strong>Student ID</strong>. They will be prompted to change it after first login.</span>
+        <span>System emails containing secure temporary passwords have been sent to each student. They will be required to create a new password upon first login.</span>
       </div>
       ` : ''}
 

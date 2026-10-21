@@ -36,9 +36,10 @@ Route::prefix('auth')->group(function () {
     Route::post('set-password',  [LoginController::class,   'setPassword']); // company onboarding
 
     Route::middleware('auth:sanctum')->group(function () {
-        Route::post('logout',      [LoginController::class,      'logout']);
-        Route::get('me',           [LoginController::class,      'me']);
-        Route::post('onboarding',  [OnboardingController::class, 'store']);
+        Route::post('logout',                    [LoginController::class,      'logout']);
+        Route::get('me',                         [LoginController::class,      'me']);
+        Route::post('onboarding',                [OnboardingController::class, 'store']);
+        Route::post('change-temporary-password', [LoginController::class,      'changeTemporaryPassword']);
     });
 });
 

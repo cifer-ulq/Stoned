@@ -1535,9 +1535,10 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
     `;
   } else if (sessionState === 'day_completed') {
     const totalTodayHours = todayLog?.hours || 0;
+    const isAutoPM = todayLog?.autoAfternoonTimeout;
     punchClockHtml = `
-      <div style="display:flex;align-items:center;gap:8px;background:var(--color-success-bg);color:var(--color-success);padding:8px 16px;border-radius:99px;font-size:0.84rem;font-weight:600;">
-        ${icon('checkCircle', 16)} Today's attendance complete (${totalTodayHours} hrs)
+      <div style="display:flex;align-items:center;gap:8px;background:${isAutoPM ? 'rgba(245,158,11,0.12)' : 'var(--color-success-bg)'};color:${isAutoPM ? '#b45309' : 'var(--color-success)'};padding:8px 16px;border-radius:99px;font-size:0.84rem;font-weight:600;">
+        ${icon(isAutoPM ? 'clock' : 'checkCircle', 16)} Today's attendance complete (${totalTodayHours} hrs)${isAutoPM ? ' · Auto Time-Out' : ''}
       </div>
     `;
   }
@@ -2116,16 +2117,16 @@ function renderTrackerLogRow(log) {
     : (log.afternoonIn ? '<span style="color:#d97706;font-size:0.68rem;font-weight:600;">Auto 12:00</span>' : '—');
   const aIn = log.afternoonIn || '—';
   const aOut = log.afternoonOut
-    ? log.afternoonOut
+    ? `${log.afternoonOut}${log.autoAfternoonTimeout ? '<div style="font-size:0.6rem;color:#d97706;font-weight:600;">Auto ' + log.afternoonOut + '</div>' : ''}`
     : (log.afternoonIn ? '<span style="color:var(--color-warning);font-size:0.7rem;font-weight:600;">In Progress</span>' : (log.timeOut && !log.morningOut ? log.timeOut : '—'));
 
   return `
     <tr class="log-table-row" data-log-id="${log.id}" style="border-bottom:1px solid var(--border-light);cursor:pointer;transition:background 0.15s ease;">
       <td style="padding:9px 10px;font-size:0.78rem;font-weight:500;white-space:nowrap;">${log.dayLabel || log.date}</td>
-      <td style="padding:9px 10px;font-size:0.78rem;text-align:center;color:var(--color-success);font-weight:600;">${mIn}</td>
-      <td style="padding:9px 10px;font-size:0.78rem;text-align:center;color:#d97706;font-weight:600;">${mOut}</td>
-      <td style="padding:9px 10px;font-size:0.78rem;text-align:center;color:var(--color-success);font-weight:600;">${aIn}</td>
-      <td style="padding:9px 10px;font-size:0.78rem;text-align:center;color:var(--color-error);font-weight:600;">${aOut}</td>
+      <td style="padding:9px 10px;font-size:0.78rem;text-align:center;color:#000;font-weight:600;">${mIn}</td>
+      <td style="padding:9px 10px;font-size:0.78rem;text-align:center;color:#000;font-weight:600;">${mOut}</td>
+      <td style="padding:9px 10px;font-size:0.78rem;text-align:center;color:#000;font-weight:600;">${aIn}</td>
+      <td style="padding:9px 10px;font-size:0.78rem;text-align:center;color:#000;font-weight:600;">${aOut}</td>
       <td style="padding:9px 10px;font-size:0.83rem;font-weight:700;text-align:center;">${(log.hours > 0 || log.timeOut || log.afternoonOut) ? log.hours + 'h' : '—'}</td>
       <td style="padding:9px 10px;text-align:center;">
         <span style="background:${sc.bg};color:${sc.color};font-size:0.63rem;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap;">${sc.label}</span>
@@ -2872,7 +2873,7 @@ function showLogDetail(log) {
   const mHrs = log.morningHours != null ? `${log.morningHours}h` : '—';
 
   const aIn = log.afternoonIn || '—';
-  const aOut = log.afternoonOut || (log.timeOut && !log.morningOut ? log.timeOut : '—');
+  const aOut = log.afternoonOut ? (log.afternoonOut + (log.autoAfternoonTimeout ? ' (Auto)' : '')) : (log.timeOut && !log.morningOut ? (log.timeOut + (log.autoAfternoonTimeout ? ' (Auto)' : '')) : '—');
   const aHrs = log.afternoonHours != null ? `${log.afternoonHours}h` : '—';
   const totalHrs = (log.hours > 0 || log.timeOut || log.afternoonOut) ? `${log.hours}h` : '—';
 

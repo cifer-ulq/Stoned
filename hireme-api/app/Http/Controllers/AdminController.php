@@ -2279,13 +2279,16 @@ class AdminController extends Controller
 
             // ── Create records ───────────────────────────────────────────────
             try {
+                $tempPassword = 'CHMSU-' . strtoupper(Str::random(6));
+
                 DB::transaction(function () use (
-                    $name, $email, $studentId, $course, $year, $section, $campus, $batch
+                    $name, $email, $studentId, $course, $year, $section, $campus, $batch, $tempPassword
                 ) {
                     $user = User::create([
                         'name'                 => $name,
                         'email'                => $email,
-                        'password'             => Hash::make($studentId),   // Student ID = default password
+                        'password'             => Hash::make($tempPassword),
+                        'must_change_password' => true,
                         'role'                 => 'student',
                         'onboarding_completed' => true,                     // Pre-filled by admin
                     ]);
@@ -2303,13 +2306,18 @@ class AdminController extends Controller
                     ]);
 
                     // Send welcome email with credentials
-                    Mail::to($email)->queue(new StudentWelcome(
-                        studentName: $name,
-                        email:       $email,
-                        studentId:   $studentId,
-                        program:     $course,
-                        campus:      $campus ?? 'Main Campus',
-                    ));
+                    try {
+                        Mail::to($email)->send(new StudentWelcome(
+                            studentName:       $name,
+                            email:             $email,
+                            studentId:         $studentId,
+                            program:           $course,
+                            campus:            $campus ?? 'Main Campus',
+                            temporaryPassword: $tempPassword,
+                        ));
+                    } catch (\Throwable $mailError) {
+                        \Log::warning("Failed to deliver student welcome email to {$email}: " . $mailError->getMessage());
+                    }
                 });
 
                 $imported++;

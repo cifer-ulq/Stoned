@@ -821,6 +821,11 @@ async function handleSubmit(e) {
     localStorage.setItem('hireme_token', data.token);
     localStorage.setItem('hireme_user', JSON.stringify(data.user));
 
+    if (data.user?.must_change_password) {
+      window.location.href = './onboarding.html?mode=temporary-password';
+      return;
+    }
+
     const destinations = {
       student:    '/main/',
       graduate:   '/jobseeker/',

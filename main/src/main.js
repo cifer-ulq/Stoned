@@ -57,6 +57,10 @@ async function initAuth() {
   if (cached) {
     try {
       const u = JSON.parse(cached);
+      if (u.must_change_password) {
+        window.location.href = '../login/onboarding.html?mode=temporary-password';
+        return false;
+      }
       if (u.role === 'graduate' || u.role === 'jobseeker' || u.status === 'alumni') {
         window.location.href = '../jobseeker/';
         return false;
@@ -69,6 +73,12 @@ async function initAuth() {
   try {
     const data = await apiGet('/auth/me');
     if (!data) return false; // 401 handled inside apiGet → redirects
+
+    const userData = data.data || data;
+    if (userData.must_change_password) {
+      window.location.href = '../login/onboarding.html?mode=temporary-password';
+      return false;
+    }
 
     // Role guard — only students can access this portal
     const role = data.data?.role || data.role;

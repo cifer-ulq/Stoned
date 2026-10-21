@@ -90,6 +90,7 @@ class OjtController extends Controller
                     'slots_total'          => $slotsTotal,
                     'slots_remaining'      => $slotsRemaining,
                     'occupied_slots'       => $occupiedCount,
+                    'is_full'              => $slotsRemaining <= 0,
                     'duration'             => '5 months (600 hours)',
                     'is_interested'        => in_array($p->id, $myInterestIds),
                     'interest_status'      => $myStatuses[$p->id] ?? null,
@@ -116,6 +117,20 @@ class OjtController extends Controller
 
         if ($posting->status === 'closed') {
             return response()->json(['success' => false, 'message' => 'This posting is closed.'], 422);
+        }
+
+        // Block if no slots are available
+        $remainingSlots = $posting->calculateSlotsRemaining();
+        if ($remainingSlots <= 0 || ($posting->slots_remaining !== null && $posting->slots_remaining <= 0)) {
+            if ($posting->slots_remaining !== 0) {
+                $posting->slots_remaining = 0;
+                $posting->saveQuietly();
+            }
+            return response()->json([
+                'success' => false,
+                'code'    => 'NO_SLOTS_AVAILABLE',
+                'message' => 'This OJT listing has no available slots remaining. Applications are currently closed.',
+            ], 422);
         }
 
         // Block if student is already in or past the acceptance pipeline

@@ -427,21 +427,29 @@ class JobseekerController extends Controller
             ]);
         }
 
-        $user   = $request->user();
-        $skills = StudentSkill::where('user_id', $user->id)->pluck('name')->toArray();
+        $user       = $request->user();
+        $skills     = StudentSkill::where('user_id', $user->id)->pluck('name')->toArray();
+        $searchTerm = trim($request->query('search') ?? $request->query('q') ?? '');
 
-        if (empty($skills)) {
+        // If no search query and user has no skills saved on profile:
+        if (empty($searchTerm) && empty($skills)) {
             return response()->json([
                 'success' => true,
                 'data'    => [],
-                'message' => 'Add skills to your profile to see personalised external jobs.',
+                'message' => 'Add skills to your profile to see personalised external jobs, or use the search bar above.',
             ]);
         }
 
         $searchableSkills = array_values(array_filter($skills, fn($s) => mb_strlen(trim($s)) >= 2));
 
-        // Cache per user+skills combo for 6 hours
-        $cacheKey = 'ext_jobs_j_' . $user->id . '_' . md5(implode(',', $skills));
+        // Smart cache key determination: query-specific or user profile skills
+        if (!empty($searchTerm)) {
+            $cacheKey = 'ext_jobs_q_' . md5(strtolower($searchTerm)) . '_' . ($user?->id ?? 'anon');
+            $cacheTtl = now()->addHours(2);
+        } else {
+            $cacheKey = 'ext_jobs_j_' . $user->id . '_' . md5(implode(',', $skills));
+            $cacheTtl = now()->addHours(6);
+        }
 
         $cached = Cache::get($cacheKey);
         if ($cached !== null) {
@@ -449,21 +457,20 @@ class JobseekerController extends Controller
         }
 
         try {
-            // Search top 3 skills individually and merge — avoids 0-result combined queries
-            $querySkills = array_slice($searchableSkills, 0, 3);
-            $allRaw = [];
+            $raw = [];
             $seenIds = [];
 
-            foreach ($querySkills as $skill) {
+            if (!empty($searchTerm)) {
+                // Execute direct search on JSearch using the provided query
                 try {
-                    $r = Http::timeout(10)
+                    $r = Http::timeout(15)
                         ->withoutVerifying()
                         ->withHeaders([
                             'X-RapidAPI-Key'  => $apiKey,
                             'X-RapidAPI-Host' => 'jsearch.p.rapidapi.com',
                         ])
                         ->get('https://jsearch.p.rapidapi.com/search', [
-                            'query'     => $skill . ' developer',
+                            'query'     => $searchTerm,
                             'page'      => '1',
                             'num_pages' => '1',
                         ]);
@@ -472,23 +479,18 @@ class JobseekerController extends Controller
                         foreach ($r->json('data', []) as $job) {
                             $id = $job['job_id'] ?? null;
                             if ($id && !in_array($id, $seenIds)) {
-                                $seenIds[]  = $id;
-                                $allRaw[]   = $job;
+                                $seenIds[] = $id;
+                                $raw[]     = $job;
                             }
                         }
                     }
                 } catch (\Exception $e) {
-                    \Log::warning('[externalJobs] Skill query failed for "' . $skill . '": ' . $e->getMessage());
+                    \Log::warning('[externalJobs:jobseeker] Direct search query failed for "' . $searchTerm . '": ' . $e->getMessage());
                 }
-            }
-
-            $raw = $allRaw;
-
-            // Fallback: if per-skill queries returned nothing (e.g. soft skills),
-            // run generic searches so the user always sees results
-            if (empty($raw)) {
-                $fallbackQueries = ['software developer', 'web developer'];
-                foreach ($fallbackQueries as $fq) {
+            } else {
+                // Search top 3 skills individually and merge — avoids 0-result combined queries
+                $querySkills = array_slice($searchableSkills, 0, 3);
+                foreach ($querySkills as $skill) {
                     try {
                         $r = Http::timeout(10)
                             ->withoutVerifying()
@@ -497,7 +499,7 @@ class JobseekerController extends Controller
                                 'X-RapidAPI-Host' => 'jsearch.p.rapidapi.com',
                             ])
                             ->get('https://jsearch.p.rapidapi.com/search', [
-                                'query'     => $fq,
+                                'query'     => $skill . ' developer',
                                 'page'      => '1',
                                 'num_pages' => '1',
                             ]);
@@ -506,13 +508,46 @@ class JobseekerController extends Controller
                             foreach ($r->json('data', []) as $job) {
                                 $id = $job['job_id'] ?? null;
                                 if ($id && !in_array($id, $seenIds)) {
-                                    $seenIds[] = $id;
-                                    $raw[]     = $job;
+                                    $seenIds[]  = $id;
+                                    $raw[]      = $job;
                                 }
                             }
                         }
                     } catch (\Exception $e) {
-                        \Log::warning('[externalJobs] Fallback query failed for "' . $fq . '": ' . $e->getMessage());
+                        \Log::warning('[externalJobs:jobseeker] Skill query failed for "' . $skill . '": ' . $e->getMessage());
+                    }
+                }
+
+                // Fallback: if per-skill queries returned nothing (e.g. soft skills),
+                // run generic searches so the user always sees results
+                if (empty($raw)) {
+                    $fallbackQueries = ['software developer', 'web developer'];
+                    foreach ($fallbackQueries as $fq) {
+                        try {
+                            $r = Http::timeout(10)
+                                ->withoutVerifying()
+                                ->withHeaders([
+                                    'X-RapidAPI-Key'  => $apiKey,
+                                    'X-RapidAPI-Host' => 'jsearch.p.rapidapi.com',
+                                ])
+                                ->get('https://jsearch.p.rapidapi.com/search', [
+                                    'query'     => $fq,
+                                    'page'      => '1',
+                                    'num_pages' => '1',
+                                ]);
+
+                            if ($r->successful()) {
+                                foreach ($r->json('data', []) as $job) {
+                                    $id = $job['job_id'] ?? null;
+                                    if ($id && !in_array($id, $seenIds)) {
+                                        $seenIds[] = $id;
+                                        $raw[]     = $job;
+                                    }
+                                }
+                            }
+                        } catch (\Exception $e) {
+                            \Log::warning('[externalJobs:jobseeker] Fallback query failed for "' . $fq . '": ' . $e->getMessage());
+                        }
                     }
                 }
             }
@@ -664,7 +699,7 @@ class JobseekerController extends Controller
             ->toArray();
 
 
-            Cache::put($cacheKey, $jobs, now()->addHours(6));
+            Cache::put($cacheKey, $jobs, $cacheTtl);
 
             return response()->json(['success' => true, 'data' => $jobs]);
         } catch (\Exception $e) {

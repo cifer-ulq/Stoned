@@ -548,8 +548,9 @@ async function renderBrowsingState(container, empStatus = null) {
 
     grid.innerHTML = slots.map(s => {
       const sc = statusCfg[s.status] || statusCfg.open;
+      const isFull = (s.slotsRemaining <= 0);
       const pct = s.slots > 0 ? Math.round((s.slotsRemaining / s.slots) * 100) : 0;
-      const barColor = pct > 50 ? 'var(--color-success)' : pct > 20 ? 'var(--color-warning)' : 'var(--color-error)';
+      const barColor = isFull ? 'var(--color-error)' : pct > 50 ? 'var(--color-success)' : pct > 20 ? 'var(--color-warning)' : 'var(--color-error)';
       const isHighlyRec = s.matchScore >= 71;
       const isNotRec = s.matchScore <= 25;
 
@@ -651,10 +652,12 @@ async function renderBrowsingState(container, empStatus = null) {
           <div class="ojt-card__slots">
             <div class="ojt-card__slots-info">
               <span class="ojt-card__slots-label">${icon('users', 11)} Availability</span>
-              <span class="ojt-card__slots-count" style="color:${barColor};">${s.slotsRemaining} of ${s.slots} slots left</span>
+              <span class="ojt-card__slots-count" style="color:${isFull ? 'var(--color-error)' : barColor};font-weight:${isFull ? '700' : '600'};">
+                ${isFull ? `No slots left (0 of ${s.slots})` : `${s.slotsRemaining} of ${s.slots} slots left`}
+              </span>
             </div>
             <div class="ojt-card__slots-track">
-              <div class="ojt-card__slots-fill" style="width:${pct}%;background:${barColor};"></div>
+              <div class="ojt-card__slots-fill" style="width:${isFull ? 100 : pct}%;background:${isFull ? 'rgba(239,68,68,0.35)' : barColor};"></div>
             </div>
           </div>
 
@@ -667,7 +670,12 @@ async function renderBrowsingState(container, empStatus = null) {
                 ? `<span class="applied-badge" data-id="${s.id}" style="display:inline-flex;align-items:center;gap:5px;background:var(--color-success-bg);color:var(--color-success);font-size:0.72rem;font-weight:700;padding:5px 12px;border-radius:99px;cursor:pointer;" title="Click to withdraw application">${icon('checkCircle', 12)} Applied</span>`
                 : (isActiveOjt || isHired)
                   ? `<button class="btn btn--sm" disabled style="background:var(--bg-tertiary);color:var(--text-tertiary);border:1px solid var(--border-default);font-size:0.73rem;border-radius:6px;cursor:not-allowed;" title="${isActiveOjt ? 'You are currently on active OJT' : 'You are currently employed'}">${icon('alertTriangle', 12)} Blocked</button>`
-                  : !isReqVerified
+                  : isFull
+                    ? `
+                      <button class="btn btn--outline btn--sm" data-view="${s.id}" style="font-size:0.73rem;padding:0 10px;height:28px;border-radius:6px;">Details</button>
+                      <button class="btn btn--sm" disabled style="font-size:0.73rem;padding:0 10px;height:28px;border-radius:6px;background:var(--bg-tertiary);color:var(--text-tertiary);border:1px solid var(--border-default);cursor:not-allowed;" title="All slots for this OJT opportunity have been filled">${icon('users', 11)} Full (0 Slots)</button>
+                    `
+                    : !isReqVerified
                     ? `
                       <button class="btn btn--outline btn--sm" data-view="${s.id}" style="font-size:0.73rem;padding:0 10px;height:28px;border-radius:6px;">Details</button>
                       <button class="btn btn--sm btn--apply-direct" data-id="${s.id}" style="font-size:0.73rem;padding:0 10px;height:28px;border-radius:6px;background:#fef3c7;color:#92400e;border:1px solid #f59e0b;font-weight:700;" title="OJT requirements must be verified first">${icon('lock', 11)} Apply</button>
@@ -738,6 +746,11 @@ async function renderBrowsingState(container, empStatus = null) {
         }
         const id   = parseInt(btn.dataset.id);
         const slot = allSlots.find(s => s.id === id);
+        if (!slot) return;
+        if (slot.slotsRemaining <= 0) {
+          showToast('This OJT listing has no available slots left.', 'error');
+          return;
+        }
         showApplyConfirm(slot);
       });
     });
@@ -829,8 +842,9 @@ async function renderBrowsingState(container, empStatus = null) {
   applyFilters();
 
   function showSlotDetail(slot, canApply) {
+    const isSlotFull = (slot.slotsRemaining <= 0);
     const pct = slot.slots > 0 ? Math.round((slot.slotsRemaining / slot.slots) * 100) : 0;
-    const barColor = pct > 50 ? 'var(--color-success)' : pct > 20 ? 'var(--color-warning)' : 'var(--color-error)';
+    const barColor = isSlotFull ? 'var(--color-error)' : pct > 50 ? 'var(--color-success)' : pct > 20 ? 'var(--color-warning)' : 'var(--color-error)';
     const isClosed = slot.status === 'closed';
     const uniqueCourses = getUniqueCourseAcronyms(slot.preferredCourses);
 
@@ -906,10 +920,10 @@ async function renderBrowsingState(container, empStatus = null) {
             </div>
 
             <div class="ojt-modal__stat-box">
-              <div class="ojt-modal__stat-val" style="color:${barColor};">
+              <div class="ojt-modal__stat-val" style="color:${isSlotFull ? 'var(--color-error)' : barColor};">
                 ${slot.slotsRemaining}/${slot.slots}
               </div>
-              <div class="ojt-modal__stat-lbl">Slots Left</div>
+              <div class="ojt-modal__stat-lbl">${isSlotFull ? 'Slots (Full)' : 'Slots Left'}</div>
             </div>
           </div>
 
@@ -1022,7 +1036,9 @@ async function renderBrowsingState(container, empStatus = null) {
                 ? `<button class="btn btn--sm" style="background:var(--bg-tertiary);color:var(--text-tertiary);cursor:not-allowed;height:34px;" disabled title="${isActiveOjt ? 'You are currently on active OJT training' : 'You are currently employed'}">${icon('alertTriangle', 14)} ${isActiveOjt ? 'Active OJT — Blocked' : 'Employed — Blocked'}</button>`
                 : slot.is_interested
                   ? `<button class="btn btn--sm" style="background:var(--color-success-bg);color:var(--color-success);border:1px solid var(--color-success);cursor:default;height:34px;">${icon('checkCircle', 14)} Application Submitted</button>`
-                  : !isReqVerified
+                  : isSlotFull
+                    ? `<button class="btn btn--sm" style="background:var(--bg-tertiary);color:var(--text-tertiary);border:1px solid var(--border-default);cursor:not-allowed;height:34px;" disabled title="All slots for this OJT opportunity have been filled">${icon('users', 14)} No Slots Available</button>`
+                    : !isReqVerified
                     ? `<button class="btn btn--sm" id="slot-apply-req-blocked" style="background:#fef3c7;color:#92400e;border:1.5px solid #f59e0b;font-weight:700;height:34px;padding:0 16px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;" title="Requirements must be verified before applying">${icon('lock', 14)} Requirements Required</button>`
                     : `<button class="btn btn--primary btn--sm" id="slot-apply-btn" style="padding:0 20px;height:34px;">${icon('send', 14)} Apply for this Slot</button>`
             }
@@ -1042,6 +1058,11 @@ async function renderBrowsingState(container, empStatus = null) {
     const applyBtn = backdrop.querySelector('#slot-apply-btn');
     if (applyBtn) {
       applyBtn.addEventListener('click', () => {
+        if (slot.slotsRemaining <= 0) {
+          close();
+          showToast('This OJT listing has no available slots left.', 'error');
+          return;
+        }
         if (isActiveOjt) {
           close();
           showToast('You already have an active OJT training. You cannot apply for another slot.', 'error');
@@ -1119,6 +1140,10 @@ async function renderBrowsingState(container, empStatus = null) {
   }
 
   async function showApplyConfirm(slot) {
+    if (slot.slotsRemaining <= 0) {
+      showToast('This OJT listing has no available slots left.', 'error');
+      return;
+    }
     if (!isReqVerified) {
       try {
         const freshEmp = await apiGet('/student/employment-status', { forceRefresh: true });
@@ -1236,6 +1261,13 @@ async function renderBrowsingState(container, empStatus = null) {
           if (res.code === 'REQUIREMENTS_UNVERIFIED') {
             bd.remove();
             showRequirementsRequiredModal(ojtReqs);
+            return;
+          }
+          if (res.code === 'NO_SLOTS_AVAILABLE') {
+            bd.remove();
+            slot.slotsRemaining = 0;
+            applyFilters();
+            showToast(res.message || 'This OJT listing has no available slots left.', 'error');
             return;
           }
           showToast(res.message || 'Could not submit application.', 'error');

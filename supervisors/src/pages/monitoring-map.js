@@ -1039,7 +1039,7 @@ function renderLogsPanel(container, logs) {
 
               <div class="mon-timeline-chips">
                 <span class="mon-time-chip">${icon('logIn', 10)} ${escapeHtml(log.timeIn || '—')}</span>
-                <span class="mon-time-chip">${icon('logOut', 10)} ${escapeHtml(log.timeOut || '—')}</span>
+                <span class="mon-time-chip">${icon('logOut', 10)} ${escapeHtml(log.timeOut || '—')}${log.autoAfternoonTimeout ? ' (Auto)' : ''}</span>
                 <span class="mon-time-chip mon-time-chip--hrs">${log.hours || 0} hrs</span>
               </div>
 

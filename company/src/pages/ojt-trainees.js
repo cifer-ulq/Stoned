@@ -2586,7 +2586,10 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
         : `<span style="color:#94A3B8;">—</span>`;
 
       const aOutHtml = aOut
-        ? `<span style="font-weight:600;color:#0F172A;">${escapeHtml(aOut)}</span>`
+        ? `<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
+             <span style="font-weight:600;color:#0F172A;">${escapeHtml(aOut)}</span>
+             ${log.autoAfternoonTimeout ? `<span style="font-size:0.63rem;font-weight:700;padding:1px 5px;border-radius:4px;background:#FEF3C7;color:#92400E;" title="Automatically closed at scheduled shift end (No exit GPS)">Auto ${escapeHtml(aOut)}</span>` : ''}
+           </div>`
         : (aIn
           ? `<span style="font-size:0.72rem;font-weight:700;color:#059669;background:#ECFDF5;padding:2px 7px;border-radius:99px;">Active (PM)</span>`
           : `<span style="color:#94A3B8;">—</span>`);
@@ -2778,9 +2781,9 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
         ...rows.map(r => [
           `"${(r.rawDate || r.date || '').replace(/"/g, '""')}"`,
           `"${(r.morningIn || r.timeIn || '—').replace(/"/g, '""')}"`,
-          `"${(r.morningOut || '—').replace(/"/g, '""')}"`,
+          `"${(r.morningOut || '—').replace(/"/g, '""')}${r.autoMorningTimeout ? ' (Auto)' : ''}"`,
           `"${(r.afternoonIn || '—').replace(/"/g, '""')}"`,
-          `"${(r.afternoonOut || r.timeOut || '—').replace(/"/g, '""')}"`,
+          `"${(r.afternoonOut || r.timeOut || '—').replace(/"/g, '""')}${r.autoAfternoonTimeout ? ' (Auto)' : ''}"`,
           Number(r.hours || 0).toFixed(2),
           `"${(r.status || '').replace(/"/g, '""')}"`,
           `"${(r.locationValidity || 'No GPS').replace(/"/g, '""')}"`,

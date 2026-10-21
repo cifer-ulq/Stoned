@@ -1075,6 +1075,63 @@ class StudentController extends Controller
         $startDate = $ojtRecord?->start_date ?? $interest->updated_at;
         $endDate = $ojtRecord?->end_date ?? (clone \Carbon\Carbon::parse($startDate))->addMonths($durationMonths);
 
+        // Schedule & Session parameters
+        $scheduleDays = $interest->schedule_days ?? $ojtRecord?->schedule_days ?? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+        $shiftStart   = $interest->shift_start ?? $ojtRecord?->shift_start ?? '08:00';
+        $shiftEnd     = $interest->shift_end ?? $ojtRecord?->shift_end ?? '17:00';
+        $lunchStart   = $interest->lunch_start ?? $ojtRecord?->lunch_start ?? '12:00';
+        $lunchEnd     = $interest->lunch_end ?? $ojtRecord?->lunch_end ?? '13:00';
+        $hasLunch     = (bool) ($interest->has_lunch_break ?? $ojtRecord?->has_lunch_break ?? true);
+
+        $todayStr          = \Carbon\Carbon::today()->toDateString();
+        $nowTime           = \Carbon\Carbon::now()->format('H:i');
+        $shiftStartHM      = \Carbon\Carbon::parse($shiftStart)->format('H:i');
+        $shiftEndHM        = \Carbon\Carbon::parse($shiftEnd)->format('H:i');
+        $lunchStartHM      = \Carbon\Carbon::parse($lunchStart)->format('H:i');
+        $lunchEndHM        = \Carbon\Carbon::parse($lunchEnd)->format('H:i');
+        $earlyGateHM       = \Carbon\Carbon::parse($shiftStart)->subHour()->format('H:i');
+        $afternoonCutoffHM = \Carbon\Carbon::parse($shiftEnd)->addMinutes(30)->format('H:i');
+
+        // 1. Auto-close any unfinalized logs from previous days
+        $pastUnclosed = TimeLog::where('user_id', $user->id)
+            ->where('log_date', '<', $todayStr)
+            ->where(function ($q) {
+                $q->where(fn($sub) => $sub->whereNotNull('afternoon_in')->whereNull('afternoon_out'))
+                  ->orWhere(fn($sub) => $sub->whereNotNull('morning_in')->whereNull('morning_out'))
+                  ->orWhere(fn($sub) => $sub->whereNotNull('time_in')->whereNull('time_out'));
+            })
+            ->get();
+
+        foreach ($pastUnclosed as $pLog) {
+            if ($pLog->morning_in && !$pLog->morning_out) {
+                $this->autoCloseMorningIfNeeded($pLog, $lunchStart, $ojtRecord);
+            }
+            if (($pLog->afternoon_in && !$pLog->afternoon_out) || (!$hasLunch && $pLog->time_in && !$pLog->time_out)) {
+                $this->autoCloseAfternoonIfNeeded($pLog, $shiftEnd, $ojtRecord);
+            }
+        }
+
+        // 2. Auto-close today's morning or afternoon if cutoff passed
+        $todayLogRecord = TimeLog::where('user_id', $user->id)
+            ->when($ojtRecord, fn($q) => $q->where('ojt_record_id', $ojtRecord->id))
+            ->where('log_date', $todayStr)
+            ->first();
+
+        if ($todayLogRecord) {
+            if ($hasLunch && $todayLogRecord->morning_in && !$todayLogRecord->morning_out && $nowTime >= $lunchStartHM) {
+                $this->autoCloseMorningIfNeeded($todayLogRecord, $lunchStart, $ojtRecord);
+                $todayLogRecord->refresh();
+            }
+            if ((($todayLogRecord->afternoon_in && !$todayLogRecord->afternoon_out) || (!$hasLunch && $todayLogRecord->time_in && !$todayLogRecord->time_out)) && $nowTime >= $afternoonCutoffHM) {
+                $this->autoCloseAfternoonIfNeeded($todayLogRecord, $shiftEnd, $ojtRecord);
+                $todayLogRecord->refresh();
+            }
+        }
+
+        if ($ojtRecord) {
+            $ojtRecord->refresh();
+        }
+
         // Get time logs
         $timeLogs = TimeLog::where('user_id', $user->id)
             ->when($ojtRecord, fn($q) => $q->where('ojt_record_id', $ojtRecord->id))
@@ -1124,6 +1181,7 @@ class StudentController extends Controller
                     'morningHours'        => (float) ($log->morning_hours ?? 0),
                     'afternoonHours'      => (float) ($log->afternoon_hours ?? 0),
                     'autoMorningTimeout'  => (bool) ($log->auto_morning_timeout ?? false),
+                    'autoAfternoonTimeout' => (bool) ($log->auto_afternoon_timeout ?? false),
                     'hours'               => (float) $log->hours_rendered,
                     'status'              => $locationStatus,
                     'locationValidity'    => $normalizedValidity,
@@ -1153,40 +1211,10 @@ class StudentController extends Controller
             ->orderByDesc('log_date')
             ->first();
 
-        // Schedule & Session determination for today
-        $todayStr = \Carbon\Carbon::today()->toDateString();
-        $todayLogRecord = TimeLog::where('user_id', $user->id)
-            ->when($ojtRecord, fn($q) => $q->where('ojt_record_id', $ojtRecord->id))
-            ->where('log_date', $todayStr)
-            ->first();
-
-        $scheduleDays = $interest->schedule_days ?? $ojtRecord?->schedule_days ?? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-        $shiftStart   = $interest->shift_start ?? $ojtRecord?->shift_start ?? '08:00';
-        $shiftEnd     = $interest->shift_end ?? $ojtRecord?->shift_end ?? '17:00';
-        $lunchStart   = $interest->lunch_start ?? $ojtRecord?->lunch_start ?? '12:00';
-        $lunchEnd     = $interest->lunch_end ?? $ojtRecord?->lunch_end ?? '13:00';
-        $hasLunch     = (bool) ($interest->has_lunch_break ?? $ojtRecord?->has_lunch_break ?? true);
-
         $currentDayShort = \Carbon\Carbon::now()->format('D');
         $currentDayFull  = \Carbon\Carbon::now()->format('l');
         $activeDays = array_map(fn($d) => strtolower(substr(trim($d), 0, 3)), (array)$scheduleDays);
         $isWorkDay = in_array(strtolower($currentDayShort), $activeDays);
-
-        // Auto-close morning if lunch passed
-        if ($todayLogRecord && $hasLunch && $todayLogRecord->morning_in && !$todayLogRecord->morning_out) {
-            $nowTime = \Carbon\Carbon::now()->format('H:i');
-            if ($nowTime >= $lunchStart) {
-                $this->autoCloseMorningIfNeeded($todayLogRecord, $lunchStart, $ojtRecord);
-                $todayLogRecord->refresh();
-            }
-        }
-
-        $nowTime      = \Carbon\Carbon::now()->format('H:i');
-        $shiftStartHM = \Carbon\Carbon::parse($shiftStart)->format('H:i');
-        $shiftEndHM   = \Carbon\Carbon::parse($shiftEnd)->format('H:i');
-        $lunchStartHM = \Carbon\Carbon::parse($lunchStart)->format('H:i');
-        $lunchEndHM   = \Carbon\Carbon::parse($lunchEnd)->format('H:i');
-        $earlyGateHM  = \Carbon\Carbon::parse($shiftStart)->subHour()->format('H:i');
 
         $sessionState = 'ready_morning_in';
         if (!$isWorkDay) {
@@ -1240,6 +1268,7 @@ class StudentController extends Controller
                 'morningHours'       => (float) ($todayLogRecord->morning_hours ?? 0),
                 'afternoonHours'     => (float) ($todayLogRecord->afternoon_hours ?? 0),
                 'autoMorningTimeout' => (bool) $todayLogRecord->auto_morning_timeout,
+                'autoAfternoonTimeout' => (bool) $todayLogRecord->auto_afternoon_timeout,
                 'hours'              => (float) $todayLogRecord->hours_rendered,
                 'status'             => $todayLogRecord->status,
                 'locationValidity'   => $todayLogRecord->location_validity,
@@ -1444,6 +1473,58 @@ class StudentController extends Controller
     }
 
     /**
+     * Auto-close an unfinalized afternoon session at the scheduled shift end.
+     */
+    public function autoCloseAfternoonIfNeeded(TimeLog $log, $shiftEnd = '17:00', $ojtRecord = null): void
+    {
+        // Case 1: Full-day schedule with afternoon session
+        if ($log->afternoon_in && !$log->afternoon_out) {
+            $pIn  = \Carbon\Carbon::parse($log->afternoon_in);
+            $pEnd = \Carbon\Carbon::parse($shiftEnd);
+
+            $pmHours = 0;
+            if ($pEnd->gt($pIn)) {
+                $pmHours = round($pIn->diffInMinutes($pEnd) / 60, 2);
+            }
+
+            $totalDayHours = (float) ($log->morning_hours ?? 0) + $pmHours;
+
+            $log->update([
+                'afternoon_out'          => $shiftEnd,
+                'afternoon_hours'        => $pmHours,
+                'auto_afternoon_timeout' => true,
+                'afternoon_validity'     => 'No Exit GPS (Auto)',
+                'hours_rendered'         => $totalDayHours,
+                'time_out'               => $shiftEnd,
+            ]);
+
+            $record = $ojtRecord ?? $log->ojtRecord;
+            if ($record && $pmHours > 0) {
+                $record->increment('completed_hours', $pmHours);
+            }
+        }
+        // Case 2: Half-day schedule without lunch break (time_in active, no time_out)
+        elseif (!$log->time_out && $log->time_in && !$log->morning_out && !$log->afternoon_in) {
+            $tIn   = \Carbon\Carbon::parse($log->time_in);
+            $pEnd  = \Carbon\Carbon::parse($shiftEnd);
+            $hours = $pEnd->gt($tIn) ? round($tIn->diffInMinutes($pEnd) / 60, 2) : 0;
+
+            $log->update([
+                'time_out'               => $shiftEnd,
+                'morning_out'            => $shiftEnd,
+                'morning_hours'          => $hours,
+                'hours_rendered'         => $hours,
+                'auto_afternoon_timeout' => true,
+            ]);
+
+            $record = $ojtRecord ?? $log->ojtRecord;
+            if ($record && $hours > 0) {
+                $record->increment('completed_hours', $hours);
+            }
+        }
+    }
+
+    /**
      * Haversine distance in meters between two coordinates.
      */
     private function haversineMeters(float $lat1, float $lon1, float $lat2, float $lon2): float
@@ -1582,6 +1663,25 @@ class StudentController extends Controller
         $lunchStart = $ojtRecord?->lunch_start ?? $interest?->lunch_start ?? '12:00';
         $lunchEnd   = $ojtRecord?->lunch_end   ?? $interest?->lunch_end   ?? '13:00';
         $hasLunch   = (bool) ($ojtRecord?->has_lunch_break ?? $interest?->has_lunch_break ?? true);
+
+        // Sweep any past unclosed logs for this student
+        $pastUnclosed = TimeLog::where('user_id', $user->id)
+            ->where('log_date', '<', $today)
+            ->where(function ($q) {
+                $q->where(fn($sub) => $sub->whereNotNull('afternoon_in')->whereNull('afternoon_out'))
+                  ->orWhere(fn($sub) => $sub->whereNotNull('morning_in')->whereNull('morning_out'))
+                  ->orWhere(fn($sub) => $sub->whereNotNull('time_in')->whereNull('time_out'));
+            })
+            ->get();
+
+        foreach ($pastUnclosed as $pLog) {
+            if ($pLog->morning_in && !$pLog->morning_out) {
+                $this->autoCloseMorningIfNeeded($pLog, $lunchStart, $ojtRecord);
+            }
+            if (($pLog->afternoon_in && !$pLog->afternoon_out) || (!$hasLunch && $pLog->time_in && !$pLog->time_out)) {
+                $this->autoCloseAfternoonIfNeeded($pLog, $shiftEnd, $ojtRecord);
+            }
+        }
 
         // 3. Location validity & geofence distance
         $locationValidity = null;
@@ -1840,6 +1940,7 @@ class StudentController extends Controller
                 'morningHours'       => (float) ($log->morning_hours ?? 0),
                 'afternoonHours'     => (float) ($log->afternoon_hours ?? 0),
                 'autoMorningTimeout' => (bool) $log->auto_morning_timeout,
+                'autoAfternoonTimeout' => (bool) $log->auto_afternoon_timeout,
                 'hours'              => (float) $log->hours_rendered,
                 'status'             => $log->status,
                 'locationValidity'   => $locationValidity,
@@ -2135,6 +2236,7 @@ class StudentController extends Controller
                 'morningHours'       => (float) ($log->morning_hours ?? 0),
                 'afternoonHours'     => (float) ($log->afternoon_hours ?? 0),
                 'autoMorningTimeout' => (bool) $log->auto_morning_timeout,
+                'autoAfternoonTimeout' => (bool) $log->auto_afternoon_timeout,
                 'hours'              => (float) $log->hours_rendered,
                 'status'             => $log->status,
                 'locationValidity'   => $log->location_validity,
@@ -2397,21 +2499,29 @@ class StudentController extends Controller
             ]);
         }
 
-        $user   = $request->user();
-        $skills = StudentSkill::where('user_id', $user->id)->pluck('name')->toArray();
+        $user       = $request->user();
+        $skills     = StudentSkill::where('user_id', $user->id)->pluck('name')->toArray();
+        $searchTerm = trim($request->query('search') ?? $request->query('q') ?? '');
 
-        if (empty($skills)) {
+        // If no search query and user has no skills saved on profile:
+        if (empty($searchTerm) && empty($skills)) {
             return response()->json([
                 'success' => true,
                 'data'    => [],
-                'message' => 'Add skills to your profile to see personalised external jobs.',
+                'message' => 'Add skills to your profile to see personalised external jobs, or use the search bar above.',
             ]);
         }
 
         $searchableSkills = array_values(array_filter($skills, fn($s) => mb_strlen(trim($s)) >= 2));
 
-        // Cache per user+skills combo for 6 hours
-        $cacheKey = 'ext_jobs_s_' . $user->id . '_' . md5(implode(',', $skills));
+        // Smart cache key determination: query-specific or user profile skills
+        if (!empty($searchTerm)) {
+            $cacheKey = 'ext_jobs_q_' . md5(strtolower($searchTerm)) . '_' . ($user?->id ?? 'anon');
+            $cacheTtl = now()->addHours(2);
+        } else {
+            $cacheKey = 'ext_jobs_s_' . $user->id . '_' . md5(implode(',', $skills));
+            $cacheTtl = now()->addHours(6);
+        }
 
         $cached = Cache::get($cacheKey);
         if ($cached !== null) {
@@ -2419,12 +2529,11 @@ class StudentController extends Controller
         }
 
         try {
-            // Search top 3 skills individually and merge — avoids 0-result combined queries
-            $querySkills = array_slice($searchableSkills, 0, 3);
-            $allRaw = [];
+            $raw = [];
             $seenIds = [];
 
-            foreach ($querySkills as $skill) {
+            if (!empty($searchTerm)) {
+                // Execute direct search on JSearch using the provided query
                 $r = Http::timeout(20)
                     ->withoutVerifying()
                     ->withHeaders([
@@ -2432,7 +2541,7 @@ class StudentController extends Controller
                         'X-RapidAPI-Host' => 'jsearch.p.rapidapi.com',
                     ])
                     ->get('https://jsearch.p.rapidapi.com/search', [
-                        'query'     => $skill . ' developer',
+                        'query'     => $searchTerm,
                         'page'      => '1',
                         'num_pages' => '1',
                     ]);
@@ -2441,20 +2550,15 @@ class StudentController extends Controller
                     foreach ($r->json('data', []) as $job) {
                         $id = $job['job_id'] ?? null;
                         if ($id && !in_array($id, $seenIds)) {
-                            $seenIds[]  = $id;
-                            $allRaw[]   = $job;
+                            $seenIds[] = $id;
+                            $raw[]     = $job;
                         }
                     }
                 }
-            }
-
-            $raw = $allRaw;
-
-            // Fallback: if per-skill queries returned nothing (e.g. soft skills),
-            // run generic searches so the user always sees results
-            if (empty($raw)) {
-                $fallbackQueries = ['software developer', 'web developer'];
-                foreach ($fallbackQueries as $fq) {
+            } else {
+                // Search top 3 skills individually and merge — avoids 0-result combined queries
+                $querySkills = array_slice($searchableSkills, 0, 3);
+                foreach ($querySkills as $skill) {
                     $r = Http::timeout(20)
                         ->withoutVerifying()
                         ->withHeaders([
@@ -2462,7 +2566,7 @@ class StudentController extends Controller
                             'X-RapidAPI-Host' => 'jsearch.p.rapidapi.com',
                         ])
                         ->get('https://jsearch.p.rapidapi.com/search', [
-                            'query'     => $fq,
+                            'query'     => $skill . ' developer',
                             'page'      => '1',
                             'num_pages' => '1',
                         ]);
@@ -2473,6 +2577,35 @@ class StudentController extends Controller
                             if ($id && !in_array($id, $seenIds)) {
                                 $seenIds[] = $id;
                                 $raw[]     = $job;
+                            }
+                        }
+                    }
+                }
+
+                // Fallback: if per-skill queries returned nothing (e.g. soft skills),
+                // run generic searches so the user always sees results
+                if (empty($raw)) {
+                    $fallbackQueries = ['software developer', 'web developer'];
+                    foreach ($fallbackQueries as $fq) {
+                        $r = Http::timeout(20)
+                            ->withoutVerifying()
+                            ->withHeaders([
+                                'X-RapidAPI-Key'  => $apiKey,
+                                'X-RapidAPI-Host' => 'jsearch.p.rapidapi.com',
+                            ])
+                            ->get('https://jsearch.p.rapidapi.com/search', [
+                                'query'     => $fq,
+                                'page'      => '1',
+                                'num_pages' => '1',
+                            ]);
+
+                        if ($r->successful()) {
+                            foreach ($r->json('data', []) as $job) {
+                                $id = $job['job_id'] ?? null;
+                                if ($id && !in_array($id, $seenIds)) {
+                                    $seenIds[] = $id;
+                                    $raw[]     = $job;
+                                }
                             }
                         }
                     }
@@ -2627,7 +2760,7 @@ class StudentController extends Controller
             ->toArray();
 
 
-            Cache::put($cacheKey, $jobs, now()->addHours(6));
+            Cache::put($cacheKey, $jobs, $cacheTtl);
 
             return response()->json(['success' => true, 'data' => $jobs]);
         } catch (\Exception $e) {

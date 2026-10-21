@@ -1,294 +1,495 @@
-<!DOCTYPE html>
-<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
-  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="x-apple-disable-message-reformatting" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <title>Welcome to CHMSU HireMe — {{ $studentName }}</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+  <!--[if mso]>
+  <noscript>
+    <xml>
+      <o:OfficeDocumentSettings>
+        <o:PixelsPerInch>96</o:PixelsPerInch>
+      </o:OfficeDocumentSettings>
+    </xml>
+  </noscript>
+  <![endif]-->
+  <style type="text/css">
+    body, table, td, p, a, li, blockquote {
+      -webkit-text-size-adjust: 100%;
+      -ms-text-size-adjust: 100%;
+    }
+    table, td {
+      mso-table-lspace: 0pt;
+      mso-table-rspace: 0pt;
+    }
+    img {
+      -ms-interpolation-mode: bicubic;
+      border: 0;
+      height: auto;
+      line-height: 100%;
+      outline: none;
+      text-decoration: none;
+    }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-      background: #EBF0F8;
-      color: #1A2744;
-      -webkit-font-smoothing: antialiased;
+      margin: 0 !important;
+      padding: 0 !important;
+      width: 100% !important;
+      background-color: #F0F7F4;
+      font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      color: #1A1A2E;
     }
-    .outer  { max-width: 620px; margin: 36px auto; padding: 0 16px; }
-    .card   { background: #FFFFFF; border-radius: 18px; overflow: hidden;
-              box-shadow: 0 4px 40px rgba(14,30,65,0.12), 0 0 0 1px rgba(14,30,65,0.06); }
-
-    /* Header */
-    .hdr {
-      background: linear-gradient(150deg, #0B1730 0%, #152549 45%, #0B1730 100%);
-      padding: 44px 48px 40px; text-align: center;
+    @media only screen and (max-width: 640px) {
+      .email-container {
+        width: 100% !important;
+        max-width: 100% !important;
+      }
+      .mobile-padding {
+        padding-left: 20px !important;
+        padding-right: 20px !important;
+      }
+      .mobile-hdr-padding {
+        padding-top: 32px !important;
+        padding-bottom: 28px !important;
+        padding-left: 20px !important;
+        padding-right: 20px !important;
+      }
+      .dt-label {
+        width: 105px !important;
+        font-size: 12px !important;
+      }
+      .hdr-title {
+        font-size: 23px !important;
+        line-height: 1.25 !important;
+      }
+      .cta-btn {
+        display: block !important;
+        width: 100% !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+        text-align: center !important;
+      }
     }
-    .hdr-logo-row { display: block; text-align: center; margin-bottom: 20px; }
-    .hdr-logo-inner { display: inline-flex; align-items: center; gap: 11px; }
-    .hdr-mark {
-      width: 46px; height: 46px;
-      background: linear-gradient(135deg, #4A6CF7 0%, #7B9BFF 100%);
-      border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
-    }
-    .hdr-wordmark { font-size: 26px; font-weight: 700; color: #FFFFFF; letter-spacing: -0.5px; line-height: 1; }
-    .hdr-wordmark em { font-style: normal; color: #818CF8; }
-    .hdr-pill {
-      display: inline-block;
-      background: rgba(129,140,248,0.18); border: 1px solid rgba(129,140,248,0.28); color: #A5B4FC;
-      font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
-      padding: 5px 15px; border-radius: 999px; margin-bottom: 20px;
-    }
-    .hdr-title { font-size: 27px; font-weight: 700; color: #FFFFFF; line-height: 1.3; letter-spacing: -0.4px; margin-bottom: 11px; }
-    .hdr-title-name { color: #93C5FD; }
-    .hdr-sub { font-size: 13.5px; color: #7E97B8; line-height: 1.7; }
-    .hdr-accent { height: 3px; background: linear-gradient(90deg, #4A6CF7, #818CF8, #4A6CF7); }
-
-    /* Body */
-    .body { padding: 38px 48px; }
-    .greeting { font-size: 14.5px; color: #334155; line-height: 1.78; margin-bottom: 30px; }
-    .greeting strong { color: #0F172A; }
-
-    /* Section label */
-    .sec-label { display: table; width: 100%; margin-bottom: 12px; }
-    .sec-label-text {
-      display: table-cell; white-space: nowrap;
-      font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.13em;
-      color: #4A6CF7; padding-right: 12px; vertical-align: middle;
-    }
-    .sec-label-line { display: table-cell; width: 100%; border-bottom: 1px solid #E2E8F0; vertical-align: middle; }
-
-    /* Credentials card */
-    .creds-card {
-      border: 1px solid #E2E8F0; border-radius: 14px; overflow: hidden; margin-bottom: 28px;
-      background: #F8FAFF;
-    }
-    .creds-header {
-      background: linear-gradient(135deg, #4A6CF7 0%, #6B87F9 100%);
-      padding: 14px 20px;
-      font-size: 11px; font-weight: 700; letter-spacing: 0.10em; text-transform: uppercase; color: #fff;
-    }
-    .creds-body { padding: 0; }
-    .creds-row { display: flex; align-items: center; padding: 13px 20px; border-bottom: 1px solid #EEF2FF; }
-    .creds-row:last-child { border-bottom: none; }
-    .creds-lbl { width: 130px; font-size: 12px; color: #64748B; font-weight: 600; flex-shrink: 0; }
-    .creds-val { font-size: 13.5px; color: #0F172A; font-weight: 700; font-family: 'Courier New', monospace; }
-    .creds-val-email { font-family: inherit; font-weight: 500; color: #4A6CF7; }
-    .creds-note { font-size: 11.5px; color: #7C8DB5; margin-left: 10px; font-style: italic; }
-
-    /* Details table */
-    .dtable-card { border: 1px solid #E2E8F0; border-radius: 12px; overflow: hidden; margin-bottom: 30px; }
-    .dtable-card table { width: 100%; border-collapse: collapse; }
-    .dtable-card tr:nth-child(even) td { background: #F8FAFC; }
-    .dtable-card tr:last-child td { border-bottom: none; }
-    .dtable-card td { padding: 12px 20px; font-size: 13.5px; border-bottom: 1px solid #F1F5F9; vertical-align: middle; line-height: 1.5; }
-    .dt-lbl { width: 155px; color: #64748B; font-weight: 500; white-space: nowrap; }
-    .dt-val { color: #0F172A; font-weight: 500; }
-
-    /* Warning box */
-    .warn-box {
-      background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 10px;
-      padding: 14px 18px; margin-bottom: 28px; display: flex; gap: 12px; align-items: flex-start;
-    }
-    .warn-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
-    .warn-text { font-size: 13px; color: #92400E; line-height: 1.65; }
-    .warn-text strong { color: #78350F; }
-
-    /* CTA */
-    .cta {
-      border-radius: 14px; border: 1px solid #DBEAFE;
-      background: linear-gradient(160deg, #F0F6FF 0%, #F5F3FF 100%);
-      padding: 34px 40px; text-align: center; margin-bottom: 30px; position: relative; overflow: hidden;
-    }
-    .cta::before {
-      content: ''; position: absolute; top: 0; left: 0; right: 0;
-      height: 4px; background: linear-gradient(90deg, #4A6CF7, #818CF8);
-    }
-    .cta-title { font-size: 17px; font-weight: 700; color: #0F172A; margin-bottom: 8px; }
-    .cta-sub { font-size: 13px; color: #64748B; line-height: 1.65; margin-bottom: 22px; }
-    .cta-btn {
-      display: inline-block; padding: 14px 36px;
-      background: linear-gradient(135deg, #4A6CF7 0%, #6B87F9 100%);
-      color: #FFFFFF !important; text-decoration: none; border-radius: 10px;
-      font-size: 14.5px; font-weight: 700; letter-spacing: 0.01em;
-      box-shadow: 0 4px 16px rgba(74,108,247,0.38);
-    }
-
-    /* Steps */
-    .steps { margin-bottom: 30px; }
-    .step { display: flex; gap: 14px; align-items: flex-start; margin-bottom: 16px; }
-    .step-num {
-      width: 28px; height: 28px; border-radius: 50%;
-      background: linear-gradient(135deg, #4A6CF7 0%, #6B87F9 100%);
-      color: #fff; font-size: 12px; font-weight: 700;
-      display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px;
-    }
-    .step-text { font-size: 13.5px; color: #334155; line-height: 1.7; }
-    .step-text strong { color: #0F172A; }
-
-    /* Footer */
-    .footer {
-      background: #F8FAFC; border-top: 1px solid #E2E8F0;
-      padding: 28px 48px; text-align: center;
-    }
-    .footer-brand { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 14px; }
-    .footer-mark {
-      width: 30px; height: 30px;
-      background: linear-gradient(135deg, #4A6CF7 0%, #7B9BFF 100%);
-      border-radius: 8px; display: inline-flex; align-items: center; justify-content: center;
-    }
-    .footer-name { font-size: 14px; font-weight: 700; color: #1A2744; }
-    .footer-name em { font-style: normal; color: #4A6CF7; }
-    .footer-line { font-size: 12px; color: #94A3B8; line-height: 1.7; }
-    .footer-line a { color: #4A6CF7; text-decoration: none; }
   </style>
 </head>
-<body>
-  <div class="outer">
-    <div class="card">
+<body style="margin: 0; padding: 0; background-color: #F0F7F4; -webkit-font-smoothing: antialiased;">
 
-      <!-- Header -->
-      <div class="hdr">
-        <span class="hdr-logo-row">
-          <span class="hdr-logo-inner">
-            <span class="hdr-mark">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 2L2 7l10 5 10-5-10-5z" fill="#fff"/>
-                <path d="M2 17l10 5 10-5M2 12l10 5 10-5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-            </span>
-            <span class="hdr-wordmark">Hire<em>Me</em></span>
-          </span>
-        </span>
-        <div class="hdr-pill">✦ Student Account Created</div>
-        <div class="hdr-title">
-          Welcome aboard,<br>
-          <span class="hdr-title-name">{{ $studentName }}!</span>
-        </div>
-        <div class="hdr-sub">
-          Your student account has been created by the CHMSU CIER Admin.<br>
-          Below are your login credentials — keep them safe.
-        </div>
-      </div>
-      <div class="hdr-accent"></div>
-
-      <!-- Body -->
-      <div class="body">
-
-        <div class="greeting">
-          Hi <strong>{{ $studentName }}</strong>, congratulations! Your CHMSU HireMe account
-          has been successfully created. This platform will help you track your OJT progress,
-          explore job opportunities, and connect with partner companies.
-        </div>
-
-        <!-- Login Credentials -->
-        <div class="sec-label">
-          <span class="sec-label-text">Your Login Credentials</span>
-          <span class="sec-label-line"></span>
-        </div>
-        <div class="creds-card">
-          <div class="creds-header">🔐 Account Access Details</div>
-          <div class="creds-body">
-            <div class="creds-row">
-              <span class="creds-lbl">Login Email</span>
-              <span class="creds-val creds-val-email">{{ $email }}</span>
-            </div>
-            <div class="creds-row">
-              <span class="creds-lbl">Password</span>
-              <span class="creds-val">{{ $studentId }}</span>
-              <span class="creds-note">⚠ Change this after first login</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Student Info -->
-        <div class="sec-label">
-          <span class="sec-label-text">Your Academic Profile</span>
-          <span class="sec-label-line"></span>
-        </div>
-        <div class="dtable-card" style="margin-bottom: 28px;">
-          <table>
-            <tr>
-              <td class="dt-lbl">Student ID</td>
-              <td class="dt-val">{{ $studentId }}</td>
-            </tr>
-            <tr>
-              <td class="dt-lbl">Program / Course</td>
-              <td class="dt-val">{{ $program ?: '—' }}</td>
-            </tr>
-            <tr>
-              <td class="dt-lbl">Campus</td>
-              <td class="dt-val">{{ $campus ?: 'Main Campus' }}</td>
-            </tr>
-            <tr>
-              <td class="dt-lbl">Institution</td>
-              <td class="dt-val">Carlos Hilado Memorial State University</td>
-            </tr>
-          </table>
-        </div>
-
-        <!-- Password warning -->
-        <div class="warn-box">
-          <span class="warn-icon">⚠️</span>
-          <div class="warn-text">
-            <strong>Important:</strong> Your default password is your Student ID number
-            (<strong>{{ $studentId }}</strong>). Please log in and change your password
-            immediately to keep your account secure.
-          </div>
-        </div>
-
-        <!-- CTA -->
-        <div class="cta">
-          <div class="cta-title">Ready to get started?</div>
-          <div class="cta-sub">
-            Log in with your email and Student ID as your password.<br>
-            Complete your profile and explore job opportunities.
-          </div>
-          <a href="{{ $loginUrl }}" class="cta-btn">Log In to HireMe</a>
-        </div>
-
-        <!-- Getting Started Steps -->
-        <div class="sec-label">
-          <span class="sec-label-text">Getting Started</span>
-          <span class="sec-label-line"></span>
-        </div>
-        <div class="steps">
-          <div class="step">
-            <div class="step-num">1</div>
-            <div class="step-text"><strong>Log in</strong> using your email and Student ID as password.</div>
-          </div>
-          <div class="step">
-            <div class="step-num">2</div>
-            <div class="step-text"><strong>Change your password</strong> immediately from your profile settings.</div>
-          </div>
-          <div class="step">
-            <div class="step-num">3</div>
-            <div class="step-text"><strong>Complete your profile</strong> — add your bio, skills, and experience.</div>
-          </div>
-          <div class="step">
-            <div class="step-num">4</div>
-            <div class="step-text"><strong>Explore</strong> OJT postings and job opportunities from partner companies.</div>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- Footer -->
-      <div class="footer">
-        <div class="footer-brand">
-          <span class="footer-mark">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <path d="M12 2L2 7l10 5 10-5-10-5z" fill="#fff"/>
-            </svg>
-          </span>
-          <span class="footer-name">Hire<em>Me</em></span>
-        </div>
-        <div class="footer-line">
-          This account was created by the CHMSU CIER Admin Office.<br>
-          Carlos Hilado Memorial State University &mdash; Career Placement &amp; OJT Management System.<br>
-          If you received this in error or have questions, contact your department coordinator.
-        </div>
-      </div>
-
-    </div>
+  <!-- Preheader text (hidden) -->
+  <div style="display: none; font-size: 1px; color: #F0F7F4; line-height: 1px; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden; mso-hide: all;">
+    Welcome to CHMSU HireMe, {{ $studentName }}! Your student account is ready. Below are your login credentials and temporary password.
+    &#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;
   </div>
+
+  <!-- Background Wrapper -->
+  <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #F0F7F4; width: 100%; table-layout: fixed;">
+    <tr>
+      <td align="center" style="padding: 36px 16px 48px 16px;">
+
+        <!-- Main Card Container -->
+        <!--[if (gte mso 9)|(IE)]>
+        <table role="presentation" width="620" border="0" cellspacing="0" cellpadding="0" align="center">
+        <tr>
+        <td>
+        <![endif]-->
+        <table role="presentation" class="email-container" width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 620px; background-color: #FFFFFF; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 35px rgba(0, 89, 48, 0.08), 0 1px 3px rgba(0, 89, 48, 0.04); border: 1px solid #D1E3D8;">
+
+          <!-- TOP ACCENT STRIPE: CHMSU Forest Green to Medium Green to Gold -->
+          <tr>
+            <td style="height: 5px; background: linear-gradient(90deg, #005930 0%, #1A7A4A 45%, #F59E0B 100%); font-size: 0; line-height: 0;">&nbsp;</td>
+          </tr>
+
+          <!-- HEADER SECTION (Deep CHMSU Forest Green Mesh) -->
+          <tr>
+            <td class="mobile-hdr-padding" style="background: linear-gradient(150deg, #061810 0%, #0C2B1C 50%, #004020 100%); padding: 42px 44px 36px 44px; text-align: center;">
+
+              <!-- Branding Header -->
+              <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td align="center" style="padding-bottom: 20px;">
+                    <table role="presentation" border="0" cellspacing="0" cellpadding="0">
+                      <tr>
+                        <!-- Stylized "H" Logo Badge in CHMSU Green -->
+                        <td style="vertical-align: middle; padding-right: 12px;">
+                          <table role="presentation" border="0" cellspacing="0" cellpadding="0">
+                            <tr>
+                              <td align="center" style="width: 44px; height: 44px; background: linear-gradient(135deg, #005930 0%, #1A7A4A 100%); border: 1px solid rgba(52, 211, 153, 0.35); border-radius: 12px; box-shadow: 0 4px 14px rgba(0, 89, 48, 0.5);">
+                                <span style="font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 22px; font-weight: 800; color: #FFFFFF; line-height: 44px; display: block;">H</span>
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                        <!-- Brand Text -->
+                        <td style="vertical-align: middle; text-align: left;">
+                          <div style="font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 10px; font-weight: 700; color: #A7F3D0; text-transform: uppercase; letter-spacing: 0.12em; line-height: 1.2;">
+                            Carlos Hilado Memorial State University
+                          </div>
+                          <div style="font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 22px; font-weight: 800; color: #FFFFFF; letter-spacing: -0.02em; line-height: 1.2;">
+                            Hire<span style="color: #34D399;">Me</span>
+                            <span style="display: inline-block; font-size: 11px; font-weight: 600; color: #D1FAE5; background: rgba(0, 89, 48, 0.45); border: 1px solid rgba(52, 211, 153, 0.25); padding: 2px 8px; border-radius: 6px; margin-left: 6px; vertical-align: 2px;">Student Portal</span>
+                          </div>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- Status Pill -->
+                <tr>
+                  <td align="center" style="padding-bottom: 18px;">
+                    <table role="presentation" border="0" cellspacing="0" cellpadding="0">
+                      <tr>
+                        <td style="background: rgba(0, 89, 48, 0.45); border: 1px solid rgba(52, 211, 153, 0.4); border-radius: 100px; padding: 5px 16px;">
+                          <table role="presentation" border="0" cellspacing="0" cellpadding="0">
+                            <tr>
+                              <td style="width: 7px; height: 7px; background-color: #34D399; border-radius: 50%; font-size: 0; line-height: 0;">&nbsp;</td>
+                              <td style="font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 11px; font-weight: 700; color: #A7F3D0; text-transform: uppercase; letter-spacing: 0.11em; padding-left: 8px;">
+                                Student Account Activated
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- Welcome Title -->
+                <tr>
+                  <td align="center">
+                    <h1 class="hdr-title" style="margin: 0 0 10px 0; font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 27px; font-weight: 800; color: #FFFFFF; line-height: 1.28; letter-spacing: -0.02em;">
+                      Welcome aboard,<br />
+                      <span style="color: #34D399;">{{ $studentName }}!</span>
+                    </h1>
+                    <p style="margin: 0; font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13.5px; color: #A7D7BC; line-height: 1.6; max-width: 480px;">
+                      Your student account has been registered by the CHMSU CIER Admin Office.
+                      Below are your login credentials &mdash; keep them safe.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+            </td>
+          </tr>
+
+          <!-- MAIN CONTENT BODY -->
+          <tr>
+            <td class="mobile-padding" style="padding: 38px 44px 34px 44px;">
+
+              <!-- Greeting -->
+              <p style="margin: 0 0 16px 0; font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 15px; line-height: 1.7; color: #2C2C3E;">
+                Hi <strong style="color: #004020;">{{ $studentName }}</strong>, congratulations!
+              </p>
+
+              <p style="margin: 0 0 28px 0; font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; line-height: 1.75; color: #4E5372;">
+                Your official <strong style="color: #005930;">CHMSU HireMe</strong> account is ready.
+                Through this platform, you can track your On-the-Job Training (OJT) progress in real-time, submit your daily time records, explore accredited partner companies, and discover career opportunities.
+              </p>
+
+              <!-- SECTION 1: ACCOUNT CREDENTIALS CARD -->
+              <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 26px;">
+                <tr>
+                  <td style="padding-bottom: 10px;">
+                    <span style="font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 11px; font-weight: 700; color: #005930; text-transform: uppercase; letter-spacing: 0.11em;">
+                      🔐 Account Access Details
+                    </span>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="border: 1px solid #D1E3D8; border-radius: 14px; overflow: hidden; background-color: #FAFCFA;">
+                      
+                      <!-- Header row -->
+                      <tr>
+                        <td style="background: linear-gradient(135deg, #005930 0%, #1A7A4A 100%); padding: 12px 20px; font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 11px; font-weight: 700; color: #FFFFFF; text-transform: uppercase; letter-spacing: 0.09em;">
+                          Your Login Credentials
+                        </td>
+                      </tr>
+
+                      <!-- Email row -->
+                      <tr>
+                        <td style="padding: 14px 20px; border-bottom: 1px solid #E8F2EC;">
+                          <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0">
+                            <tr>
+                              <td class="dt-label" width="150" style="font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13px; font-weight: 600; color: #64748B;">
+                                Login Email
+                              </td>
+                              <td style="font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13.5px; font-weight: 600; color: #005930;">
+                                {{ $email }}
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+
+                      <!-- Temporary Password row -->
+                      <tr>
+                        <td style="padding: 14px 20px;">
+                          <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0">
+                            <tr>
+                              <td class="dt-label" width="150" style="font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13px; font-weight: 600; color: #64748B; vertical-align: middle;">
+                                Temporary Password
+                              </td>
+                              <td style="vertical-align: middle;">
+                                <table role="presentation" border="0" cellspacing="0" cellpadding="0">
+                                  <tr>
+                                    <td style="background: #ECFDF5; border: 1.5px solid #10B981; border-radius: 6px; padding: 5px 12px;">
+                                      <span style="font-family: 'Courier New', Courier, monospace; font-size: 15px; font-weight: 800; color: #004020; letter-spacing: 1.5px;">
+                                        {{ $temporaryPassword }}
+                                      </span>
+                                    </td>
+                                    <td style="padding-left: 10px;">
+                                      <span style="font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 11px; font-weight: 600; color: #D97706; background: #FEF3C7; border: 1px solid #FDE68A; padding: 3px 8px; border-radius: 4px;">
+                                        ⚠️ Must change on first login
+                                      </span>
+                                    </td>
+                                  </tr>
+                                </table>
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- SECTION 2: ACADEMIC PROFILE -->
+              <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 26px;">
+                <tr>
+                  <td style="padding-bottom: 10px;">
+                    <span style="font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 11px; font-weight: 700; color: #005930; text-transform: uppercase; letter-spacing: 0.11em;">
+                      🎓 Academic Profile
+                    </span>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="border: 1px solid #E2E8F0; border-radius: 12px; overflow: hidden; background-color: #FFFFFF;">
+                      <tr>
+                        <td class="dt-label" width="150" style="padding: 12px 20px; font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13px; font-weight: 600; color: #64748B; border-bottom: 1px solid #F1F5F9; background-color: #F8FAFC;">
+                          Student ID
+                        </td>
+                        <td style="padding: 12px 20px; font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13.5px; font-weight: 600; color: #1E293B; border-bottom: 1px solid #F1F5F9;">
+                          {{ $studentId }}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td class="dt-label" width="150" style="padding: 12px 20px; font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13px; font-weight: 600; color: #64748B; border-bottom: 1px solid #F1F5F9; background-color: #F8FAFC;">
+                          Program / Course
+                        </td>
+                        <td style="padding: 12px 20px; font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13.5px; font-weight: 500; color: #1E293B; border-bottom: 1px solid #F1F5F9;">
+                          {{ $program ?: '—' }}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td class="dt-label" width="150" style="padding: 12px 20px; font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13px; font-weight: 600; color: #64748B; border-bottom: 1px solid #F1F5F9; background-color: #F8FAFC;">
+                          Campus
+                        </td>
+                        <td style="padding: 12px 20px; font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13.5px; font-weight: 500; color: #1E293B; border-bottom: 1px solid #F1F5F9;">
+                          {{ $campus ?: 'Main Campus' }}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td class="dt-label" width="150" style="padding: 12px 20px; font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13px; font-weight: 600; color: #64748B; background-color: #F8FAFC;">
+                          Institution
+                        </td>
+                        <td style="padding: 12px 20px; font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13.5px; font-weight: 500; color: #1E293B;">
+                          Carlos Hilado Memorial State University
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- SECTION 3: SECURITY WARNING NOTICE -->
+              <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #FFFBEB; border: 1.5px solid #FDE68A; border-radius: 12px; margin-bottom: 28px;">
+                <tr>
+                  <td style="padding: 16px 20px;">
+                    <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0">
+                      <tr>
+                        <td width="30" style="vertical-align: top; font-size: 20px; line-height: 1.2;">
+                          ⚠️
+                        </td>
+                        <td style="padding-left: 12px; font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13px; line-height: 1.6; color: #92400E;">
+                          <strong style="color: #78350F;">Security Reminder:</strong>
+                          You have been issued a temporary password (<strong style="color: #78350F; font-family: 'Courier New', monospace;">{{ $temporaryPassword }}</strong>).
+                          When you log in, you will be guided through a mandatory first-time onboarding step to choose your own secure password before accessing your student portal.
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- SECTION 4: CALL TO ACTION BOX (CHMSU Forest Green Theme) -->
+              <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background: linear-gradient(180deg, #F8FCF9 0%, #EBF6F0 100%); border: 1.5px solid #A7D7BC; border-radius: 16px; overflow: hidden; margin-bottom: 30px;">
+                <tr>
+                  <td style="height: 4px; background: linear-gradient(90deg, #005930 0%, #1A7A4A 60%, #34D399 100%); font-size: 0; line-height: 0;">&nbsp;</td>
+                </tr>
+                <tr>
+                  <td style="padding: 30px 24px; text-align: center;">
+                    <h2 style="margin: 0 0 8px 0; font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 18px; font-weight: 800; color: #004020;">
+                      Ready to get started?
+                    </h2>
+                    <p style="margin: 0 0 20px 0; font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13.5px; color: #4E5372; line-height: 1.6; max-width: 440px; margin-left: auto; margin-right: auto;">
+                      Log in using your email and temporary password to set up your permanent credentials and explore your dashboard.
+                    </p>
+                    <table role="presentation" border="0" cellspacing="0" cellpadding="0" align="center">
+                      <tr>
+                        <td align="center">
+                          <a href="{{ $loginUrl }}" class="cta-btn" style="display: inline-block; background-color: #005930; background: linear-gradient(135deg, #005930 0%, #1A7A4A 100%); color: #FFFFFF !important; font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14.5px; font-weight: 700; text-decoration: none; padding: 13px 36px; border-radius: 10px; box-shadow: 0 6px 18px rgba(0, 89, 48, 0.32); letter-spacing: 0.01em;">
+                            Log In to HireMe &rarr;
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- SECTION 5: GETTING STARTED STEPS (BULLETPROOF TABLE BASED) -->
+              <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 24px;">
+                <tr>
+                  <td style="padding-bottom: 14px;">
+                    <span style="font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 11px; font-weight: 700; color: #005930; text-transform: uppercase; letter-spacing: 0.11em;">
+                      🚀 Quick Start Guide
+                    </span>
+                  </td>
+                </tr>
+
+                <!-- Step 1 -->
+                <tr>
+                  <td style="padding-bottom: 12px;">
+                    <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0">
+                      <tr>
+                        <td width="36" style="vertical-align: top;">
+                          <table role="presentation" width="28" height="28" border="0" cellspacing="0" cellpadding="0" style="width: 28px; height: 28px; background-color: #005930; border-radius: 50%;">
+                            <tr>
+                              <td align="center" style="font-family: 'Poppins', -apple-system, sans-serif; font-size: 12px; font-weight: 700; color: #FFFFFF; line-height: 28px;">
+                                1
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                        <td style="vertical-align: middle; padding-left: 10px; font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13.5px; line-height: 1.5; color: #334155;">
+                          <strong style="color: #0F172A;">Log in</strong> using your email and temporary password.
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- Step 2 -->
+                <tr>
+                  <td style="padding-bottom: 12px;">
+                    <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0">
+                      <tr>
+                        <td width="36" style="vertical-align: top;">
+                          <table role="presentation" width="28" height="28" border="0" cellspacing="0" cellpadding="0" style="width: 28px; height: 28px; background-color: #005930; border-radius: 50%;">
+                            <tr>
+                              <td align="center" style="font-family: 'Poppins', -apple-system, sans-serif; font-size: 12px; font-weight: 700; color: #FFFFFF; line-height: 28px;">
+                                2
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                        <td style="vertical-align: middle; padding-left: 10px; font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13.5px; line-height: 1.5; color: #334155;">
+                          <strong style="color: #0F172A;">Set your new password</strong> during the first-time onboarding prompt.
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- Step 3 -->
+                <tr>
+                  <td style="padding-bottom: 12px;">
+                    <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0">
+                      <tr>
+                        <td width="36" style="vertical-align: top;">
+                          <table role="presentation" width="28" height="28" border="0" cellspacing="0" cellpadding="0" style="width: 28px; height: 28px; background-color: #005930; border-radius: 50%;">
+                            <tr>
+                              <td align="center" style="font-family: 'Poppins', -apple-system, sans-serif; font-size: 12px; font-weight: 700; color: #FFFFFF; line-height: 28px;">
+                                3
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                        <td style="vertical-align: middle; padding-left: 10px; font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13.5px; line-height: 1.5; color: #334155;">
+                          <strong style="color: #0F172A;">Complete your profile</strong> &mdash; add your skills, resume, and bio.
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- Step 4 -->
+                <tr>
+                  <td>
+                    <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0">
+                      <tr>
+                        <td width="36" style="vertical-align: top;">
+                          <table role="presentation" width="28" height="28" border="0" cellspacing="0" cellpadding="0" style="width: 28px; height: 28px; background-color: #005930; border-radius: 50%;">
+                            <tr>
+                              <td align="center" style="font-family: 'Poppins', -apple-system, sans-serif; font-size: 12px; font-weight: 700; color: #FFFFFF; line-height: 28px;">
+                                4
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                        <td style="vertical-align: middle; padding-left: 10px; font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13.5px; line-height: 1.5; color: #334155;">
+                          <strong style="color: #0F172A;">Explore OJT slots</strong> and apply for accredited training positions.
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+              </table>
+
+            </td>
+          </tr>
+
+          <!-- FOOTER -->
+          <tr>
+            <td style="background-color: #F8FAFC; border-top: 1px solid #E2E8F0; padding: 26px 44px; text-align: center;">
+              
+              <!-- Footer Brand -->
+              <table role="presentation" border="0" cellspacing="0" cellpadding="0" align="center" style="margin: 0 auto 10px auto;">
+                <tr>
+                  <td style="width: 26px; height: 26px; background: linear-gradient(135deg, #005930 0%, #1A7A4A 100%); border-radius: 6px; text-align: center; vertical-align: middle;">
+                    <span style="font-family: 'Poppins', sans-serif; font-size: 13px; font-weight: 800; color: #FFFFFF; line-height: 26px; display: block;">H</span>
+                  </td>
+                  <td style="padding-left: 8px; font-family: 'Poppins', -apple-system, sans-serif; font-size: 14px; font-weight: 700; color: #1E293B;">
+                    Hire<span style="color: #005930;">Me</span>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin: 0 0 6px 0; font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 12px; color: #64748B; line-height: 1.6;">
+                This account was created by the <strong>CHMSU CIER Admin Office</strong>.<br />
+                Carlos Hilado Memorial State University &mdash; Career Placement &amp; OJT Management System.
+              </p>
+              <p style="margin: 0; font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 11px; color: #94A3B8; line-height: 1.5;">
+                If you received this email in error, please contact your university department coordinator.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+        <!--[if (gte mso 9)|(IE)]>
+        </td>
+        </tr>
+        </table>
+        <![endif]-->
+
+      </td>
+    </tr>
+  </table>
+
 </body>
 </html>

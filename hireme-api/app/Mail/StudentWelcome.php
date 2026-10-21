@@ -18,8 +18,13 @@ class StudentWelcome extends Mailable
         public string $studentId,
         public string $program,
         public string $campus,
+        public string $temporaryPassword = '',
         public string $loginUrl = '',
     ) {
+        if (empty($this->temporaryPassword)) {
+            $this->temporaryPassword = $this->studentId;
+        }
+
         if (empty($this->loginUrl)) {
             $this->loginUrl = config('app.login_app_url', env('LOGIN_APP_URL', 'http://localhost:5173/login'));
         }

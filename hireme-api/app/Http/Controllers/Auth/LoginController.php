@@ -47,6 +47,7 @@ class LoginController extends Controller
                 'role'                 => $user->role,
                 'status'               => $isActiveOjt ? 'active_ojt' : ($user->studentProfile?->status ?? 'regular'),
                 'is_active_ojt'        => $isActiveOjt,
+                'must_change_password' => (bool) $user->must_change_password,
                 'onboarding_completed' => $user->onboarding_completed,
                 'company_profile'      => $user->companyProfile,
                 'student_profile'      => $user->studentProfile,
@@ -115,6 +116,7 @@ class LoginController extends Controller
                 'role'                 => $user->role,
                 'status'               => $isActiveOjt ? 'active_ojt' : ($user->studentProfile?->status ?? 'regular'),
                 'is_active_ojt'        => $isActiveOjt,
+                'must_change_password' => (bool) $user->must_change_password,
                 'onboarding_completed' => $user->onboarding_completed,
                 'avatar_url'           => $user->avatar_url,
                 'company_profile'      => $user->companyProfile,
@@ -173,7 +175,39 @@ class LoginController extends Controller
                 'name'                 => $user->name,
                 'email'                => $user->email,
                 'role'                 => $user->role,
+                'must_change_password' => false,
                 'onboarding_completed' => $user->onboarding_completed,
+            ],
+        ]);
+    }
+
+    /* ── POST /api/auth/change-temporary-password ── (authenticated via Sanctum token) */
+    public function changeTemporaryPassword(Request $request)
+    {
+        $data = $request->validate([
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $user = $request->user();
+        $user->password = Hash::make($data['password']);
+        $user->must_change_password = false;
+        $user->save();
+
+        $user->load(['companyProfile', 'studentProfile', 'supervisorProfile', 'jobseekerProfile', 'graduateProfile']);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Password updated successfully.',
+            'user'    => [
+                'id'                   => $user->id,
+                'name'                 => $user->name,
+                'email'                => $user->email,
+                'role'                 => $user->role,
+                'status'               => $user->studentProfile?->status ?? 'regular',
+                'must_change_password' => false,
+                'onboarding_completed' => $user->onboarding_completed,
+                'avatar_url'           => $user->avatar_url,
+                'student_profile'      => $user->studentProfile,
             ],
         ]);
     }

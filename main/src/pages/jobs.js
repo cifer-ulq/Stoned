@@ -942,6 +942,8 @@ export async function renderJobs(container) {
   let allJobs       = [];
   let appliedIds    = new Set();
   let externalJobs  = null;   // null = not fetched yet
+  let defaultExternalJobs = null;
+  let lastExternalSearchQuery = '';
   let externalFetching = false;
   let empStatus     = { hired: false, active_ojt: false, pending_ojt: false };
 
@@ -956,22 +958,43 @@ export async function renderJobs(container) {
     datePosted: 'any',
   };
 
-  /* External jobs – lazy loaded on first tab click */
-  async function fetchExternalJobs() {
-    if (externalFetching || externalJobs !== null) return;
+  /* External jobs – fetched with optional search query */
+  async function fetchExternalJobs(query = '', showLoading = true) {
+    const cleanQ = (query || '').trim();
+
+    // If query is empty and we already have default recommendations cached in memory, use them immediately
+    if (!cleanQ && defaultExternalJobs !== null) {
+      externalJobs = [...defaultExternalJobs];
+      lastExternalSearchQuery = '';
+      const ec = container.querySelector('#external-count');
+      if (ec) ec.textContent = externalJobs.length;
+      renderCards(false);
+      return;
+    }
+
+    if (externalFetching) return;
     externalFetching = true;
+    lastExternalSearchQuery = cleanQ;
 
     emptyEl.style.display = 'none';
-    cardsEl.innerHTML = `
-      <div style="grid-column:1/-1;display:flex;flex-direction:column;align-items:center;gap:16px;padding:60px 20px;color:var(--text-secondary);">
-        <div style="width:44px;height:44px;border:3px solid var(--border-subtle);border-top-color:var(--color-primary);border-radius:50%;animation:spin 0.8s linear infinite;"></div>
-        <p style="font-size:.9rem;">Finding jobs that match your skills…</p>
-      </div>`;
+    if (showLoading) {
+      cardsEl.innerHTML = `
+        <div style="grid-column:1/-1;display:flex;flex-direction:column;align-items:center;gap:16px;padding:60px 20px;color:var(--text-secondary);">
+          <div style="width:44px;height:44px;border:3px solid var(--border-subtle);border-top-color:var(--color-primary);border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+          <p style="font-size:.9rem;">${cleanQ ? `Searching external listings for "${escapeHtml(cleanQ)}"...` : 'Finding jobs that match your skills...'}</p>
+        </div>`;
+    }
 
     try {
-      const res = await apiGet('/student/external-jobs');
+      const url = cleanQ
+        ? `/student/external-jobs?search=${encodeURIComponent(cleanQ)}`
+        : '/student/external-jobs';
+      const res = await apiGet(url);
       if (res?.success && Array.isArray(res.data)) {
         externalJobs = res.data;
+        if (!cleanQ) {
+          defaultExternalJobs = [...res.data];
+        }
         const ec = container.querySelector('#external-count');
         if (ec) ec.textContent = externalJobs.length;
       } else {
@@ -980,16 +1003,26 @@ export async function renderJobs(container) {
         cardsEl.innerHTML = `
           <div style="grid-column:1/-1;display:flex;flex-direction:column;align-items:center;gap:12px;padding:60px 20px;text-align:center;">
             <div style="width:56px;height:56px;border-radius:50%;background:var(--bg-secondary);display:flex;align-items:center;justify-content:center;font-size:1.6rem;">🌐</div>
-            <p style="font-size:.925rem;font-weight:600;color:var(--text-primary);">External Jobs Unavailable</p>
-            <p style="font-size:.825rem;color:var(--text-secondary);max-width:340px;line-height:1.6;">${msg}</p>
+            <p style="font-size:.925rem;font-weight:600;color:var(--text-primary);">No External Jobs Found</p>
+            <p style="font-size:.825rem;color:var(--text-secondary);max-width:340px;line-height:1.6;">${cleanQ ? `No listings matched "${escapeHtml(cleanQ)}". Try broader search terms.` : msg}</p>
+            ${cleanQ ? `
+            <button id="ext-clear-btn" style="margin-top:4px;padding:8px 18px;border-radius:8px;border:1.5px solid var(--border-default);background:var(--bg-elevated);font-size:.8rem;font-weight:600;cursor:pointer;color:var(--text-primary);">
+              Clear Search
+            </button>` : `
             <button id="ext-retry-btn" style="margin-top:4px;padding:8px 18px;border-radius:8px;border:1.5px solid var(--border-default);background:var(--bg-elevated);font-size:.8rem;font-weight:600;cursor:pointer;color:var(--text-primary);">
               Try Again
-            </button>
+            </button>`}
           </div>`;
-        container.querySelector('#ext-retry-btn')?.addEventListener('click', () => {
-          externalJobs = null;
-          fetchExternalJobs().then(() => renderCards(false));
+        container.querySelector('#ext-clear-btn')?.addEventListener('click', () => {
+          searchQuery = '';
+          if (searchInput) searchInput.value = '';
+          updateFilterBadge();
+          fetchExternalJobs('');
         });
+        container.querySelector('#ext-retry-btn')?.addEventListener('click', () => {
+          fetchExternalJobs(cleanQ);
+        });
+        return;
       }
     } catch {
       externalJobs = [];
@@ -1003,12 +1036,14 @@ export async function renderJobs(container) {
           </button>
         </div>`;
       container.querySelector('#ext-retry-btn2')?.addEventListener('click', () => {
-        externalJobs = null;
-        fetchExternalJobs().then(() => renderCards(false));
+        fetchExternalJobs(cleanQ);
       });
+      return;
     } finally {
       externalFetching = false;
     }
+
+    renderCards(false);
   }
 
   /* Fetch employment status, real jobs + existing applications in parallel */
@@ -1125,7 +1160,11 @@ export async function renderJobs(container) {
         jobs = jobs.filter(j =>
           (j.title || '').toLowerCase().includes(q) ||
           (j.company || '').toLowerCase().includes(q) ||
-          (j.skills || []).some(s => s.toLowerCase().includes(q))
+          (j.location || '').toLowerCase().includes(q) ||
+          (j.description || '').toLowerCase().includes(q) ||
+          (j.source || '').toLowerCase().includes(q) ||
+          (j.skills || []).some(s => String(s).toLowerCase().includes(q)) ||
+          (j.matched_skills || j.matchedSkills || []).some(s => String(s).toLowerCase().includes(q))
         );
       }
 
@@ -1218,17 +1257,34 @@ export async function renderJobs(container) {
     if (jobs.length === 0) {
       cardsEl.innerHTML = '';
       if (currentFilter === 'external') {
-        emptyEl.innerHTML = `
-          <div class="jm-empty__icon">${icon('externalLink', 48)}</div>
-          <h3>No external jobs found</h3>
-          <p style="margin-bottom:16px;">Try adding more technical skills to your profile or refresh below.</p>
-          <button class="btn btn--primary btn--sm" id="ext-retry-btn">${icon('trendingUp', 14)} Retry</button>`;
-        emptyEl.style.display = 'flex';
-        const retryBtn = emptyEl.querySelector('#ext-retry-btn');
-        if (retryBtn) retryBtn.addEventListener('click', () => {
-          externalJobs = null;
-          fetchExternalJobs().then(() => renderCards(false));
-        });
+        if (searchQuery) {
+          emptyEl.innerHTML = `
+            <div class="jm-empty__icon">${icon('search', 48)}</div>
+            <h3>No external jobs found for "${escapeHtml(searchQuery)}"</h3>
+            <p style="margin-bottom:16px;">Try adjusting your keywords, checking for typos, or clearing the search.</p>
+            <button class="btn btn--primary btn--sm" id="ext-empty-clear-btn">${icon('x', 14)} Clear Search</button>`;
+          emptyEl.style.display = 'flex';
+          const clearBtn = emptyEl.querySelector('#ext-empty-clear-btn');
+          if (clearBtn) clearBtn.addEventListener('click', () => {
+            searchQuery = '';
+            if (searchInput) searchInput.value = '';
+            updateFilterBadge();
+            fetchExternalJobs('');
+          });
+        } else {
+          emptyEl.innerHTML = `
+            <div class="jm-empty__icon">${icon('externalLink', 48)}</div>
+            <h3>No external jobs found</h3>
+            <p style="margin-bottom:16px;">Try adding more technical skills to your profile or search for roles above.</p>
+            <button class="btn btn--primary btn--sm" id="ext-retry-btn">${icon('trendingUp', 14)} Refresh</button>`;
+          emptyEl.style.display = 'flex';
+          const retryBtn = emptyEl.querySelector('#ext-retry-btn');
+          if (retryBtn) retryBtn.addEventListener('click', () => {
+            externalJobs = null;
+            defaultExternalJobs = null;
+            fetchExternalJobs().then(() => renderCards(false));
+          });
+        }
       } else {
         emptyEl.style.display = 'flex';
       }
@@ -1623,6 +1679,9 @@ export async function renderJobs(container) {
     if (action === 'clear-search') {
       searchQuery = '';
       searchInput.value = '';
+      if (currentFilter === 'external') {
+        fetchExternalJobs('');
+      }
     } else if (action === 'remove-type') {
       filters.types.delete(val);
       container.querySelector(`.jf-pill[data-value="${CSS.escape(val)}"]`)?.classList.remove('jf-pill--active');
@@ -1667,6 +1726,9 @@ export async function renderJobs(container) {
     filters.datePosted = 'any';
     searchQuery = '';
     searchInput.value = '';
+    if (currentFilter === 'external') {
+      fetchExternalJobs('');
+    }
 
     container.querySelectorAll('.jf-pill').forEach(l => l.classList.remove('jf-pill--active'));
     
@@ -1925,8 +1987,10 @@ export async function renderJobs(container) {
     filterBar.querySelectorAll('.jm-tabs__btn').forEach(b => b.classList.remove('jm-tabs__btn--active'));
     btn.classList.add('jm-tabs__btn--active');
 
-    if (filter === 'external' && externalJobs === null) {
-      await fetchExternalJobs();
+    if (filter === 'external') {
+      if (externalJobs === null || (searchQuery && lastExternalSearchQuery !== searchQuery)) {
+        await fetchExternalJobs(searchQuery);
+      }
     }
     renderCards();
     updateFilterBadge();
@@ -1944,15 +2008,42 @@ export async function renderJobs(container) {
     renderCards();
   });
 
-  /* Search debounce */
+  /* Search debounce & Enter key */
   let searchTimer;
   searchInput.addEventListener('input', () => {
     clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => {
+    searchQuery = searchInput.value.trim();
+    updateFilterBadge();
+
+    if (currentFilter === 'external') {
+      // Instant local filter across already-loaded items
+      renderCards(false);
+
+      // Debounced backend fetch if query differs
+      searchTimer = setTimeout(() => {
+        if (searchQuery !== lastExternalSearchQuery) {
+          fetchExternalJobs(searchQuery);
+        }
+      }, 350);
+    } else {
+      searchTimer = setTimeout(() => {
+        renderCards(false);
+      }, 200);
+    }
+  });
+
+  searchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      clearTimeout(searchTimer);
       searchQuery = searchInput.value.trim();
       updateFilterBadge();
-      renderCards(false);
-    }, 200);
+      if (currentFilter === 'external') {
+        fetchExternalJobs(searchQuery);
+      } else {
+        renderCards(false);
+      }
+    }
   });
 
   document.addEventListener('keydown', (e) => {
