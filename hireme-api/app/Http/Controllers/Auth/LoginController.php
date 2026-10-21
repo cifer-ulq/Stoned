@@ -14,47 +14,56 @@ class LoginController extends Controller
 {
     public function login(Request $request)
     {
-        $data = $request->validate([
-            'email'    => ['required', 'email'],
-            'password' => ['required', 'string'],
-        ]);
+        try {
+            $data = $request->validate([
+                'email'    => ['required', 'email'],
+                'password' => ['required', 'string'],
+            ]);
 
-        $user = User::where('email', $data['email'])->first();
+            $user = User::where('email', $data['email'])->first();
 
-        if (! $user || ! Hash::check($data['password'], $user->password)) {
-            return response()->json(['message' => 'Invalid credentials'], 401);
+            if (! $user || ! Hash::check($data['password'], $user->password)) {
+                return response()->json(['message' => 'Invalid credentials'], 401);
+            }
+
+            // Revoke all old tokens and issue a fresh one
+            $user->tokens()->delete();
+            $token = $user->createToken('auth_token')->plainTextToken;
+
+            $user->load(['companyProfile', 'studentProfile', 'supervisorProfile', 'jobseekerProfile', 'graduateProfile']);
+
+            $isActiveOjt = false;
+            if ($user->role === 'student') {
+                $isActiveOjt = StudentOjtInterest::where('student_user_id', $user->id)
+                    ->whereIn('status', ['accepted', 'ojt_confirmed', 'ojt_started'])
+                    ->exists() || OjtRecord::where('user_id', $user->id)->whereIn('status', ['active', 'in_progress', 'ojt_started'])->exists();
+            }
+
+            return response()->json([
+                'token' => $token,
+                'user'  => [
+                    'id'                   => $user->id,
+                    'name'                 => $user->name,
+                    'email'                => $user->email,
+                    'role'                 => $user->role,
+                    'status'               => $isActiveOjt ? 'active_ojt' : ($user->studentProfile?->status ?? 'regular'),
+                    'is_active_ojt'        => $isActiveOjt,
+                    'must_change_password' => (bool) $user->must_change_password,
+                    'onboarding_completed' => $user->onboarding_completed,
+                    'company_profile'      => $user->companyProfile,
+                    'student_profile'      => $user->studentProfile,
+                    'jobseeker_profile'    => $user->jobseekerProfile,
+                    'graduate_profile'     => $user->graduateProfile,
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Login error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json([
+                'message' => 'Server Error: ' . $e->getMessage(),
+                'error'   => $e->getMessage(),
+                'file'    => $e->getFile() . ':' . $e->getLine(),
+            ], 500);
         }
-
-        // Revoke all old tokens and issue a fresh one
-        $user->tokens()->delete();
-        $token = $user->createToken('auth_token')->plainTextToken;
-
-        $user->load(['companyProfile', 'studentProfile', 'supervisorProfile', 'jobseekerProfile', 'graduateProfile']);
-
-        $isActiveOjt = false;
-        if ($user->role === 'student') {
-            $isActiveOjt = StudentOjtInterest::where('student_user_id', $user->id)
-                ->whereIn('status', ['accepted', 'ojt_confirmed', 'ojt_started'])
-                ->exists() || OjtRecord::where('user_id', $user->id)->whereIn('status', ['active', 'in_progress', 'ojt_started'])->exists();
-        }
-
-        return response()->json([
-            'token' => $token,
-            'user'  => [
-                'id'                   => $user->id,
-                'name'                 => $user->name,
-                'email'                => $user->email,
-                'role'                 => $user->role,
-                'status'               => $isActiveOjt ? 'active_ojt' : ($user->studentProfile?->status ?? 'regular'),
-                'is_active_ojt'        => $isActiveOjt,
-                'must_change_password' => (bool) $user->must_change_password,
-                'onboarding_completed' => $user->onboarding_completed,
-                'company_profile'      => $user->companyProfile,
-                'student_profile'      => $user->studentProfile,
-                'jobseeker_profile'    => $user->jobseekerProfile,
-                'graduate_profile'     => $user->graduateProfile,
-            ],
-        ]);
     }
 
     public function adminLogin(Request $request)
