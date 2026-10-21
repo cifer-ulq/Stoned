@@ -6,11 +6,11 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://hireme-api.onrender.com/api/:path*"
+      "destination": "https://stoned.onrender.com/api/:path*"
     },
     {
       "source": "/storage/:path*",
-      "destination": "https://hireme-api.onrender.com/storage/:path*"
+      "destination": "https://stoned.onrender.com/storage/:path*"
     }
   ]
 }

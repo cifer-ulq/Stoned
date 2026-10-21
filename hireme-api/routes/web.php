@@ -3,7 +3,22 @@
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return view('welcome');
+    $dbStatus = 'Testing...';
+    try {
+        \Illuminate\Support\Facades\DB::connection()->getPdo();
+        $dbStatus = 'Connected to PostgreSQL successfully';
+    } catch (\Throwable $e) {
+        $dbStatus = 'Database connection error: ' . $e->getMessage();
+    }
+
+    return response()->json([
+        'system'      => 'CHMSU HireMe API Server',
+        'status'      => 'ONLINE',
+        'environment' => app()->environment(),
+        'app_key_set' => !empty(config('app.key')),
+        'database'    => $dbStatus,
+        'timestamp'   => now()->toIso8601String(),
+    ]);
 });
 
 if (app()->environment('local')) {
