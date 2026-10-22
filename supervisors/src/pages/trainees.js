@@ -398,8 +398,13 @@ export default function traineesPage(container) {
               <span style="font-size:var(--text-xs);color:var(--text-tertiary);">—</span>
             `}
           </td>
-          <td>
-            <span class="tr2-badge ${badgeCfg.cls}">${badgeCfg.text}</span>
+          <td style="white-space:nowrap;">
+            ${t.approval_status === 'pending'
+              ? `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 11px;font-size:0.74rem;font-weight:600;border-radius:20px;background:#FEF3C7;color:#92400E;border:1px solid #FCD34D;white-space:nowrap;box-shadow:0 1px 2px rgba(245,158,11,0.06);">
+                   <span style="width:6px;height:6px;border-radius:50%;background:#D97706;display:inline-block;"></span>
+                   <span>Pending Approval</span>
+                 </span>`
+              : `<span class="tr2-badge ${badgeCfg.cls}">${badgeCfg.text}</span>`}
             ${t.is_pulled_out ? `
               <div style="margin-top:3px;">
                 <span class="badge" style="background:#FEE2E2;color:#991B1B;font-size:0.65rem;padding:2px 6px;font-weight:700;">
@@ -420,17 +425,20 @@ export default function traineesPage(container) {
             ` : ''}
             ${t.flag ? `<div style="margin-top:2px;"><span class="badge badge--error" style="font-size:0.65rem;padding:2px 6px;">${icon('alertTriangle', 10)} Flagged</span></div>` : ''}
           </td>
-          <td style="text-align:right;">
-            <div style="display:flex;align-items:center;justify-content:flex-end;gap:4px;">
+          <td style="text-align:right;white-space:nowrap;">
+            <div style="display:inline-flex;align-items:center;justify-content:flex-end;gap:6px;">
               ${t.approval_status === 'pending' ? `
-                <button class="btn btn--primary btn--sm tr2-approve-btn" data-id="${t.id}" data-name="${escapeHtml(t.name)}" style="padding:4px 9px;font-size:0.72rem;gap:4px;background:#059669;" title="Approve student registration">
-                  ${icon('check', 12)} Approve
+                <button class="tr2-approve-btn" data-id="${t.id}" data-name="${escapeHtml(t.name)}" style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;font-size:0.75rem;font-weight:600;background:#005930;color:#ffffff;border:1px solid #005930;border-radius:6px;cursor:pointer;box-shadow:0 1px 2px rgba(0,89,48,0.15);transition:all 0.15s ease;" title="Approve student registration">
+                  ${icon('check', 13)} Approve
                 </button>
-                <button class="btn btn--outline btn--sm tr2-reject-btn" data-id="${t.id}" data-name="${escapeHtml(t.name)}" style="padding:4px 7px;font-size:0.72rem;gap:4px;color:#dc2626;border-color:#fca5a5;" title="Reject registration">
-                  ${icon('x', 12)}
+                <button class="tr2-reject-btn" data-id="${t.id}" data-name="${escapeHtml(t.name)}" style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;font-size:0.75rem;font-weight:600;background:#FFF1F2;color:#E11D48;border:1px solid #FECDD3;border-radius:6px;cursor:pointer;transition:all 0.15s ease;" title="Reject student registration">
+                  ${icon('x', 13)} Reject
                 </button>
-              ` : ''}
-              ${t.emergency_status && t.emergency_status !== 'none' ? `
+                <button class="btn btn--outline btn--sm tr2-view-btn" data-id="${t.id}" style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;font-size:0.75rem;font-weight:500;border-radius:6px;" title="View Student Profile">
+                  ${icon('eye', 13)} View
+                </button>
+              ` : `
+                ${t.emergency_status && t.emergency_status !== 'none' ? `
                 <button class="btn btn--outline btn--sm tr2-emer-btn" data-id="${t.id}" style="padding:4px 8px;font-size:0.72rem;gap:4px;color:${t.emergency_status === 'pending' ? '#b45309' : (t.emergency_status === 'on_leave' ? (t.emergency_request?.has_fit_to_work ? '#059669' : '#0284c7') : '#dc2626')};border-color:${t.emergency_status === 'pending' ? 'rgba(245,158,11,0.45)' : (t.emergency_status === 'on_leave' ? (t.emergency_request?.has_fit_to_work ? 'rgba(16,185,129,0.5)' : 'rgba(2,132,199,0.4)') : 'rgba(239,68,68,0.4)')};font-weight:600;background:${t.emergency_status === 'pending' ? 'rgba(245,158,11,0.06)' : (t.emergency_request?.has_fit_to_work ? 'rgba(16,185,129,0.08)' : 'transparent')};" title="${t.emergency_request?.has_fit_to_work ? 'Fit-to-Work Clearance Uploaded — Click to Inspect' : 'Review Emergency / Leave Notice'}">
                   ${icon(t.emergency_request?.has_fit_to_work ? 'shieldCheck' : 'alertTriangle', 13)} ${t.emergency_status === 'pending' ? 'Review Notice' : (t.emergency_status === 'on_leave' ? (t.emergency_request?.has_fit_to_work ? 'Clearance Uploaded' : 'On Leave') : 'Withdrawn')}
                 </button>
@@ -454,6 +462,7 @@ export default function traineesPage(container) {
               <button class="btn btn--ghost btn--sm" style="padding:4px 6px;" onclick="location.hash='/map'" title="Locate on Map">
                 ${icon('mapPin', 13)}
               </button>
+            `}
             </div>
           </td>
         </tr>

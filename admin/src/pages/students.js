@@ -468,24 +468,32 @@ function renderTable(tbody, list, container, selectedStudents, updateSelectionUI
               ? `<span class="badge badge--warning" title="Evaluation requested from ${s.ojt_company || 'Host Company'}, awaiting submission" style="display:inline-flex;align-items:center;gap:4px;font-size:0.75rem;font-weight:600;">${icon('clock', 11)} Pending</span>`
               : `<span class="badge badge--neutral" title="Host company has not submitted an evaluation" style="display:inline-flex;align-items:center;gap:4px;font-size:0.75rem;color:var(--text-tertiary);">${icon('minus-circle', 11)} None</span>`}
         </td>
-        <td>
+        <td style="white-space:nowrap;">
           ${s.approval_status === 'pending'
-            ? `<span class="badge badge--warning" style="background:#FEF3C7;color:#92400E;border:1px solid #FCD34D;display:inline-flex;align-items:center;gap:4px;font-size:0.75rem;font-weight:600;">${icon('clock', 11)} Pending Approval</span>`
+            ? `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 11px;font-size:0.74rem;font-weight:600;border-radius:20px;background:#FEF3C7;color:#92400E;border:1px solid #FCD34D;white-space:nowrap;box-shadow:0 1px 2px rgba(245,158,11,0.06);">
+                 <span style="width:6px;height:6px;border-radius:50%;background:#D97706;display:inline-block;"></span>
+                 <span>Pending Approval</span>
+               </span>`
             : `<span class="badge badge--${badgeColor}">${s.status}</span>`}
         </td>
         <td style="text-align:right;white-space:nowrap;">
-          ${s.approval_status === 'pending' ? `
-            <button class="btn btn--primary btn--sm approve-btn" data-id="${s.id}" data-name="${escapeHtml(s.name)}" style="padding:4px 9px;font-size:var(--text-xs);gap:4px;background:#059669;margin-right:4px;" title="Approve student registration">
-              ${icon('check', 12)} Approve
-            </button>
-            <button class="btn btn--outline btn--sm reject-btn" data-id="${s.id}" data-name="${escapeHtml(s.name)}" style="padding:4px 7px;font-size:var(--text-xs);gap:4px;color:#DC2626;border-color:#FCA5A5;" title="Reject registration">
-              ${icon('x', 12)}
-            </button>
-          ` : `
-            <button class="btn btn--outline btn--sm view-btn" data-id="${s.id}" style="padding:4px 10px;font-size:var(--text-xs);gap:4px;">
-              ${icon('eye', 13)} View
-            </button>
-          `}
+          <div style="display:inline-flex;align-items:center;justify-content:flex-end;gap:6px;">
+            ${s.approval_status === 'pending' ? `
+              <button class="approve-btn" data-id="${s.id}" data-name="${escapeHtml(s.name)}" style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;font-size:0.75rem;font-weight:600;background:#005930;color:#ffffff;border:1px solid #005930;border-radius:6px;cursor:pointer;box-shadow:0 1px 2px rgba(0,89,48,0.15);transition:all 0.15s ease;" title="Approve student registration">
+                ${icon('check', 13)} Approve
+              </button>
+              <button class="reject-btn" data-id="${s.id}" data-name="${escapeHtml(s.name)}" style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;font-size:0.75rem;font-weight:600;background:#FFF1F2;color:#E11D48;border:1px solid #FECDD3;border-radius:6px;cursor:pointer;transition:all 0.15s ease;" title="Reject student registration">
+                ${icon('x', 13)} Reject
+              </button>
+              <button class="view-btn" data-id="${s.id}" style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;font-size:0.75rem;font-weight:500;background:#ffffff;color:var(--text-secondary,#475569);border:1px solid var(--border-default,#cbd5e1);border-radius:6px;cursor:pointer;" title="View Student Details">
+                ${icon('eye', 13)} View
+              </button>
+            ` : `
+              <button class="btn btn--outline btn--sm view-btn" data-id="${s.id}" style="padding:4px 10px;font-size:var(--text-xs);gap:4px;">
+                ${icon('eye', 13)} View
+              </button>
+            `}
+          </div>
         </td>
       </tr>
     `;
