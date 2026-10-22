@@ -15,7 +15,64 @@ use App\Http\Controllers\CompanyPublicController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\EvaluationController;
 use App\Http\Controllers\OjtPullOutController;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Route;
+
+// ── Email Diagnostics & Self-Test ───────────────────────────────────────────
+Route::get('mail-diagnostic', function (Request $request) {
+    $rawUsername = (string) config('mail.mailers.smtp.username');
+    $maskedUsername = null;
+    if (!empty($rawUsername)) {
+        $parts = explode('@', $rawUsername);
+        $namePart = $parts[0] ?? '';
+        $domainPart = $parts[1] ?? '';
+        $maskedUsername = substr($namePart, 0, 3) . '***@' . $domainPart;
+    }
+
+    $rawPassword = (string) config('mail.mailers.smtp.password');
+
+    $config = [
+        'default_mailer'   => config('mail.default'),
+        'smtp_host'        => config('mail.mailers.smtp.host'),
+        'smtp_port'        => config('mail.mailers.smtp.port'),
+        'smtp_encryption'  => config('mail.mailers.smtp.encryption'),
+        'smtp_username'    => $maskedUsername,
+        'has_password'     => !empty($rawPassword),
+        'password_length'  => strlen($rawPassword),
+        'from_address'     => config('mail.from.address'),
+        'from_name'        => config('mail.from.name'),
+    ];
+
+    $testTo = $request->query('to');
+    if (!$testTo) {
+        return response()->json([
+            'status'      => 'ready',
+            'message'     => 'Mail diagnostic is ready. Append ?to=your_email@gmail.com to test sending an email.',
+            'mail_config' => $config,
+        ]);
+    }
+
+    try {
+        Mail::raw("This is a live test email from CHMSU HireMe.\n\nTimestamp: " . now()->toIso8601String(), function ($message) use ($testTo) {
+            $message->to($testTo)
+                    ->subject('CHMSU HireMe — SMTP Live Test');
+        });
+
+        return response()->json([
+            'status'      => 'success',
+            'message'     => "Test email sent successfully to {$testTo}!",
+            'mail_config' => $config,
+        ]);
+    } catch (\Throwable $e) {
+        return response()->json([
+            'status'        => 'error',
+            'error_message' => $e->getMessage(),
+            'error_class'   => get_class($e),
+            'mail_config'   => $config,
+        ], 500);
+    }
+});
 
 // ── Notifications (shared across all portals) ─────────────────────────────
 Route::middleware('auth:sanctum')->prefix('notifications')->group(function () {

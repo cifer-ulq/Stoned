@@ -1272,6 +1272,7 @@ class SupervisorController extends Controller
         $seenEmails          = [];
         $seenStudentIds       = [];
         $importedCredentials = [];
+        $mailErrors          = [];
 
         $get = function (array $values, string $key) use ($idx): ?string {
             if (! isset($idx[$key])) return null;
@@ -1392,6 +1393,7 @@ class SupervisorController extends Controller
                         ));
                     } catch (\Throwable $mErr) {
                         Log::warning("Student welcome email failed to send: " . $mErr->getMessage());
+                        $mailErrors[] = "{$email}: " . $mErr->getMessage();
                     }
                 });
 
@@ -1422,8 +1424,9 @@ class SupervisorController extends Controller
             'skipped'     => $skipped,
             'errors'      => $errors,
             'credentials' => $importedCredentials,
+            'mail_errors' => $mailErrors,
             'message'     => $imported > 0
-                ? "Successfully imported $imported student(s). Credentials generated and welcome emails queued."
+                ? "Successfully imported $imported student(s)." . (!empty($mailErrors) ? " (Note: Email sending encountered an issue; see mail_errors or use downloaded credentials)." : " Credentials generated and welcome emails sent.")
                 : 'No students were imported.',
         ]);
     }
