@@ -183,6 +183,10 @@ function launchConfetti() {
   setTimeout(() => container.remove(), 3000);
 }
 
+function triggerConfetti() {
+  launchConfetti();
+}
+
 /* ══════════════════════════════════════
    RENDER
    ══════════════════════════════════════ */
@@ -439,7 +443,7 @@ function attachTemporaryPasswordEvents(cachedUser) {
 
     try {
       const token = localStorage.getItem('hireme_token');
-      const res = await fetch('http://localhost:8000/api/auth/change-temporary-password', {
+      const res = await fetch('/api/auth/change-temporary-password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -471,7 +475,10 @@ function attachTemporaryPasswordEvents(cachedUser) {
       };
       localStorage.setItem('hireme_user', JSON.stringify(updatedUser));
 
-      triggerConfetti();
+      try {
+        launchConfetti();
+      } catch (_) {}
+
       if (submitLbl) submitLbl.textContent = '✓ Password Updated!';
       if (submitBtn) submitBtn.style.background = 'linear-gradient(135deg, #10B981 0%, #059669 100%)';
 
@@ -485,10 +492,11 @@ function attachTemporaryPasswordEvents(cachedUser) {
           admin:      '/admin/',
         };
         window.location.href = destinations[updatedUser.role] || '/main/';
-      }, 1200);
+      }, 1000);
 
     } catch (err) {
-      if (errorText) errorText.textContent = 'Network error. Please verify the backend server is running.';
+      console.error('[Onboarding] Error submitting new password:', err);
+      if (errorText) errorText.textContent = (err && err.message && !err.message.includes('fetch')) ? err.message : 'Network error. Please verify the backend server is running.';
       if (errorBox) errorBox.style.display = 'flex';
       if (submitBtn) submitBtn.disabled = false;
       if (submitLbl) submitLbl.textContent = 'Update Password & Continue';
