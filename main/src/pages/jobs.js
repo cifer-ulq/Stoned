@@ -1279,10 +1279,14 @@ export async function renderJobs(container) {
             <button class="btn btn--primary btn--sm" id="ext-retry-btn">${icon('trendingUp', 14)} Refresh</button>`;
           emptyEl.style.display = 'flex';
           const retryBtn = emptyEl.querySelector('#ext-retry-btn');
-          if (retryBtn) retryBtn.addEventListener('click', () => {
+          if (retryBtn) retryBtn.addEventListener('click', async () => {
+            retryBtn.disabled = true;
+            retryBtn.innerHTML = `${icon('trendingUp', 14)} Refreshing...`;
+            retryBtn.style.opacity = '0.7';
             externalJobs = null;
             defaultExternalJobs = null;
-            fetchExternalJobs().then(() => renderCards(false));
+            await fetchExternalJobs('', true);
+            renderCards(false);
           });
         }
       } else {

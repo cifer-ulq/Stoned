@@ -13,6 +13,7 @@ use App\Models\PortfolioProject;
 use App\Models\AppNotification;
 use App\Models\JobListing;
 use App\Services\RecommendationService;
+use App\Services\ExternalJobService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -415,297 +416,24 @@ class JobseekerController extends Controller
         return response()->json(['success' => true, 'message' => 'Offer declined.']);
     }
 
-    /* ── GET /jobseeker/external-jobs — JSearch (RapidAPI) proxy ── */
+    /* ── GET /jobseeker/external-jobs — Live remote feeds + curated industry partner listings ── */
     public function externalJobs(Request $request)
     {
-        $apiKey = config('services.jsearch.key');
-        if (!$apiKey) {
-            return response()->json([
-                'success' => false,
-                'data'    => [],
-                'message' => 'External jobs feature is not configured on this server.',
-            ]);
-        }
-
         $user       = $request->user();
-        $skills     = StudentSkill::where('user_id', $user->id)->pluck('name')->toArray();
         $searchTerm = trim($request->query('search') ?? $request->query('q') ?? '');
 
-        // If no search query and user has no skills saved on profile:
-        if (empty($searchTerm) && empty($skills)) {
+        try {
+            $jobs = ExternalJobService::getJobs($user, $searchTerm);
+
             return response()->json([
                 'success' => true,
-                'data'    => [],
-                'message' => 'Add skills to your profile to see personalised external jobs, or use the search bar above.',
+                'data'    => $jobs,
+                'count'   => count($jobs),
             ]);
-        }
-
-        $searchableSkills = array_values(array_filter($skills, fn($s) => mb_strlen(trim($s)) >= 2));
-
-        // Smart cache key determination: query-specific or user profile skills
-        if (!empty($searchTerm)) {
-            $cacheKey = 'ext_jobs_q_' . md5(strtolower($searchTerm)) . '_' . ($user?->id ?? 'anon');
-            $cacheTtl = now()->addHours(2);
-        } else {
-            $cacheKey = 'ext_jobs_j_' . $user->id . '_' . md5(implode(',', $skills));
-            $cacheTtl = now()->addHours(6);
-        }
-
-        $cached = Cache::get($cacheKey);
-        if ($cached !== null) {
-            return response()->json(['success' => true, 'data' => $cached]);
-        }
-
-        try {
-            $raw = [];
-            $seenIds = [];
-
-            if (!empty($searchTerm)) {
-                // Execute direct search on JSearch using the provided query
-                try {
-                    $r = Http::timeout(15)
-                        ->withoutVerifying()
-                        ->withHeaders([
-                            'X-RapidAPI-Key'  => $apiKey,
-                            'X-RapidAPI-Host' => 'jsearch.p.rapidapi.com',
-                        ])
-                        ->get('https://jsearch.p.rapidapi.com/search', [
-                            'query'     => $searchTerm,
-                            'page'      => '1',
-                            'num_pages' => '1',
-                        ]);
-
-                    if ($r->successful()) {
-                        foreach ($r->json('data', []) as $job) {
-                            $id = $job['job_id'] ?? null;
-                            if ($id && !in_array($id, $seenIds)) {
-                                $seenIds[] = $id;
-                                $raw[]     = $job;
-                            }
-                        }
-                    }
-                } catch (\Exception $e) {
-                    \Log::warning('[externalJobs:jobseeker] Direct search query failed for "' . $searchTerm . '": ' . $e->getMessage());
-                }
-            } else {
-                // Search top 3 skills individually and merge — avoids 0-result combined queries
-                $querySkills = array_slice($searchableSkills, 0, 3);
-                foreach ($querySkills as $skill) {
-                    try {
-                        $r = Http::timeout(10)
-                            ->withoutVerifying()
-                            ->withHeaders([
-                                'X-RapidAPI-Key'  => $apiKey,
-                                'X-RapidAPI-Host' => 'jsearch.p.rapidapi.com',
-                            ])
-                            ->get('https://jsearch.p.rapidapi.com/search', [
-                                'query'     => $skill . ' developer',
-                                'page'      => '1',
-                                'num_pages' => '1',
-                            ]);
-
-                        if ($r->successful()) {
-                            foreach ($r->json('data', []) as $job) {
-                                $id = $job['job_id'] ?? null;
-                                if ($id && !in_array($id, $seenIds)) {
-                                    $seenIds[]  = $id;
-                                    $raw[]      = $job;
-                                }
-                            }
-                        }
-                    } catch (\Exception $e) {
-                        \Log::warning('[externalJobs:jobseeker] Skill query failed for "' . $skill . '": ' . $e->getMessage());
-                    }
-                }
-
-                // Fallback: if per-skill queries returned nothing (e.g. soft skills),
-                // run generic searches so the user always sees results
-                if (empty($raw)) {
-                    $fallbackQueries = ['software developer', 'web developer'];
-                    foreach ($fallbackQueries as $fq) {
-                        try {
-                            $r = Http::timeout(10)
-                                ->withoutVerifying()
-                                ->withHeaders([
-                                    'X-RapidAPI-Key'  => $apiKey,
-                                    'X-RapidAPI-Host' => 'jsearch.p.rapidapi.com',
-                                ])
-                                ->get('https://jsearch.p.rapidapi.com/search', [
-                                    'query'     => $fq,
-                                    'page'      => '1',
-                                    'num_pages' => '1',
-                                ]);
-
-                            if ($r->successful()) {
-                                foreach ($r->json('data', []) as $job) {
-                                    $id = $job['job_id'] ?? null;
-                                    if ($id && !in_array($id, $seenIds)) {
-                                        $seenIds[] = $id;
-                                        $raw[]     = $job;
-                                    }
-                                }
-                            }
-                        } catch (\Exception $e) {
-                            \Log::warning('[externalJobs:jobseeker] Fallback query failed for "' . $fq . '": ' . $e->getMessage());
-                        }
-                    }
-                }
-            }
-
-            $skillsLower = array_map(fn($s) => strtolower(trim($s)), $skills);
-
-            $jobs = collect($raw)->map(function ($j) use ($skills, $skillsLower) {
-                // Match skills against description + qualifications text
-                $qualBullets    = $j['job_highlights']['Qualifications'] ?? [];
-                $qualifications = implode(' ', $qualBullets);
-                $titleLower     = strtolower($j['job_title'] ?? '');
-                $descLower      = strtolower($j['job_description'] ?? '');
-                $qualLower      = strtolower($qualifications);
-                $text           = $titleLower . ' ' . $descLower . ' ' . $qualLower;
-
-                // Find which student skills appear in job text
-                $matched = [];
-                foreach ($skills as $s) {
-                    $sl = strtolower(trim($s));
-                    if (mb_strlen($sl) >= 2 && str_contains($text, $sl)) {
-                        $matched[] = $s;
-                    }
-                }
-
-                // --- Improved scoring algorithm ---
-                // Extract distinct skill-like keywords from qualifications bullets
-                $qualKeywords = [];
-                foreach ($qualBullets as $bullet) {
-                    preg_match_all('/[A-Za-z][A-Za-z#+.\-]{1,}/', $bullet, $kw);
-                    foreach ($kw[0] as $w) {
-                        $wl = strtolower($w);
-                        if (mb_strlen($wl) >= 2 && !in_array($wl, ['the','and','for','with','that','this','are','have','will','from','your','you','our','can','all','has','been','more','also','each','any','but','not','such'])) {
-                            $qualKeywords[$wl] = true;
-                        }
-                    }
-                }
-
-                $matchedCount = count($matched);
-                $totalStudentSkills = count($skills);
-                $qualKeywordCount = count($qualKeywords);
-
-                if ($matchedCount === 0) {
-                    $score = 0;
-                } else {
-                    // Base score: what fraction of student skills match (coverage of student profile)
-                    $coverageRatio = $totalStudentSkills > 0 ? $matchedCount / $totalStudentSkills : 0;
-
-                    // Relevance score: how many qualification keywords does the student match
-                    $qualMatchCount = 0;
-                    foreach ($skillsLower as $sl) {
-                        if (isset($qualKeywords[$sl])) {
-                            $qualMatchCount++;
-                        }
-                    }
-                    $qualRelevance = $qualKeywordCount > 0 ? $qualMatchCount / min($qualKeywordCount, 10) : 0;
-
-                    // Title match bonus: if any skill appears in job title
-                    $titleBonus = 0;
-                    foreach ($skillsLower as $sl) {
-                        if (mb_strlen($sl) >= 2 && str_contains($titleLower, $sl)) {
-                            $titleBonus = 0.15;
-                            break;
-                        }
-                    }
-
-                    // Combined weighted score
-                    // - 40% from coverage (matched / total student skills, scaled up)
-                    // - 45% from qualification relevance
-                    // - 15% from title match bonus
-                    $rawScore = ($coverageRatio * 2.5 * 40) + ($qualRelevance * 45) + ($titleBonus * 100);
-                    $score = min(100, max(15, (int) round($rawScore)));
-                }
-
-                // Salary
-                $salary = 'Competitive';
-                if (!empty($j['job_salary_min'])) {
-                    $min    = '$' . number_format($j['job_salary_min'] / 1000) . 'k';
-                    $max    = !empty($j['job_salary_max']) && $j['job_salary_max'] !== $j['job_salary_min']
-                                ? ' – $' . number_format($j['job_salary_max'] / 1000) . 'k'
-                                : '';
-                    $period = match (strtoupper($j['job_salary_period'] ?? '')) {
-                        'YEAR'  => ' /yr',
-                        'MONTH' => ' /mo',
-                        'HOUR'  => ' /hr',
-                        default => '',
-                    };
-                    $salary = $min . $max . $period;
-                }
-
-                // Description excerpt
-                $desc    = strip_tags($j['job_description'] ?? '');
-                $desc    = trim(preg_replace('/\s{2,}/', ' ', $desc));
-                $excerpt = mb_strlen($desc) > 280 ? mb_substr($desc, 0, 280) . '…' : $desc;
-
-                // Employment type
-                $type = match (strtoupper($j['job_employment_type'] ?? '')) {
-                    'FULLTIME'   => 'Full-time',
-                    'PARTTIME'   => 'Part-time',
-                    'CONTRACTOR' => 'Contract',
-                    'INTERN'     => 'Internship',
-                    default      => 'Full-time',
-                };
-
-                // Location
-                $parts    = array_filter([$j['job_city'] ?? null, $j['job_state'] ?? null, $j['job_country'] ?? null]);
-                $location = !empty($parts) ? implode(', ', $parts) : ($j['job_is_remote'] ? 'Remote' : 'Worldwide');
-
-                // Source label (LinkedIn, Indeed, etc.)
-                $source = strtolower(preg_replace('/[^a-zA-Z0-9.]/', '', $j['job_publisher'] ?? 'jsearch'));
-
-                // Skills list from qualifications bullets
-                $skillsList = array_slice($j['job_highlights']['Qualifications'] ?? [], 0, 8);
-
-                $company = $j['employer_name'] ?? 'Company';
-                $rec     = RecommendationService::forExternalJob();
-
-                return [
-                    'id'                   => 'js-' . $j['job_id'],
-                    'title'                => $j['job_title'] ?? 'Untitled',
-                    'company'              => $company,
-                    'company_initial'      => strtoupper(substr($company, 0, 1)),
-                    'company_logo'         => $j['employer_logo'] ?? null,
-                    'location'             => $location,
-                    'type'                 => $type,
-                    'salary'               => $salary,
-                    'description'          => $excerpt,
-                    'skills'               => $skillsList,
-                    'matched_skills'       => $matched,
-                    'match_score'          => null,
-                    'match_tier'           => $rec['tier'],
-                    'recommendation_label' => $rec['short_label'],
-                    'match_recommendation' => $rec,
-                    'link'                 => $j['job_apply_link'] ?? null,
-                    'source'               => $source,
-                    'posted_date'          => isset($j['job_posted_at_datetime_utc'])
-                        ? date('M j', strtotime($j['job_posted_at_datetime_utc']))
-                        : null,
-                    'remote'               => $j['job_is_remote'] ?? false,
-                    'is_external'          => true,
-                    '_relevance'           => $score,
-                ];
-            })
-            ->sortByDesc('_relevance')
-            ->map(function ($item) {
-                unset($item['_relevance']);
-                return $item;
-            })
-            ->values()
-            ->toArray();
-
-
-            Cache::put($cacheKey, $jobs, $cacheTtl);
-
-            return response()->json(['success' => true, 'data' => $jobs]);
-        } catch (\Exception $e) {
-            \Log::warning('[externalJobs] RapidAPI call failed: ' . $e->getMessage());
+        } catch (\Throwable $e) {
+            \Log::warning('[externalJobs] Failed to retrieve external jobs: ' . $e->getMessage());
             return response()->json([
-                'success' => false,
+                'success' => true,
                 'data'    => [],
                 'message' => 'External job listings are temporarily unavailable. Please try again later.',
             ]);
