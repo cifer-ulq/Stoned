@@ -38,6 +38,11 @@ function formatCourseOption(course) {
   return acr ? `${course} (${acr})` : course;
 }
 
+function getCourseAcronym(course) {
+  if (!course) return '—';
+  return COURSE_ACRONYM_MAP[course] || course;
+}
+
 function initials(name = '') {
   return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 }
@@ -395,7 +400,7 @@ function renderTable(tbody, list, container, selectedStudents, updateSelectionUI
   if (!list.length) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="10">
+        <td colspan="8">
           <div class="empty-state" style="padding:var(--space-8) var(--space-4);">
             <h3 class="empty-state__title">No students found</h3>
             <p class="empty-state__text">Try adjusting your search or filters</p>
@@ -414,83 +419,99 @@ function renderTable(tbody, list, container, selectedStudents, updateSelectionUI
     const barColor = pct >= 100 ? '#3B82F6' : pct >= 40 ? '#10B981' : '#F59E0B';
     const isEligible = Boolean(s.is_eligible_for_promotion);
     const isChecked = selectedStudents ? selectedStudents.has(s.id) : false;
+    const acr = getCourseAcronym(s.program);
 
     return `
       <tr data-id="${s.id}">
-        <td style="text-align:center;width:44px;">
+        <!-- Checkbox -->
+        <td style="text-align:center;width:38px;padding:10px 8px;">
           ${isEligible
-            ? `<input type="checkbox" class="student-select-cb" data-id="${s.id}" ${isChecked ? 'checked' : ''} title="Eligible: Completed ${s.ojt_hours}h / ${s.ojt_required || 600}h OJT + Company Evaluated (${Number(s.evaluation_score || 5).toFixed(1)}★)" style="cursor:pointer;width:16px;height:16px;" />`
-            : `<input type="checkbox" disabled title="Ineligible: ${s.ineligible_reason || 'Requirements not met'}" style="cursor:not-allowed;opacity:0.3;width:16px;height:16px;" />`}
+            ? `<input type="checkbox" class="student-select-cb" data-id="${s.id}" ${isChecked ? 'checked' : ''} title="Eligible: Completed ${s.ojt_hours}h / ${s.ojt_required || 600}h OJT + Company Evaluated (${Number(s.evaluation_score || 5).toFixed(1)}★)" style="cursor:pointer;width:15px;height:15px;" />`
+            : `<input type="checkbox" disabled title="Ineligible: ${escapeHtml(s.ineligible_reason || 'Requirements not met')}" style="cursor:not-allowed;opacity:0.25;width:15px;height:15px;" />`}
         </td>
-        <td>
-          <div style="display:flex;align-items:center;gap:12px;">
+
+        <!-- Student -->
+        <td style="padding:10px 12px;min-width:180px;">
+          <div style="display:flex;align-items:center;gap:10px;min-width:0;">
             ${s.avatar_url
-              ? `<img src="${storageUrl(s.avatar_url)}" alt="${s.name}" style="width:36px;height:36px;border-radius:var(--radius-full);object-fit:cover;flex-shrink:0;border:1px solid var(--border-default);" />`
-              : `<div style="width:36px;height:36px;border-radius:var(--radius-full);background:var(--color-primary-bg);color:var(--color-primary);display:flex;align-items:center;justify-content:center;font-weight:var(--weight-semibold);font-size:var(--text-xs);flex-shrink:0;border:1px solid var(--color-primary-border);">${initials(s.name)}</div>`}
-            <div>
-              <div style="font-weight:var(--weight-semibold);color:var(--text-primary);font-size:var(--text-sm);">${s.name}</div>
-              <div style="font-size:var(--text-xs);color:var(--text-tertiary);">${s.email}</div>
+              ? `<img src="${storageUrl(s.avatar_url)}" alt="${escapeHtml(s.name)}" style="width:34px;height:34px;border-radius:var(--radius-full);object-fit:cover;flex-shrink:0;border:1px solid var(--border-default);" />`
+              : `<div style="width:34px;height:34px;border-radius:var(--radius-full);background:var(--color-primary-bg);color:var(--color-primary);display:flex;align-items:center;justify-content:center;font-weight:var(--weight-semibold);font-size:0.75rem;flex-shrink:0;border:1px solid rgba(0,89,48,0.15);">${initials(s.name)}</div>`}
+            <div style="min-width:0;max-width:180px;">
+              <div style="font-weight:600;color:var(--text-primary);font-size:var(--text-sm);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${escapeHtml(s.name)}">${escapeHtml(s.name)}</div>
+              <div style="font-size:0.75rem;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${escapeHtml(s.email)}">${escapeHtml(s.email)}</div>
             </div>
           </div>
         </td>
-        <td>
-          <span style="font-family:monospace;font-size:var(--text-xs);color:var(--text-secondary);font-weight:var(--weight-medium);">${s.student_id || '—'}</span>
+
+        <!-- Student ID -->
+        <td style="padding:10px 12px;white-space:nowrap;">
+          <span style="font-family:monospace;font-size:0.75rem;color:var(--text-secondary);font-weight:600;">${escapeHtml(s.student_id || '—')}</span>
         </td>
-        <td>
-          <div style="font-weight:var(--weight-medium);color:var(--text-primary);font-size:var(--text-sm);">${s.program || '—'}</div>
-          ${s.year_level ? `<div style="font-size:var(--text-xs);color:var(--text-tertiary);">${s.year_level}</div>` : ''}
+
+        <!-- Program & Section -->
+        <td style="padding:10px 12px;white-space:nowrap;">
+          <div style="font-weight:600;color:var(--text-primary);font-size:0.82rem;" title="${escapeHtml(s.program || '')}">${escapeHtml(acr)}</div>
+          <div style="font-size:0.72rem;color:var(--text-secondary);display:flex;align-items:center;gap:4px;margin-top:2px;">
+            <span>${escapeHtml(s.year_level || '—')}</span>
+            ${s.section ? `<span>·</span><span class="badge badge--info" style="font-size:0.65rem;padding:0 5px;font-weight:700;">${escapeHtml(s.section)}</span>` : ''}
+          </div>
         </td>
-        <td>
-          ${s.section 
-            ? `<span class="badge badge--info" style="font-weight:700;letter-spacing:0.02em;">${s.section}</span>`
-            : `<span style="color:var(--text-tertiary);font-size:var(--text-xs);">—</span>`}
-        </td>
-        <td>
+
+        <!-- Host Company & Eval -->
+        <td style="padding:10px 12px;">
           ${s.ojt_company
-            ? `<div style="display:flex;align-items:center;gap:6px;font-size:var(--text-sm);font-weight:var(--weight-medium);color:var(--text-primary);">${icon('briefcase', 13)} <span>${s.ojt_company}</span></div>`
+            ? `<div style="display:flex;align-items:center;gap:5px;font-size:var(--text-sm);font-weight:500;color:var(--text-primary);max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${escapeHtml(s.ojt_company)}">
+                ${icon('briefcase', 12)} <span style="overflow:hidden;text-overflow:ellipsis;">${escapeHtml(s.ojt_company)}</span>
+               </div>
+               <div style="margin-top:2px;">
+                 ${s.evaluation_status === 'submitted'
+                   ? `<span class="badge badge--success" title="Evaluated by ${escapeHtml(s.evaluator_name || 'Host Company')}${s.evaluator_position ? ' (' + escapeHtml(s.evaluator_position) + ')' : ''} on ${escapeHtml(s.evaluation_date || 'N/A')}" style="display:inline-flex;align-items:center;gap:3px;font-size:0.68rem;font-weight:600;padding:0 6px;"><span style="color:#F59E0B;">★</span> ${Number(s.evaluation_score || 5).toFixed(1)} Eval</span>`
+                   : s.evaluation_status === 'pending'
+                     ? `<span class="badge badge--warning" title="Evaluation requested, awaiting submission" style="display:inline-flex;align-items:center;gap:3px;font-size:0.68rem;font-weight:600;padding:0 6px;">${icon('clock', 10)} Eval Pending</span>`
+                     : `<span style="font-size:0.68rem;color:var(--text-tertiary);font-style:italic;">No Eval yet</span>`}
+               </div>`
             : `<span style="color:var(--text-tertiary);font-size:var(--text-xs);font-style:italic;">Undeployed</span>`}
         </td>
-        <td style="min-width:130px;">
+
+        <!-- OJT Progress -->
+        <td style="padding:10px 12px;">
           ${s.ojt_required > 0 ? `
-          <div style="display:flex;align-items:center;gap:8px;">
-            <div class="progress-bar" style="flex:1;min-width:55px;">
+          <div style="display:flex;align-items:center;gap:7px;min-width:110px;">
+            <div class="progress-bar" style="flex:1;min-width:48px;height:6px;">
               <div class="progress-bar__fill" style="width:${pct}%;background:${barColor};"></div>
             </div>
-            <span style="font-size:var(--text-xs);font-weight:var(--weight-semibold);white-space:nowrap;">${s.ojt_hours}/${s.ojt_required}h</span>
+            <span style="font-size:0.72rem;font-weight:600;white-space:nowrap;color:var(--text-secondary);">${s.ojt_hours}/${s.ojt_required}h</span>
           </div>` : `
             <span style="font-size:var(--text-xs);color:var(--text-tertiary);">—</span>
           `}
         </td>
-        <td>
-          ${s.evaluation_status === 'submitted'
-            ? `<span class="badge badge--success" title="Evaluated by ${s.evaluator_name || 'Host Company'}${s.evaluator_position ? ' (' + s.evaluator_position + ')' : ''} on ${s.evaluation_date || 'N/A'}" style="display:inline-flex;align-items:center;gap:4px;font-size:0.75rem;font-weight:600;"><span style="color:#F59E0B;">★</span> ${Number(s.evaluation_score || 5).toFixed(1)} Eval</span>`
-            : s.evaluation_status === 'pending'
-              ? `<span class="badge badge--warning" title="Evaluation requested from ${s.ojt_company || 'Host Company'}, awaiting submission" style="display:inline-flex;align-items:center;gap:4px;font-size:0.75rem;font-weight:600;">${icon('clock', 11)} Pending</span>`
-              : `<span class="badge badge--neutral" title="Host company has not submitted an evaluation" style="display:inline-flex;align-items:center;gap:4px;font-size:0.75rem;color:var(--text-tertiary);">${icon('minus-circle', 11)} None</span>`}
-        </td>
-        <td style="white-space:nowrap;">
+
+        <!-- Status -->
+        <td style="padding:10px 12px;white-space:nowrap;">
           ${s.approval_status === 'pending'
-            ? `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 11px;font-size:0.74rem;font-weight:600;border-radius:20px;background:#FEF3C7;color:#92400E;border:1px solid #FCD34D;white-space:nowrap;box-shadow:0 1px 2px rgba(245,158,11,0.06);">
+            ? `<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px;font-size:0.72rem;font-weight:600;border-radius:20px;background:#FEF3C7;color:#92400E;border:1px solid #FCD34D;box-shadow:0 1px 2px rgba(245,158,11,0.06);">
                  <span style="width:6px;height:6px;border-radius:50%;background:#D97706;display:inline-block;"></span>
                  <span>Pending Approval</span>
                </span>`
-            : `<span class="badge badge--${badgeColor}">${s.status}</span>`}
+            : `<span class="badge badge--${badgeColor}">${escapeHtml(s.status)}</span>`}
         </td>
-        <td style="text-align:right;white-space:nowrap;">
-          <div style="display:inline-flex;align-items:center;justify-content:flex-end;gap:6px;">
+
+        <!-- Actions -->
+        <td style="padding:10px 12px;text-align:right;white-space:nowrap;">
+          <div style="display:inline-flex;align-items:center;justify-content:flex-end;gap:5px;">
             ${s.approval_status === 'pending' ? `
-              <button class="approve-btn" data-id="${s.id}" data-name="${escapeHtml(s.name)}" style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;font-size:0.75rem;font-weight:600;background:#005930;color:#ffffff;border:1px solid #005930;border-radius:6px;cursor:pointer;box-shadow:0 1px 2px rgba(0,89,48,0.15);transition:all 0.15s ease;" title="Approve student registration">
-                ${icon('check', 13)} Approve
+              <button class="approve-btn" data-id="${s.id}" data-name="${escapeHtml(s.name)}" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;font-size:0.73rem;font-weight:600;background:#005930;color:#ffffff;border:1px solid #005930;border-radius:6px;cursor:pointer;box-shadow:0 1px 2px rgba(0,89,48,0.15);transition:all 0.15s ease;" title="Approve student registration">
+                ${icon('check', 12)} Approve
               </button>
-              <button class="reject-btn" data-id="${s.id}" data-name="${escapeHtml(s.name)}" style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;font-size:0.75rem;font-weight:600;background:#FFF1F2;color:#E11D48;border:1px solid #FECDD3;border-radius:6px;cursor:pointer;transition:all 0.15s ease;" title="Reject student registration">
-                ${icon('x', 13)} Reject
+              <button class="reject-btn" data-id="${s.id}" data-name="${escapeHtml(s.name)}" style="display:inline-flex;align-items:center;gap:3px;padding:4px 8px;font-size:0.73rem;font-weight:600;background:#FFF1F2;color:#E11D48;border:1px solid #FECDD3;border-radius:6px;cursor:pointer;transition:all 0.15s ease;" title="Reject student registration">
+                ${icon('x', 12)} Reject
               </button>
-              <button class="view-btn" data-id="${s.id}" style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;font-size:0.75rem;font-weight:500;background:#ffffff;color:var(--text-secondary,#475569);border:1px solid var(--border-default,#cbd5e1);border-radius:6px;cursor:pointer;" title="View Student Details">
-                ${icon('eye', 13)} View
+              <button class="view-btn" data-id="${s.id}" style="display:inline-flex;align-items:center;gap:3px;padding:4px 8px;font-size:0.73rem;font-weight:500;background:#ffffff;color:var(--text-secondary,#475569);border:1px solid var(--border-default,#cbd5e1);border-radius:6px;cursor:pointer;" title="View Student Details">
+                ${icon('eye', 12)} View
               </button>
             ` : `
-              <button class="btn btn--outline btn--sm view-btn" data-id="${s.id}" style="padding:4px 10px;font-size:var(--text-xs);gap:4px;">
-                ${icon('eye', 13)} View
+              <button class="btn btn--outline btn--sm view-btn" data-id="${s.id}" style="padding:3px 9px;font-size:var(--text-xs);gap:4px;border-radius:6px;">
+                ${icon('eye', 12)} View
               </button>
             `}
           </div>
@@ -572,27 +593,28 @@ function renderTable(tbody, list, container, selectedStudents, updateSelectionUI
 function showSkeleton(tbody, count = 8) {
   tbody.innerHTML = Array.from({ length: count }, () => `
     <tr style="opacity: 0.5;">
-      <td style="text-align:center;"><div style="height:16px;width:16px;background:var(--bg-tertiary);border-radius:4px;margin:auto;"></div></td>
-      <td>
-        <div style="display:flex;align-items:center;gap:12px;">
-          <div style="width:36px;height:36px;border-radius:var(--radius-full);background:var(--bg-tertiary);flex-shrink:0;"></div>
+      <td style="text-align:center;padding:10px 8px;"><div style="height:15px;width:15px;background:var(--bg-tertiary);border-radius:3px;margin:auto;"></div></td>
+      <td style="padding:10px 12px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:34px;height:34px;border-radius:var(--radius-full);background:var(--bg-tertiary);flex-shrink:0;"></div>
           <div>
-            <div style="height:12px;width:120px;background:var(--bg-tertiary);border-radius:4px;margin-bottom:6px;"></div>
-            <div style="height:10px;width:160px;background:var(--bg-tertiary);border-radius:4px;"></div>
+            <div style="height:12px;width:110px;background:var(--bg-tertiary);border-radius:4px;margin-bottom:5px;"></div>
+            <div style="height:10px;width:140px;background:var(--bg-tertiary);border-radius:4px;"></div>
           </div>
         </div>
       </td>
-      <td><div style="height:12px;width:80px;background:var(--bg-tertiary);border-radius:4px;"></div></td>
-      <td>
-        <div style="height:12px;width:160px;background:var(--bg-tertiary);border-radius:4px;margin-bottom:6px;"></div>
-        <div style="height:10px;width:70px;background:var(--bg-tertiary);border-radius:4px;"></div>
+      <td style="padding:10px 12px;"><div style="height:12px;width:75px;background:var(--bg-tertiary);border-radius:4px;"></div></td>
+      <td style="padding:10px 12px;">
+        <div style="height:12px;width:60px;background:var(--bg-tertiary);border-radius:4px;margin-bottom:5px;"></div>
+        <div style="height:10px;width:90px;background:var(--bg-tertiary);border-radius:4px;"></div>
       </td>
-      <td><div style="height:20px;width:45px;background:var(--bg-tertiary);border-radius:4px;"></div></td>
-      <td><div style="height:12px;width:110px;background:var(--bg-tertiary);border-radius:4px;"></div></td>
-      <td><div style="height:12px;width:100px;background:var(--bg-tertiary);border-radius:4px;"></div></td>
-      <td><div style="height:20px;width:75px;background:var(--bg-tertiary);border-radius:12px;"></div></td>
-      <td><div style="height:20px;width:70px;background:var(--bg-tertiary);border-radius:12px;"></div></td>
-      <td style="text-align:right;"><div style="height:28px;width:65px;background:var(--bg-tertiary);border-radius:6px;display:inline-block;"></div></td>
+      <td style="padding:10px 12px;">
+        <div style="height:12px;width:110px;background:var(--bg-tertiary);border-radius:4px;margin-bottom:5px;"></div>
+        <div style="height:10px;width:60px;background:var(--bg-tertiary);border-radius:4px;"></div>
+      </td>
+      <td style="padding:10px 12px;"><div style="height:10px;width:95px;background:var(--bg-tertiary);border-radius:4px;"></div></td>
+      <td style="padding:10px 12px;"><div style="height:20px;width:80px;background:var(--bg-tertiary);border-radius:12px;"></div></td>
+      <td style="padding:10px 12px;text-align:right;"><div style="height:26px;width:65px;background:var(--bg-tertiary);border-radius:6px;display:inline-block;"></div></td>
     </tr>`).join('');
 }
 
@@ -639,18 +661,16 @@ export default async function StudentsPage(container) {
       <table class="table" id="students-table">
         <thead>
           <tr>
-            <th style="width:44px;text-align:center;">
-              <input type="checkbox" id="select-all-students" style="cursor:pointer;width:16px;height:16px;" title="Select all eligible students on this page" />
+            <th style="width:38px;text-align:center;padding:10px 8px;">
+              <input type="checkbox" id="select-all-students" style="cursor:pointer;width:15px;height:15px;" title="Select all eligible students on this page" />
             </th>
-            <th>Student</th>
-            <th>Student ID</th>
-            <th>Course & Year</th>
-            <th>Section</th>
-            <th>Host Company</th>
-            <th>OJT Progress</th>
-            <th>Company Eval</th>
-            <th>Status</th>
-            <th style="width:90px;text-align:right;">Actions</th>
+            <th style="min-width:180px;padding:10px 12px;">Student</th>
+            <th style="width:110px;padding:10px 12px;">Student ID</th>
+            <th style="width:130px;padding:10px 12px;">Program</th>
+            <th style="min-width:160px;padding:10px 12px;">Host Company</th>
+            <th style="width:130px;padding:10px 12px;">OJT Progress</th>
+            <th style="width:125px;padding:10px 12px;">Status</th>
+            <th style="width:150px;text-align:right;padding:10px 12px;">Actions</th>
           </tr>
         </thead>
         <tbody id="students-tbody"></tbody>
@@ -720,7 +740,7 @@ export default async function StudentsPage(container) {
     if (!res || res.message) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="10">
+          <td colspan="8">
             <div class="empty-state" style="padding:var(--space-8) var(--space-4);">
               <h3 class="empty-state__title">Failed to load students</h3>
               <p class="empty-state__text">${res?.message || 'Check your connection or login session.'}</p>
