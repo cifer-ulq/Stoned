@@ -26,7 +26,7 @@ class StudentWelcome extends Mailable
         }
 
         if (empty($this->loginUrl)) {
-            $this->loginUrl = config('app.login_app_url', env('LOGIN_APP_URL', 'http://localhost:5173/login'));
+            $this->loginUrl = config('app.login_app_url', env('LOGIN_APP_URL', 'https://stoned-two.vercel.app/login/'));
         }
     }
 

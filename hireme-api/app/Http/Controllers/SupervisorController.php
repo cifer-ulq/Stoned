@@ -1266,11 +1266,12 @@ class SupervisorController extends Controller
         }
 
         // ── Process rows ─────────────────────────────────────────────────────
-        $imported       = 0;
-        $skipped        = 0;
-        $errors         = [];
-        $seenEmails     = [];
-        $seenStudentIds = [];
+        $imported            = 0;
+        $skipped             = 0;
+        $errors              = [];
+        $seenEmails          = [];
+        $seenStudentIds       = [];
+        $importedCredentials = [];
 
         $get = function (array $values, string $key) use ($idx): ?string {
             if (! isset($idx[$key])) return null;
@@ -1349,7 +1350,11 @@ class SupervisorController extends Controller
 
             // ── Create records ───────────────────────────────────────────────
             try {
-                $tempPassword = 'CHMSU-' . strtoupper(\Illuminate\Support\Str::random(6));
+                $rawId = trim((string) $studentId);
+                $tempPassword = 'CHMSU@' . preg_replace('/\s+/', '', $rawId);
+                if (strlen($tempPassword) < 8) {
+                    $tempPassword = 'CHMSU@' . str_pad($rawId, 6, '0', STR_PAD_LEFT);
+                }
 
                 DB::transaction(function () use (
                     $name, $email, $studentId, $course, $year, $section, $campus, $batch, $tempPassword
@@ -1390,6 +1395,15 @@ class SupervisorController extends Controller
                     }
                 });
 
+                $importedCredentials[] = [
+                    'name'               => $name,
+                    'email'              => $email,
+                    'student_id'         => $studentId,
+                    'course'             => $course,
+                    'section'            => $section ?? '—',
+                    'temporary_password' => $tempPassword,
+                ];
+
                 $imported++;
 
             } catch (\Throwable $e) {
@@ -1403,12 +1417,13 @@ class SupervisorController extends Controller
         }
 
         return response()->json([
-            'success'  => true,
-            'imported' => $imported,
-            'skipped'  => $skipped,
-            'errors'   => $errors,
-            'message'  => $imported > 0
-                ? "Successfully imported $imported student(s). Welcome emails are being sent."
+            'success'     => true,
+            'imported'    => $imported,
+            'skipped'     => $skipped,
+            'errors'      => $errors,
+            'credentials' => $importedCredentials,
+            'message'     => $imported > 0
+                ? "Successfully imported $imported student(s). Credentials generated and welcome emails queued."
                 : 'No students were imported.',
         ]);
     }

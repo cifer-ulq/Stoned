@@ -29,3 +29,21 @@ services:
         sync: false
       - key: APP_TIMEZONE
         value: Asia/Manila
+      - key: LOGIN_APP_URL
+        value: https://stoned-two.vercel.app/login/
+      - key: MAIL_MAILER
+        sync: false
+      - key: MAIL_HOST
+        sync: false
+      - key: MAIL_PORT
+        sync: false
+      - key: MAIL_USERNAME
+        sync: false
+      - key: MAIL_PASSWORD
+        sync: false
+      - key: MAIL_ENCRYPTION
+        value: tls
+      - key: MAIL_FROM_ADDRESS
+        value: no-reply@chmsu.edu.ph
+      - key: MAIL_FROM_NAME
+        value: "CHMSU HireMe"

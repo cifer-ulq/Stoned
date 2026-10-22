@@ -2,6 +2,42 @@
 import { apiPostForm } from '../api/client.js';
 import { icon, renderIcons } from './icons.js';
 
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function downloadCredentialsCSV(creds) {
+  if (!creds || !creds.length) return;
+  const rows = [
+    ['Name', 'Student ID', 'Email', 'Course', 'Section', 'Temporary Password', 'Login URL']
+  ];
+  creds.forEach(c => {
+    rows.push([
+      `"${(c.name || '').replace(/"/g, '""')}"`,
+      `"${(c.student_id || '').replace(/"/g, '""')}"`,
+      `"${(c.email || '').replace(/"/g, '""')}"`,
+      `"${(c.course || '').replace(/"/g, '""')}"`,
+      `"${(c.section || '').replace(/"/g, '""')}"`,
+      `"${(c.temporary_password || '').replace(/"/g, '""')}"`,
+      `"https://stoned-two.vercel.app/login/"`
+    ]);
+  });
+  const csvContent = rows.map(r => r.join(',')).join('\r\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `student_credentials_${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 /* ─────────────────────────────────────────────────────────────────────────────
    CSV Template download
 ───────────────────────────────────────────────────────────────────────────── */
@@ -361,6 +397,7 @@ export function openStudentImportModal(onSuccess) {
     const imported = res?.imported ?? 0;
     const skipped  = res?.skipped  ?? 0;
     const errors   = res?.errors   ?? [];
+    const creds    = res?.credentials ?? [];
     const success  = imported > 0;
 
     body.innerHTML = `
@@ -374,7 +411,7 @@ export function openStudentImportModal(onSuccess) {
           </div>
           <div class="sim-result-hero__sub">
             ${success
-              ? `Welcome emails with login credentials are being sent to each student.`
+              ? `Temporary credentials have been generated and welcome emails queued.`
               : `All rows were skipped. Please review the errors below and fix your CSV.`}
           </div>
         </div>
@@ -392,10 +429,56 @@ export function openStudentImportModal(onSuccess) {
       </div>
 
       ${success ? `
-      <div class="sim-credential-note">
-        ${icon('key', 13)}
-        <span>System emails containing secure temporary passwords have been sent to each student. They will be required to create a new password upon first login.</span>
+      <div class="sim-credential-note" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:12px 16px;background:rgba(15,118,110,0.08);border:1px solid rgba(15,118,110,0.25);border-radius:8px;margin:16px 0;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          ${icon('key', 14)}
+          <span style="font-size:0.85rem;color:var(--text-primary);">
+            Temporary Password format: <strong>CHMSU@&lt;student_id&gt;</strong>. Students will be required to create their private password upon first login.
+          </span>
+        </div>
+        ${creds.length > 0 ? `
+          <button class="btn btn--sm btn--primary" id="sim-download-creds-btn" type="button" style="background:#0F766E;border-color:#0F766E;font-size:0.8rem;padding:6px 12px;gap:6px;cursor:pointer;">
+            ${icon('download', 13)} Download Credentials CSV
+          </button>
+        ` : ''}
       </div>
+
+      ${creds.length > 0 ? `
+        <div class="sim-creds-section" style="margin-top:16px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <span style="font-size:0.85rem;font-weight:600;color:var(--text-primary);display:flex;align-items:center;gap:6px;">
+              ${icon('users', 14)} Generated Student Credentials (${creds.length})
+            </span>
+            <span style="font-size:0.75rem;color:var(--text-secondary);">Save or distribute to students</span>
+          </div>
+          <div class="sim-errors-table-wrap" style="max-height:180px;overflow-y:auto;border:1px solid var(--border-color);border-radius:6px;">
+            <table class="sim-table sim-table--compact" style="width:100%;font-size:0.8rem;">
+              <thead>
+                <tr>
+                  <th>Student Name</th>
+                  <th>Student ID</th>
+                  <th>Email</th>
+                  <th>Temporary Password</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${creds.map(c => `
+                  <tr>
+                    <td style="font-weight:600;">${escapeHtml(c.name)}</td>
+                    <td><code>${escapeHtml(c.student_id)}</code></td>
+                    <td>${escapeHtml(c.email)}</td>
+                    <td>
+                      <span style="background:var(--bg-elevated);border:1px solid var(--border-color);padding:2px 8px;border-radius:4px;font-family:monospace;font-weight:700;color:#0F766E;">
+                        ${escapeHtml(c.temporary_password)}
+                      </span>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ` : ''}
       ` : ''}
 
       ${errors.length > 0 ? `
@@ -429,6 +512,10 @@ export function openStudentImportModal(onSuccess) {
       </div>
     `;
     renderIcons();
+
+    body.querySelector('#sim-download-creds-btn')?.addEventListener('click', () => {
+      downloadCredentialsCSV(creds);
+    });
 
     body.querySelector('#sim-done-btn').addEventListener('click', () => {
       backdrop.remove();
