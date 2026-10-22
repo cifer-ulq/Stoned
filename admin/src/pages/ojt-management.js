@@ -322,6 +322,9 @@ export default async function OjtManagementPage(container) {
         <td><span class="badge badge--info" style="font-size:.65rem;">${s.course || '—'}</span></td>
         <td style="font-size:var(--text-xs);color:var(--text-tertiary);">${s.created_at||''}</td>
         <td style="text-align:right;">
+          <button class="btn-icon btn-resend-supervisor" data-id="${s.id}" data-name="${s.name}" data-email="${s.email}" title="Reset Temporary Password & Resend Welcome Email" style="background:transparent;border:none;cursor:pointer;color:var(--text-tertiary);padding:4px 6px;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;transition:color .15s;margin-right:4px;">
+            ${icon('mail', 14)}
+          </button>
           <button class="btn-icon btn-del-supervisor" data-id="${s.id}" data-name="${s.name}" title="Remove coordinator" style="background:transparent;border:none;cursor:pointer;color:var(--text-tertiary);padding:4px 6px;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;transition:color .15s;">
             ${icon('trash-2', 14)}
           </button>
@@ -329,6 +332,33 @@ export default async function OjtManagementPage(container) {
       </tr>`;
     }).join('');
     renderIcons();
+
+    stb.querySelectorAll('.btn-resend-supervisor').forEach(btn => {
+      btn.addEventListener('mouseenter', () => { btn.style.color = '#005930'; });
+      btn.addEventListener('mouseleave', () => { btn.style.color = 'var(--text-tertiary)'; });
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        const name = btn.dataset.name;
+        const email = btn.dataset.email;
+        if (!confirm(`Reset temporary password and resend welcome email to coordinator "${name}" (${email})?`)) return;
+        btn.disabled = true;
+        btn.innerHTML = `<span class="spinner-sm"></span>`;
+        try {
+          const res = await apiPost(`/admin/supervisors/${id}/resend-welcome`, {});
+          if (res?.success) {
+            alert(`✓ ${res.message}\n\nTemporary Password: ${res.temp_password}`);
+          } else {
+            alert(res?.message || 'Failed to resend welcome email.');
+          }
+        } catch {
+          alert('Network error while requesting password reset.');
+        } finally {
+          btn.disabled = false;
+          btn.innerHTML = icon('mail', 14);
+          renderIcons();
+        }
+      });
+    });
 
     stb.querySelectorAll('.btn-del-supervisor').forEach(btn => {
       btn.addEventListener('mouseenter', () => { btn.style.color = '#EF4444'; });
@@ -804,17 +834,41 @@ export default async function OjtManagementPage(container) {
 
         if (res?.supervisor) {
           const sucEl = backdrop.querySelector('#sup-success');
+          const emailBadge = res.mail_sent
+            ? `<div style="display:inline-flex;align-items:center;gap:6px;background:#ECFDF5;border:1px solid #A7F3D0;color:#047857;font-size:11.5px;font-weight:600;padding:4px 10px;border-radius:100px;margin-bottom:8px;">${icon('check', 12)} Welcome email sent to ${res.supervisor.email}</div>`
+            : `<div style="display:inline-flex;align-items:center;gap:6px;background:#FFFBEB;border:1px solid #FDE68A;color:#B45309;font-size:11.5px;font-weight:600;padding:4px 10px;border-radius:100px;margin-bottom:8px;">⚠️ Email skipped (relay offline) &bull; Please share credentials directly</div>`;
+
           sucEl.innerHTML = `
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
               ${icon('check-circle', 16)}
               <strong style="color:#047857;">${res.supervisor.name}</strong> registered successfully!
             </div>
-            <div style="background:#fff;border:1px solid rgba(16,185,129,.2);border-radius:6px;padding:8px 12px;margin-top:6px;">
-              <span style="font-size:var(--text-xs);color:var(--text-tertiary);display:block;margin-bottom:2px;">Temporary Password</span>
-              <code style="font-size:var(--text-base);font-weight:700;color:#111;letter-spacing:.5px;">${res.temp_password}</code>
+            ${emailBadge}
+            <div style="background:#fff;border:1px solid rgba(16,185,129,.2);border-radius:6px;padding:8px 12px;margin-top:6px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+              <div>
+                <span style="font-size:var(--text-xs);color:var(--text-tertiary);display:block;margin-bottom:2px;">Temporary Password</span>
+                <code style="font-size:var(--text-base);font-weight:700;color:#111;letter-spacing:.5px;">${res.temp_password}</code>
+              </div>
+              <button type="button" id="btn-copy-sup-cred" class="btn btn--secondary btn--sm" style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;padding:5px 10px;cursor:pointer;">
+                ${icon('copy', 12)} <span id="lbl-copy-sup-cred">Copy</span>
+              </button>
             </div>
-            <p style="font-size:var(--text-xs);color:var(--text-tertiary);margin:8px 0 0;">Please save this password — it won't be shown again.</p>
+            <p style="font-size:var(--text-xs);color:var(--text-tertiary);margin:8px 0 0;">
+              The coordinator will be prompted to create a personal password upon first login.
+            </p>
           `;
+          renderIcons();
+
+          const copyBtn = sucEl.querySelector('#btn-copy-sup-cred');
+          copyBtn?.addEventListener('click', () => {
+            const textToCopy = `CHMSU HireMe Coordinator Credentials:\nEmail: ${res.supervisor.email}\nTemporary Password: ${res.temp_password}\nLogin URL: https://stoned-two.vercel.app/login/`;
+            navigator.clipboard.writeText(textToCopy).then(() => {
+              const lbl = sucEl.querySelector('#lbl-copy-sup-cred');
+              if (lbl) lbl.textContent = '✓ Copied!';
+              setTimeout(() => { if (lbl) lbl.textContent = 'Copy'; }, 2000);
+            });
+          });
+
           sucEl.style.display = 'block';
           btn.style.display = 'none';
           backdrop.querySelector('#sup-cancel').textContent = 'Done';

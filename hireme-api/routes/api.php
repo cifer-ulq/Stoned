@@ -398,6 +398,7 @@ Route::middleware('auth:sanctum')->prefix('admin')->group(function () {
     // Supervisors
     Route::get('supervisors',                      [AdminController::class, 'listSupervisors']);
     Route::post('supervisors',                     [AdminController::class, 'storeSupervisor']);
+    Route::post('supervisors/{id}/resend-welcome', [AdminController::class, 'resendSupervisorWelcome']);
     Route::delete('supervisors/{id}',              [AdminController::class, 'deleteSupervisor']);
 
     // OJT Analytics

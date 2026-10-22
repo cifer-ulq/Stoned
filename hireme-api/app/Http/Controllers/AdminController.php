@@ -1747,11 +1747,12 @@ class AdminController extends Controller
 
         $normalizedCourse = \App\Services\CourseNormalizer::normalize($data['course']) ?: $data['course'];
 
-        $password = Str::random(12);
+        $tempPassword = 'CHMSU@Sup' . rand(1000, 9999);
         $user = User::create([
             'name'                 => $data['name'],
             'email'                => $data['email'],
-            'password'             => Hash::make($password),
+            'password'             => Hash::make($tempPassword),
+            'must_change_password' => true,
             'role'                 => 'supervisor',
             'onboarding_completed' => true,
         ]);
@@ -1764,6 +1765,23 @@ class AdminController extends Controller
             'phone'        => $data['phone'] ?? null,
         ]);
 
+        // Send welcome email with credentials (fail-safe so network issues never block registration)
+        $mailSent = false;
+        $mailErrorMsg = null;
+        try {
+            Mail::to($user->email)->send(new \App\Mail\SupervisorWelcome(
+                supervisorName:    $user->name,
+                email:             $user->email,
+                assignedProgram:   $normalizedCourse,
+                temporaryPassword: $tempPassword,
+                loginUrl:          config('app.login_app_url', env('LOGIN_APP_URL', 'https://stoned-two.vercel.app/login/')),
+            ));
+            $mailSent = true;
+        } catch (\Throwable $mailError) {
+            $mailErrorMsg = $mailError->getMessage();
+            \Log::warning("Failed to send supervisor welcome email to {$user->email}: {$mailErrorMsg}");
+        }
+
         return response()->json([
             'message'    => 'Supervisor registered successfully.',
             'supervisor' => [
@@ -1774,8 +1792,50 @@ class AdminController extends Controller
                 'course'     => $normalizedCourse,
                 'created_at' => $user->created_at->toDateString(),
             ],
-            'temp_password' => $password,
+            'temp_password' => $tempPassword,
+            'mail_sent'     => $mailSent,
+            'mail_error'    => $mailErrorMsg,
         ], 201);
+    }
+
+    /* ── POST /api/admin/supervisors/{id}/resend-welcome ── */
+    public function resendSupervisorWelcome(Request $request, $id)
+    {
+        $this->requireAdmin($request);
+
+        $user = User::where('role', 'supervisor')->findOrFail($id);
+        $profile = \App\Models\SupervisorProfile::where('user_id', $user->id)->first();
+        $course = $profile?->course ?? $profile?->position ?? 'General';
+
+        // Generate fresh standardized temporary password and enforce first-time setup
+        $tempPassword = 'CHMSU@Sup' . rand(1000, 9999);
+        $user->password = Hash::make($tempPassword);
+        $user->must_change_password = true;
+        $user->save();
+
+        $mailSent = false;
+        $mailErrorMsg = null;
+        try {
+            Mail::to($user->email)->send(new \App\Mail\SupervisorWelcome(
+                supervisorName:    $user->name,
+                email:             $user->email,
+                assignedProgram:   $course,
+                temporaryPassword: $tempPassword,
+                loginUrl:          config('app.login_app_url', env('LOGIN_APP_URL', 'https://stoned-two.vercel.app/login/')),
+            ));
+            $mailSent = true;
+        } catch (\Throwable $mailError) {
+            $mailErrorMsg = $mailError->getMessage();
+            \Log::warning("Failed to resend supervisor welcome email to {$user->email}: {$mailErrorMsg}");
+        }
+
+        return response()->json([
+            'success'       => true,
+            'message'       => "Temporary password reset for {$user->name}." . ($mailSent ? " Welcome email sent." : " (Email could not be delivered; share password manually)."),
+            'temp_password' => $tempPassword,
+            'mail_sent'     => $mailSent,
+            'mail_error'    => $mailErrorMsg,
+        ]);
     }
 
     /* ── GET /api/admin/supervisors ── */

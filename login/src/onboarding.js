@@ -211,8 +211,13 @@ function renderTemporaryPasswordFlow(cachedUser) {
     return;
   }
 
-  const studentName = cachedUser?.name ? escapeHtml(cachedUser.name) : 'Student';
-  const studentEmail = cachedUser?.email ? escapeHtml(cachedUser.email) : '';
+  const isSupervisor = cachedUser?.role === 'supervisor';
+  const roleTitle = isSupervisor ? 'Supervisor' : 'Student';
+  const userName = cachedUser?.name ? escapeHtml(cachedUser.name) : roleTitle;
+  const userEmail = cachedUser?.email ? escapeHtml(cachedUser.email) : '';
+  const descriptionText = isSupervisor
+    ? 'Your OJT Supervisor account was created with a temporary password. Please create a personal, secure password to continue to your supervision dashboard.'
+    : 'Your student account was created by the CIER Admin with a temporary password. Please create a personal, secure password to continue to your dashboard.';
 
   app.innerHTML = `
     <div class="ob-page">
@@ -271,11 +276,10 @@ function renderTemporaryPasswordFlow(cachedUser) {
                   ${icon('lock', 16)} Temporary Password Detected
                 </div>
                 <h1 style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary); margin-bottom: 6px;">
-                  Welcome, ${studentName}! 👋
+                  Welcome, ${userName}! 👋
                 </h1>
                 <p style="font-size: 0.86rem; color: var(--text-secondary); line-height: 1.5;">
-                  Your student account was created by the CIER Admin with a temporary password.
-                  Please create a personal, secure password to continue to your dashboard.
+                  ${descriptionText}
                 </p>
               </div>
 
@@ -287,7 +291,7 @@ function renderTemporaryPasswordFlow(cachedUser) {
                   <label class="ob-field__label--static">Account Email</label>
                   <div class="ob-field__input-wrap" style="background: var(--bg-secondary); border-color: var(--border-light); cursor: not-allowed; opacity: 0.85;">
                     <span class="ob-field__icon">${icon('mail', 18)}</span>
-                    <input type="text" class="ob-field__input" value="${studentEmail}" disabled style="color: var(--text-secondary); cursor: not-allowed; padding-top: 14px; padding-bottom: 14px;" />
+                    <input type="text" class="ob-field__input" value="${userEmail}" disabled style="color: var(--text-secondary); cursor: not-allowed; padding-top: 14px; padding-bottom: 14px;" />
                   </div>
                 </div>
 
