@@ -218,7 +218,25 @@ export async function apiPostForm(path, formData) {
     invalidateForMutation(path);
   }
 
-  return res.json();
+  const text = await res.text();
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    if (!res.ok) {
+      throw new Error(`Server returned HTTP ${res.status}: ${res.statusText || 'Request timed out or failed'}`);
+    }
+    throw new Error('Server returned an invalid response format.');
+  }
+
+  if (!res.ok) {
+    const errorMsg = data?.message || data?.error || `Server error (${res.status})`;
+    const err = new Error(errorMsg);
+    err.response = data;
+    throw err;
+  }
+
+  return data;
 }
 
 /* ── Mock data fetch ── */

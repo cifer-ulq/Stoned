@@ -383,11 +383,21 @@ export function openStudentImportModal(onSuccess) {
       importBtn.innerHTML = `<span class="sim-spinner"></span> Importing…`;
     }
 
-    const formData = new FormData();
-    formData.append('file', parsedData.file);
+    try {
+      const formData = new FormData();
+      formData.append('file', parsedData.file);
 
-    const res = await apiPostForm('/admin/students/import', formData);
-    renderStep3(res);
+      const res = await apiPostForm('/admin/students/import', formData);
+      renderStep3(res);
+    } catch (err) {
+      console.error('[StudentImport] import error:', err);
+      renderStep3({
+        imported: 0,
+        skipped: parsedData?.rows?.length || 0,
+        errors: [{ row: '—', email: '—', reason: err.message || 'Import request failed' }],
+        message: 'Import failed: ' + (err.message || 'Connection timeout or server error'),
+      });
+    }
   }
 
   /* ── Step 3: Results ────────────────────────────────────────────────────── */

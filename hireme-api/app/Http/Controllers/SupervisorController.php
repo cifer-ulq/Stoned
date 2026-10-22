@@ -1273,6 +1273,7 @@ class SupervisorController extends Controller
         $seenStudentIds       = [];
         $importedCredentials = [];
         $mailErrors          = [];
+        $smtpDead            = false;
 
         $get = function (array $values, string $key) use ($idx): ?string {
             if (! isset($idx[$key])) return null;
@@ -1381,19 +1382,28 @@ class SupervisorController extends Controller
                         'status'     => 'Active',
                     ]);
 
-                    // Send welcome email with credentials
-                    try {
-                        Mail::to($email)->send(new StudentWelcome(
-                            studentName:       $name,
-                            email:             $email,
-                            studentId:         $studentId,
-                            program:           $course,
-                            campus:            $campus ?? 'Main Campus',
-                            temporaryPassword: $tempPassword,
-                        ));
-                    } catch (\Throwable $mErr) {
-                        Log::warning("Student welcome email failed to send: " . $mErr->getMessage());
-                        $mailErrors[] = "{$email}: " . $mErr->getMessage();
+                    // Send welcome email with credentials (safeguarded against SMTP connection hanging)
+                    if (!$smtpDead) {
+                        try {
+                            Mail::to($email)->send(new StudentWelcome(
+                                studentName:       $name,
+                                email:             $email,
+                                studentId:         $studentId,
+                                program:           $course,
+                                campus:            $campus ?? 'Main Campus',
+                                temporaryPassword: $tempPassword,
+                            ));
+                        } catch (\Throwable $mErr) {
+                            $errMsg = $mErr->getMessage();
+                            Log::warning("Student welcome email failed to send: {$errMsg}");
+                            $mailErrors[] = "{$email}: {$errMsg}";
+
+                            // If SMTP times out or cannot connect, fail-fast for remaining batch so import doesn't stall
+                            if (str_contains(strtolower($errMsg), 'timed out') || str_contains(strtolower($errMsg), 'connection could not be established')) {
+                                $smtpDead = true;
+                                $mailErrors[] = "SMTP unreachable; skipped remaining email dispatches for this batch (credentials still generated).";
+                            }
+                        }
                     }
                 });
 
