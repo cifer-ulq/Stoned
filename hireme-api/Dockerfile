@@ -57,6 +57,9 @@ RUN mkdir -p storage/framework/cache storage/framework/sessions storage/framewor
     && chmod -R 777 storage bootstrap/cache
 
 ENV PORT=8000
+ENV PHP_CLI_SERVER_WORKERS=4
 EXPOSE 8000
 
-CMD sh -c "php artisan package:discover --ansi || true && php artisan storage:link || true && php artisan migrate --force || true && php artisan config:clear || true && php artisan route:clear || true && php artisan view:clear || true && php artisan serve --host=0.0.0.0 --port=\${PORT:-8000}"
+RUN chmod +x /var/www/html/docker-entrypoint.sh
+
+CMD ["/var/www/html/docker-entrypoint.sh"]
