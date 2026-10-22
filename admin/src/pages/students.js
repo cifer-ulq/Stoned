@@ -41,6 +41,15 @@ function formatCourseOption(course) {
 function initials(name = '') {
   return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 }
+function escapeHtml(str = '') {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 /* ─── Graduation Promotion Modal ─────────────────────────────────── */
 function openPromoteModal({ students, onPromote, container }) {
