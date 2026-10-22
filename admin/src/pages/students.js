@@ -460,18 +460,70 @@ function renderTable(tbody, list, container, selectedStudents, updateSelectionUI
               : `<span class="badge badge--neutral" title="Host company has not submitted an evaluation" style="display:inline-flex;align-items:center;gap:4px;font-size:0.75rem;color:var(--text-tertiary);">${icon('minus-circle', 11)} None</span>`}
         </td>
         <td>
-          <span class="badge badge--${badgeColor}">${s.status}</span>
+          ${s.approval_status === 'pending'
+            ? `<span class="badge badge--warning" style="background:#FEF3C7;color:#92400E;border:1px solid #FCD34D;display:inline-flex;align-items:center;gap:4px;font-size:0.75rem;font-weight:600;">${icon('clock', 11)} Pending Approval</span>`
+            : `<span class="badge badge--${badgeColor}">${s.status}</span>`}
         </td>
-        <td style="text-align:right;">
-          <button class="btn btn--outline btn--sm view-btn" data-id="${s.id}" style="padding:4px 10px;font-size:var(--text-xs);gap:4px;">
-            ${icon('eye', 13)} View
-          </button>
+        <td style="text-align:right;white-space:nowrap;">
+          ${s.approval_status === 'pending' ? `
+            <button class="btn btn--primary btn--sm approve-btn" data-id="${s.id}" data-name="${escapeHtml(s.name)}" style="padding:4px 9px;font-size:var(--text-xs);gap:4px;background:#059669;margin-right:4px;" title="Approve student registration">
+              ${icon('check', 12)} Approve
+            </button>
+            <button class="btn btn--outline btn--sm reject-btn" data-id="${s.id}" data-name="${escapeHtml(s.name)}" style="padding:4px 7px;font-size:var(--text-xs);gap:4px;color:#DC2626;border-color:#FCA5A5;" title="Reject registration">
+              ${icon('x', 12)}
+            </button>
+          ` : `
+            <button class="btn btn--outline btn--sm view-btn" data-id="${s.id}" style="padding:4px 10px;font-size:var(--text-xs);gap:4px;">
+              ${icon('eye', 13)} View
+            </button>
+          `}
         </td>
       </tr>
     `;
   }).join('');
 
   renderIcons();
+
+  // Approve student action
+  tbody.querySelectorAll('.approve-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.id;
+      const name = btn.dataset.name;
+      if (!confirm(`Are you sure you want to approve student registration for ${name}?`)) return;
+      btn.disabled = true;
+      btn.innerHTML = `${icon('check', 12)} Approving...`;
+      try {
+        const res = await apiPost(`/admin/students/${id}/approve`);
+        showToast(res?.message || `Student ${name} approved successfully!`, 'success');
+        if (typeof onRefresh === 'function') onRefresh();
+      } catch (err) {
+        showToast(err.message || 'Failed to approve student.', 'error');
+        btn.disabled = false;
+        btn.innerHTML = `${icon('check', 12)} Approve`;
+      }
+    });
+  });
+
+  // Reject student action
+  tbody.querySelectorAll('.reject-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.id;
+      const name = btn.dataset.name;
+      const reason = prompt(`Enter rejection reason for ${name}:`, 'Student enrollment record not verified.');
+      if (reason === null) return;
+      btn.disabled = true;
+      try {
+        const res = await apiPost(`/admin/students/${id}/reject`, { reason });
+        showToast(res?.message || `Student registration rejected.`, 'info');
+        if (typeof onRefresh === 'function') onRefresh();
+      } catch (err) {
+        showToast(err.message || 'Failed to reject student.', 'error');
+        btn.disabled = false;
+      }
+    });
+  });
 
   // Individual checkbox selection handling
   tbody.querySelectorAll('.student-select-cb').forEach(cb => {
@@ -548,6 +600,7 @@ export default async function StudentsPage(container) {
         </select>
         <select class="form-select" id="filter-status" style="width:auto;padding:7px 32px 7px 10px;">
           <option value="">All Status</option>
+          <option value="pending">⏳ Pending Approval</option>
           <option value="Eligible for Promotion">Ready for Graduation (Eligible)</option>
           <option value="Needs Evaluation">Needs Company Evaluation</option>
           <option value="Completed OJT">Completed OJT (600h+)</option>

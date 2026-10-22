@@ -548,7 +548,9 @@ class AdminController extends Controller
         // Status filter: 'Active OJT', 'Undeployed', 'Completed OJT', 'Eligible for Promotion', 'Needs Evaluation'
         if ($statusFilter) {
             $norm = strtolower(trim(str_replace([' ', '_', '-'], '', $statusFilter)));
-            if ($norm === 'completedojt' || $norm === 'completed') {
+            if ($norm === 'pending' || $norm === 'pendingapproval') {
+                $query->whereHas('studentProfile', fn($sp) => $sp->where('approval_status', 'pending'));
+            } elseif ($norm === 'completedojt' || $norm === 'completed') {
                 $query->whereHas('ojtRecord', function ($oq) {
                     $oq->where('completed_hours', '>=', 600)
                        ->orWhere('status', 'completed')
@@ -661,7 +663,10 @@ class AdminController extends Controller
             $hasActivePlacement = ($ojt && $ojt->status !== 'pulled_out') || ($activeInterest && $activeInterest->status !== 'pulled_out');
             $companyName = !$isPulledOut ? ($ojt?->company_name ?? $activeInterest?->posting?->company_name ?? null) : null;
 
-            if ($isAlumni) {
+            $approvalStatus = $p?->approval_status ?? 'approved';
+            if ($approvalStatus === 'pending') {
+                $status = 'Pending Approval';
+            } elseif ($isAlumni) {
                 $status = 'Alumni';
             } elseif ($hasActivePlacement) {
                 $status = 'Active OJT';
@@ -751,6 +756,9 @@ class AdminController extends Controller
                 'evaluator_position'        => $evaluatorPosition,
                 'evaluation_date'           => $evalSubmittedAt,
                 'created_at'                => $u->created_at?->toDateString(),
+                'approval_status'           => $approvalStatus,
+                'registration_source'       => $p?->registration_source ?? 'admin',
+                'rejection_reason'          => $p?->rejection_reason,
             ];
         });
 
@@ -2427,6 +2435,65 @@ class AdminController extends Controller
             'message'     => $imported > 0
                 ? "Successfully imported $imported student(s)." . (!empty($mailErrors) ? " (Note: Email sending encountered an issue; see mail_errors or use downloaded credentials)." : " Credentials generated and welcome emails sent.")
                 : 'No students were imported.',
+        ]);
+    }
+
+    /* ── POST /api/admin/students/{id}/approve ── */
+    public function approveStudent(Request $request, $id)
+    {
+        $this->requireAdmin($request);
+        $student = User::where('role', 'student')->findOrFail($id);
+        $profile = $student->studentProfile;
+        if (!$profile) {
+            return response()->json(['message' => 'Student profile not found.'], 404);
+        }
+
+        $profile->update([
+            'approval_status' => 'approved',
+            'status'          => 'Active',
+            'approved_by'     => $request->user()->id,
+            'approved_at'     => now(),
+        ]);
+
+        try {
+            \Illuminate\Support\Facades\Mail::to($student->email)->send(new \App\Mail\StudentAccountApproved(
+                studentName: $student->name,
+                email:       $student->email,
+                studentId:   $profile->student_id ?? 'N/A',
+                program:     $profile->program ?? 'CHMSU Program',
+            ));
+        } catch (\Throwable $e) {
+            \Log::warning('[approveStudent] Email dispatch failed: ' . $e->getMessage());
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Student {$student->name} ({$profile->student_id}) has been approved and activated.",
+        ]);
+    }
+
+    /* ── POST /api/admin/students/{id}/reject ── */
+    public function rejectStudent(Request $request, $id)
+    {
+        $this->requireAdmin($request);
+        $student = User::where('role', 'student')->findOrFail($id);
+        $profile = $student->studentProfile;
+        if (!$profile) {
+            return response()->json(['message' => 'Student profile not found.'], 404);
+        }
+
+        $reason = trim($request->input('reason', 'Application rejected by administrator.'));
+        $profile->update([
+            'approval_status'  => 'rejected',
+            'status'           => 'rejected',
+            'rejection_reason' => $reason,
+        ]);
+
+        $student->tokens()->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => "Student {$student->name} registration has been rejected.",
         ]);
     }
 

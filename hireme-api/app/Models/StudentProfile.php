@@ -30,10 +30,20 @@ class StudentProfile extends Model
         'resume_objective',
         'section',
         'batch',
+        'registration_source',
+        'approval_status',
+        'approved_by',
+        'approved_at',
+        'rejection_reason',
     ];
 
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function approvedBy()
+    {
+        return $this->belongsTo(User::class, 'approved_by');
     }
 }

@@ -726,7 +726,7 @@ function renderStudentInfo() {
           <div class="ob-field__input-wrap">
             <span class="ob-field__icon">${icon('hash', 16)}</span>
             <input class="ob-field__input" type="text" id="student-id" placeholder=" " value="${formData.studentId}" />
-            <label class="ob-field__label" for="student-id">Student ID <span class="ob-field__optional">(optional)</span></label>
+            <label class="ob-field__label" for="student-id">Student ID <span style="color:#ef4444;font-weight:700;">*</span></label>
           </div>
         </div>
 
@@ -917,6 +917,18 @@ async function handleNext() {
   const stepId = getCurrentStepId();
   const total  = getTotalSteps();
 
+  if (stepId === 'student-info') {
+    const sId = (document.getElementById('student-id')?.value || formData.studentId || '').trim();
+    if (!sId) {
+      const wrap = document.getElementById('student-id')?.closest('.ob-field__input-wrap');
+      wrap?.classList.add('ob-field__input-wrap--error');
+      wrap?.style.setProperty('border-color', '#ef4444');
+      alert('Student ID is required. Please enter your valid CHMSU Student ID to proceed.');
+      document.getElementById('student-id')?.focus();
+      return;
+    }
+  }
+
   if (stepId === 'role' && !formData.userType) {
     const grid = document.getElementById('roles-grid');
     grid?.classList.add('ob-roles--shake');
@@ -973,7 +985,7 @@ async function completeRegistration(credentials) {
 
     // 2. Post onboarding profile data
     const profilePayload = buildProfilePayload();
-    await fetch('http://localhost:8000/api/auth/onboarding', {
+    const onbRes = await fetch('http://localhost:8000/api/auth/onboarding', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -982,6 +994,27 @@ async function completeRegistration(credentials) {
       },
       body: JSON.stringify(profilePayload),
     });
+    const onbData = await onbRes.json();
+
+    if (!onbRes.ok) {
+      const msg = Object.values(onbData.errors || {})[0]?.[0] || onbData.message || 'Onboarding failed.';
+      alert(msg);
+      if (nextBtn) { nextBtn.disabled = false; nextBtn.querySelector('span').textContent = 'Complete Setup'; }
+      return;
+    }
+
+    if (formData.userType === 'student' && onbData.pending_approval) {
+      localStorage.removeItem('hireme_token');
+      localStorage.removeItem('hireme_user');
+      sessionStorage.removeItem('hireme-signup');
+      showPendingApprovalModal({
+        name: credentials.name,
+        studentId: formData.studentId,
+        program: formData.program,
+        email: credentials.email,
+      });
+      return;
+    }
 
     finishLocally();
   } catch {
@@ -1136,3 +1169,32 @@ function attachPhotoEvents() {
 
 /* ── Init ── */
 render();
+
+function showPendingApprovalModal(info) {
+  const overlay = document.createElement('div');
+  overlay.className = 'ob-modal-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.68);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;';
+  overlay.innerHTML = `
+    <div class="ob-modal" style="background:#ffffff;border-radius:18px;max-width:480px;width:100%;padding:36px 30px;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,0.3);border:1px solid #e5e7eb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+      <div style="width:68px;height:68px;margin:0 auto 18px;border-radius:50%;background:#ECFDF5;border:2px solid #A7F3D0;display:flex;align-items:center;justify-content:center;font-size:32px;">
+        ⏳
+      </div>
+      <h2 style="font-size:1.35rem;font-weight:700;color:#111827;margin:0 0 10px;line-height:1.3;">
+        Registration Submitted for Approval
+      </h2>
+      <p style="font-size:0.9rem;color:#4B5563;line-height:1.6;margin:0 0 20px;">
+        Thank you, <strong>${escapeHtml(info.name)}</strong>! Your student registration with Student ID <strong>${escapeHtml(info.studentId)}</strong> has been recorded.
+      </p>
+      <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:12px;padding:16px 18px;margin-bottom:24px;text-align:left;font-size:0.84rem;line-height:1.55;color:#374151;">
+        <div style="font-weight:700;color:#005930;margin-bottom:5px;display:flex;align-items:center;gap:6px;">
+          <span>ℹ️</span> Verification in Progress
+        </div>
+        Your account is currently in <strong>Pending</strong> status. An OJT Coordinator or Administrator will verify your student credentials before your account is activated. You will be able to log in as soon as it is approved.
+      </div>
+      <a href="./index.html" class="ob-btn ob-btn--primary" style="display:flex;width:100%;justify-content:center;padding:14px 20px;font-weight:600;text-decoration:none;border-radius:10px;background:#005930;color:#ffffff;font-size:0.92rem;">
+        Return to Sign In
+      </a>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}

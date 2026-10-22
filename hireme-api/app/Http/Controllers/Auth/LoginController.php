@@ -32,6 +32,28 @@ class LoginController extends Controller
 
             $user->load(['companyProfile', 'studentProfile', 'supervisorProfile', 'jobseekerProfile', 'graduateProfile']);
 
+            if ($user->role === 'student') {
+                $approvalStatus = $user->studentProfile?->approval_status ?? 'approved';
+                if ($approvalStatus === 'pending') {
+                    $user->tokens()->delete();
+                    return response()->json([
+                        'success' => false,
+                        'code'    => 'ACCOUNT_PENDING_APPROVAL',
+                        'message' => 'Your student account is currently pending verification and approval by your OJT Coordinator or Administrator. You will be able to log in once your account has been reviewed.',
+                    ], 403);
+                }
+
+                if ($approvalStatus === 'rejected') {
+                    $user->tokens()->delete();
+                    $reason = $user->studentProfile?->rejection_reason;
+                    return response()->json([
+                        'success' => false,
+                        'code'    => 'ACCOUNT_REJECTED',
+                        'message' => 'Your student account registration was not approved.' . ($reason ? ' Reason: ' . $reason : ' Please reach out to your OJT department.'),
+                    ], 403);
+                }
+            }
+
             $isActiveOjt = false;
             if ($user->role === 'student') {
                 $isActiveOjt = StudentOjtInterest::where('student_user_id', $user->id)

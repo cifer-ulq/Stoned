@@ -3,7 +3,12 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\AppNotification;
+use App\Models\StudentProfile;
+use App\Models\User;
+use App\Services\CourseNormalizer;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class OnboardingController extends Controller
 {
@@ -15,8 +20,10 @@ class OnboardingController extends Controller
             return response()->json(['message' => 'Onboarding already completed'], 409);
         }
 
+        $isStudentPending = false;
+
         match ($user->role) {
-            'student'   => $this->saveStudentProfile($user, $request),
+            'student'   => $isStudentPending = $this->saveStudentProfile($user, $request),
             'graduate'  => $this->saveGraduateProfile($user, $request),
             'company'   => $this->saveCompanyProfile($user, $request),
             'supervisor'=> $this->saveSupervisorProfile($user, $request),
@@ -26,8 +33,27 @@ class OnboardingController extends Controller
 
         $user->update(['onboarding_completed' => true]);
 
+        if ($user->role === 'student' && $isStudentPending) {
+            // Revoke current session token so student cannot enter /main/ until approved
+            $user->tokens()->delete();
+
+            return response()->json([
+                'message'          => 'Registration submitted successfully. Your account is pending verification by an OJT Coordinator or Administrator.',
+                'pending_approval' => true,
+                'user'             => [
+                    'id'                   => $user->id,
+                    'name'                 => $user->name,
+                    'email'                => $user->email,
+                    'role'                 => $user->role,
+                    'approval_status'      => 'pending',
+                    'onboarding_completed' => true,
+                ],
+            ]);
+        }
+
         return response()->json([
-            'message' => 'Onboarding complete',
+            'message'          => 'Onboarding complete',
+            'pending_approval' => false,
             'user'    => [
                 'id'                   => $user->id,
                 'name'                 => $user->name,
@@ -38,23 +64,92 @@ class OnboardingController extends Controller
         ]);
     }
 
-    private function saveStudentProfile($user, Request $request): void
+    private function saveStudentProfile($user, Request $request): bool
     {
-        $data = $request->only(['school', 'campus', 'program', 'year_level', 'section', 'batch', 'student_id']);
-        if (isset($data['program'])) {
-            $data['program'] = \App\Services\CourseNormalizer::normalize($data['program']);
+        $studentId = trim((string) $request->input('student_id', ''));
+        if (empty($studentId)) {
+            abort(response()->json([
+                'message' => 'Student ID is required.',
+                'errors'  => ['student_id' => ['Student ID is required to complete registration.']],
+            ], 422));
         }
+
+        // Check if student_id is already taken by another student
+        $existingProfile = StudentProfile::where('student_id', $studentId)
+            ->where('user_id', '!=', $user->id)
+            ->first();
+
+        if ($existingProfile) {
+            abort(response()->json([
+                'message' => "Student ID '{$studentId}' is already registered in the system.",
+                'errors'  => ['student_id' => ["Student ID '{$studentId}' is already registered in the system."]],
+            ], 422));
+        }
+
+        $data = $request->only(['school', 'campus', 'program', 'year_level', 'section', 'batch']);
+        if (isset($data['program'])) {
+            $data['program'] = CourseNormalizer::normalize($data['program']);
+        }
+        $data['student_id']         = $studentId;
+        $data['status']             = 'pending';
+        $data['approval_status']     = 'pending';
+        $data['registration_source'] = 'self';
+
         $user->studentProfile()->updateOrCreate(
             ['user_id' => $user->id],
             $data
         );
+
+        // Notify Admins & Supervisors for this course
+        try {
+            $admins = User::where('role', 'admin')->get();
+            foreach ($admins as $admin) {
+                AppNotification::send(
+                    $admin->id,
+                    'student_pending_approval',
+                    'New Student Registration',
+                    "{$user->name} ({$studentId}) has registered for " . ($data['program'] ?? 'OJT') . " and requires account verification.",
+                    [
+                        'student_id'   => $user->id,
+                        'student_name' => $user->name,
+                        'route'        => '/students?status=pending',
+                    ]
+                );
+            }
+
+            $course = $data['program'] ?? null;
+            if ($course) {
+                $supervisors = User::where('role', 'supervisor')
+                    ->whereHas('supervisorProfile', function ($q) use ($course) {
+                        $q->where('course', $course);
+                    })->get();
+
+                foreach ($supervisors as $sup) {
+                    AppNotification::send(
+                        $sup->id,
+                        'student_pending_approval',
+                        'New Student Registration',
+                        "{$user->name} ({$studentId}) registered for {$course} and requires your approval.",
+                        [
+                            'student_id'   => $user->id,
+                            'student_name' => $user->name,
+                            'route'        => '/trainees?status=pending',
+                        ]
+                    );
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[OnboardingController] Notification failed: ' . $e->getMessage());
+        }
+
+        return true;
     }
 
     private function saveGraduateProfile($user, Request $request): void
     {
         $data = $request->only(['year_graduated', 'campus', 'course', 'section', 'employment_status']);
         if (isset($data['course'])) {
-            $data['course'] = \App\Services\CourseNormalizer::normalize($data['course']);
+            $data['course'] = CourseNormalizer::normalize($data['course']);
         }
         $user->graduateProfile()->updateOrCreate(
             ['user_id' => $user->id],

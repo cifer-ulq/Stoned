@@ -811,6 +811,21 @@ async function handleSubmit(e) {
     const data = await res.json();
 
     if (!res.ok) {
+      if (data.code === 'ACCOUNT_PENDING_APPROVAL' || data.code === 'ACCOUNT_REJECTED') {
+        const isPending = data.code === 'ACCOUNT_PENDING_APPROVAL';
+        const form = document.getElementById('login-form');
+        let alertBox = document.getElementById('login-status-alert');
+        if (!alertBox) {
+          alertBox = document.createElement('div');
+          alertBox.id = 'login-status-alert';
+          form.insertBefore(alertBox, form.firstChild);
+        }
+        alertBox.style.cssText = `background:${isPending ? '#FEF3C7' : '#FEE2E2'};border:1.5px solid ${isPending ? '#F59E0B' : '#EF4444'};border-radius:10px;padding:14px 16px;margin-bottom:18px;display:flex;align-items:flex-start;gap:12px;color:${isPending ? '#92400E' : '#991B1B'};font-size:0.83rem;line-height:1.5;`;
+        alertBox.innerHTML = `<div><span style="font-size:1.2rem;display:inline-block;">${isPending ? '⏳' : '⚠️'}</span></div><div><strong style="display:block;margin-bottom:2px;font-size:0.88rem;color:${isPending ? '#78350F' : '#7F1D1D'};">${isPending ? 'Account Approval Pending' : 'Account Registration Notice'}</strong>${escapeHtml(data.message)}</div>`;
+        btn.disabled = false;
+        lbl.textContent = 'Sign In';
+        return;
+      }
       const msg = data.errors?.email?.[0] || data.message || 'Invalid credentials.';
       showError('email', msg);
       btn.disabled = false;

@@ -681,7 +681,12 @@ class SupervisorController extends Controller
                 $student->ojtInterests->contains(fn($i) => in_array($i->status, ['accepted', 'ojt_started', 'endorsed']))
             );
 
-            $status = $hasActiveOjt ? 'Active OJT' : 'Undeployed';
+            $approvalStatus = $sp?->approval_status ?? 'approved';
+            if ($approvalStatus === 'pending') {
+                $status = 'Pending Approval';
+            } else {
+                $status = $hasActiveOjt ? 'Active OJT' : 'Undeployed';
+            }
 
             // Resolve emergency stoppage or medical leave status
             $latestEmer = OjtEmergencyRequest::where('student_user_id', $student->id)->latest()->first();
@@ -755,6 +760,8 @@ class SupervisorController extends Controller
                 'requiredHours'  => $requiredHours,
                 'hasPlacement'   => $hasPlacement,
                 'status'         => $status,
+                'approval_status' => $approvalStatus,
+                'registration_source' => $sp?->registration_source ?? 'admin',
                 'emergency_status' => $emergencyStatus,
                 'emergency_request' => $latestEmer ? [
                     'id'                      => $latestEmer->id,
@@ -1902,5 +1909,71 @@ class SupervisorController extends Controller
             'data'    => $emergency->fresh(['coordinator:id,name']),
         ]);
     }
-}
+    /* ── POST /api/supervisor/trainees/{id}/approve ── */
+    public function approveStudent(Request $request, $id)
+    {
+        $supervisor = $request->user();
+        $course = $this->getSupervisorCourse($request);
+        $studentQuery = User::where('role', 'student')->where('id', $id);
+        if ($course) {
+            $studentQuery->whereHas('studentProfile', fn($sp) => $sp->where('program', $course));
+        }
+        $student = $studentQuery->firstOrFail();
+        $profile = $student->studentProfile;
+        if (!$profile) {
+            return response()->json(['message' => 'Student profile not found.'], 404);
+        }
 
+        $profile->update([
+            'approval_status' => 'approved',
+            'status'          => 'Active',
+            'approved_by'     => $supervisor->id,
+            'approved_at'     => now(),
+        ]);
+
+        try {
+            \Illuminate\Support\Facades\Mail::to($student->email)->send(new \App\Mail\StudentAccountApproved(
+                studentName: $student->name,
+                email:       $student->email,
+                studentId:   $profile->student_id ?? 'N/A',
+                program:     $profile->program ?? 'CHMSU Program',
+            ));
+        } catch (\Throwable $e) {
+            \Log::warning('[Supervisor::approveStudent] Email dispatch failed: ' . $e->getMessage());
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Student {$student->name} has been approved and activated.",
+        ]);
+    }
+
+    /* ── POST /api/supervisor/trainees/{id}/reject ── */
+    public function rejectStudent(Request $request, $id)
+    {
+        $course = $this->getSupervisorCourse($request);
+        $studentQuery = User::where('role', 'student')->where('id', $id);
+        if ($course) {
+            $studentQuery->whereHas('studentProfile', fn($sp) => $sp->where('program', $course));
+        }
+        $student = $studentQuery->firstOrFail();
+        $profile = $student->studentProfile;
+        if (!$profile) {
+            return response()->json(['message' => 'Student profile not found.'], 404);
+        }
+
+        $reason = trim($request->input('reason', 'Application rejected by supervisor.'));
+        $profile->update([
+            'approval_status'  => 'rejected',
+            'status'           => 'rejected',
+            'rejection_reason' => $reason,
+        ]);
+
+        $student->tokens()->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => "Student {$student->name} registration has been rejected.",
+        ]);
+    }
+}

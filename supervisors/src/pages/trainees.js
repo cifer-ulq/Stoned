@@ -15,6 +15,7 @@ const REAL = v => v && v !== '—' && v !== '';
 const PER_PAGE = 10;
 
 const STATUS_BADGES = {
+  'Pending Approval': { cls: 'badge--warning', text: 'Pending Approval' },
   'Active OJT': { cls: 'tr2-badge--active', text: 'Active OJT' },
   'Undeployed': { cls: 'tr2-badge--undeployed', text: 'Undeployed' },
   'Emergency Pending': { cls: 'tr2-badge--warning', text: 'Emergency Pending' },
@@ -70,6 +71,7 @@ export default function traineesPage(container) {
       <div class="tr2-filter-row">
         <select class="tr2-select" id="trainee-status-filter" title="Filter by Status">
           <option value="">All Status</option>
+          <option value="Pending Approval">⏳ Pending Approval</option>
           <option value="Active OJT">Active OJT</option>
           <option value="Emergency Pending">Emergency Pending</option>
           <option value="On Medical Leave">On Medical Leave</option>
@@ -411,6 +413,14 @@ export default function traineesPage(container) {
           </td>
           <td style="text-align:right;">
             <div style="display:flex;align-items:center;justify-content:flex-end;gap:4px;">
+              ${t.approval_status === 'pending' ? `
+                <button class="btn btn--primary btn--sm tr2-approve-btn" data-id="${t.id}" data-name="${escapeHtml(t.name)}" style="padding:4px 9px;font-size:0.72rem;gap:4px;background:#059669;" title="Approve student registration">
+                  ${icon('check', 12)} Approve
+                </button>
+                <button class="btn btn--outline btn--sm tr2-reject-btn" data-id="${t.id}" data-name="${escapeHtml(t.name)}" style="padding:4px 7px;font-size:0.72rem;gap:4px;color:#dc2626;border-color:#fca5a5;" title="Reject registration">
+                  ${icon('x', 12)}
+                </button>
+              ` : ''}
               ${t.emergency_status && t.emergency_status !== 'none' ? `
                 <button class="btn btn--outline btn--sm tr2-emer-btn" data-id="${t.id}" style="padding:4px 8px;font-size:0.72rem;gap:4px;color:${t.emergency_status === 'pending' ? '#b45309' : (t.emergency_status === 'on_leave' ? (t.emergency_request?.has_fit_to_work ? '#059669' : '#0284c7') : '#dc2626')};border-color:${t.emergency_status === 'pending' ? 'rgba(245,158,11,0.45)' : (t.emergency_status === 'on_leave' ? (t.emergency_request?.has_fit_to_work ? 'rgba(16,185,129,0.5)' : 'rgba(2,132,199,0.4)') : 'rgba(239,68,68,0.4)')};font-weight:600;background:${t.emergency_status === 'pending' ? 'rgba(245,158,11,0.06)' : (t.emergency_request?.has_fit_to_work ? 'rgba(16,185,129,0.08)' : 'transparent')};" title="${t.emergency_request?.has_fit_to_work ? 'Fit-to-Work Clearance Uploaded — Click to Inspect' : 'Review Emergency / Leave Notice'}">
                   ${icon(t.emergency_request?.has_fit_to_work ? 'shieldCheck' : 'alertTriangle', 13)} ${t.emergency_status === 'pending' ? 'Review Notice' : (t.emergency_status === 'on_leave' ? (t.emergency_request?.has_fit_to_work ? 'Clearance Uploaded' : 'On Leave') : 'Withdrawn')}

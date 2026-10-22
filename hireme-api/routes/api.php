@@ -178,6 +178,8 @@ Route::middleware('auth:sanctum')->prefix('supervisor')->group(function () {
     Route::post('request-endorsement/{id}',    [SupervisorController::class, 'requestEndorsement']);
     Route::post('final-accept/{id}',           [SupervisorController::class, 'finalAccept']);
     Route::get('trainees',                                [SupervisorController::class, 'trainees']);
+    Route::post('trainees/{id}/approve',                  [SupervisorController::class, 'approveStudent']);
+    Route::post('trainees/{id}/reject',                   [SupervisorController::class, 'rejectStudent']);
     Route::post('students/import',                        [SupervisorController::class, 'importStudents']);
     Route::get('monitoring',                              [SupervisorController::class, 'monitoringOverview']);
     Route::get('monitoring/student/{userId}/logs',        [SupervisorController::class, 'monitoringStudentLogs']);
@@ -380,6 +382,8 @@ Route::middleware('auth:sanctum')->prefix('admin')->group(function () {
     Route::get('sidebar',                          [AdminController::class, 'sidebar']);
     Route::get('students',                         [AdminController::class, 'listStudents']);
     Route::post('students/import',                 [AdminController::class, 'importStudents']);
+    Route::post('students/{id}/approve',           [AdminController::class, 'approveStudent']);
+    Route::post('students/{id}/reject',            [AdminController::class, 'rejectStudent']);
     Route::post('alumni/import',                   [AdminController::class, 'importAlumni']);
     Route::post('students/promote-graduates',      [AdminController::class, 'promoteGraduates']);
 
