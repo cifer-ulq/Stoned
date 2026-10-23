@@ -2198,3 +2198,348 @@
 }
 
 
+
+/* ══════════════════════════════════════════════════════════
+   STUDENT REGISTRATION APPROVAL & REJECTION MODALS
+   ══════════════════════════════════════════════════════════ */
+
+.sp-action-modal {
+  max-width: 540px;
+  width: 92%;
+  border-radius: 16px;
+  background: var(--bg-elevated, #ffffff);
+  border: 1px solid var(--border-default, #cbd5e1);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.18), 0 8px 10px -6px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: modalIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sp-action-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-default, #e2e8f0);
+}
+
+.sp-action-modal__header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sp-action-modal__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sp-action-modal__icon--approve {
+  background: linear-gradient(135deg, #005930, #10B981);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 89, 48, 0.25);
+}
+
+.sp-action-modal__icon--reject {
+  background: linear-gradient(135deg, #DC2626, #F43F5E);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25);
+}
+
+.sp-action-modal__title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  line-height: 1.25;
+}
+
+.sp-action-modal__subtitle {
+  font-size: 0.78rem;
+  color: var(--text-tertiary);
+  margin: 2px 0 0;
+}
+
+.sp-action-modal__body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+  max-height: 75vh;
+}
+
+/* Student Identity Card in Modal */
+.sp-student-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 16px;
+  background: var(--bg-surface, #f8fafc);
+  border: 1px solid var(--border-default, #e2e8f0);
+  border-radius: 12px;
+}
+
+.sp-student-card__avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--color-primary-bg, rgba(0, 89, 48, 0.1));
+  color: var(--color-primary, #005930);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  border: 1px solid rgba(0, 89, 48, 0.15);
+}
+
+.sp-student-card__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.sp-student-card__name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 2px;
+}
+
+.sp-student-card__id-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.sp-student-card__id {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--color-primary, #005930);
+  background: var(--color-primary-bg, rgba(0, 89, 48, 0.08));
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+
+.sp-student-card__course {
+  font-size: 0.76rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.sp-student-card__meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 6px 12px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--border-default, #e2e8f0);
+  font-size: 0.72rem;
+  color: var(--text-tertiary);
+}
+
+.sp-student-card__meta-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sp-student-card__meta-item strong {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+/* Activation Checklist Box */
+.sp-activation-box {
+  background: rgba(16, 185, 129, 0.06);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sp-activation-box__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.sp-activation-box__item svg {
+  color: #10B981;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.sp-activation-box__item strong {
+  color: #065F46;
+}
+
+/* Rejection Form & Chips */
+.sp-reason-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sp-reason-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sp-reason-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sp-reason-chip {
+  background: var(--bg-surface, #f1f5f9);
+  border: 1px solid var(--border-default, #cbd5e1);
+  border-radius: 6px;
+  padding: 5px 9px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.sp-reason-chip:hover {
+  border-color: #EF4444;
+  color: #DC2626;
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.sp-reason-chip.is-active {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: #EF4444;
+  color: #B91C1C;
+  font-weight: 600;
+}
+
+.sp-reason-textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-default, #cbd5e1);
+  border-radius: 8px;
+  background: var(--bg-primary, #ffffff);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  resize: vertical;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.sp-reason-textarea:focus {
+  border-color: #EF4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
+}
+
+.sp-warning-box {
+  background: rgba(239, 68, 68, 0.06);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.75rem;
+  color: #991B1B;
+  line-height: 1.4;
+}
+
+.sp-warning-box svg {
+  color: #DC2626;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* Modal Footer */
+.sp-action-modal__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--border-default, #e2e8f0);
+  background: var(--bg-surface, #f8fafc);
+}
+
+/* Pending Review Banner in Trainee Profile View */
+.sp-pending-banner {
+  background: #FFFBEB;
+  border: 1px solid #FDE68A;
+  border-left: 4px solid #D97706;
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.sp-pending-banner__left {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.sp-pending-banner__icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #FEF3C7;
+  color: #D97706;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sp-pending-banner__title {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #92400E;
+  margin: 0 0 2px;
+}
+
+.sp-pending-banner__desc {
+  font-size: 0.75rem;
+  color: #78350F;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.sp-pending-banner__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

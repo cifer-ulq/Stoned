@@ -56,6 +56,273 @@ function escapeHtml(str = '') {
     .replace(/'/g, '&#39;');
 }
 
+/* ─── Toast Notification Helper ─────────────────────────────────── */
+function showToast(msg, type = 'success') {
+  const existing = document.getElementById('adm-students-toast');
+  if (existing) existing.remove();
+
+  const toast = document.createElement('div');
+  toast.id = 'adm-students-toast';
+  const bg = type === 'error' ? '#DC2626' : type === 'warning' ? '#D97706' : type === 'info' ? '#2563EB' : '#005930';
+  toast.style.cssText = `position:fixed;bottom:24px;right:24px;background:${bg};color:#ffffff;padding:12px 20px;border-radius:10px;font-size:0.84rem;font-weight:600;box-shadow:0 10px 25px rgba(0,0,0,0.2);z-index:999999;display:flex;align-items:center;gap:10px;animation:modalIn 0.2s ease;max-width:420px;line-height:1.4;`;
+  toast.innerHTML = `<span>${type === 'error' ? icon('alert-triangle', 18) : icon('check', 18)}</span><span>${escapeHtml(msg)}</span>`;
+  document.body.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transition = 'opacity 0.25s ease';
+    setTimeout(() => toast.remove(), 250);
+  }, 4000);
+}
+
+/* ─── Student Approval Modal ────────────────────────────────────── */
+function openStudentApprovalModal({ student, onApproved, apiEndpoint = `/admin/students/${student.id}/approve` }) {
+  const existing = document.querySelector('.modal-backdrop-sp-action');
+  if (existing) existing.remove();
+
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop modal-backdrop-sp-action';
+  backdrop.style.zIndex = '1200';
+
+  const init = initials(student.name);
+
+  backdrop.innerHTML = `
+    <div class="modal sp-action-modal anim-scale-in">
+      <div class="sp-action-modal__header" style="background:linear-gradient(135deg,rgba(0,89,48,0.08),rgba(16,185,129,0.04));">
+        <div class="sp-action-modal__header-left">
+          <div class="sp-action-modal__icon sp-action-modal__icon--approve">
+            ${icon('check', 20)}
+          </div>
+          <div>
+            <h3 class="sp-action-modal__title">Approve Student Registration</h3>
+            <p class="sp-action-modal__subtitle">Authorize self-registered account and activate student privileges</p>
+          </div>
+        </div>
+        <button class="modal__close" id="sp-approve-close" aria-label="Close modal">${icon('x', 16)}</button>
+      </div>
+
+      <div class="sp-action-modal__body">
+        <!-- Student Info Card -->
+        <div class="sp-student-card">
+          ${student.avatar_url
+            ? `<img src="${storageUrl(student.avatar_url)}" alt="${escapeHtml(student.name)}" class="sp-student-card__avatar" style="object-fit:cover;" />`
+            : `<div class="sp-student-card__avatar">${init}</div>`}
+          <div class="sp-student-card__info">
+            <h4 class="sp-student-card__name">${escapeHtml(student.name)}</h4>
+            <div class="sp-student-card__id-row">
+              <span class="sp-student-card__id">${escapeHtml(student.student_id || student.studentId || 'No ID')}</span>
+              <span class="sp-student-card__course">${escapeHtml(student.program || student.course || 'CHMSU Program')}</span>
+            </div>
+            <div class="sp-student-card__meta-grid">
+              <div class="sp-student-card__meta-item">
+                <span>Email:</span>
+                <strong title="${escapeHtml(student.email)}">${escapeHtml(student.email || '—')}</strong>
+              </div>
+              <div class="sp-student-card__meta-item">
+                <span>Section:</span>
+                <strong>${escapeHtml(student.section || '—')}</strong>
+              </div>
+              <div class="sp-student-card__meta-item">
+                <span>Year:</span>
+                <strong>${escapeHtml(student.year_level || student.year || '—')}</strong>
+              </div>
+              <div class="sp-student-card__meta-item">
+                <span>Source:</span>
+                <strong style="text-transform:capitalize;color:#D97706;">${escapeHtml(student.registration_source || 'Self-Registered')}</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Verification Highlights -->
+        <div class="sp-activation-box">
+          <div class="sp-activation-box__item">
+            ${icon('check-circle', 15)}
+            <div>
+              <strong>Instant Account Activation:</strong> The student is unlocked to access the Student Portal, search partner companies, submit requirements, and log attendance hours.
+            </div>
+          </div>
+          <div class="sp-activation-box__item">
+            ${icon('mail', 15)}
+            <div>
+              <strong>Welcome Notification Sent:</strong> System sends in-app and email notifications informing the student their account is active.
+            </div>
+          </div>
+        </div>
+
+        <div id="sp-approve-error" style="display:none;background:#FEE2E2;border:1px solid #FCA5A5;color:#991B1B;padding:8px 12px;border-radius:6px;font-size:0.75rem;"></div>
+      </div>
+
+      <div class="sp-action-modal__footer">
+        <button class="btn btn--outline btn--sm" id="sp-approve-cancel" type="button">Cancel</button>
+        <button class="btn btn--primary btn--sm" id="sp-approve-confirm" type="button" style="background:#005930;border-color:#005930;gap:6px;">
+          ${icon('check', 14)} Confirm &amp; Approve Student
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(backdrop);
+
+  const close = () => backdrop.remove();
+  backdrop.querySelector('#sp-approve-close').addEventListener('click', close);
+  backdrop.querySelector('#sp-approve-cancel').addEventListener('click', close);
+  backdrop.addEventListener('click', e => { if (e.target === backdrop) close(); });
+
+  const confirmBtn = backdrop.querySelector('#sp-approve-confirm');
+  const errBox = backdrop.querySelector('#sp-approve-error');
+
+  confirmBtn.addEventListener('click', async () => {
+    confirmBtn.disabled = true;
+    confirmBtn.innerHTML = `<span class="spinner-sm"></span> Approving…`;
+    errBox.style.display = 'none';
+
+    try {
+      const res = await apiPost(apiEndpoint, {});
+      close();
+      if (typeof onApproved === 'function') onApproved(res);
+    } catch (err) {
+      errBox.textContent = err?.message || 'Failed to approve student. Please try again.';
+      errBox.style.display = 'block';
+      confirmBtn.disabled = false;
+      confirmBtn.innerHTML = `${icon('check', 14)} Confirm &amp; Approve Student`;
+    }
+  });
+}
+
+/* ─── Student Rejection Modal ───────────────────────────────────── */
+function openStudentRejectionModal({ student, onRejected, apiEndpoint = `/admin/students/${student.id}/reject` }) {
+  const existing = document.querySelector('.modal-backdrop-sp-action');
+  if (existing) existing.remove();
+
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop modal-backdrop-sp-action';
+  backdrop.style.zIndex = '1200';
+
+  const REASON_PRESETS = [
+    'Student ID not found in official CHMSU enrollment records.',
+    'Incorrect course program or section selected.',
+    'Duplicate account registered for this student.',
+    'Incomplete or invalid registration credentials.',
+  ];
+
+  backdrop.innerHTML = `
+    <div class="modal sp-action-modal anim-scale-in">
+      <div class="sp-action-modal__header" style="background:linear-gradient(135deg,rgba(220,38,38,0.08),rgba(244,63,94,0.04));">
+        <div class="sp-action-modal__header-left">
+          <div class="sp-action-modal__icon sp-action-modal__icon--reject">
+            ${icon('x', 20)}
+          </div>
+          <div>
+            <h3 class="sp-action-modal__title">Reject Student Registration</h3>
+            <p class="sp-action-modal__subtitle">Decline enrollment and provide feedback to the applicant</p>
+          </div>
+        </div>
+        <button class="modal__close" id="sp-reject-close" aria-label="Close modal">${icon('x', 16)}</button>
+      </div>
+
+      <div class="sp-action-modal__body">
+        <!-- Target Student Pill -->
+        <div style="background:var(--bg-surface,#f8fafc);border:1px solid var(--border-default,#e2e8f0);border-radius:10px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+          <div style="min-width:0;">
+            <strong style="display:block;font-size:0.86rem;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(student.name)}</strong>
+            <span style="font-size:0.75rem;color:var(--text-tertiary);">${escapeHtml(student.student_id || student.studentId || 'No ID')} &bull; ${escapeHtml(student.program || student.course || 'CHMSU Program')}</span>
+          </div>
+          <span class="badge badge--warning" style="font-size:0.68rem;flex-shrink:0;">Pending Review</span>
+        </div>
+
+        <!-- Reason Selection & Textarea -->
+        <div class="sp-reason-section">
+          <div class="sp-reason-label">
+            <span>Reason for Rejection <span style="color:#EF4444;">*</span></span>
+            <span style="font-size:0.7rem;color:var(--text-tertiary);">Visible to student on login</span>
+          </div>
+
+          <div class="sp-reason-chips">
+            ${REASON_PRESETS.map((p, idx) => `
+              <button type="button" class="sp-reason-chip ${idx === 0 ? 'is-active' : ''}" data-reason="${escapeHtml(p)}">${escapeHtml(p)}</button>
+            `).join('')}
+          </div>
+
+          <textarea class="sp-reason-textarea" id="sp-rejection-reason" placeholder="Enter reason for declining this student registration...">${escapeHtml(REASON_PRESETS[0])}</textarea>
+        </div>
+
+        <div class="sp-warning-box">
+          ${icon('alert-triangle', 15)}
+          <div>
+            <strong>Student Access Restricted:</strong> This student will not be permitted to access the system and will see this reason when attempting to sign in.
+          </div>
+        </div>
+
+        <div id="sp-reject-error" style="display:none;background:#FEE2E2;border:1px solid #FCA5A5;color:#991B1B;padding:8px 12px;border-radius:6px;font-size:0.75rem;"></div>
+      </div>
+
+      <div class="sp-action-modal__footer">
+        <button class="btn btn--outline btn--sm" id="sp-reject-cancel" type="button">Cancel</button>
+        <button class="btn btn--sm" id="sp-reject-confirm" type="button" style="background:#DC2626;color:#ffffff;border:1px solid #DC2626;gap:6px;">
+          ${icon('x', 14)} Confirm Rejection
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(backdrop);
+
+  const close = () => backdrop.remove();
+  backdrop.querySelector('#sp-reject-close').addEventListener('click', close);
+  backdrop.querySelector('#sp-reject-cancel').addEventListener('click', close);
+  backdrop.addEventListener('click', e => { if (e.target === backdrop) close(); });
+
+  const textarea = backdrop.querySelector('#sp-rejection-reason');
+  const chips = backdrop.querySelectorAll('.sp-reason-chip');
+
+  chips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      chips.forEach(c => c.classList.remove('is-active'));
+      chip.classList.add('is-active');
+      textarea.value = chip.dataset.reason;
+      textarea.focus();
+    });
+  });
+
+  textarea.addEventListener('input', () => {
+    chips.forEach(c => {
+      if (c.dataset.reason === textarea.value.trim()) {
+        c.classList.add('is-active');
+      } else {
+        c.classList.remove('is-active');
+      }
+    });
+  });
+
+  const confirmBtn = backdrop.querySelector('#sp-reject-confirm');
+  const errBox = backdrop.querySelector('#sp-reject-error');
+
+  confirmBtn.addEventListener('click', async () => {
+    const reason = textarea.value.trim();
+    if (!reason) {
+      errBox.textContent = 'Please specify a rejection reason before confirming.';
+      errBox.style.display = 'block';
+      textarea.focus();
+      return;
+    }
+
+    confirmBtn.disabled = true;
+    confirmBtn.innerHTML = `<span class="spinner-sm"></span> Rejecting…`;
+    errBox.style.display = 'none';
+
+    try {
+      const res = await apiPost(apiEndpoint, { reason });
+      close();
+      if (typeof onRejected === 'function') onRejected(res);
+    } catch (err) {
+      errBox.textContent = err?.message || 'Failed to reject student registration.';
+      errBox.style.display = 'block';
+      confirmBtn.disabled = false;
+      confirmBtn.innerHTML = `${icon('x', 14)} Confirm Rejection`;
+    }
+  });
+}
+
 /* ─── Graduation Promotion Modal ─────────────────────────────────── */
 function openPromoteModal({ students, onPromote, container }) {
   if (!students || !students.length) return;
@@ -236,6 +503,28 @@ function showModal(s, container, onRefresh) {
 
       <!-- Body -->
       <div class="spm-body">
+        ${s.approval_status === 'pending' ? `
+          <div class="sp-pending-banner">
+            <div class="sp-pending-banner__left">
+              <div class="sp-pending-banner__icon">
+                ${icon('clock', 18)}
+              </div>
+              <div>
+                <h4 class="sp-pending-banner__title">Awaiting Admin Verification & Approval</h4>
+                <p class="sp-pending-banner__desc">This student self-registered and requires authorization before they can log in, access placements, and track OJT hours.</p>
+              </div>
+            </div>
+            <div class="sp-pending-banner__actions">
+              <button type="button" class="btn btn--sm spm-approve-btn" style="background:#005930;color:#ffffff;border:1px solid #005930;gap:5px;font-weight:600;">
+                ${icon('check', 13)} Approve Student
+              </button>
+              <button type="button" class="btn btn--sm spm-reject-btn" style="background:#FFF1F2;color:#E11D48;border:1px solid #FECDD3;gap:4px;font-weight:600;">
+                ${icon('x', 13)} Reject
+              </button>
+            </div>
+          </div>
+        ` : ''}
+
         <!-- Quick stat tiles -->
         <div class="spm-tiles">
           <div class="spm-tile">
@@ -350,17 +639,26 @@ function showModal(s, container, onRefresh) {
           <span class="spm-footer__id-val">${s.student_id || 'No ID'}</span>
         </div>
         <div class="spm-footer__actions">
-          ${s.is_eligible_for_promotion ? `
-            <button class="btn btn--primary btn--sm" id="modal-promote-btn" style="display:inline-flex;align-items:center;gap:6px;">
-              ${icon('graduation-cap', 14)} Promote to Graduate
+          <button class="btn btn--outline btn--sm" id="modal-cancel">Close</button>
+          ${s.approval_status === 'pending' ? `
+            <button type="button" class="btn btn--sm spm-footer-reject-btn" style="background:#FFF1F2;color:#E11D48;border:1px solid #FECDD3;gap:4px;font-weight:600;">
+              ${icon('x', 13)} Reject Registration
+            </button>
+            <button type="button" class="btn btn--primary btn--sm spm-footer-approve-btn" style="gap:5px;font-weight:600;background:#005930;border-color:#005930;">
+              ${icon('check', 13)} Approve Student
             </button>
           ` : `
-            <span class="badge badge--neutral" title="${s.ineligible_reason || 'Dual-gate requirements not met'}" style="font-size:0.75rem;padding:6px 10px;cursor:help;display:inline-flex;align-items:center;gap:5px;background:var(--bg-secondary);border:1px solid var(--border-default);color:var(--text-secondary);">
-              ${icon('lock', 12)} Promotion Locked: ${s.evaluation_status !== 'submitted' ? 'Evaluation Required' : 'Hours Incomplete'}
-            </span>
+            ${s.is_eligible_for_promotion ? `
+              <button class="btn btn--primary btn--sm" id="modal-promote-btn" style="display:inline-flex;align-items:center;gap:6px;">
+                ${icon('graduation-cap', 14)} Promote to Graduate
+              </button>
+            ` : `
+              <span class="badge badge--neutral" title="${s.ineligible_reason || 'Dual-gate requirements not met'}" style="font-size:0.75rem;padding:6px 10px;cursor:help;display:inline-flex;align-items:center;gap:5px;background:var(--bg-secondary);border:1px solid var(--border-default);color:var(--text-secondary);">
+                ${icon('lock', 12)} Promotion Locked: ${s.evaluation_status !== 'submitted' ? 'Evaluation Required' : 'Hours Incomplete'}
+              </span>
+            `}
           `}
-          <button class="btn btn--outline btn--sm" id="modal-cancel">Close</button>
-          <a href="mailto:${s.email}" class="btn btn--primary btn--sm">${icon('mail', 13)} Contact</a>
+          <a href="mailto:${s.email}" class="btn btn--outline btn--sm">${icon('mail', 13)} Contact</a>
         </div>
       </div>
     </div>
@@ -379,6 +677,35 @@ function showModal(s, container, onRefresh) {
   backdrop.querySelector('#modal-close').addEventListener('click', close);
   backdrop.querySelector('#modal-cancel').addEventListener('click', close);
   backdrop.addEventListener('click', e => { if (e.target === backdrop) close(); });
+
+  const triggerApprove = () => {
+    close();
+    openStudentApprovalModal({
+      student: s,
+      apiEndpoint: `/admin/students/${s.id}/approve`,
+      onApproved: (res) => {
+        showToast(res?.message || `Student ${s.name} approved successfully!`, 'success');
+        if (typeof onRefresh === 'function') onRefresh();
+      }
+    });
+  };
+
+  const triggerReject = () => {
+    close();
+    openStudentRejectionModal({
+      student: s,
+      apiEndpoint: `/admin/students/${s.id}/reject`,
+      onRejected: (res) => {
+        showToast(res?.message || `Student registration rejected.`, 'info');
+        if (typeof onRefresh === 'function') onRefresh();
+      }
+    });
+  };
+
+  backdrop.querySelector('.spm-approve-btn')?.addEventListener('click', triggerApprove);
+  backdrop.querySelector('.spm-footer-approve-btn')?.addEventListener('click', triggerApprove);
+  backdrop.querySelector('.spm-reject-btn')?.addEventListener('click', triggerReject);
+  backdrop.querySelector('.spm-footer-reject-btn')?.addEventListener('click', triggerReject);
 
   const promoteBtn = backdrop.querySelector('#modal-promote-btn');
   if (promoteBtn) {
@@ -524,41 +851,38 @@ function renderTable(tbody, list, container, selectedStudents, updateSelectionUI
 
   // Approve student action
   tbody.querySelectorAll('.approve-btn').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
+    btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      const id = btn.dataset.id;
-      const name = btn.dataset.name;
-      if (!confirm(`Are you sure you want to approve student registration for ${name}?`)) return;
-      btn.disabled = true;
-      btn.innerHTML = `${icon('check', 12)} Approving...`;
-      try {
-        const res = await apiPost(`/admin/students/${id}/approve`);
-        showToast(res?.message || `Student ${name} approved successfully!`, 'success');
-        if (typeof onRefresh === 'function') onRefresh();
-      } catch (err) {
-        showToast(err.message || 'Failed to approve student.', 'error');
-        btn.disabled = false;
-        btn.innerHTML = `${icon('check', 12)} Approve`;
+      const id = parseInt(btn.dataset.id, 10);
+      const student = list.find(s => s.id === id);
+      if (student) {
+        openStudentApprovalModal({
+          student,
+          apiEndpoint: `/admin/students/${student.id}/approve`,
+          onApproved: (res) => {
+            showToast(res?.message || `Student ${student.name} approved successfully!`, 'success');
+            if (typeof onRefresh === 'function') onRefresh();
+          }
+        });
       }
     });
   });
 
   // Reject student action
   tbody.querySelectorAll('.reject-btn').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
+    btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      const id = btn.dataset.id;
-      const name = btn.dataset.name;
-      const reason = prompt(`Enter rejection reason for ${name}:`, 'Student enrollment record not verified.');
-      if (reason === null) return;
-      btn.disabled = true;
-      try {
-        const res = await apiPost(`/admin/students/${id}/reject`, { reason });
-        showToast(res?.message || `Student registration rejected.`, 'info');
-        if (typeof onRefresh === 'function') onRefresh();
-      } catch (err) {
-        showToast(err.message || 'Failed to reject student.', 'error');
-        btn.disabled = false;
+      const id = parseInt(btn.dataset.id, 10);
+      const student = list.find(s => s.id === id);
+      if (student) {
+        openStudentRejectionModal({
+          student,
+          apiEndpoint: `/admin/students/${student.id}/reject`,
+          onRejected: (res) => {
+            showToast(res?.message || `Student registration rejected.`, 'info');
+            if (typeof onRefresh === 'function') onRefresh();
+          }
+        });
       }
     });
   });

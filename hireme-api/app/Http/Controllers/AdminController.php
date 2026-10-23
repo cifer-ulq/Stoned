@@ -2466,6 +2466,18 @@ class AdminController extends Controller
             \Log::warning('[approveStudent] Email dispatch failed: ' . $e->getMessage());
         }
 
+        try {
+            \App\Models\AppNotification::send(
+                $student->id,
+                'account_approved',
+                'Account Approved & Activated',
+                'Your CHMSU HireMe student account has been approved by an Administrator. You now have full access to the portal.',
+                ['route' => '/main/']
+            );
+        } catch (\Throwable $e) {
+            \Log::warning('[approveStudent] In-app notification failed: ' . $e->getMessage());
+        }
+
         return response()->json([
             'success' => true,
             'message' => "Student {$student->name} ({$profile->student_id}) has been approved and activated.",

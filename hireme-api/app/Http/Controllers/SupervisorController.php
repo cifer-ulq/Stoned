@@ -612,7 +612,8 @@ class SupervisorController extends Controller
             ->orderBy('name');
 
         if ($course) {
-            $studentsQuery->whereHas('studentProfile', fn($sp) => $sp->where('program', $course));
+            $aliases = \App\Services\CourseNormalizer::getAliases($course);
+            $studentsQuery->whereHas('studentProfile', fn($sp) => $sp->whereIn('program', $aliases));
         }
 
         $students = $studentsQuery->get();
@@ -1916,7 +1917,8 @@ class SupervisorController extends Controller
         $course = $this->getSupervisorCourse($request);
         $studentQuery = User::where('role', 'student')->where('id', $id);
         if ($course) {
-            $studentQuery->whereHas('studentProfile', fn($sp) => $sp->where('program', $course));
+            $aliases = \App\Services\CourseNormalizer::getAliases($course);
+            $studentQuery->whereHas('studentProfile', fn($sp) => $sp->whereIn('program', $aliases));
         }
         $student = $studentQuery->firstOrFail();
         $profile = $student->studentProfile;
@@ -1942,6 +1944,18 @@ class SupervisorController extends Controller
             \Log::warning('[Supervisor::approveStudent] Email dispatch failed: ' . $e->getMessage());
         }
 
+        try {
+            \App\Models\AppNotification::send(
+                $student->id,
+                'account_approved',
+                'Account Approved & Activated',
+                'Your CHMSU HireMe student account has been approved by your OJT Coordinator. You now have full access to the portal.',
+                ['route' => '/main/']
+            );
+        } catch (\Throwable $e) {
+            \Log::warning('[Supervisor::approveStudent] In-app notification failed: ' . $e->getMessage());
+        }
+
         return response()->json([
             'success' => true,
             'message' => "Student {$student->name} has been approved and activated.",
@@ -1954,7 +1968,8 @@ class SupervisorController extends Controller
         $course = $this->getSupervisorCourse($request);
         $studentQuery = User::where('role', 'student')->where('id', $id);
         if ($course) {
-            $studentQuery->whereHas('studentProfile', fn($sp) => $sp->where('program', $course));
+            $aliases = \App\Services\CourseNormalizer::getAliases($course);
+            $studentQuery->whereHas('studentProfile', fn($sp) => $sp->whereIn('program', $aliases));
         }
         $student = $studentQuery->firstOrFail();
         $profile = $student->studentProfile;
