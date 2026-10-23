@@ -13,6 +13,12 @@ if [ "$SEED_SIMULATION" = "true" ]; then
     echo "==> [SEED_SIMULATION] Seeding completed!"
 fi
 
+if [ "$SEED_ALUMNI" = "true" ] || [ "$SEED_SIMULATION" = "true" ]; then
+    echo "==> [SEED_ALUMNI] Running Fresh BSIT 2026 Alumni Seeder..."
+    php artisan db:seed --class=FreshBSIT2026AlumniSeeder --force || true
+    echo "==> [SEED_ALUMNI] Seeding completed!"
+fi
+
 # Cache Laravel configs for high performance
 php artisan config:cache || true
 php artisan route:cache || true

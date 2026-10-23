@@ -20,6 +20,11 @@ echo "==> Triggering background database migrations..."
         php artisan db:seed --class=NaAhCompanyFirstDayOjtSeeder --force || true
         echo "==> [SEED_SIMULATION] Seeding completed!"
     fi
+    if [ "$SEED_ALUMNI" = "true" ] || [ "$SEED_SIMULATION" = "true" ]; then
+        echo "==> [SEED_ALUMNI] Running Fresh BSIT 2026 Alumni Seeder..."
+        php artisan db:seed --class=FreshBSIT2026AlumniSeeder --force || true
+        echo "==> [SEED_ALUMNI] Seeding completed!"
+    fi
 ) &
 
 PORT="${PORT:-8000}"
