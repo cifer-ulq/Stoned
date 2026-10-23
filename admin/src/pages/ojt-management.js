@@ -28,6 +28,80 @@ const COURSES = [
   'Bachelor of Science in Fisheries',
 ];
 
+const COURSE_META = {
+  'Bachelor of Science in Information Technology': {
+    code: 'BSIT',
+    category: 'Information & Computing',
+    icon: 'cpu',
+  },
+  'Bachelor of Science in Computer Science': {
+    code: 'BSCS',
+    category: 'Information & Computing',
+    icon: 'cpu',
+  },
+  'Bachelor of Science in Computer Engineering': {
+    code: 'BSCpE',
+    category: 'Engineering & Technology',
+    icon: 'cpu',
+  },
+  'Bachelor of Science in Information Systems': {
+    code: 'BSIS',
+    category: 'Information & Computing',
+    icon: 'layers',
+  },
+  'Bachelor of Science in Business Administration': {
+    code: 'BSBA',
+    category: 'Business & Management',
+    icon: 'briefcase',
+  },
+  'Bachelor of Science in Accountancy': {
+    code: 'BSA',
+    category: 'Finance & Accountancy',
+    icon: 'bar-chart-2',
+  },
+  'Bachelor of Secondary Education': {
+    code: 'BSEd',
+    category: 'Teacher Education',
+    icon: 'book-open',
+  },
+  'Bachelor of Science in Hospitality Management': {
+    code: 'BSHM',
+    category: 'Hospitality & Tourism',
+    icon: 'award',
+  },
+  'Bachelor of Science in Criminology': {
+    code: 'BSCrim',
+    category: 'Criminal Justice',
+    icon: 'shield',
+  },
+  'Bachelor of Science in Nursing': {
+    code: 'BSN',
+    category: 'Health & Nursing',
+    icon: 'activity',
+  },
+  'Bachelor of Science in Agriculture': {
+    code: 'BSAgr',
+    category: 'Agriculture & Bio-Sciences',
+    icon: 'target',
+  },
+  'Bachelor of Science in Fisheries': {
+    code: 'BSFish',
+    category: 'Aquatic & Fisheries',
+    icon: 'target',
+  },
+};
+
+function getCourseMeta(courseName) {
+  if (COURSE_META[courseName]) return COURSE_META[courseName];
+  const words = courseName.replace(/^(Bachelor of Science in|Bachelor of)/i, '').trim().split(/\s+/);
+  const code = (words.length > 1 ? words.map(w => w[0]).join('') : words[0]?.slice(0, 4) || 'PROG').toUpperCase();
+  return {
+    code: 'BS' + code,
+    category: 'Academic Program',
+    icon: 'graduation-cap',
+  };
+}
+
 export default async function OjtManagementPage(container) {
   container.innerHTML = `
     <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;">
@@ -689,16 +763,10 @@ export default async function OjtManagementPage(container) {
       }
     });
 
-    const courseOptions = COURSES.map(c => {
-      const count = courseCountMap[c] || 0;
-      const countLabel = count > 0 ? ` (${count} active coordinator${count > 1 ? 's' : ''})` : '';
-      return `<option value="${c}">${c}${countLabel}</option>`;
-    }).join('');
-
     const backdrop = document.createElement('div');
     backdrop.className = 'modal-backdrop';
     backdrop.innerHTML = `
-      <div class="modal ac-modal" style="max-width:520px;">
+      <div class="modal ac-modal sup-modal" style="max-width:520px;">
 
         <!-- Header -->
         <div class="ac-modal__header" style="background:linear-gradient(135deg,var(--color-primary-bg-strong),var(--color-primary-bg));">
@@ -758,13 +826,42 @@ export default async function OjtManagementPage(container) {
               <div class="ac-grid">
                 <div class="ac-field ac-field--full">
                   <label class="ac-label">Assigned Course <span class="ac-req">*</span></label>
-                  <div class="ac-input-wrap" id="wrap-sup-course">
-                    <span class="ac-input-icon">${icon('clipboard-check', 15)}</span>
-                    <select class="ac-input ac-select" id="sup-course">
-                      <option value="">Select course program</option>
-                      ${courseOptions}
-                    </select>
+                  
+                  <div class="sup-course-picker" id="wrap-sup-course">
+                    <input type="hidden" id="sup-course" name="course" value="" />
+                    
+                    <button type="button" class="sup-course-trigger" id="sup-course-trigger" aria-haspopup="listbox" aria-expanded="false">
+                      <span class="sup-course-trigger__icon" id="sup-course-trigger-icon">${icon('graduation-cap', 16)}</span>
+                      <div class="sup-course-trigger__content">
+                        <span class="sup-course-trigger__placeholder" id="sup-course-placeholder">Select course program</span>
+                        <div class="sup-course-trigger__selected" id="sup-course-selected-wrap" style="display:none;"></div>
+                      </div>
+                      <div class="sup-course-trigger__actions">
+                        <span class="sup-course-trigger__clear" id="sup-course-clear" title="Clear selection" style="display:none;">${icon('x', 13)}</span>
+                        <span class="sup-course-trigger__chevron">${icon('chevron-down', 16)}</span>
+                      </div>
+                    </button>
+
+                    <!-- Dropdown Popover Menu -->
+                    <div class="sup-course-dropdown" id="sup-course-dropdown" role="listbox">
+                      <div class="sup-course-search-wrap">
+                        <span class="sup-course-search-icon">${icon('search', 14)}</span>
+                        <input type="text" class="sup-course-search-input" id="sup-course-search" placeholder="Search program name or code (e.g. BSIT)..." autocomplete="off" />
+                        <button type="button" class="sup-course-search-clear" id="sup-course-search-clear" style="display:none;" title="Clear search">${icon('x', 12)}</button>
+                      </div>
+                      <div class="sup-course-list-header">
+                        <span>AVAILABLE PROGRAMS</span>
+                        <span class="sup-course-count" id="sup-course-count">${COURSES.length} programs</span>
+                      </div>
+                      <div class="sup-course-list" id="sup-course-list"></div>
+                      <div class="sup-course-empty" id="sup-course-empty" style="display:none;">
+                        <div class="sup-course-empty__icon">${icon('search', 18)}</div>
+                        <div class="sup-course-empty__title">No matching courses</div>
+                        <div class="sup-course-empty__hint">Try searching with a different keyword or acronym</div>
+                      </div>
+                    </div>
                   </div>
+
                   <span class="ac-error" id="err-sup-course"></span>
                 </div>
               </div>
@@ -795,7 +892,246 @@ export default async function OjtManagementPage(container) {
     container.appendChild(backdrop);
     renderIcons();
 
-    const close = () => backdrop.remove();
+    // ── Dropdown Controller ──
+    const pickerWrap = backdrop.querySelector('#wrap-sup-course');
+    const triggerBtn = backdrop.querySelector('#sup-course-trigger');
+    const hiddenCourseInput = backdrop.querySelector('#sup-course');
+    const dropdownMenu = backdrop.querySelector('#sup-course-dropdown');
+    const searchInput = backdrop.querySelector('#sup-course-search');
+    const searchClearBtn = backdrop.querySelector('#sup-course-search-clear');
+    const listContainer = backdrop.querySelector('#sup-course-list');
+    const emptyState = backdrop.querySelector('#sup-course-empty');
+    const countBadgeEl = backdrop.querySelector('#sup-course-count');
+    const placeholderEl = backdrop.querySelector('#sup-course-placeholder');
+    const selectedWrapEl = backdrop.querySelector('#sup-course-selected-wrap');
+    const clearBtn = backdrop.querySelector('#sup-course-clear');
+    const triggerIconEl = backdrop.querySelector('#sup-course-trigger-icon');
+
+    let selectedCourse = '';
+    let focusedIndex = -1;
+    let filteredCourses = [...COURSES];
+
+    function updateTriggerDisplay() {
+      if (selectedCourse) {
+        const meta = getCourseMeta(selectedCourse);
+        const count = courseCountMap[selectedCourse] || 0;
+        const countTag = count > 0
+          ? `<span class="sup-course-trigger__badge sup-badge--busy">${icon('user-check', 11)} ${count} active</span>`
+          : `<span class="sup-course-trigger__badge sup-badge--free">${icon('check', 11)} Available</span>`;
+
+        placeholderEl.style.display = 'none';
+        selectedWrapEl.innerHTML = `
+          <span class="sup-course-trigger__code">${meta.code}</span>
+          <span class="sup-course-trigger__title" title="${selectedCourse}">${selectedCourse}</span>
+          ${countTag}
+        `;
+        selectedWrapEl.style.display = 'flex';
+        clearBtn.style.display = 'flex';
+        triggerIconEl.innerHTML = icon(meta.icon || 'graduation-cap', 16);
+      } else {
+        placeholderEl.style.display = 'block';
+        selectedWrapEl.innerHTML = '';
+        selectedWrapEl.style.display = 'none';
+        clearBtn.style.display = 'none';
+        triggerIconEl.innerHTML = icon('graduation-cap', 16);
+      }
+    }
+
+    function renderOptions(query = '') {
+      const q = query.trim().toLowerCase();
+      filteredCourses = COURSES.filter(c => {
+        if (!q) return true;
+        const meta = getCourseMeta(c);
+        return c.toLowerCase().includes(q) ||
+               meta.code.toLowerCase().includes(q) ||
+               meta.category.toLowerCase().includes(q);
+      });
+
+      countBadgeEl.textContent = `${filteredCourses.length} program${filteredCourses.length === 1 ? '' : 's'}`;
+
+      if (filteredCourses.length === 0) {
+        listContainer.style.display = 'none';
+        emptyState.style.display = 'flex';
+        return;
+      }
+
+      listContainer.style.display = 'flex';
+      emptyState.style.display = 'none';
+
+      listContainer.innerHTML = filteredCourses.map((c, idx) => {
+        const meta = getCourseMeta(c);
+        const count = courseCountMap[c] || 0;
+        const isSelected = c === selectedCourse;
+        const isFocused = idx === focusedIndex;
+        const countTag = count > 0
+          ? `<span class="sup-item-badge sup-item-badge--busy">${icon('user-check', 11)} ${count} active coordinator${count > 1 ? 's' : ''}</span>`
+          : `<span class="sup-item-badge sup-item-badge--free">${icon('check', 11)} Available &bull; No coordinator</span>`;
+
+        return `
+          <div class="sup-course-item ${isSelected ? 'sup-course-item--selected' : ''} ${isFocused ? 'sup-course-item--focused' : ''}" 
+               data-course="${c}" 
+               role="option" 
+               aria-selected="${isSelected}"
+               tabindex="-1">
+            <div class="sup-course-item__avatar">
+              <span class="sup-course-item__code">${meta.code}</span>
+            </div>
+            <div class="sup-course-item__info">
+              <div class="sup-course-item__name" title="${c}">${c}</div>
+              <div class="sup-course-item__meta">
+                <span class="sup-course-item__dept">${meta.category}</span>
+                <span style="opacity:0.4;">&bull;</span>
+                ${countTag}
+              </div>
+            </div>
+            <div class="sup-course-item__check">
+              ${icon('check', 15)}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      listContainer.querySelectorAll('.sup-course-item').forEach(itemEl => {
+        itemEl.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const chosen = itemEl.getAttribute('data-course');
+          selectCourse(chosen);
+        });
+      });
+    }
+
+    function selectCourse(course) {
+      selectedCourse = course;
+      hiddenCourseInput.value = course;
+      updateTriggerDisplay();
+      closeDropdown();
+
+      const errEl = backdrop.querySelector('#err-sup-course');
+      if (errEl) { errEl.textContent = ''; errEl.style.display = 'none'; }
+      pickerWrap.classList.remove('ac-input-wrap--error');
+    }
+
+    function clearCourseSelection() {
+      selectedCourse = '';
+      hiddenCourseInput.value = '';
+      updateTriggerDisplay();
+      renderOptions(searchInput.value);
+    }
+
+    function openDropdown() {
+      if (pickerWrap.classList.contains('is-open')) return;
+
+      const rect = triggerBtn.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      if (spaceBelow < 280 && rect.top > 280) {
+        dropdownMenu.classList.add('sup-course-dropdown--upward');
+      } else {
+        dropdownMenu.classList.remove('sup-course-dropdown--upward');
+      }
+
+      pickerWrap.classList.add('is-open');
+      triggerBtn.setAttribute('aria-expanded', 'true');
+      renderOptions(searchInput.value);
+
+      setTimeout(() => {
+        searchInput.focus();
+      }, 50);
+    }
+
+    function closeDropdown() {
+      if (!pickerWrap.classList.contains('is-open')) return;
+      pickerWrap.classList.remove('is-open');
+      triggerBtn.setAttribute('aria-expanded', 'false');
+      dropdownMenu.classList.remove('sup-course-dropdown--upward');
+      focusedIndex = -1;
+    }
+
+    function toggleDropdown() {
+      if (pickerWrap.classList.contains('is-open')) {
+        closeDropdown();
+      } else {
+        openDropdown();
+      }
+    }
+
+    triggerBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      toggleDropdown();
+    });
+
+    clearBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      clearCourseSelection();
+    });
+
+    searchInput.addEventListener('input', () => {
+      searchClearBtn.style.display = searchInput.value ? 'flex' : 'none';
+      focusedIndex = 0;
+      renderOptions(searchInput.value);
+    });
+
+    searchClearBtn.addEventListener('click', () => {
+      searchInput.value = '';
+      searchClearBtn.style.display = 'none';
+      focusedIndex = -1;
+      renderOptions('');
+      searchInput.focus();
+    });
+
+    const onPickerKeydown = (e) => {
+      if (!pickerWrap.classList.contains('is-open')) {
+        if (document.activeElement === triggerBtn && (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ')) {
+          e.preventDefault();
+          openDropdown();
+        }
+        return;
+      }
+
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        closeDropdown();
+        triggerBtn.focus();
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (filteredCourses.length > 0) {
+          focusedIndex = (focusedIndex + 1) % filteredCourses.length;
+          renderOptions(searchInput.value);
+          const focusedEl = listContainer.querySelector('.sup-course-item--focused');
+          if (focusedEl) focusedEl.scrollIntoView({ block: 'nearest' });
+        }
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (filteredCourses.length > 0) {
+          focusedIndex = (focusedIndex - 1 + filteredCourses.length) % filteredCourses.length;
+          renderOptions(searchInput.value);
+          const focusedEl = listContainer.querySelector('.sup-course-item--focused');
+          if (focusedEl) focusedEl.scrollIntoView({ block: 'nearest' });
+        }
+      } else if (e.key === 'Enter') {
+        if (filteredCourses.length > 0) {
+          e.preventDefault();
+          const targetIndex = focusedIndex >= 0 && focusedIndex < filteredCourses.length ? focusedIndex : 0;
+          selectCourse(filteredCourses[targetIndex]);
+        }
+      }
+    };
+
+    backdrop.addEventListener('keydown', onPickerKeydown);
+
+    const onDocClick = (e) => {
+      if (!pickerWrap.contains(e.target)) {
+        closeDropdown();
+      }
+    };
+    document.addEventListener('click', onDocClick);
+
+    // Initial populate
+    renderOptions('');
+
+    const close = () => {
+      document.removeEventListener('click', onDocClick);
+      backdrop.remove();
+    };
     backdrop.querySelector('#sup-close').addEventListener('click', close);
     backdrop.querySelector('#sup-cancel').addEventListener('click', close);
     backdrop.addEventListener('click', e => { if (e.target === backdrop) close(); });
