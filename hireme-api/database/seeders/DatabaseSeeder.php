@@ -32,6 +32,7 @@ class DatabaseSeeder extends Seeder
             BSIT4BStudentsAnd2020GraduatesSeeder::class,
             FiveCompaniesOjtAndJobListingsSeeder::class,
             StudentPostInterviewOjtSeeder::class,
+            NaAhCompanyFirstDayOjtSeeder::class,
         ]);
     }
 }
