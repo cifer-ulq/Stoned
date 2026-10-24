@@ -838,10 +838,10 @@ function renderSlotCards(container, slots) {
         <div class="ojts-card__footer">
           <div class="ojts-card__interest">
             ${(slot.interests_count || 0) > 0
-              ? `<button class="ojts-btn-applicants btn--view-applicants" data-id="${slot.id}">
+              ? `<button type="button" class="ojts-btn-applicants btn--view-applicants" data-id="${slot.id}" title="View applicants">
                   ${icon('users', 13)}
-                  <span><strong>${slot.interests_count}</strong> ${slot.interests_count === 1 ? 'Applicant' : 'Applicants'}</span>
-                  ${(slot.endorsed_count || 0) > 0 ? `<span class="ojts-badge-endorsed">${icon('shield', 11)} ${slot.endorsed_count}</span>` : ''}
+                  <span><strong>${slot.interests_count}</strong>&nbsp;${slot.interests_count === 1 ? 'Applicant' : 'Applicants'}</span>
+                  ${(slot.endorsed_count || 0) > 0 ? `<span class="ojts-badge-endorsed" title="${slot.endorsed_count} school endorsed">${icon('shield', 11)} ${slot.endorsed_count}</span>` : ''}
                 </button>`
               : `<span class="ojts-interest-pill ojts-interest-pill--muted">${icon('users', 12)} No applicants yet</span>`
             }
@@ -895,12 +895,12 @@ function showSlotDetail(slot, container, allSlots) {
   backdrop.className = 'modal-backdrop modal-backdrop--visible';
 
   backdrop.innerHTML = `
-    <div class="modal modal--visible" style="max-width: 680px; width: 100%; border-radius: 16px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.25);">
+    <div class="modal modal--visible ojts-detail-modal" style="max-width: 680px; width: 100%; border-radius: 16px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.25);">
       <!-- Top Accent Line -->
       <div style="height: 4px; background: ${cfg.color}; width: 100%;"></div>
 
       <!-- Header -->
-      <div class="modal__header" style="border-bottom: 1px solid var(--border-default, #e2e8f0); padding: 18px 24px; background: #ffffff; display: flex; align-items: center; justify-content: space-between; gap: 14px;">
+      <div class="modal__header ojts-detail-header" style="border-bottom: 1px solid var(--border-default, #e2e8f0); padding: 18px 24px; background: #ffffff; display: flex; align-items: center; justify-content: space-between; gap: 14px;">
         <div style="display: flex; align-items: center; gap: 14px; min-width: 0;">
           <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(0,89,48,0.08); color: #005930; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 1px solid rgba(0,89,48,0.2);">
             ${icon(roleIcon, 22)}
@@ -921,10 +921,10 @@ function showSlotDetail(slot, container, allSlots) {
       </div>
 
       <!-- Body -->
-      <div class="modal__body" style="max-height: 70vh; overflow-y: auto; padding: 22px 24px; background: #ffffff;">
+      <div class="modal__body ojts-detail-body" style="max-height: 70vh; overflow-y: auto; padding: 22px 24px; background: #ffffff;">
 
         <!-- 4 KPI Stat Tiles -->
-        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px;">
+        <div class="ojts-detail-stats" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px;">
           <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 10px; text-align: center;">
             <div style="font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #64748b; margin-bottom: 4px; display: flex; align-items: center; justify-content: center; gap: 4px;">
               ${icon('layers', 12)} Total Slots
@@ -969,7 +969,7 @@ function showSlotDetail(slot, container, allSlots) {
         </div>
 
         <!-- Structured 2x2 Info Grid -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px;">
+        <div class="ojts-detail-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px;">
           <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px;">
             <div style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #64748b; margin-bottom: 6px; display: flex; align-items: center; gap: 5px;">
               ${icon('bookOpen', 12)} Preferred Courses
@@ -1054,9 +1054,9 @@ function showSlotDetail(slot, container, allSlots) {
       </div>
 
       <!-- Footer -->
-      <div class="modal__footer" style="padding: 14px 24px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+      <div class="modal__footer ojts-detail-footer" style="padding: 14px 24px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
         <button class="btn btn--outline" id="sd-close-btn" style="height: 38px; padding: 0 16px;">Close</button>
-        <div style="display: flex; gap: 8px;">
+        <div class="ojts-detail-footer-actions" style="display: flex; gap: 8px;">
           ${(slot.interests_count || 0) > 0 ? `
             <button class="btn btn--ghost" id="sd-view-apps-btn" style="height: 38px; padding: 0 14px; color: #005930; font-weight: 600; display: flex; align-items: center; gap: 6px;">
               ${icon('users', 14)} View Applicants (${slot.interests_count})
@@ -1093,8 +1093,8 @@ async function showApplicantsModal(slot, container, allSlots) {
   const backdrop = document.createElement('div');
   backdrop.className = 'modal-backdrop modal-backdrop--visible';
   backdrop.innerHTML = `
-    <div class="modal modal--visible" style="max-width:860px;width:100%;border-radius:16px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.25);">
-      <div class="modal__header" style="border-bottom:1px solid #e2e8f0;padding:18px 24px;background:#ffffff;">
+    <div class="modal modal--visible ojts-applicants-modal" style="max-width:860px;width:100%;border-radius:16px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.25);">
+      <div class="modal__header ojts-applicants-header" style="border-bottom:1px solid #e2e8f0;padding:18px 24px;background:#ffffff;">
         <div style="display:flex;align-items:center;gap:14px;min-width:0;">
           <div style="width:44px;height:44px;border-radius:12px;background:rgba(0,89,48,0.1);color:#005930;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.1rem;flex-shrink:0;border:1px solid rgba(0,89,48,0.2);">
             ${icon('users', 22)}
@@ -1113,7 +1113,7 @@ async function showApplicantsModal(slot, container, allSlots) {
         </div>
         <button class="modal__close" id="rec-modal-close">${icon('x', 20)}</button>
       </div>
-      <div class="modal__body" id="rec-modal-body" style="max-height:72vh;overflow-y:auto;padding:20px 24px;background:#f8fafc;">
+      <div class="modal__body ojts-applicants-body" id="rec-modal-body" style="max-height:72vh;overflow-y:auto;padding:20px 24px;background:#f8fafc;">
         <div style="display:flex;justify-content:center;padding:40px 0;">
           <div class="skeleton" style="width:200px;height:20px;border-radius:8px;"></div>
         </div>
@@ -1692,8 +1692,8 @@ function applicantCard(s, state) {
   }
 
   return `
-    <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;box-shadow:0 2px 8px rgba(0,0,0,0.03);margin-bottom:16px;overflow:hidden;${state === 'rejected' ? 'opacity:0.65;' : ''}">
-      <div style="padding:16px 20px 12px;display:flex;align-items:flex-start;gap:14px;">
+    <div class="ojt-applicant-card" style="background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;box-shadow:0 2px 8px rgba(0,0,0,0.03);margin-bottom:16px;overflow:hidden;${state === 'rejected' ? 'opacity:0.65;' : ''}">
+      <div class="ojt-applicant-card__header" style="padding:16px 20px 12px;display:flex;align-items:flex-start;gap:14px;">
         <div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg, #005930, #10b981);color:#ffffff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1rem;flex-shrink:0;box-shadow:0 4px 12px rgba(0,89,48,0.18);overflow:hidden;">
           ${avatarUrl
             ? `<img src="http://localhost:8000${avatarUrl}" alt="${name}" style="width:100%;height:100%;object-fit:cover;">`
@@ -1730,8 +1730,8 @@ function applicantCard(s, state) {
       ${coordinatorBoxHtml}
 
       <!-- Unified Card Footer: Profile on left, actions on right -->
-      <div style="padding:12px 20px;background:#f8fafc;border-top:1px solid #edf2f7;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <div class="ojt-applicant-card__footer" style="padding:12px 20px;background:#f8fafc;border-top:1px solid #edf2f7;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+        <div class="ojt-applicant-card__footer-left" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
           <button class="btn btn--sm btn--mark-viewed" data-id="${s.id}" style="${
             resumeViewed
               ? 'background:rgba(16,185,129,0.1);color:#005930;border:1px solid rgba(16,185,129,0.3);'
@@ -1744,7 +1744,7 @@ function applicantCard(s, state) {
           </button>
         </div>
 
-        <div style="display:flex;align-items:center;gap:8px;margin-left:auto;">
+        <div class="ojt-applicant-card__footer-actions" style="display:flex;align-items:center;gap:8px;margin-left:auto;">
           ${actionButtons}
         </div>
       </div>
@@ -2955,7 +2955,7 @@ function showMapPicker(initialLat, initialLon, onConfirm) {
   backdrop.className = 'modal-backdrop modal-backdrop--visible';
   backdrop.style.cssText = 'z-index:9999;';
   backdrop.innerHTML = `
-    <div class="modal modal--visible" style="max-width:680px;width:95vw;">
+    <div class="modal modal--visible ojt-map-picker-modal" style="max-width:680px;width:95vw;">
       <div class="modal__header">
         <h3 class="modal__title" style="display:flex;align-items:center;gap:8px;">
           ${icon('mapPin', 18)} Pin Deployment Location

@@ -242,24 +242,24 @@ function renderAbout() {
 
       <!-- OJT Requirements Section (Rich Checklist & Guidance or Unassigned State) -->
       ${activeReq ? `
-      <div class="profile-section" style="padding:18px 22px;border:1px solid ${reqStatus === 'needs_revision' ? 'rgba(239,68,68,0.3)' : reqStatus === 'verified' ? 'rgba(16,185,129,0.3)' : reqStatus === 'submitted' ? 'rgba(2,132,199,0.3)' : 'rgba(245,158,11,0.3)'};background:${reqStatus === 'needs_revision' ? 'rgba(239,68,68,0.02)' : reqStatus === 'verified' ? 'rgba(16,185,129,0.02)' : reqStatus === 'submitted' ? 'rgba(2,132,199,0.02)' : 'rgba(245,158,11,0.02)'};border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,0.02);">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;">
-          <div style="display:flex;align-items:flex-start;gap:12px;min-width:0;flex:1;">
-            <div style="width:38px;height:38px;border-radius:10px;background:${reqStatus === 'verified' ? 'rgba(16,185,129,0.14)' : reqStatus === 'needs_revision' ? 'rgba(239,68,68,0.14)' : reqStatus === 'submitted' ? 'rgba(2,132,199,0.14)' : 'rgba(245,158,11,0.14)'};color:${reqStatus === 'verified' ? '#10b981' : reqStatus === 'needs_revision' ? '#ef4444' : reqStatus === 'submitted' ? '#0284c7' : '#d97706'};display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">
+      <div class="profile-section portfolio-reqs-section" style="padding:18px 22px;border:1px solid ${reqStatus === 'needs_revision' ? 'rgba(239,68,68,0.3)' : reqStatus === 'verified' ? 'rgba(16,185,129,0.3)' : reqStatus === 'submitted' ? 'rgba(2,132,199,0.3)' : 'rgba(245,158,11,0.3)'};background:${reqStatus === 'needs_revision' ? 'rgba(239,68,68,0.02)' : reqStatus === 'verified' ? 'rgba(16,185,129,0.02)' : reqStatus === 'submitted' ? 'rgba(2,132,199,0.02)' : 'rgba(245,158,11,0.02)'};border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,0.02);">
+        <div class="portfolio-reqs-header">
+          <div class="portfolio-reqs-info">
+            <div class="portfolio-reqs-icon" style="width:38px;height:38px;border-radius:10px;background:${reqStatus === 'verified' ? 'rgba(16,185,129,0.14)' : reqStatus === 'needs_revision' ? 'rgba(239,68,68,0.14)' : reqStatus === 'submitted' ? 'rgba(2,132,199,0.14)' : 'rgba(245,158,11,0.14)'};color:${reqStatus === 'verified' ? '#10b981' : reqStatus === 'needs_revision' ? '#ef4444' : reqStatus === 'submitted' ? '#0284c7' : '#d97706'};display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">
               ${icon(reqStatus === 'verified' ? 'checkCircle' : reqStatus === 'needs_revision' ? 'alertTriangle' : 'folder', 18)}
             </div>
-            <div style="min-width:0;flex:1;">
-              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                <h4 style="margin:0;font-size:1.02rem;font-weight:700;color:var(--text-primary);">${activeReq.title || 'Pre-Deployment OJT Document Packet'}</h4>
+            <div class="portfolio-reqs-text">
+              <div class="portfolio-reqs-title-row">
+                <h4 class="portfolio-reqs-title">${activeReq.title || 'Pre-Deployment OJT Document Packet'}</h4>
                 ${statusBadge}
               </div>
-              <p style="font-size:0.78rem;color:var(--text-secondary);margin:3px 0 0;line-height:1.4;">
+              <p class="portfolio-reqs-meta">
                 ${activeReq?.supervisor?.name ? `Assigned by <strong>${activeReq.supervisor.name}</strong> (OJT Coordinator)` : 'Assigned Requirements Packet'}
                 ${formattedDueDate ? ` &middot; Due Date: <strong>${formattedDueDate}</strong>` : ''}
               </p>
             </div>
           </div>
-          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+          <div class="portfolio-reqs-actions">
             ${P.requirements_drive_url ? `
               <a href="${P.requirements_drive_url}" target="_blank" rel="noopener" class="btn btn--secondary btn--sm" style="font-size:0.8rem;padding:5px 12px;display:inline-flex;align-items:center;gap:6px;">
                 ${icon('externalLink', 13)} <span>Open Folder</span>
@@ -300,7 +300,7 @@ function renderAbout() {
               </span>
             </div>
 
-            <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(260px, 1fr));gap:8px;">
+            <div class="portfolio-reqs-checklist" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(min(100%, 240px), 1fr));gap:8px;">
               ${activeReq.items.map((item) => {
                 const itemName = getReqItemName(item);
                 if (!itemName) return '';
@@ -332,38 +332,36 @@ function renderAbout() {
       </div>
       ` : `
       <!-- OJT Requirements Section (Unassigned State) -->
-      <div class="profile-section" style="padding:18px 22px;border:1px dashed var(--border-subtle);background:var(--bg-surface);border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,0.02);">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;">
-          <div style="display:flex;align-items:center;gap:12px;min-width:0;flex:1;">
-            <div style="width:38px;height:38px;border-radius:10px;background:rgba(100,116,139,0.1);color:#64748b;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+      <div class="profile-section portfolio-reqs-section portfolio-reqs-section--unassigned" style="padding:18px 22px;border:1px dashed var(--border-subtle);background:var(--bg-surface);border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,0.02);">
+        <div class="portfolio-reqs-header">
+          <div class="portfolio-reqs-info">
+            <div class="portfolio-reqs-icon" style="width:38px;height:38px;border-radius:10px;background:rgba(100,116,139,0.1);color:#64748b;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">
               ${icon('folder', 18)}
             </div>
-            <div style="min-width:0;flex:1;">
-              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                <h4 style="margin:0;font-size:1.02rem;font-weight:700;color:var(--text-primary);">Pre-Deployment OJT Document Packet</h4>
+            <div class="portfolio-reqs-text">
+              <div class="portfolio-reqs-title-row">
+                <h4 class="portfolio-reqs-title">Pre-Deployment OJT Document Packet</h4>
                 <span class="badge" style="background:rgba(100,116,139,0.12);color:#475569;font-weight:700;font-size:0.72rem;padding:2px 8px;">Not Assigned</span>
               </div>
-              <p style="font-size:0.78rem;color:var(--text-secondary);margin:3px 0 0;line-height:1.4;">
+              <p class="portfolio-reqs-meta">
                 No pre-deployment requirements have been assigned to your account yet. Your designated OJT Coordinator will assign your required document packet prior to company deployment.
               </p>
             </div>
           </div>
-          ${P.requirements_drive_url ? `
-            <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+          <div class="portfolio-reqs-actions">
+            ${P.requirements_drive_url ? `
               <a href="${P.requirements_drive_url}" target="_blank" rel="noopener" class="btn btn--secondary btn--sm" style="font-size:0.8rem;padding:5px 12px;display:inline-flex;align-items:center;gap:6px;">
                 ${icon('externalLink', 13)} <span>Open Folder</span>
               </a>
               <button class="btn btn--secondary btn--sm" id="edit-drive-btn" style="font-size:0.8rem;padding:5px 12px;display:inline-flex;align-items:center;gap:6px;">
                 ${icon('edit', 13)} <span>Update Drive Link</span>
               </button>
-            </div>
-          ` : `
-            <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+            ` : `
               <button class="btn btn--secondary btn--sm" id="edit-drive-btn" style="font-size:0.8rem;padding:5px 12px;display:inline-flex;align-items:center;gap:6px;">
                 ${icon('uploadCloud', 13)} <span>Pre-link Drive Folder</span>
               </button>
-            </div>
-          `}
+            `}
+          </div>
         </div>
         ${P.requirements_drive_url ? `
           <div style="margin-top:12px;padding:8px 12px;background:var(--bg-surface);border:1px solid rgba(2,132,199,0.2);border-radius:8px;display:flex;align-items:center;gap:8px;font-size:0.8rem;">
@@ -3178,11 +3176,11 @@ export async function renderPortfolio(container) {
 
   // ── Fill header ──
   const avatarEl = container.querySelector('#profile-avatar');
+  const initials = (P.name || storeUser?.name || storeUser?.email || '?').trim().split(/\s+/).map(n=>n[0]).join('').toUpperCase().slice(0,2);
   if (P.avatar_url) {
     const absUrl = P.avatar_url.startsWith('http') ? P.avatar_url : `http://localhost:8000${P.avatar_url}`;
-    avatarEl.innerHTML = `<img src="${absUrl}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;">`;
+    avatarEl.innerHTML = `<img src="${absUrl}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" onerror="this.onerror=null;this.parentElement.innerHTML='<span class=\'profile-header__initials\'>${initials}</span>';">`;
   } else {
-    const initials = (P.name || storeUser?.name || '?').trim().split(/\s+/).map(n=>n[0]).join('').toUpperCase().slice(0,2);
     avatarEl.innerHTML = `<span class="profile-header__initials">${initials}</span>`;
   }
 

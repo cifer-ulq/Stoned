@@ -9,6 +9,9 @@
     margin: 0 auto;
     width: 100%;
   }
+  .portfolio-reqs-checklist {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)) !important;
+  }
 }
 
 /* ── Compact desktop with two sidebars (1201px - 1380px) ── */
@@ -66,6 +69,12 @@
 
   .layout__center { margin-left: 72px; }
 
+  /* OJT Slots Grid: 2 columns on tablet landscape / medium screens */
+  .ojt-slots-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 18px !important;
+  }
+
   .home-hero__title { font-size: var(--text-3xl); }
   .jm-grid { grid-template-columns: 1fr; }
   .jm-toolbar { flex-direction: column; align-items: stretch; }
@@ -77,6 +86,7 @@
   .iv-stats { grid-template-columns: repeat(2, 1fr); }
   .portfolio-detail-cards { grid-template-columns: 1fr; }
   .ojt-map-cal-row { grid-template-columns: 1fr; }
+  .resume-card.resume-card--onepage { padding: 26px 28px; }
   .navbar__center { gap: 0; }
   .navbar__tab { min-width: 60px; padding: 0 var(--space-3); }
 }
@@ -204,8 +214,13 @@
   .profile-header__top {
     flex-direction: column;
     align-items: flex-start;
-    gap: var(--space-3);
-    margin-top: -45px;
+    gap: var(--space-2);
+    margin-top: 0 !important;
+  }
+
+  .profile-header__avatar-wrap {
+    margin-top: -50px !important;
+    z-index: 3;
   }
 
   .profile-header__name-actions {
@@ -228,8 +243,111 @@
     padding: var(--space-4);
   }
 
+  .resume-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 10px 14px;
+  }
+  .resume-toolbar__info {
+    justify-content: space-between;
+  }
+  .resume-toolbar__actions {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .resume-toolbar__actions .btn,
+  .resume-action-btn,
+  .resume-download-btn {
+    flex: 1 1 auto;
+    justify-content: center;
+    min-height: 36px;
+  }
+
   .resume-card.resume-card--onepage {
-    padding: 20px 16px;
+    padding: 22px 18px;
+  }
+  .resume-doc-name {
+    font-size: 1.35rem;
+  }
+  .resume-contact-bar {
+    font-size: 0.74rem;
+    gap: 5px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .profile-tabs {
+    gap: 4px;
+    padding: 0 var(--space-2);
+    margin-top: var(--space-4);
+  }
+  .profile-tabs__item {
+    padding: var(--space-2.5) var(--space-3.5);
+    font-size: 0.85rem;
+  }
+
+  .portfolio-reqs-header {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 14px !important;
+  }
+
+  .portfolio-reqs-info {
+    width: 100% !important;
+    min-width: 100% !important;
+    flex: 1 1 100% !important;
+  }
+
+  .portfolio-reqs-actions {
+    width: 100% !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  .portfolio-reqs-actions .btn,
+  .portfolio-reqs-actions a.btn {
+    flex: 1 1 calc(50% - 4px) !important;
+    justify-content: center !important;
+    height: 38px !important;
+    font-size: 0.82rem !important;
+  }
+
+  .ojt-hero-banner {
+    padding: 22px 20px !important;
+  }
+  .ojt-hero-banner__divider {
+    display: none !important;
+  }
+  .ojt-hero-stats-wrap {
+    gap: 14px 20px !important;
+  }
+
+  .ojt-req-gate-banner {
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 12px !important;
+    padding: 14px 16px !important;
+  }
+  .ojt-req-gate-banner__action {
+    width: 100% !important;
+    margin-left: 0 !important;
+    align-self: stretch !important;
+  }
+  .ojt-req-gate-banner__action .btn {
+    width: 100%;
+    justify-content: center;
+    height: 38px;
+  }
+
+  .ojt-card__header {
+    gap: 10px;
+  }
+  .ojt-card__title {
+    font-size: 0.95rem;
   }
 
   .home-hero { padding: clamp(var(--space-4), 4vw, var(--space-8)) 0 clamp(var(--space-3), 3vw, var(--space-6)); }
@@ -261,6 +379,13 @@
   .iv-cal { position: static; }
   .iv-card__meta { gap: var(--space-1); }
   .iv-card__chip { font-size: 0.65rem; padding: 2px var(--space-2); }
+  .iv-filter-bar {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 6px;
+  }
+  .iv-filter-bar::-webkit-scrollbar { display: none; }
 
   .jm-hero { padding: var(--space-8) var(--space-4) var(--space-5); }
   .jm-hero__title { font-size: var(--text-xl); }
@@ -292,6 +417,28 @@
     padding-top: 10px;
     border-top: 1px solid var(--border-default);
   }
+
+  /* OJT Tracker — Tablet & Below (<= 768px) */
+  .ojt-tracker-progress-row {
+    flex-direction: column !important;
+    gap: 14px !important;
+  }
+  .ojt-progress-ring-card {
+    width: 100% !important;
+    min-width: 0 !important;
+    padding: 20px 16px !important;
+  }
+  .ojt-deployment-card {
+    width: 100% !important;
+    min-width: 0 !important;
+    padding: 20px 18px !important;
+  }
+  .ojt-status-banner-card {
+    padding: 14px 16px !important;
+  }
+  .ojt-eval-terms-grid {
+    grid-template-columns: 1fr !important;
+  }
 }
 
 /* ── Small mobile (<= 576px) ── */
@@ -302,11 +449,191 @@
 
   .profile-cover {
     margin: calc(-1 * var(--space-3)) calc(-1 * var(--space-3)) 0;
+    height: 135px;
   }
 
   .profile-header {
     margin: 0 calc(-1 * var(--space-3));
     padding: 0 var(--space-3) var(--space-4);
+  }
+
+  .profile-header__avatar-wrap {
+    margin-top: -45px !important;
+  }
+  .profile-header__avatar {
+    width: 90px;
+    height: 90px;
+    border-width: 3px;
+  }
+
+  .profile-header__initials {
+    font-size: 1.85rem;
+  }
+
+  .profile-header__name {
+    font-size: 1.4rem;
+  }
+
+  .profile-header__headline {
+    font-size: 0.8rem;
+  }
+
+  .profile-header__meta {
+    gap: 6px 12px;
+  }
+
+  .profile-tabs__item {
+    padding: 8px 12px;
+    font-size: 0.8rem;
+  }
+
+  .resume-card.resume-card--onepage {
+    padding: 18px 14px;
+  }
+
+  .resume-doc-name {
+    font-size: 1.25rem;
+  }
+
+  .resume-doc-headline {
+    font-size: 0.76rem;
+  }
+
+  .resume-contact-bar {
+    font-size: 0.72rem;
+    gap: 4px;
+  }
+
+  .resume-entry__header {
+    gap: 2px 8px;
+  }
+
+  .resume-entry__title-group {
+    font-size: 0.8rem;
+  }
+
+  .resume-entry__desc {
+    font-size: 0.74rem;
+  }
+
+  .skills-header__left {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .skills-header__add-btn {
+    width: 100%;
+    justify-content: center;
+    height: 38px;
+  }
+
+  .skills-stats-banner {
+    gap: 6px;
+    padding: 8px 10px;
+  }
+
+  .skills-stat-pill {
+    font-size: 0.72rem;
+    padding: 3px 9px;
+  }
+
+  .works-gallery {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .work-card__preview {
+    height: 160px;
+  }
+
+  .work-card__body {
+    padding: 14px;
+  }
+
+  .achievements-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .achievement-card {
+    padding: 16px 14px;
+    min-height: auto;
+  }
+
+  .ojt-quick-filters-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .ojt-quick-filters-row #ojt-result-count {
+    width: 100%;
+  }
+
+  .ojt-card__header {
+    padding: 14px 14px 0;
+  }
+
+  .ojt-card__logo {
+    width: 40px;
+    height: 40px;
+    font-size: 0.95rem;
+  }
+
+  .ojt-card__meta-bar {
+    margin: 10px 14px 0;
+    gap: 8px 12px;
+    font-size: 0.72rem;
+  }
+
+  .ojt-card__body {
+    padding: 8px 14px 0;
+  }
+
+  .ojt-card__slots {
+    padding: 0 14px 10px;
+  }
+
+  .ojt-card__footer {
+    padding: 10px 14px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .ojt-card__actions {
+    flex: 1 1 auto;
+    justify-content: flex-end;
+  }
+
+  .modal-box {
+    width: 95% !important;
+    max-width: 95% !important;
+    margin: 0 auto;
+  }
+
+  .modal-header {
+    padding: 14px 16px !important;
+  }
+
+  .modal-body {
+    padding: 14px 16px !important;
+  }
+
+  .modal-footer {
+    padding: 12px 16px !important;
+    flex-direction: column-reverse;
+    gap: 8px;
+  }
+
+  .modal-footer .btn {
+    width: 100%;
+    justify-content: center;
+    height: 38px;
+  }
+
+  .form-row .form-group {
+    flex: 1 1 100% !important;
+    min-width: 100% !important;
   }
 
   .profile-stat:not(:last-child) {
@@ -333,17 +660,437 @@
   .app-stats { grid-template-columns: repeat(2, 1fr); }
   .app-hero { padding: var(--space-6) var(--space-4) var(--space-4); }
   .app-hero__title { font-size: var(--text-xl); }
-  .app-card { flex-direction: column; }
-  .app-card__left { display: none; }
-  .app-tracker { display: none; }
+  /* Applications Page: Responsive Cards */
+  .app-card {
+    display: flex;
+    flex-direction: row;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 14px 12px;
+  }
+  .app-card__left {
+    display: flex;
+    flex-shrink: 0;
+  }
+  .app-card__logo {
+    width: 38px;
+    height: 38px;
+    font-size: 0.95rem;
+    border-radius: var(--radius-md);
+  }
+  .app-card__body {
+    flex: 1;
+    min-width: 0;
+  }
+  .app-card__row-top {
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 6px;
+  }
+  .app-card__title {
+    font-size: 0.92rem;
+    word-break: break-word;
+    line-height: 1.35;
+  }
+  .app-card__company {
+    font-size: 0.76rem;
+  }
+  .app-tracker {
+    display: flex !important;
+    width: 100%;
+    margin: 8px 0;
+    padding: 4px 0;
+  }
+  .app-tracker__dot {
+    width: 18px;
+    height: 18px;
+  }
+  .app-card__row-bottom {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding-top: 10px;
+    margin-top: 4px;
+  }
+  .app-card__actions {
+    width: 100%;
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .app-card__actions .app-card__btn {
+    flex: 1 1 auto;
+    justify-content: center;
+    min-height: 36px;
+    padding: 0 10px;
+    font-size: 0.74rem;
+  }
+
+  /* OJT Application Card */
+  .ojt-app-card__header {
+    padding: 12px 14px 10px;
+    gap: 10px;
+  }
+  .ojt-app-card__avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: var(--radius-md);
+  }
+  .ojt-app-card__title {
+    font-size: 0.92rem;
+    white-space: normal;
+    word-break: break-word;
+    line-height: 1.35;
+  }
+  .ojt-app-card__company {
+    font-size: 0.76rem;
+  }
+  .ojt-app-card__timeline {
+    padding: 12px 14px 10px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+  .ojt-timeline {
+    min-width: 520px;
+  }
+  .ojt-timeline__dot {
+    width: 24px;
+    height: 24px;
+  }
+  .ojt-timeline__line {
+    top: 12px;
+  }
+  .ojt-timeline__label {
+    font-size: 0.62rem;
+    max-width: 68px;
+  }
+  .ojt-app-card__guidance {
+    margin: 0 14px 10px !important;
+    padding: 8px 10px !important;
+    font-size: 0.76rem;
+  }
+  .ojt-app-card__footer {
+    padding: 10px 14px 12px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .ojt-app-card__actions {
+    width: 100%;
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .ojt-app-card__actions .app-card__btn {
+    flex: 1 1 auto;
+    justify-content: center;
+    min-height: 36px;
+    padding: 0 10px;
+    font-size: 0.74rem;
+  }
+
+  /* Job Match Cards: Responsive */
+  .jm-card__top {
+    padding: 14px 14px 0;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .jm-card__brand {
+    gap: 10px;
+  }
+  .jm-card__logo {
+    width: 40px;
+    height: 40px;
+    font-size: 1rem;
+    border-radius: var(--radius-md);
+  }
+  .jm-card__title {
+    font-size: 0.92rem;
+    min-height: auto;
+    line-height: 1.35;
+  }
+  .jm-card__status-col {
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 6px;
+    margin-top: 4px;
+  }
+  .jm-card__meta {
+    gap: 8px 12px;
+    font-size: 0.74rem;
+  }
+  .jm-card__desc {
+    font-size: 0.78rem;
+    margin-bottom: 8px;
+  }
+  .jm-card__insight {
+    padding: 8px 10px;
+    font-size: 0.74rem;
+  }
+  .jm-card__footer {
+    padding: 10px 14px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .jm-card__actions {
+    width: 100%;
+    display: flex;
+    gap: 6px;
+  }
+  .jm-card__apply,
+  .jm-card__applied-btn {
+    flex: 1;
+    justify-content: center;
+    min-height: 36px;
+    font-size: 0.76rem;
+  }
+  .jm-card__bookmark {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+  }
+
+  /* OJT Listing Cards: Scaling for Mobile */
+  .ojt-card__header {
+    padding: 14px 14px 0 !important;
+    gap: 10px !important;
+  }
+  .ojt-card__logo {
+    width: 44px !important;
+    height: 44px !important;
+    font-size: 1.1rem !important;
+  }
+  .ojt-card__title {
+    font-size: 0.95rem !important;
+  }
+  .ojt-card__company {
+    font-size: 0.78rem !important;
+  }
+  .ojt-card__meta-bar {
+    margin: 10px 14px 0 !important;
+    padding: 8px 10px !important;
+    gap: 8px !important;
+    font-size: 0.74rem !important;
+  }
+  .ojt-card__match-callout {
+    margin: 10px 14px 0 !important;
+    padding: 7px 10px !important;
+    font-size: 0.74rem !important;
+  }
+  .ojt-card__body {
+    padding: 10px 14px 0 !important;
+  }
+  .ojt-card__desc {
+    font-size: 0.78rem !important;
+  }
+  .ojt-card__slots {
+    padding: 0 14px 12px !important;
+  }
+  .ojt-card__footer {
+    padding: 10px 14px !important;
+  }
   .alumni-network { grid-template-columns: 1fr; }
 
-  .iv-stats { grid-template-columns: 1fr; }
-  .iv-hero__title { font-size: var(--text-xl); }
-  .iv-card__meeting { flex-direction: column; align-items: flex-start; }
-  .iv-card__actions { flex-direction: column; }
-  .iv-card__join { width: 100%; }
-  .iv-tl__time { min-width: 55px; }
+  /* Interview Hub — Mobile Landscape & Phones (<= 576px) */
+  .iv-hero {
+    padding: 22px 16px 20px !important;
+    border-radius: var(--radius-xl) !important;
+    margin-bottom: 16px !important;
+  }
+  .iv-hero__title {
+    font-size: clamp(1.4rem, 6vw, 1.7rem) !important;
+    line-height: 1.2 !important;
+    margin-bottom: 8px !important;
+  }
+  .iv-hero__subtitle {
+    font-size: 0.82rem !important;
+    line-height: 1.5 !important;
+    max-width: 100% !important;
+  }
+
+  .iv-stats {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+    margin-bottom: 16px !important;
+  }
+  .iv-stat {
+    padding: 12px 12px !important;
+    gap: 10px !important;
+    border-radius: var(--radius-lg) !important;
+  }
+  .iv-stat__icon {
+    width: 38px !important;
+    height: 38px !important;
+    border-radius: 10px !important;
+  }
+  .iv-stat__value {
+    font-size: 1.35rem !important;
+  }
+  .iv-stat__label {
+    font-size: 0.72rem !important;
+  }
+
+  .iv-cal {
+    padding: 16px 14px !important;
+    border-radius: var(--radius-xl) !important;
+  }
+  .iv-cal__nav {
+    width: 34px !important;
+    height: 34px !important;
+  }
+  .iv-cal__grid {
+    gap: 2px !important;
+  }
+  .iv-cal__cell {
+    font-size: 0.75rem !important;
+  }
+  .iv-cal__legend {
+    gap: 12px !important;
+    flex-wrap: wrap !important;
+  }
+  .iv-cal__next-row {
+    flex-wrap: wrap !important;
+    gap: 10px !important;
+  }
+
+  .iv-filter-bar {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    padding-bottom: 4px !important;
+    gap: 6px !important;
+  }
+  .iv-filter-bar::-webkit-scrollbar {
+    display: none !important;
+  }
+  .iv-filter-btn {
+    height: 32px !important;
+    padding: 0 12px !important;
+    font-size: 0.74rem !important;
+  }
+
+  .iv-card__inner {
+    padding: 16px 14px !important;
+    gap: 12px !important;
+  }
+  .iv-card__head {
+    gap: 10px !important;
+  }
+  .iv-card__avatar {
+    width: 42px !important;
+    height: 42px !important;
+    font-size: 1.15rem !important;
+    border-radius: var(--radius-md) !important;
+  }
+  .iv-card__title {
+    font-size: 0.98rem !important;
+    line-height: 1.3 !important;
+  }
+  .iv-card__company {
+    font-size: 0.8rem !important;
+  }
+  .iv-card__meta {
+    gap: 6px !important;
+  }
+  .iv-card__chip {
+    font-size: 0.7rem !important;
+    padding: 3px 8px !important;
+  }
+  .iv-card__meeting {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+    padding: 10px 12px !important;
+  }
+  .iv-card__meeting-link {
+    width: 100% !important;
+    word-break: break-all !important;
+  }
+  .iv-card__loc-text {
+    font-size: 0.76rem !important;
+    word-break: break-word !important;
+  }
+  .iv-card__actions {
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 8px !important;
+    padding-top: 12px !important;
+  }
+  .iv-card__actions .btn,
+  .iv-card__join,
+  .iv-card__btn-view,
+  .iv-card__copy,
+  .iv-card__copy-loc {
+    width: 100% !important;
+    justify-content: center !important;
+    min-height: 38px !important;
+    font-size: 0.8rem !important;
+    text-align: center !important;
+  }
+
+  .iv-timeline {
+    padding: 16px 14px !important;
+    border-radius: var(--radius-xl) !important;
+  }
+  .iv-tl {
+    padding: 10px 8px !important;
+    gap: 8px !important;
+  }
+  .iv-tl__time {
+    min-width: 55px !important;
+    font-size: 0.74rem !important;
+  }
+  .iv-tl__title {
+    font-size: 0.8rem !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+  }
+  .iv-tl__sub {
+    font-size: 0.72rem !important;
+  }
+
+  /* Interview Detail Modal */
+  .iv-detail-modal-box,
+  #iv-detail-modal-overlay .modal-box {
+    width: 95vw !important;
+    max-width: 95vw !important;
+    max-height: 90vh !important;
+    border-radius: 14px !important;
+    margin: 0 auto !important;
+  }
+  .iv-modal__grid {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+  .iv-modal__stat {
+    padding: 8px 12px !important;
+  }
+  .iv-modal__loc-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+  }
+  .iv-modal__loc-row .btn {
+    width: 100% !important;
+    justify-content: center !important;
+    min-height: 36px !important;
+  }
+  #iv-detail-modal-overlay .modal-footer {
+    flex-direction: column-reverse !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+    padding: 12px 14px !important;
+  }
+  #iv-detail-modal-overlay .modal-footer .btn {
+    width: 100% !important;
+    justify-content: center !important;
+    min-height: 38px !important;
+  }
 
   .stat-card { padding: var(--space-4); }
 
@@ -378,12 +1125,325 @@
     grid-template-columns: 1fr !important;
   }
 
+  /* OJT Tracker — Mobile Landscape & Phones (<= 576px) */
+  .ojt-prestart {
+    gap: 16px;
+    padding-bottom: 24px;
+  }
+
+  .ojt-prestart__title {
+    font-size: clamp(1.22rem, 5vw, 1.45rem);
+    line-height: 1.3;
+  }
+
+  .ojt-prestart__subtitle {
+    font-size: 0.82rem;
+    line-height: 1.5;
+  }
+
+  .ojt-prestart-hero {
+    padding: 18px 16px;
+    gap: 16px;
+    border-radius: 14px;
+  }
+
+  .ojt-prestart-hero__main {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  .ojt-countdown-pill {
+    width: 100%;
+    justify-content: center;
+    font-size: 0.82rem;
+    padding: 8px 14px;
+  }
+
+  .ojt-dossier-card,
+  .ojt-instructions-card,
+  .ojt-guide-card {
+    padding: 18px 16px;
+    border-radius: 14px;
+  }
+
+  .ojt-dossier-actions {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .ojt-dossier-actions .btn {
+    width: 100%;
+    justify-content: center;
+    min-height: 38px;
+  }
+
+  /* Active Tracker Header */
+  .ojt-tracker-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+
+  .ojt-tracker-title {
+    font-size: 1.35rem !important;
+    gap: 8px !important;
+  }
+
+  .ojt-tracker-subtitle {
+    font-size: 0.82rem !important;
+  }
+
+  .ojt-tracker-header-actions {
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+  }
+
+  .ojt-shift-pill {
+    width: 100% !important;
+    justify-content: center !important;
+    font-size: 0.76rem !important;
+    padding: 6px 12px !important;
+    text-align: center !important;
+    box-sizing: border-box;
+  }
+
+  #btn-morning-in,
+  #btn-morning-out,
+  #btn-afternoon-in,
+  #btn-afternoon-out {
+    width: 100% !important;
+    justify-content: center !important;
+    min-height: 42px !important;
+    font-size: 0.86rem !important;
+  }
+
+  /* Tracker Deployment Actions */
+  .ojt-deployment-card__header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  .ojt-deployment-card__actions {
+    width: 100% !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+
+  .ojt-deployment-card__actions .btn {
+    flex: 1 1 calc(50% - 4px) !important;
+    justify-content: center !important;
+    min-height: 36px !important;
+    font-size: 0.72rem !important;
+  }
+
+  #tracker-btn-coord-chat {
+    width: 100% !important;
+    flex: 1 1 100% !important;
+  }
+
+  /* Status Banners */
+  .ojt-status-banner-card {
+    padding: 14px !important;
+  }
+
+  .ojt-status-banner-actions {
+    width: 100% !important;
+    justify-content: flex-start !important;
+    align-items: stretch !important;
+    margin-top: 10px !important;
+  }
+
+  .ojt-status-banner-actions .btn {
+    width: 100% !important;
+    justify-content: center !important;
+    min-height: 36px !important;
+  }
+
+  /* Accredited Hours Banner */
+  .ojt-accredited-banner {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+    padding: 12px 14px !important;
+  }
+
+  /* Map and Legend */
+  .ojt-map-card #ojt-map {
+    min-height: 250px !important;
+  }
+
+  .ojt-map-footer {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+    padding: 10px 12px !important;
+  }
+
+  .ojt-map-legend {
+    display: flex !important;
+    gap: 12px !important;
+    flex-wrap: wrap !important;
+    width: 100% !important;
+  }
+
+  .ojt-map-filters {
+    width: 100% !important;
+    display: flex !important;
+    gap: 6px !important;
+    margin-left: 0 !important;
+  }
+
+  .ojt-map-filters .btn {
+    flex: 1 1 0 !important;
+    height: 28px !important;
+    justify-content: center !important;
+    font-size: 0.7rem !important;
+    padding: 0 4px !important;
+  }
+
+  /* Time Log Table & Pagination */
+  #time-logs-pagination {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  #pagination-controls {
+    width: 100% !important;
+    justify-content: space-between !important;
+  }
+
+  #pagination-controls .btn {
+    height: 32px !important;
+    min-width: 32px !important;
+    font-size: 0.78rem !important;
+  }
+
+  /* Modals */
+  .ojt-tracker-modal {
+    width: 95vw !important;
+    max-width: 95vw !important;
+    max-height: 90vh !important;
+    border-radius: 14px !important;
+    margin: 0 auto !important;
+  }
+
+  .ojt-tracker-modal form {
+    padding: 16px 14px !important;
+  }
+
+  .ojt-tracker-modal .modal__body {
+    padding: 14px !important;
+  }
+
+  .ojt-tracker-modal .modal__footer {
+    padding: 12px 14px !important;
+    flex-direction: column-reverse !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+  }
+
+  .ojt-tracker-modal .modal__footer .btn {
+    width: 100% !important;
+    justify-content: center !important;
+    min-height: 40px !important;
+  }
+
   .ojt-modal__header,
   .app-details-modal__header,
   .app-details-modal__body,
   .app-details-modal__footer {
-    padding-left: 16px !important;
-    padding-right: 16px !important;
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+  }
+
+  /* Application Details Modal Mobile Optimization */
+  .app-details-modal__box {
+    width: 96vw !important;
+    max-height: 92vh !important;
+    border-radius: var(--radius-xl) !important;
+  }
+  .app-details-modal__header {
+    padding: 14px 14px 12px !important;
+    gap: 10px !important;
+  }
+  .app-details-modal__top-left {
+    gap: 10px !important;
+  }
+  .app-details-modal__avatar {
+    width: 38px !important;
+    height: 38px !important;
+    font-size: 0.95rem !important;
+    border-radius: var(--radius-md) !important;
+  }
+  .app-details-modal__title {
+    font-size: 1.05rem !important;
+    word-break: break-word;
+  }
+  .app-details-modal__company {
+    font-size: 0.8rem !important;
+  }
+  .app-details-modal__badges {
+    gap: 4px !important;
+    margin-bottom: 4px !important;
+  }
+  .app-details-modal__ref {
+    font-size: 0.65rem !important;
+    padding: 1px 5px !important;
+  }
+  .app-details-modal__body {
+    padding: 14px !important;
+    gap: 14px !important;
+  }
+  .app-details-timeline-card {
+    padding: 12px !important;
+  }
+  .app-details-timeline-card .app-tracker {
+    display: flex !important;
+    padding: 4px 0 !important;
+  }
+  .app-details-grid {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+  .app-details-grid__item {
+    padding: 8px 10px !important;
+    gap: 8px !important;
+  }
+  .app-details-grid__icon {
+    width: 30px !important;
+    height: 30px !important;
+  }
+  .app-details-grid__value {
+    word-break: break-word;
+  }
+  .app-details-modal__footer {
+    padding: 12px 14px !important;
+    flex-direction: column-reverse !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+  }
+  .app-details-modal__footer > div,
+  .app-details-modal__actions {
+    width: 100% !important;
+    display: flex !important;
+    gap: 8px !important;
+  }
+  .app-details-modal__footer .btn,
+  .app-details-modal__footer .app-card__btn {
+    flex: 1 1 auto !important;
+    width: 100% !important;
+    justify-content: center !important;
+    height: 38px !important;
+    font-size: 0.78rem !important;
   }
 
   .ojt-modal__body {
@@ -395,18 +1455,342 @@
 @media (max-width: 480px) {
   .ojt-stepper {
     grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .ojt-stepper__item {
+    align-items: center !important;
+    gap: 12px !important;
+  }
+
+  .ojt-stepper__content {
+    flex-direction: row !important;
+    align-items: baseline !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+
+  .ojt-stepper__step-num {
+    min-width: 46px !important;
+  }
+
+  /* Interview Hub <= 480px */
+  .iv-stats {
+    gap: 8px !important;
+  }
+  .iv-stat {
+    padding: 10px 10px !important;
+  }
+  .iv-card__meta {
+    gap: 5px !important;
+  }
+  .iv-card__chip {
+    font-size: 0.68rem !important;
+    padding: 2.5px 7px !important;
   }
 
   .ojt-modal__stats {
     grid-template-columns: 1fr 1fr !important;
   }
 
+  /* Applications Page <= 480px */
   .app-stats {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+  .app-stat-card {
+    padding: 10px 10px !important;
+    gap: 8px !important;
+  }
+  .app-stat-card__icon {
+    width: 36px !important;
+    height: 36px !important;
+  }
+  .app-stat-card__value {
+    font-size: clamp(1.15rem, 4.5vw, 1.45rem) !important;
+  }
+  .app-stat-card__label {
+    font-size: 0.68rem !important;
+    line-height: 1.25 !important;
+  }
+  .app-type-tabs {
+    gap: 3px;
+    padding: 3px;
+  }
+  .app-type-tab {
+    padding: 6px 12px !important;
+    font-size: 0.78rem !important;
+    gap: 5px;
+  }
+  .app-type-tabs-actions {
+    width: 100% !important;
+    display: flex !important;
+    gap: 6px !important;
+    flex-wrap: wrap !important;
+  }
+  .app-type-tabs-actions .btn {
+    flex: 1 1 auto !important;
+    justify-content: center !important;
+    height: 32px !important;
+    padding: 0 10px !important;
+    font-size: 0.74rem !important;
+  }
+  .app-status-callout {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding: 10px 12px !important;
   }
 }
 
 
+
+
+/* ── Standard mobile (<= 430px) ── */
+@media (max-width: 430px) {
+  /* OJT Tracker — Standard Mobile (<= 430px) */
+  .ojt-date-badge {
+    width: 60px !important;
+    height: 66px !important;
+  }
+
+  .ojt-date-badge__day {
+    font-size: 1.35rem !important;
+  }
+
+  .ojt-prestart-hero__date-meta-val {
+    font-size: 1.05rem !important;
+  }
+
+  .ojt-dossier-card,
+  .ojt-instructions-card,
+  .ojt-guide-card {
+    padding: 14px 12px !important;
+    gap: 12px !important;
+  }
+
+  .ojt-progress-ring-card {
+    padding: 16px 12px !important;
+  }
+
+  .ojt-deployment-card {
+    padding: 16px 12px !important;
+  }
+
+  .ojt-deployment-card__actions .btn {
+    flex: 1 1 100% !important;
+  }
+
+  /* Interview Hub — Standard Mobile (<= 430px) */
+  .iv-hero {
+    padding: 18px 14px 16px !important;
+  }
+  .iv-hero__title {
+    font-size: 1.35rem !important;
+  }
+  .iv-hero__subtitle {
+    font-size: 0.78rem !important;
+  }
+
+  .iv-stats {
+    gap: 8px !important;
+  }
+  .iv-stat {
+    padding: 10px 10px !important;
+    gap: 8px !important;
+  }
+  .iv-stat__icon {
+    width: 34px !important;
+    height: 34px !important;
+  }
+  .iv-stat__value {
+    font-size: 1.22rem !important;
+  }
+  .iv-stat__label {
+    font-size: 0.68rem !important;
+  }
+
+  .iv-cal {
+    padding: 14px 10px !important;
+  }
+  .iv-cal__grid {
+    gap: 1.5px !important;
+  }
+  .iv-cal__cell {
+    font-size: 0.72rem !important;
+  }
+  .iv-cal__nav {
+    width: 32px !important;
+    height: 32px !important;
+  }
+
+  .iv-card__inner {
+    padding: 14px 12px !important;
+  }
+  .iv-card__avatar {
+    width: 38px !important;
+    height: 38px !important;
+    font-size: 1.05rem !important;
+  }
+  .iv-card__title {
+    font-size: 0.92rem !important;
+  }
+  .iv-card__company {
+    font-size: 0.76rem !important;
+  }
+  .iv-card__chip {
+    font-size: 0.66rem !important;
+    padding: 2.5px 7px !important;
+  }
+
+  .profile-header__avatar-wrap {
+    margin-top: -40px !important;
+  }
+  .profile-header__avatar {
+    width: 82px;
+    height: 82px;
+    margin-top: -40px;
+  }
+
+  .profile-header__initials {
+    font-size: 1.65rem;
+  }
+
+  .profile-header__name {
+    font-size: 1.3rem;
+  }
+
+  .profile-header__actions .btn {
+    font-size: 0.8rem;
+    padding: 6px 12px;
+    height: 36px;
+  }
+
+  .portfolio-reqs-actions .btn,
+  .portfolio-reqs-actions a.btn {
+    flex: 1 1 100% !important;
+    width: 100% !important;
+    height: 38px !important;
+  }
+
+  .profile-tabs__item {
+    padding: 7px 11px;
+    font-size: 0.78rem;
+  }
+
+  .resume-card.resume-card--onepage {
+    padding: 16px 12px;
+  }
+
+  .resume-doc-name {
+    font-size: 1.2rem;
+  }
+
+  .resume-doc-headline {
+    font-size: 0.74rem;
+  }
+
+  .resume-contact-bar {
+    font-size: 0.7rem;
+    gap: 3px 6px;
+  }
+
+  .resume-section__title {
+    font-size: 0.78rem;
+  }
+
+  .resume-entry__title {
+    font-size: 0.8rem;
+  }
+
+  .ojt-filter-controls .filter-select-wrap {
+    flex: 1 1 100% !important;
+    min-width: 100% !important;
+    width: 100% !important;
+  }
+
+  .ojt-card__header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .ojt-card__badges {
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 4px;
+    margin-top: 4px;
+  }
+
+  .ojt-card__footer {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .ojt-card__posted {
+    justify-content: space-between;
+  }
+
+  .ojt-card__actions {
+    width: 100%;
+    display: flex;
+    gap: 6px;
+  }
+
+  .ojt-card__actions .btn {
+    flex: 1 1 auto;
+    justify-content: center;
+    height: 34px;
+    padding: 0 8px;
+    font-size: 0.72rem;
+  }
+
+  .ojt-modal__header {
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+
+  .ojt-modal__header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .ojt-modal__footer {
+    flex-direction: column-reverse;
+    gap: 8px;
+  }
+
+  .ojt-modal__footer .btn {
+    width: 100%;
+    justify-content: center;
+    height: 38px;
+  }
+
+  /* Applications Page <= 430px */
+  .app-card {
+    padding: 12px 10px !important;
+    gap: 10px !important;
+  }
+  .app-card__logo {
+    width: 36px !important;
+    height: 36px !important;
+  }
+  .app-card__title,
+  .ojt-app-card__title {
+    font-size: 0.88rem !important;
+  }
+  .ojt-app-card__header {
+    padding: 10px 12px !important;
+    gap: 8px !important;
+  }
+  .ojt-app-card__avatar {
+    width: 36px !important;
+    height: 36px !important;
+  }
+}
 
 /* ── Ultra-small mobile (<= 360px) ── */
 @media (max-width: 360px) {
@@ -414,6 +1798,534 @@
     padding-left: var(--space-2);
     padding-right: var(--space-2);
     padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* OJT Tracker — Small Mobile 320px–360px */
+  .ojt-prestart {
+    gap: 12px !important;
+    padding-bottom: 16px !important;
+  }
+
+  .ojt-prestart__title {
+    font-size: 1.15rem !important;
+    gap: 6px !important;
+  }
+
+  .ojt-prestart__title svg {
+    width: 20px !important;
+    height: 20px !important;
+    flex-shrink: 0;
+  }
+
+  .ojt-prestart__subtitle {
+    font-size: 0.78rem !important;
+    line-height: 1.45 !important;
+  }
+
+  .ojt-prestart-hero {
+    padding: 12px 10px !important;
+    gap: 12px !important;
+    border-radius: 12px !important;
+  }
+
+  .ojt-prestart-hero__date-group {
+    gap: 10px !important;
+  }
+
+  .ojt-date-badge {
+    width: 52px !important;
+    height: 58px !important;
+    border-radius: 10px !important;
+  }
+
+  .ojt-date-badge__month {
+    font-size: 0.58rem !important;
+    padding: 2px 0 !important;
+  }
+
+  .ojt-date-badge__day {
+    font-size: 1.25rem !important;
+  }
+
+  .ojt-date-badge__year {
+    font-size: 0.55rem !important;
+    padding-bottom: 2px !important;
+  }
+
+  .ojt-prestart-hero__date-meta-label {
+    font-size: 0.65rem !important;
+  }
+
+  .ojt-prestart-hero__date-meta-val {
+    font-size: 0.95rem !important;
+  }
+
+  .ojt-prestart-hero__date-meta-sub {
+    font-size: 0.74rem !important;
+  }
+
+  .ojt-countdown-pill {
+    font-size: 0.75rem !important;
+    padding: 6px 10px !important;
+  }
+
+  .ojt-dossier-card,
+  .ojt-instructions-card,
+  .ojt-guide-card {
+    padding: 12px 10px !important;
+    border-radius: 12px !important;
+  }
+
+  .ojt-dossier-company {
+    font-size: 0.92rem !important;
+  }
+
+  .ojt-dossier-role {
+    font-size: 0.78rem !important;
+  }
+
+  .ojt-field__label {
+    font-size: 0.66rem !important;
+  }
+
+  .ojt-field__val {
+    font-size: 0.8rem !important;
+  }
+
+  .ojt-dossier-actions .btn {
+    font-size: 0.72rem !important;
+    min-height: 35px !important;
+    padding: 6px 8px !important;
+  }
+
+  .ojt-tracker-title {
+    font-size: 1.2rem !important;
+  }
+
+  .ojt-tracker-title svg {
+    width: 20px !important;
+    height: 20px !important;
+    flex-shrink: 0;
+  }
+
+  .ojt-tracker-subtitle {
+    font-size: 0.78rem !important;
+  }
+
+  .ojt-shift-pill {
+    font-size: 0.7rem !important;
+    padding: 5px 8px !important;
+  }
+
+  #btn-morning-in,
+  #btn-morning-out,
+  #btn-afternoon-in,
+  #btn-afternoon-out {
+    min-height: 40px !important;
+    font-size: 0.82rem !important;
+  }
+
+  .ojt-progress-ring-card {
+    padding: 12px 8px !important;
+    border-radius: 12px !important;
+  }
+
+  .ojt-progress-ring-card svg {
+    width: 104px !important;
+    height: 104px !important;
+  }
+
+  .ojt-deployment-card {
+    padding: 12px 10px !important;
+    border-radius: 12px !important;
+  }
+
+  .ojt-deployment-card__actions .btn {
+    font-size: 0.68rem !important;
+    padding: 4px 6px !important;
+    min-height: 34px !important;
+  }
+
+  .ojt-map-card #ojt-map {
+    min-height: 220px !important;
+  }
+
+  .ojt-map-footer {
+    padding: 6px 8px !important;
+  }
+
+  .ojt-map-filters .btn {
+    font-size: 0.62rem !important;
+    height: 24px !important;
+    padding: 0 4px !important;
+  }
+
+  #pagination-controls .btn {
+    height: 28px !important;
+    min-width: 28px !important;
+    font-size: 0.7rem !important;
+  }
+
+  /* Interview Hub — Small Mobile 320px–360px */
+  .iv-hero {
+    padding: 14px 10px 12px !important;
+    border-radius: 12px !important;
+    margin-bottom: 12px !important;
+  }
+  .iv-hero__eyebrow {
+    font-size: 0.65rem !important;
+    gap: 4px !important;
+  }
+  .iv-hero__title {
+    font-size: 1.18rem !important;
+    line-height: 1.18 !important;
+  }
+  .iv-hero__subtitle {
+    font-size: 0.74rem !important;
+    line-height: 1.35 !important;
+  }
+
+  .iv-stats {
+    gap: 6px !important;
+    margin-bottom: 12px !important;
+  }
+  .iv-stat {
+    padding: 8px 8px !important;
+    gap: 6px !important;
+    border-radius: 10px !important;
+  }
+  .iv-stat__icon {
+    width: 30px !important;
+    height: 30px !important;
+    border-radius: 6px !important;
+  }
+  .iv-stat__icon svg {
+    width: 16px !important;
+    height: 16px !important;
+  }
+  .iv-stat__value {
+    font-size: 1.12rem !important;
+  }
+  .iv-stat__label {
+    font-size: 0.62rem !important;
+  }
+
+  .iv-cal {
+    padding: 10px 6px !important;
+    border-radius: 12px !important;
+  }
+  .iv-cal__month {
+    font-size: 0.82rem !important;
+  }
+  .iv-cal__nav {
+    width: 28px !important;
+    height: 28px !important;
+  }
+  .iv-cal__grid {
+    gap: 1px !important;
+  }
+  .iv-cal__cell {
+    font-size: 0.68rem !important;
+  }
+  .iv-cal__cell--hdr {
+    font-size: 0.52rem !important;
+    padding-bottom: 2px !important;
+  }
+  .iv-cal__legend {
+    gap: 8px !important;
+    margin-top: 8px !important;
+    padding-top: 6px !important;
+    font-size: 0.65rem !important;
+  }
+  .iv-cal__next {
+    padding-top: 8px !important;
+    margin-top: 8px !important;
+  }
+  .iv-cal__next-avatar {
+    width: 30px !important;
+    height: 30px !important;
+    font-size: 0.8rem !important;
+  }
+  .iv-cal__next-info strong {
+    font-size: 0.72rem !important;
+  }
+  .iv-cal__next-info span {
+    font-size: 0.6rem !important;
+  }
+  .iv-cal__next-cd {
+    font-size: 0.58rem !important;
+    padding: 1px 6px !important;
+  }
+
+  .iv-filter-bar {
+    gap: 4px !important;
+    margin-bottom: 10px !important;
+  }
+  .iv-filter-btn {
+    height: 28px !important;
+    padding: 0 8px !important;
+    font-size: 0.68rem !important;
+  }
+  .iv-filter-count {
+    font-size: 0.58rem !important;
+    padding: 1px 4px !important;
+  }
+
+  .iv-card {
+    border-radius: 12px !important;
+  }
+  .iv-card__inner {
+    padding: 10px 8px !important;
+    gap: 8px !important;
+  }
+  .iv-card__avatar {
+    width: 34px !important;
+    height: 34px !important;
+    font-size: 0.95rem !important;
+    border-radius: 8px !important;
+  }
+  .iv-card__title {
+    font-size: 0.86rem !important;
+  }
+  .iv-card__company {
+    font-size: 0.72rem !important;
+  }
+  .iv-card__chip {
+    font-size: 0.62rem !important;
+    padding: 2px 5px !important;
+  }
+  .iv-card__meeting {
+    padding: 8px !important;
+    gap: 6px !important;
+  }
+  .iv-card__actions {
+    padding-top: 8px !important;
+    gap: 5px !important;
+  }
+  .iv-card__actions .btn,
+  .iv-card__join,
+  .iv-card__btn-view,
+  .iv-card__copy,
+  .iv-card__copy-loc {
+    min-height: 35px !important;
+    font-size: 0.72rem !important;
+    padding: 4px 6px !important;
+  }
+
+  .iv-timeline {
+    padding: 10px 8px !important;
+    border-radius: 12px !important;
+    margin-bottom: 16px !important;
+  }
+  .iv-section-title {
+    font-size: 0.88rem !important;
+    gap: 6px !important;
+  }
+  .iv-tl {
+    padding: 6px 4px !important;
+    gap: 6px !important;
+  }
+  .iv-tl__time {
+    min-width: 46px !important;
+    font-size: 0.66rem !important;
+  }
+  .iv-tl__title {
+    font-size: 0.72rem !important;
+  }
+  .iv-tl__sub {
+    font-size: 0.64rem !important;
+  }
+  .iv-tl__now {
+    font-size: 0.52rem !important;
+    padding: 1px 4px !important;
+  }
+
+  #iv-detail-modal-overlay {
+    padding: 6px !important;
+  }
+  .iv-detail-modal-box,
+  #iv-detail-modal-overlay .modal-box {
+    width: 98vw !important;
+    max-height: 94vh !important;
+    border-radius: 12px !important;
+  }
+  #iv-detail-modal-overlay .modal-header {
+    padding: 10px 10px 8px !important;
+  }
+  #iv-detail-modal-overlay .modal-title {
+    font-size: 0.98rem !important;
+  }
+  #iv-detail-modal-overlay .modal-body {
+    padding: 10px !important;
+    gap: 8px !important;
+  }
+  #iv-detail-modal-overlay .modal-footer {
+    padding: 8px 10px !important;
+  }
+  #iv-detail-modal-overlay .modal-footer .btn {
+    min-height: 34px !important;
+    font-size: 0.72rem !important;
+  }
+
+  /* CRITICAL: Negative margin must match the 8px layout padding (--space-2) exactly */
+  .profile-cover {
+    margin: calc(-1 * var(--space-2)) calc(-1 * var(--space-2)) 0 !important;
+    height: 120px;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
+
+  .profile-header {
+    margin: 0 calc(-1 * var(--space-2)) !important;
+    padding: 0 var(--space-2) var(--space-3) !important;
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  }
+
+  .profile-header__avatar-wrap {
+    margin-top: -35px !important;
+  }
+  .profile-header__avatar {
+    width: 72px;
+    height: 72px;
+    margin-top: -36px;
+    border-width: 2.5px;
+  }
+
+  .profile-header__initials {
+    font-size: 1.45rem;
+  }
+
+  .profile-header__name {
+    font-size: 1.18rem;
+  }
+
+  .profile-header__headline {
+    font-size: 0.74rem;
+  }
+
+  .profile-header__actions .btn {
+    padding: 5px 8px;
+    font-size: 0.74rem;
+    height: 32px;
+  }
+
+  .profile-tabs__item {
+    padding: 6px 9px;
+    font-size: 0.72rem;
+  }
+
+  .portfolio-reqs-section {
+    padding: 12px 10px !important;
+  }
+
+  .portfolio-reqs-checklist {
+    grid-template-columns: 1fr !important;
+    gap: 6px;
+  }
+
+  .resume-card.resume-card--onepage {
+    padding: 14px 10px !important;
+  }
+
+  .resume-doc-name {
+    font-size: 1.12rem;
+  }
+
+  .resume-doc-headline {
+    font-size: 0.7rem;
+  }
+
+  .resume-contact-bar {
+    font-size: 0.68rem;
+    gap: 2px 4px;
+  }
+
+  .resume-entry__title-group {
+    font-size: 0.76rem;
+  }
+
+  .resume-entry__desc {
+    font-size: 0.7rem;
+  }
+
+  .ojt-hero-banner {
+    padding: 16px 12px !important;
+    border-radius: 12px !important;
+  }
+
+  .ojt-hero-banner__title {
+    font-size: 1.25rem !important;
+  }
+
+  .ojt-hero-stats-wrap {
+    gap: 8px 12px !important;
+  }
+
+  .ojt-card__header {
+    padding: 12px 12px 0;
+    gap: 8px;
+  }
+
+  .ojt-card__logo {
+    width: 36px;
+    height: 36px;
+    font-size: 0.88rem;
+    border-radius: 8px;
+  }
+
+  .ojt-card__title {
+    font-size: 0.88rem;
+  }
+
+  .ojt-card__company {
+    font-size: 0.72rem;
+  }
+
+  .ojt-card__meta-bar {
+    margin: 8px 12px 0;
+    gap: 6px 10px;
+    font-size: 0.68rem;
+  }
+
+  .ojt-card__body {
+    padding: 8px 12px 0;
+  }
+
+  .ojt-card__slots {
+    padding: 0 12px 8px;
+  }
+
+  .ojt-card__footer {
+    padding: 8px 12px;
+  }
+
+  .ojt-modal__header {
+    padding: 12px 12px !important;
+  }
+
+  .ojt-modal__body {
+    padding: 12px 12px !important;
+  }
+
+  .ojt-modal__footer {
+    padding: 10px 12px !important;
+  }
+
+  .ojt-modal__stats {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 5px !important;
+    margin-bottom: 12px !important;
+  }
+
+  .ojt-modal__stat-box {
+    padding: 6px 4px !important;
+  }
+
+  .ojt-modal__stat-val {
+    font-size: 0.82rem !important;
+  }
+
+  .ojt-modal__stat-lbl {
+    font-size: 0.58rem !important;
   }
 
   .home-hero {
@@ -514,5 +2426,78 @@
 
   .activity-item__time {
     font-size: 0.7rem;
+  }
+
+  /* Applications Page <= 360px */
+  .app-hero {
+    padding: 16px 12px !important;
+    border-radius: var(--radius-lg) !important;
+  }
+  .app-hero__title {
+    font-size: 1.22rem !important;
+  }
+  .app-hero__subtitle {
+    font-size: 0.76rem !important;
+  }
+  .app-stats {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 6px !important;
+  }
+  .app-stat-card {
+    padding: 8px 8px !important;
+    gap: 6px !important;
+  }
+  .app-stat-card__icon {
+    width: 30px !important;
+    height: 30px !important;
+  }
+  .app-stat-card__value {
+    font-size: 1.15rem !important;
+  }
+  .app-stat-card__label {
+    font-size: 0.64rem !important;
+  }
+  .app-card {
+    padding: 10px 8px !important;
+    gap: 8px !important;
+  }
+  .app-card__logo {
+    width: 32px !important;
+    height: 32px !important;
+    font-size: 0.85rem !important;
+  }
+  .ojt-app-card__header {
+    padding: 10px 10px 8px !important;
+    gap: 8px !important;
+  }
+  .ojt-app-card__avatar {
+    width: 32px !important;
+    height: 32px !important;
+  }
+  .ojt-app-card__timeline {
+    padding: 10px 10px 8px !important;
+  }
+  .ojt-app-card__guidance {
+    margin: 0 8px 8px !important;
+    padding: 6px 8px !important;
+    font-size: 0.72rem !important;
+  }
+  .ojt-app-card__footer {
+    padding: 8px 10px 10px !important;
+  }
+  .ojt-app-card__actions .app-card__btn,
+  .app-card__actions .app-card__btn {
+    min-height: 34px !important;
+    font-size: 0.72rem !important;
+    padding: 0 6px !important;
+  }
+  .app-details-modal__header {
+    padding: 12px 10px !important;
+  }
+  .app-details-modal__body {
+    padding: 12px 10px !important;
+  }
+  .app-details-modal__footer {
+    padding: 10px 10px !important;
   }
 }

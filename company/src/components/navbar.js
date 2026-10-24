@@ -23,8 +23,11 @@ export function createNavbar() {
 
   nav.innerHTML = `
     <div class="navbar__inner">
-      <!-- Left: Logo -->
+      <!-- Left: Mobile Toggle + Logo -->
       <div class="navbar__left">
+        <button class="navbar__mobile-toggle" id="mobile-sidebar-toggle" aria-label="Open navigation menu" title="Menu">
+          ${icon('menu', 20)}
+        </button>
         <a class="navbar__logo" href="#/" data-route="/">
           <div class="navbar__logo-icon">H</div>
           <span class="navbar__logo-text">HireMe</span>
@@ -157,4 +160,44 @@ export function createNavbar() {
   });
 
   return nav;
+}
+
+
+/**
+ * Sticky Mobile Bottom Navigation Bar (matches student portal mobile design)
+ */
+export function createMobileBottomNav() {
+  const bottomNav = document.createElement('nav');
+  bottomNav.className = 'mobile-bottom-nav';
+  bottomNav.id = 'mobile-bottom-nav';
+  bottomNav.setAttribute('aria-label', 'Mobile Navigation');
+
+  bottomNav.innerHTML = `
+    <a class="mobile-bottom-nav__tab mobile-bottom-nav__tab--active" href="#/" data-route="/" title="Dashboard">
+      ${icon('home', 20)}
+      <span>Home</span>
+    </a>
+    <a class="mobile-bottom-nav__tab" href="#/jobs" data-route="/jobs" title="Job Postings">
+      ${icon('briefcase', 20)}
+      <span>Jobs</span>
+    </a>
+    <a class="mobile-bottom-nav__tab" href="#/ojt-slots" data-route="/ojt-slots" title="OJT Slots">
+      ${icon('graduationCap', 20)}
+      <span>OJT</span>
+    </a>
+    <a class="mobile-bottom-nav__tab" href="#/applicants" data-route="/applicants" title="Applicants">
+      ${icon('users', 20)}
+      <span>Applicants</span>
+    </a>
+    <a class="mobile-bottom-nav__tab" href="#/employees" data-route="/employees" title="Employees & Staff">
+      ${icon('userCheck', 20)}
+      <span>Staff</span>
+    </a>
+    <a class="mobile-bottom-nav__tab" href="#/interviews" data-route="/interviews" title="Interviews">
+      ${icon('video', 20)}
+      <span>Interviews</span>
+    </a>
+  `;
+
+  return bottomNav;
 }

@@ -51,6 +51,15 @@ function resolveRoute() {
     }
   });
 
+  document.querySelectorAll('.mobile-bottom-nav__tab').forEach(tab => {
+    const href = tab.getAttribute('data-route');
+    if (href === hash) {
+      tab.classList.add('mobile-bottom-nav__tab--active');
+    } else {
+      tab.classList.remove('mobile-bottom-nav__tab--active');
+    }
+  });
+
   document.querySelectorAll('.sidebar-nav__item[data-route]').forEach(item => {
     const href = item.getAttribute('data-route');
     if (href === hash) {

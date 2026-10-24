@@ -114,7 +114,7 @@ function showInterviewDetailModal(iv) {
   overlay.id = 'iv-detail-modal-overlay';
   overlay.className = 'modal-overlay';
   overlay.innerHTML = `
-    <div class="modal-box" style="max-width: 580px;" role="dialog" aria-modal="true">
+    <div class="modal-box iv-detail-modal-box" style="max-width: 580px;" role="dialog" aria-modal="true">
       <div class="modal-header">
         <div>
           <div class="iv-card__badge-row" style="margin-bottom: 6px;">

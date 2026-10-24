@@ -17,6 +17,30 @@ function escapeHtml(str) {
     .replace(/'/g, '&#039;');
 }
 
+function statusBadge(status) {
+  const s = String(status || 'Scheduled').toLowerCase();
+  let bg = '#eff6ff', color = '#1d4ed8';
+  if (['completed', 'hired', 'accepted', 'approved', 'ojt active'].includes(s)) {
+    bg = '#f0fdf4'; color = '#16a34a';
+  } else if (['cancelled', 'rejected', 'declined'].includes(s)) {
+    bg = '#fef2f2'; color = '#dc2626';
+  } else if (['pending', 'screened', 'under review', 'review'].includes(s)) {
+    bg = '#fefce8'; color = '#ca8a04';
+  }
+  return `<span class="cd-status-pill" style="--pill-bg:${bg};--pill-color:${color};">${escapeHtml(status || 'Scheduled')}</span>`;
+}
+
+function renderMatchBadge(score) {
+  const num = Number(score);
+  if (isNaN(num) || num <= 0) {
+    return `<span class="cd-match-pill cd-match-pill--open">${icon('sparkles', 11)} New Applicant</span>`;
+  }
+  let modifier = 'low';
+  if (num >= 80) modifier = 'high';
+  else if (num >= 60) modifier = 'mid';
+  return `<span class="cd-match-pill cd-match-pill--${modifier}">${icon('sparkles', 11)} ${num}% Match</span>`;
+}
+
 function renderMoaBanner(company) {
   const isCompleted = !!company.profileCompleted;
   const moaStatus = company.moaStatus || 'Pending';

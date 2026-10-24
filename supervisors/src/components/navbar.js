@@ -19,8 +19,11 @@ export function createNavbar() {
 
   nav.innerHTML = `
     <div class="navbar__inner">
-      <!-- Left: Logo -->
+      <!-- Left: Mobile Toggle + Logo -->
       <div class="navbar__left">
+        <button class="navbar__mobile-toggle" id="mobile-sidebar-toggle" aria-label="Open navigation menu" title="Menu">
+          ${icon('menu', 20)}
+        </button>
         <a class="navbar__logo" href="#/" data-route="/">
           <div class="navbar__logo-icon">H</div>
           <span class="navbar__logo-text">HireMe</span>
@@ -159,4 +162,43 @@ export function createNavbar() {
   });
 
   return nav;
+}
+
+/**
+ * Sticky Mobile Bottom Navigation Bar (matches student & company portal design)
+ */
+export function createMobileBottomNav() {
+  const bottomNav = document.createElement('nav');
+  bottomNav.className = 'mobile-bottom-nav';
+  bottomNav.id = 'mobile-bottom-nav';
+  bottomNav.setAttribute('aria-label', 'Mobile Navigation');
+
+  bottomNav.innerHTML = `
+    <a class="mobile-bottom-nav__tab mobile-bottom-nav__tab--active" href="#/" data-route="/" title="Dashboard">
+      ${icon('home', 20)}
+      <span>Home</span>
+    </a>
+    <a class="mobile-bottom-nav__tab" href="#/trainees" data-route="/trainees" title="My Trainees">
+      ${icon('users', 20)}
+      <span>Trainees</span>
+    </a>
+    <a class="mobile-bottom-nav__tab" href="#/interests" data-route="/interests" title="OJT Management">
+      ${icon('star', 20)}
+      <span>OJT</span>
+    </a>
+    <a class="mobile-bottom-nav__tab" href="#/map" data-route="/map" title="Monitoring Map">
+      ${icon('map', 20)}
+      <span>Map</span>
+    </a>
+    <a class="mobile-bottom-nav__tab" href="#/evaluations" data-route="/evaluations" title="Evaluations">
+      ${icon('clipboardCheck', 20)}
+      <span>Grades</span>
+    </a>
+    <a class="mobile-bottom-nav__tab" href="#/reports" data-route="/reports" title="Reports">
+      ${icon('fileText', 20)}
+      <span>Reports</span>
+    </a>
+  `;
+
+  return bottomNav;
 }

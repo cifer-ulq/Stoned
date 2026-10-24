@@ -656,13 +656,16 @@
    ═══════════════════════════════════ */
 .jp-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr));
   gap: var(--space-4);
   align-items: stretch;
 }
 
 /* ── Card Shell ── */
 .jp-card {
+  min-width: 0;
+  box-sizing: border-box;
+  width: 100%;
   background: var(--bg-elevated);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-xl);
@@ -1366,7 +1369,7 @@
    ══════════════════════════════════════════════════ */
 .ap-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-4, 1rem);
   align-items: stretch;
 }
@@ -3178,7 +3181,7 @@
 /* Applicant Grid */
 .ap-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-4);
 }
 
@@ -5148,11 +5151,11 @@
   color: var(--text-tertiary);
 }
 
-/* ── OJT Slots Grid ── */
+/* ── OJT Slots Grid — Exactly 3 columns on desktop ── */
 .ojts-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
 }
 
 /* ── Slot Card — Professional Institutional Redesign ── */
@@ -5169,6 +5172,9 @@
   display: flex;
   flex-direction: column;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .ojts-card:hover {
@@ -5365,37 +5371,65 @@
 
 /* ── Card Footer ── */
 .ojts-card__footer {
-  padding: 10px 16px;
+  padding: 11px 16px;
   background: #f8fafc;
   border-top: 1px solid var(--border-default, #e2e8f0);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  min-height: 48px;
+  box-sizing: border-box;
 }
 
 [data-theme="dark"] .ojts-card__footer {
   background: rgba(0, 0, 0, 0.15);
 }
 
+.ojts-card__interest {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  flex-shrink: 0;
+}
+
 .ojts-btn-applicants {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  font-size: 0.72rem;
+  gap: 6px;
+  font-family: var(--font-body, system-ui, sans-serif);
+  font-size: 0.74rem;
   font-weight: 600;
-  padding: 3px 9px;
+  line-height: 1.2;
+  padding: 4.5px 11px;
   border-radius: 99px;
   background: rgba(0, 89, 48, 0.08);
   color: #005930;
-  border: 1px solid rgba(0, 89, 48, 0.2);
+  border: 1px solid rgba(0, 89, 48, 0.22);
   cursor: pointer;
+  white-space: nowrap !important;
+  text-align: left;
+  flex-shrink: 0;
   transition: all 0.15s ease;
 }
 
 .ojts-btn-applicants:hover {
   background: rgba(0, 89, 48, 0.16);
   border-color: #005930;
+  transform: translateY(-1px);
+}
+
+.ojts-btn-applicants span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap !important;
+  line-height: 1.2;
+}
+
+.ojts-btn-applicants strong {
+  font-weight: 800;
+  color: #005930;
 }
 
 .ojts-badge-endorsed {
@@ -5404,26 +5438,32 @@
   gap: 3px;
   font-size: 0.65rem;
   font-weight: 700;
-  padding: 1px 6px;
+  padding: 1.5px 6px;
   border-radius: 99px;
   background: #dcfce7;
   color: #15803d;
-  margin-left: 2px;
+  margin-left: 3px;
+  white-space: nowrap !important;
+  flex-shrink: 0;
+  line-height: 1.2;
 }
 
 .ojts-interest-pill {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-size: 0.71rem;
+  gap: 5px;
+  font-size: 0.72rem;
   font-weight: 500;
   color: var(--text-tertiary, #94a3b8);
+  white-space: nowrap !important;
+  flex-shrink: 0;
 }
 
 .ojts-card__actions {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-shrink: 0;
 }
 
 .trainee-cards {
@@ -5505,11 +5545,11 @@
   color: var(--text-tertiary);
 }
 
-/* ── OJT Responsive ── */
-@media (max-width: 900px) {
-  .ojts-stats { grid-template-columns: repeat(2, 1fr); }
+/* ── OJT Responsive Baseline ── */
+@media (max-width: 1024px) {
+  .ojts-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
-@media (max-width: 600px) {
+@media (max-width: 640px) {
   .ojts-grid { grid-template-columns: 1fr; }
   .ojts-stats { grid-template-columns: 1fr 1fr; }
   .ojts-page-header { flex-direction: column; align-items: flex-start; }
@@ -5527,6 +5567,23 @@
 /* ══════════════════════════════════════════════════════════════════
    COMPANY DASHBOARD — EXECUTIVE REDESIGN
    ══════════════════════════════════════════════════════════════════ */
+
+
+/* ── MOA Partnership Dashboard Banner ── */
+.moa-dash-banner {
+  border-radius: var(--radius-xl, 12px);
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+}
 
 .cd-dashboard {
   display: flex;
@@ -5968,7 +6025,8 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  min-width: 200px;
+  min-width: 0;
+  flex: 1 1 180px;
 }
 
 .cd-interview-item__details {
@@ -6046,6 +6104,15 @@
 }
 
 /* ── 8. Recent Applicants Table ── */
+/* ── Responsive Table Wrapper ── */
+.dash-table-wrap {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  display: block;
+}
+
 .cd-table {
   width: 100%;
   border-collapse: collapse;
@@ -6955,6 +7022,9 @@
 
 /* ── Step card ── */
 .pj-card {
+  min-width: 0;
+  box-sizing: border-box;
+  width: 100%;
   background: var(--bg-elevated);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-xl);

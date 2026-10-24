@@ -10,7 +10,7 @@ import './styles/pages.css';
 import './styles/animations.css';
 import './styles/responsive.css';
 
-import { createNavbar } from './components/navbar.js';
+import { createNavbar, createMobileBottomNav } from './components/navbar.js';
 import { createLeftSidebar } from './components/sidebar-left.js';
 import { registerRoute, initRouter } from './router.js';
 import { getState, setState } from './store.js';
@@ -307,20 +307,16 @@ async function initApp() {
 
   app.appendChild(layout);
 
-  // Mobile overlay
-  const overlay = document.createElement('div');
-  overlay.className = 'mobile-overlay';
-  overlay.id = 'mobile-overlay';
-  overlay.addEventListener('click', closeMobileMenu);
-  app.appendChild(overlay);
+  // Mobile sidebar backdrop
+  const sidebarBackdrop = document.createElement('div');
+  sidebarBackdrop.className = 'sidebar-backdrop';
+  sidebarBackdrop.id = 'sidebar-backdrop';
+  sidebarBackdrop.addEventListener('click', closeMobileMenu);
+  app.appendChild(sidebarBackdrop);
 
-  // Mobile button
-  const mobileBtn = document.createElement('button');
-  mobileBtn.className = 'mobile-menu-btn';
-  mobileBtn.id = 'mobile-menu-btn';
-  mobileBtn.innerHTML = '☰';
-  mobileBtn.addEventListener('click', toggleMobileMenu);
-  app.appendChild(mobileBtn);
+  // Mobile bottom navigation bar (matches student portal)
+  const mobileBottomNav = createMobileBottomNav();
+  app.appendChild(mobileBottomNav);
 
   // Register routes with Keep-Alive View Manager
   registerRoute('/', renderPage('/', renderDashboard));
@@ -354,14 +350,30 @@ async function initApp() {
 }
 
 function toggleMobileMenu() {
-  document.getElementById('sidebar-left').classList.toggle('sidebar-left--open');
-  document.getElementById('mobile-overlay').classList.toggle('mobile-overlay--visible');
+  const leftSidebar = document.getElementById('sidebar-left');
+  const backdrop = document.getElementById('sidebar-backdrop');
+  const isOpen = leftSidebar?.classList.toggle('sidebar-left--open');
+  backdrop?.classList.toggle('sidebar-backdrop--open', !!isOpen);
 }
 
 function closeMobileMenu() {
-  document.getElementById('sidebar-left').classList.remove('sidebar-left--open');
-  document.getElementById('mobile-overlay').classList.remove('mobile-overlay--visible');
+  document.getElementById('sidebar-left')?.classList.remove('sidebar-left--open');
+  document.getElementById('sidebar-backdrop')?.classList.remove('sidebar-backdrop--open');
 }
+
+document.addEventListener('click', (e) => {
+  if (e.target.closest('#mobile-sidebar-toggle')) {
+    toggleMobileMenu();
+    return;
+  }
+  if (e.target.closest('#sidebar-backdrop') || e.target.closest('.sidebar-left a[href]')) {
+    closeMobileMenu();
+    return;
+  }
+  if (!e.target.closest('.sidebar-left') && !e.target.closest('#mobile-sidebar-toggle')) {
+    closeMobileMenu();
+  }
+});
 
 function showProfileIncompleteModal() {
   const existing = document.getElementById('profile-guard-overlay');

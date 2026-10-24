@@ -251,7 +251,7 @@ export default function evaluationsPage(container) {
       }
       @media (max-width: 580px) {
         .eval-pipeline-strip {
-          grid-template-columns: 1fr;
+          grid-template-columns: repeat(2, 1fr);
         }
       }
 

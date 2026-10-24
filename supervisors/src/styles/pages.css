@@ -1449,10 +1449,10 @@
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
-/* ── Postings Grid ── */
+/* ── Postings Grid (3 columns on desktop, enlarged cards) ── */
 .ojts-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-4);
 }
 .ojts-card {
@@ -2409,6 +2409,9 @@
 }
 
 /* ── Responsive ── */
+@media (max-width: 1200px) {
+  .ojts-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 @media (max-width: 1024px) {
   .ojts-stats-grid { grid-template-columns: repeat(2, 1fr); }
   .ojts-modal__spec-strip { grid-template-columns: repeat(2, 1fr); }
@@ -2420,12 +2423,14 @@
 }
 @media (max-width: 540px) {
   .ojts-header { flex-direction: column; align-items: flex-start; }
-  .ojts-stats-grid { grid-template-columns: 1fr; }
+  .ojts-stats-grid { grid-template-columns: repeat(2, 1fr); }
   .ojts-filter-tabs { width: 100%; overflow-x: auto; }
-  .ojts-filter-btn { flex: 1; text-align: center; }
+  .ojts-filter-btn { white-space: nowrap; flex-shrink: 0; }
   .ojts-details-grid { grid-template-columns: 1fr; }
 }
-\n\n/* ══════════════════════════════════════════
+
+
+/* ══════════════════════════════════════════
    MONITORING MAP  —  mon-* Namespace (Renovated)
    ══════════════════════════════════════════ */
 
@@ -2678,8 +2683,10 @@
 /* ─── Site Cards Grid ────────────────────────── */
 .mon-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
   gap: 20px;
+  width: 100%;
+  min-width: 0;
 }
 
 /* ─── Individual Site Card ───────────────────── */
@@ -2695,6 +2702,9 @@
   gap: 12px;
   transition: transform var(--duration-fast), box-shadow var(--duration-fast), border-color var(--duration-fast);
   position: relative;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 .mon-site-card:hover {
   transform: translateY(-2px);
@@ -2710,6 +2720,8 @@
   display: flex;
   align-items: flex-start;
   gap: 12px;
+  min-width: 0;
+  width: 100%;
 }
 .mon-site-avatar {
   width: 44px;
@@ -2756,9 +2768,13 @@
   display: flex;
   align-items: center;
   gap: 4px;
+  min-width: 0;
+}
+.mon-site-card__role span:last-child {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
 }
 .mon-role-ic,
 .mon-loc-ic {
@@ -2804,13 +2820,13 @@
   gap: 6px;
   font-size: 0.77rem;
   color: var(--text-secondary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  min-width: 0;
 }
 .mon-loc-text {
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 /* Metric Badges */
@@ -2931,6 +2947,9 @@
   align-items: center;
   gap: 8px;
   margin-bottom: 16px;
+  flex-wrap: wrap;
+  min-width: 0;
+  width: 100%;
 }
 .mon-back-link {
   display: inline-flex;
@@ -2961,7 +2980,8 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 320px;
+  max-width: min(320px, calc(100% - 150px));
+  min-width: 0;
 }
 
 /* ─── Executive Company Hero Header ──────────── */
@@ -2977,13 +2997,16 @@
   margin-bottom: 20px;
   box-shadow: var(--shadow-sm);
   flex-wrap: wrap;
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
 }
 .mon-co-header__profile {
   display: flex;
   align-items: center;
   gap: 16px;
   flex: 1;
-  min-width: 280px;
+  min-width: 0;
 }
 .mon-co-avatar {
   width: 52px;
@@ -3065,14 +3088,18 @@
 /* ─── Two-Column Split Layout ────────────────── */
 .mon-split-layout {
   display: grid;
-  grid-template-columns: 1fr 380px;
+  grid-template-columns: minmax(0, 1fr) 380px;
   gap: 20px;
   align-items: start;
+  width: 100%;
+  min-width: 0;
 }
 .mon-split-main,
 .mon-split-side {
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  width: 100%;
 }
 
 /* ─── Panel Components ───────────────────────── */
@@ -3082,6 +3109,9 @@
   border-radius: var(--radius-xl);
   overflow: hidden;
   box-shadow: var(--shadow-sm);
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 .mon-panel--scrollable {
   max-height: 560px;
@@ -3096,11 +3126,16 @@
   padding: 12px 18px;
   border-bottom: 1px solid var(--border-default);
   background: var(--bg-elevated);
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 .mon-panel__title-wrap {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+  flex: 1;
 }
 .mon-panel__icon {
   width: 28px;
@@ -3115,6 +3150,9 @@
   font-size: var(--text-sm);
   font-weight: 700;
   color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .mon-panel__badge {
   font-size: 11px;
@@ -3123,6 +3161,8 @@
   border-radius: var(--radius-full);
   background: rgba(0, 89, 48, 0.08);
   color: #005930;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 .mon-panel__meta-pill {
   font-size: 11px;
@@ -3138,7 +3178,10 @@
 .mon-map-container {
   height: 440px;
   width: 100%;
+  min-width: 0;
   background: var(--bg-secondary);
+  overflow: hidden;
+  position: relative;
 }
 .mon-map-legend {
   display: flex;
@@ -3150,6 +3193,8 @@
   background: var(--bg-secondary);
   font-size: 11px;
   color: var(--text-secondary);
+  width: 100%;
+  box-sizing: border-box;
 }
 .mon-legend-item {
   display: flex;
@@ -3213,7 +3258,9 @@
   display: flex;
   justify-content: space-between;
   align-items: baseline;
+  gap: 8px;
   margin-bottom: 2px;
+  min-width: 0;
 }
 .mon-roster-name {
   font-size: var(--text-sm);
@@ -3222,10 +3269,13 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1;
 }
 .mon-roster-pct {
   font-size: 12px;
   font-weight: 700;
+  flex-shrink: 0;
 }
 .mon-roster-sub {
   font-size: 11px;
@@ -3570,8 +3620,10 @@
 }
 @media (max-width: 640px) {
   .mon-grid        { grid-template-columns: 1fr; }
-  .mon-kpi-strip   { grid-template-columns: 1fr; }
+  .mon-kpi-strip   { grid-template-columns: repeat(2, 1fr); }
   .mon-page-head   { flex-direction: column; align-items: flex-start; }
+  .mon-page-head__actions { width: 100%; display: flex; }
+  .mon-page-head__actions .btn { flex: 1; justify-content: center; text-align: center; }
   .mon-co-header   { flex-direction: column; align-items: flex-start; }
   .mon-co-stats    { width: 100%; justify-content: space-around; }
   .mon-student-header { flex-direction: column; align-items: flex-start; }
@@ -4189,7 +4241,8 @@
 }
 @media (max-width: 640px) {
   .db-header { flex-direction: column; align-items: flex-start; }
-  .db-kpi-row { grid-template-columns: 1fr; }
+  .db-kpi-row { grid-template-columns: repeat(2, 1fr); }
+  .db-header__actions { width: 100%; }
   .db-header__nav-group { width: 100%; justify-content: stretch; }
   .db-btn-link { flex: 1; justify-content: center; }
 }

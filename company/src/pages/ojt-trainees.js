@@ -531,6 +531,130 @@ export async function renderOjtTrainees(container) {
         align-items: center;
         gap: 6px;
       }
+
+      /* ── Responsive Trainee Row & Console Optimizations ── */
+      @media (max-width: 900px) {
+        .co-trainee-row {
+          flex-direction: column !important;
+          align-items: stretch !important;
+          gap: 12px !important;
+          padding: 14px 14px 12px !important;
+        }
+        .co-trainee-row__info {
+          width: 100% !important;
+          flex: none !important;
+        }
+        .co-trainee-row__gauge {
+          width: 100% !important;
+          min-width: 0 !important;
+          flex: none !important;
+        }
+        .co-trainee-row__actions {
+          display: flex !important;
+          flex-wrap: wrap !important;
+          gap: 8px !important;
+          width: 100% !important;
+          padding-top: 10px !important;
+          border-top: 1px solid var(--border-light, #E2E8F0) !important;
+        }
+        .co-trainee-row__actions .btn {
+          flex: 1 1 calc(50% - 8px) !important;
+          min-height: 38px !important;
+          justify-content: center !important;
+        }
+        .co-stream-header {
+          padding: 12px 14px !important;
+        }
+        .co-command-bar {
+          flex-direction: column !important;
+          align-items: stretch !important;
+          gap: 10px !important;
+        }
+        .co-command-search {
+          max-width: 100% !important;
+          width: 100% !important;
+        }
+        .co-command-filters {
+          width: 100% !important;
+          display: flex !important;
+          flex-wrap: wrap !important;
+          gap: 8px !important;
+        }
+        .co-select-compact {
+          flex: 1 1 140px !important;
+          min-width: 0 !important;
+          height: 38px !important;
+        }
+        .co-view-toggle {
+          width: 100% !important;
+          display: flex !important;
+        }
+        .co-view-toggle__btn {
+          flex: 1 !important;
+          justify-content: center !important;
+          min-height: 34px !important;
+        }
+      }
+
+      @media (max-width: 768px) {
+        .co-trainees-masthead {
+          flex-direction: column !important;
+          align-items: stretch !important;
+          gap: 14px !important;
+        }
+        .co-trainees-actions {
+          width: 100% !important;
+        }
+        .co-trainees-actions .btn {
+          flex: 1 1 auto !important;
+          min-height: 40px !important;
+          justify-content: center !important;
+        }
+        .co-action-ribbon {
+          flex-direction: column !important;
+          align-items: stretch !important;
+          gap: 10px !important;
+          padding: 12px 14px !important;
+        }
+        .co-action-ribbon button {
+          width: 100% !important;
+          justify-content: center !important;
+          min-height: 38px !important;
+        }
+      }
+
+      @media (max-width: 576px) {
+        .co-trainee-row__actions .btn {
+          flex: 1 1 100% !important;
+        }
+        .co-pulse-strip {
+          grid-template-columns: repeat(2, 1fr) !important;
+          gap: 8px !important;
+        }
+        .co-pulse-card {
+          padding: 10px 12px !important;
+        }
+        .co-pulse-card__value {
+          font-size: 1.25rem !important;
+        }
+        .co-pulse-card__title {
+          font-size: 0.78rem !important;
+        }
+        .co-pulse-card__desc {
+          font-size: 0.68rem !important;
+          line-height: 1.2 !important;
+        }
+      }
+
+      @media (max-width: 360px) {
+        .co-pulse-strip {
+          grid-template-columns: 1fr !important;
+          gap: 6px !important;
+        }
+        .co-trainees-title {
+          font-size: 1.25rem !important;
+        }
+      }
     </style>
 
     <div class="co-trainees-page">
@@ -707,6 +831,7 @@ export async function renderOjtTrainees(container) {
         </main>
 
         <!-- Right Side: Live Trainee Dossier Slide-Over -->
+        <div class="co-dossier-backdrop" id="co-dossier-backdrop"></div>
         <aside class="co-dossier-pane" id="co-dossier-pane">
           <div class="co-dossier__header">
             <div style="display:flex;align-items:center;gap:8px;">
@@ -745,6 +870,7 @@ export async function renderOjtTrainees(container) {
   const rosterTbody         = container.querySelector('#co-roster-tbody');
 
   const dossierPane         = container.querySelector('#co-dossier-pane');
+  const dossierBackdrop     = container.querySelector('#co-dossier-backdrop');
   const dossierBody         = container.querySelector('#co-dossier-body');
   const btnDossierClose     = container.querySelector('#btn-co-dossier-close');
 
@@ -1188,13 +1314,13 @@ export async function renderOjtTrainees(container) {
     return `
       <div class="co-trainee-row ${isInspected ? 'is-active-inspected' : ''}" data-trainee-id="${t.id}">
         <!-- Left: Student Info -->
-        <div style="display:flex;align-items:center;gap:12px;min-width:0;flex:1.2;">
-          <div style="width:38px;height:38px;border-radius:10px;background:rgba(0,89,48,0.08);color:var(--color-primary, #005930);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.85rem;flex-shrink:0;">
+        <div class="co-trainee-row__info" style="display:flex;align-items:center;gap:12px;min-width:0;flex:1.2;">
+          <div class="co-trainee-row__avatar" style="width:38px;height:38px;border-radius:10px;background:rgba(0,89,48,0.08);color:var(--color-primary, #005930);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.85rem;flex-shrink:0;">
             ${init}
           </div>
           <div style="min-width:0;">
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:2px;">
-              <span style="font-weight:700;font-size:0.88rem;color:var(--text-primary);">${escapeHtml(st.name || 'Intern')}</span>
+              <span class="co-trainee-name" style="font-weight:700;font-size:0.88rem;color:var(--text-primary);">${escapeHtml(st.name || 'Intern')}</span>
               ${statusPill}
             </div>
             <div style="font-size:0.74rem;color:var(--text-secondary);display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
@@ -1205,7 +1331,7 @@ export async function renderOjtTrainees(container) {
         </div>
 
         <!-- Middle: Hours Progress & Today's Live DTR -->
-        <div style="flex:0.95;min-width:160px;">
+        <div class="co-trainee-row__gauge" style="flex:0.95;min-width:160px;">
           <div class="co-hours-gauge">
             <div class="co-hours-gauge__track">
               <div class="co-hours-gauge__fill" style="width:${pct}%;background:${barColor};"></div>
@@ -1224,7 +1350,7 @@ export async function renderOjtTrainees(container) {
         </div>
 
         <!-- Coordinator badge snippet -->
-        <div style="display:none;flex-direction:column;font-size:0.72rem;color:var(--text-secondary);min-width:130px;" class="desktop-only-slots">
+        <div class="co-trainee-row__coord desktop-only-slots" style="display:none;flex-direction:column;font-size:0.72rem;color:var(--text-secondary);min-width:130px;">
           <span style="font-size:0.68rem;font-weight:700;text-transform:uppercase;color:var(--text-tertiary);">
             OJT Coordinator${Array.isArray(t.coordinators) && t.coordinators.length > 1 ? `s (${t.coordinators.length})` : ''}
           </span>
@@ -1239,7 +1365,7 @@ export async function renderOjtTrainees(container) {
         </div>
 
         <!-- Right: Actions -->
-        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;" onclick="event.stopPropagation();">
+        <div class="co-trainee-row__actions" style="display:flex;align-items:center;gap:6px;flex-shrink:0;" onclick="event.stopPropagation();">
           ${actionBtn}
           <button class="btn btn--outline btn--sm btn-open-trainee-dtr" data-student-id="${st.id}" data-trainee-id="${t.id}" title="View Student Daily Time Record (DTR)" style="padding:4px 9px;font-size:0.75rem;gap:4px;color:var(--color-primary, #005930);border-color:rgba(0,89,48,0.28);font-weight:600;">
             ${icon('clock', 13)} DTR
@@ -1366,6 +1492,7 @@ export async function renderOjtTrainees(container) {
   function inspectTrainee(trainee) {
     selectedTraineeForDossier = trainee;
     dossierPane.classList.add('co-dossier-pane--visible');
+    if (dossierBackdrop) dossierBackdrop.classList.add('co-dossier-backdrop--visible');
 
     // Highlight row
     container.querySelectorAll('.is-active-inspected').forEach(el => el.classList.remove('is-active-inspected'));
@@ -1377,10 +1504,12 @@ export async function renderOjtTrainees(container) {
   function closeDossier() {
     selectedTraineeForDossier = null;
     dossierPane.classList.remove('co-dossier-pane--visible');
+    if (dossierBackdrop) dossierBackdrop.classList.remove('co-dossier-backdrop--visible');
     container.querySelectorAll('.is-active-inspected').forEach(el => el.classList.remove('is-active-inspected'));
   }
 
   btnDossierClose.addEventListener('click', closeDossier);
+  if (dossierBackdrop) dossierBackdrop.addEventListener('click', closeDossier);
 
   function renderDossierContent(t) {
     const st = t.student || {};
@@ -1865,7 +1994,7 @@ async function openCompanyEvaluationModal(evalId, onComplete) {
       : `<span class="badge" style="background:#ECFDF5;color:#047857;border:1px solid #A7F3D0;font-size:0.7rem;font-weight:700;padding:2px 8px;margin-left:8px;">FINAL (50% WEIGHT)</span>`;
 
     backdrop.innerHTML = `
-      <div class="modal modal--visible" style="max-width:780px;border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);max-height:90vh;display:flex;flex-direction:column;">
+      <div class="modal modal--visible co-eval-modal" style="max-width:780px;border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);max-height:90vh;display:flex;flex-direction:column;">
         <!-- Header -->
         <div class="modal__header" style="border-bottom:1px solid #E2E8F0;background:#FAFBFD;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
           <div style="display:flex;align-items:center;gap:12px;">
@@ -1976,7 +2105,7 @@ async function openCompanyEvaluationModal(evalId, onComplete) {
             <!-- Evaluator Signatory Details -->
             <div style="background:#FAFBFD;border:1px solid #E2E8F0;border-radius:8px;padding:16px 18px;margin-bottom:20px;">
               <h4 style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-secondary);margin:0 0 12px;">Evaluator Signatory Block</h4>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+              <div class="co-eval-signatory-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                 <div>
                   <label style="font-size:0.82rem;font-weight:600;display:block;margin-bottom:4px;">Evaluator Full Name <span style="color:var(--color-error);">*</span></label>
                   <input type="text" class="form-input" id="eval-name" placeholder="e.g. Engr. Ricardo Santos" style="width:100%;padding:8px 12px;border:1px solid #CBD5E1;border-radius:6px;" />
@@ -2166,7 +2295,7 @@ async function openCompanyViewSubmittedModal(evalId) {
       : `<span class="badge" style="background:#ECFDF5;color:#047857;border:1px solid #A7F3D0;font-size:0.7rem;font-weight:700;padding:2px 8px;margin-left:8px;">FINAL (50% WEIGHT)</span>`;
 
     backdrop.innerHTML = `
-      <div class="modal modal--visible" style="max-width:720px;border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);max-height:88vh;display:flex;flex-direction:column;">
+      <div class="modal modal--visible co-scorecard-modal" style="max-width:720px;border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);max-height:88vh;display:flex;flex-direction:column;">
         <div class="modal__header" style="border-bottom:1px solid #E2E8F0;background:#FAFBFD;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
           <div>
             <div style="display:flex;align-items:center;">
@@ -2179,7 +2308,7 @@ async function openCompanyViewSubmittedModal(evalId) {
         </div>
         <div class="modal__body" id="print-company-eval" style="flex:1;overflow-y:auto;padding:24px;">
           <!-- Score banner -->
-          <div style="display:flex;align-items:center;justify-content:space-between;background:#FAFBFD;border:1px solid #E2E8F0;border-radius:10px;padding:16px 20px;margin-bottom:20px;">
+          <div class="co-scorecard-banner" style="display:flex;align-items:center;justify-content:space-between;background:#FAFBFD;border:1px solid #E2E8F0;border-radius:10px;padding:16px 20px;margin-bottom:20px;">
             <div>
               <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;color:var(--text-secondary);letter-spacing:0.04em;">Certified Overall Score</div>
               <div style="font-size:1.8rem;font-weight:800;color:var(--color-primary, #005930);">${Number(ev.overall_score || 5).toFixed(1)} <span style="font-size:0.9rem;color:var(--text-secondary);">/ 5.0</span></div>
@@ -2268,7 +2397,7 @@ function openCompanyEmergencyClearanceModal(emergency, trainee, onComplete) {
   const isCleared = emergency.company_status === 'cleared' || emergency.assets_returned;
 
   backdrop.innerHTML = `
-    <div class="modal modal--visible" style="max-width:540px;width:100%;border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);">
+    <div class="modal modal--visible co-clearance-modal" style="max-width:540px;width:100%;border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);">
       <div class="modal__header" style="border-bottom:1px solid #E2E8F0;background:linear-gradient(135deg, rgba(245,158,11,0.06) 0%, rgba(239,68,68,0.06) 100%);padding:18px 22px;display:flex;align-items:center;justify-content:space-between;">
         <div style="display:flex;align-items:center;gap:12px;">
           <div style="width:38px;height:38px;border-radius:10px;background:rgba(245,158,11,0.15);color:#d97706;display:flex;align-items:center;justify-content:center;">
@@ -2626,7 +2755,7 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
     const filteredRows = getFilteredLogs();
 
     backdrop.innerHTML = `
-      <div class="modal modal--visible" style="max-width:1040px;width:100%;border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);max-height:90vh;display:flex;flex-direction:column;">
+      <div class="modal modal--visible co-dtr-modal" style="max-width:1040px;width:100%;border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);max-height:90vh;display:flex;flex-direction:column;">
         <!-- Modal Header -->
         <div class="modal__header" style="border-bottom:1px solid #E2E8F0;background:#FAFBFD;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0;flex-wrap:wrap;">
           <div style="display:flex;align-items:center;gap:12px;">
@@ -2661,7 +2790,7 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
         </div>
 
         <!-- Summary KPI Strip -->
-        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(190px, 1fr));gap:12px;padding:14px 24px;background:#F8FAFC;border-bottom:1px solid #E2E8F0;flex-shrink:0;">
+        <div class="co-dtr-kpi-grid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(190px, 1fr));gap:12px;padding:14px 24px;background:#F8FAFC;border-bottom:1px solid #E2E8F0;flex-shrink:0;">
           <div style="background:#fff;border:1px solid #E2E8F0;border-radius:10px;padding:10px 14px;">
             <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;color:var(--text-tertiary);">Total Hours Rendered</div>
             <div style="font-size:1.1rem;font-weight:800;color:var(--color-primary, #005930);margin-top:2px;">
@@ -2690,7 +2819,7 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
         </div>
 
         <!-- Filter & Search Bar -->
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 24px;border-bottom:1px solid #E2E8F0;background:#fff;flex-shrink:0;flex-wrap:wrap;">
+        <div class="co-dtr-filter-bar" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 24px;border-bottom:1px solid #E2E8F0;background:#fff;flex-shrink:0;flex-wrap:wrap;">
           <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:240px;">
             <div style="position:relative;flex:1;max-width:320px;">
               <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-tertiary);display:flex;">${icon('search', 14)}</span>

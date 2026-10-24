@@ -543,7 +543,7 @@ function openApplicationDetailsModal(item, onWithdrawSuccess, existingOverlay = 
           ${icon('x', 14)} Withdraw Application
         </button>
         ` : '<div></div>'}
-        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <div class="app-details-modal__actions" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
           <button
             class="app-card__btn app-card__btn--msg modal-btn-msg"
             data-id="${item.id}"
@@ -908,7 +908,7 @@ export async function renderApplications(container) {
           </button>
         </div>
 
-        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        <div class="app-type-tabs-actions" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
           <button id="btn-sync-apps" class="btn btn--sm app-sync-btn" style="background:var(--bg-secondary);color:var(--text-secondary);border:1px solid var(--border-default);border-radius:99px;font-size:0.75rem;display:inline-flex;align-items:center;gap:6px;cursor:pointer;padding:6px 12px;height:32px;" title="Check for real-time application updates">
             <span class="sync-icon" style="display:flex;align-items:center;">${icon('refreshCw', 12)}</span>
             <span class="sync-label" style="font-weight:600;">Sync Status</span>

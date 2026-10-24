@@ -811,7 +811,7 @@ function openEndorsementLetterModal(url, studentName) {
   modal.style.zIndex = '10005';
   modal.innerHTML = `
     <div class="modal modal--visible" style="max-width:900px;width:95vw;height:88vh;display:flex;flex-direction:column;padding:0;overflow:hidden;border-radius:12px;box-shadow:var(--shadow-xl, 0 20px 25px -5px rgba(0,0,0,0.2));">
-      <div class="modal__header" style="padding:14px 20px;border-bottom:1px solid var(--border-color, #e2e8f0);display:flex;align-items:center;justify-content:space-between;background:var(--bg-card, #ffffff);flex-shrink:0;">
+      <div class="modal__header endorsement-modal-header" style="padding:14px 20px;border-bottom:1px solid var(--border-color, #e2e8f0);display:flex;align-items:center;justify-content:space-between;background:var(--bg-card, #ffffff);flex-shrink:0;">
         <div style="display:flex;align-items:center;gap:12px;min-width:0;">
           <div style="width:38px;height:38px;border-radius:8px;background:rgba(0,89,48,0.1);color:#005930;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
             ${icon('fileText', 20)}
@@ -821,7 +821,7 @@ function openEndorsementLetterModal(url, studentName) {
             <p style="font-size:0.75rem;color:var(--text-secondary, #64748b);margin:2px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${studentName ? `Issued for ${escapeHtml(studentName)}` : 'Candidate Endorsement Document'}</p>
           </div>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+        <div class="endorsement-modal-actions" style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
           <a href="${fullUrl}" target="_blank" rel="noopener" class="btn btn--outline" style="font-size:0.75rem;padding:6px 12px;text-decoration:none;display:inline-flex;align-items:center;gap:5px;color:var(--text-primary);">
             ${icon('externalLink', 12)} Open in New Tab
           </a>
@@ -1304,7 +1304,7 @@ function openScheduleModal(app, allApps, container, parentBackdrop) {
       <form id="sched-form" style="padding:20px 24px;display:flex;flex-direction:column;gap:14px;max-height:80vh;overflow-y:auto;">
         <p id="sched-error" style="color:#ef4444;font-size:.83rem;min-height:1em;margin:0;"></p>
 
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="form-row ap-modal-grid-2">
           <div>
             <label style="display:block;font-size:.78rem;font-weight:600;color:var(--text-secondary);margin-bottom:5px;">Date *</label>
             <input name="scheduled_date" type="date" min="${today}" class="form-input" required value="${today}" style="width:100%;">
@@ -1315,7 +1315,7 @@ function openScheduleModal(app, allApps, container, parentBackdrop) {
           </div>
         </div>
 
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="form-row ap-modal-grid-2">
           <div>
             <label style="display:block;font-size:.78rem;font-weight:600;color:var(--text-secondary);margin-bottom:5px;">Duration</label>
             <select name="duration" class="form-input form-select" style="width:100%;">
@@ -1335,7 +1335,7 @@ function openScheduleModal(app, allApps, container, parentBackdrop) {
           </div>
         </div>
 
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="form-row ap-modal-grid-2">
           <div>
             <label style="display:block;font-size:.78rem;font-weight:600;color:var(--text-secondary);margin-bottom:5px;">Interview Type *</label>
             <select name="type" class="form-input form-select" required style="width:100%;">
@@ -1522,7 +1522,7 @@ function openOfferModal(app, allApps, container, parentBackdrop) {
           </div>
 
           <!-- Dates -->
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="form-row ap-modal-grid-2">
             <div>
               <label style="display:block;font-size:.78rem;font-weight:600;color:var(--text-secondary);margin-bottom:5px;">${icon('calendar', 12)} Start Date</label>
               <input name="start_date" type="date" class="form-input" value="${start}" style="width:100%;">
@@ -1654,15 +1654,15 @@ async function showResumeModal(app, allApps, container, newStatus) {
     <div id="pdf-shell" style="width:100%;max-width:860px;margin:0 auto;display:flex;flex-direction:column;border-radius:8px;overflow:hidden;box-shadow:0 30px 90px rgba(0,0,0,.6);">
 
       <!-- PDF viewer toolbar -->
-      <div style="background:#1e293b;padding:10px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0;">
-        <div style="display:flex;align-items:center;gap:8px;color:#94a3b8;font-size:.8rem;">
+      <div class="pdf-viewer-toolbar" style="background:#1e293b;padding:10px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0;">
+        <div class="pdf-viewer-info" style="display:flex;align-items:center;gap:8px;color:#94a3b8;font-size:.8rem;flex-wrap:wrap;">
           ${icon('fileText', 15)}
           <span style="color:#e2e8f0;font-weight:600;">${app.applicant.name}</span>
           <span style="opacity:.4;">·</span>
           <span>${isOjt ? 'Student_Profile.pdf' : 'Resume.pdf'}</span>
           ${isOjt ? '<span class="ap-badge ap-badge--ojt" style="font-size:0.65rem;padding:1px 6px;">🎓 OJT</span>' : '<span class="ap-badge ap-badge--job" style="font-size:0.65rem;padding:1px 6px;">💼 JOB</span>'}
         </div>
-        <div style="display:flex;align-items:center;gap:10px;font-size:.77rem;color:#94a3b8;">
+        <div class="pdf-viewer-controls" style="display:flex;align-items:center;gap:10px;font-size:.77rem;color:#94a3b8;flex-wrap:wrap;">
           <span>Applied for <strong style="color:#e2e8f0;">${app.job.title}</strong></span>
           <span style="opacity:.35;">|</span>
           <span class="ap-rec-tag ap-rec-tag--${rec.tier}" style="font-size:0.7rem;padding:2px 8px;" title="${scoreVal}% Skill Match">

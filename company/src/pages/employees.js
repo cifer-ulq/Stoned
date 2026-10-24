@@ -226,6 +226,7 @@ export async function renderEmployees(container) {
       }
       .co-emp-table {
         width: 100%;
+        min-width: 680px;
         border-collapse: collapse;
         text-align: left;
         font-size: 0.88rem;
@@ -393,20 +394,251 @@ export async function renderEmployees(container) {
         margin-bottom: 6px;
       }
 
+      /* ── Responsive Form Grids & Dossier ── */
+      .co-emp-grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .co-emp-grid-full {
+        grid-column: span 2;
+      }
+      .co-emp-table-wrapper {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      .co-emp-dossier-profile {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 16px;
+        background: var(--bg-primary, #f8fafc);
+        border-radius: 12px;
+        border: 1px solid var(--border-color, #e2e8f0);
+      }
+      .co-emp-dossier-avatar {
+        width: 54px;
+        height: 54px;
+        border-radius: 50%;
+        background: #005930;
+        color: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        font-weight: 700;
+        overflow: hidden;
+        flex-shrink: 0;
+      }
+      .co-emp-dossier-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .co-emp-dossier-info {
+        flex: 1;
+        min-width: 0;
+      }
+      .co-emp-dossier-name {
+        margin: 0 0 4px 0;
+        font-size: 1.15rem;
+        font-weight: 800;
+        color: var(--text-primary);
+        word-break: break-word;
+      }
+      .co-emp-dossier-meta {
+        font-size: 0.82rem;
+        color: var(--text-secondary);
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        word-break: break-word;
+      }
+      .co-emp-dossier-status {
+        flex-shrink: 0;
+      }
+
       @media (max-width: 900px) {
         .co-emp-pulse {
           grid-template-columns: repeat(2, 1fr);
         }
       }
-      @media (max-width: 640px) {
+      @media (max-width: 768px) {
+        .co-emp-masthead {
+          flex-direction: column;
+          align-items: stretch;
+          gap: 12px;
+        }
+        .co-emp-title {
+          font-size: 1.38rem;
+        }
+        .co-emp-subtitle {
+          font-size: 0.84rem;
+        }
+        .co-emp-actions {
+          width: 100%;
+          display: flex;
+          gap: 8px;
+        }
+        .co-emp-actions .btn {
+          flex: 1 1 calc(50% - 4px);
+          min-height: 42px;
+          justify-content: center;
+        }
+        .co-emp-controls__top {
+          flex-direction: column;
+          align-items: stretch;
+          gap: 10px;
+        }
+        .co-emp-search {
+          width: 100%;
+          min-width: 0;
+        }
+        .co-emp-search input {
+          font-size: 16px;
+          height: 40px;
+        }
+        .co-emp-status-tabs {
+          width: 100%;
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: none;
+          flex-wrap: nowrap;
+          justify-content: flex-start;
+          padding: 4px;
+        }
+        .co-emp-status-tabs::-webkit-scrollbar {
+          display: none;
+        }
+        .co-emp-tab {
+          flex-shrink: 0;
+          white-space: nowrap;
+          min-height: 36px;
+          padding: 6px 12px;
+        }
+        .co-emp-dept-scroll {
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: none;
+          flex-wrap: nowrap;
+        }
+        .co-emp-dept-scroll::-webkit-scrollbar {
+          display: none;
+        }
+        .co-dept-chip {
+          flex-shrink: 0;
+          white-space: nowrap;
+          min-height: 32px;
+        }
+        .co-emp-table {
+          min-width: 700px;
+        }
+        .co-emp-modal-body .form-input {
+          font-size: 16px;
+        }
+      }
+      @media (max-width: 576px) {
+        .co-emp-actions {
+          flex-direction: column;
+        }
+        .co-emp-actions .btn {
+          width: 100%;
+          flex: 1 1 100%;
+        }
+        .co-emp-pulse {
+          grid-template-columns: repeat(2, 1fr);
+          gap: 10px;
+        }
+        .co-emp-kpi {
+          padding: 12px 14px;
+          gap: 10px;
+        }
+        .co-emp-kpi__icon {
+          width: 38px;
+          height: 38px;
+        }
+        .co-emp-kpi__val {
+          font-size: 1.25rem;
+        }
+        .co-emp-kpi__lbl {
+          font-size: 0.7rem;
+        }
+        .co-emp-grid-2 {
+          grid-template-columns: 1fr;
+          gap: 10px;
+        }
+        .co-emp-grid-full {
+          grid-column: span 1;
+        }
+        .co-emp-table th,
+        .co-emp-table td {
+          padding: 10px 12px;
+          font-size: 0.82rem;
+        }
+        .co-emp-modal-overlay {
+          padding: 10px 8px;
+          align-items: center;
+          justify-content: center;
+        }
+        .co-emp-modal-card {
+          width: 100%;
+          max-width: 100%;
+          max-height: 92vh;
+          border-radius: 16px;
+          margin: 0;
+        }
+        .co-emp-modal-header {
+          padding: 14px 16px;
+        }
+        .co-emp-modal-body {
+          padding: 16px 14px;
+          gap: 12px;
+        }
+        .co-emp-modal-footer {
+          padding: 12px 14px;
+          flex-direction: column-reverse;
+          gap: 8px;
+        }
+        .co-emp-modal-footer .btn {
+          width: 100%;
+          min-height: 44px;
+          justify-content: center;
+        }
+        .co-emp-dossier-profile {
+          flex-wrap: wrap;
+          gap: 12px;
+          padding: 12px;
+        }
+        .co-emp-dossier-status {
+          width: 100%;
+          margin-top: 2px;
+        }
+      }
+      @media (max-width: 360px) {
         .co-emp-pulse {
           grid-template-columns: 1fr;
+          gap: 8px;
         }
-        .co-emp-table th:nth-child(4),
-        .co-emp-table td:nth-child(4),
-        .co-emp-table th:nth-child(5),
-        .co-emp-table td:nth-child(5) {
-          display: none;
+        .co-emp-kpi {
+          padding: 10px 12px;
+        }
+        .co-emp-title {
+          font-size: 1.2rem;
+        }
+        .co-emp-subtitle {
+          font-size: 0.78rem;
+        }
+        .co-emp-tab {
+          padding: 5px 10px;
+          font-size: 0.76rem;
+        }
+        .co-dept-chip {
+          padding: 4px 10px;
+          font-size: 0.74rem;
+        }
+        .co-emp-modal-header h3 {
+          font-size: 1rem;
         }
       }
     </style>
@@ -497,7 +729,7 @@ export async function renderEmployees(container) {
 
       <!-- Roster Card Table -->
       <div class="co-emp-card">
-        <div id="emp-table-container">
+        <div id="emp-table-container" class="co-emp-table-wrapper">
           <div style="padding:40px;text-align:center;color:var(--text-secondary);">
             Loading staff roster...
           </div>
@@ -662,12 +894,12 @@ export async function renderEmployees(container) {
                 <td>
                   <div style="font-weight:700;color:#005930;font-size:0.87rem;">${escapeHtml(emp.salary || 'Negotiable')}</div>
                 </td>
-                <td style="text-align:right;">
-                  <div style="display:inline-flex;gap:6px;">
-                    <button type="button" class="btn btn--outline btn--sm btn-view-dossier" data-id="${emp.id}" title="View Details">
+                <td style="text-align:right;white-space:nowrap;">
+                  <div style="display:inline-flex;gap:6px;flex-wrap:nowrap;">
+                    <button type="button" class="btn btn--outline btn--sm btn-view-dossier" data-id="${emp.id}" title="View Details" style="white-space:nowrap;min-height:32px;">
                       ${icon('eye', 14)} Dossier
                     </button>
-                    <button type="button" class="btn btn--outline btn--sm btn-edit-emp" data-id="${emp.id}" title="Update Status">
+                    <button type="button" class="btn btn--outline btn--sm btn-edit-emp" data-id="${emp.id}" title="Update Status" style="white-space:nowrap;min-height:32px;">
                       ${icon('edit', 14)} Edit
                     </button>
                   </div>
@@ -755,7 +987,7 @@ export async function renderEmployees(container) {
       <div class="co-emp-modal-card">
         <div class="co-emp-modal-header">
           <div style="display:flex;align-items:center;gap:10px;">
-            <div style="width:34px;height:34px;border-radius:50%;background:rgba(0,89,48,0.1);color:#005930;display:flex;align-items:center;justify-content:center;">
+            <div style="width:34px;height:34px;border-radius:50%;background:rgba(0,89,48,0.1);color:#005930;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
               ${icon('award', 18)}
             </div>
             <div>
@@ -763,23 +995,23 @@ export async function renderEmployees(container) {
               <div style="font-size:0.75rem;color:var(--text-tertiary);">${escapeHtml(emp.employee_number)}</div>
             </div>
           </div>
-          <button type="button" class="btn btn--outline btn--sm" id="btn-close-dossier" style="padding:4px 8px;">&times;</button>
+          <button type="button" class="btn btn--outline btn--sm" id="btn-close-dossier" style="padding:4px 8px;min-width:32px;min-height:32px;">&times;</button>
         </div>
 
         <div class="co-emp-modal-body">
           <!-- Profile Card -->
-          <div style="display:flex;align-items:center;gap:16px;padding:16px;background:var(--bg-primary,#f8fafc);border-radius:12px;border:1px solid var(--border-color,#e2e8f0);">
-            <div style="width:54px;height:54px;border-radius:50%;background:#005930;color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:700;overflow:hidden;flex-shrink:0;">
-              ${emp.avatar_url ? `<img src="${escapeHtml(emp.avatar_url)}" style="width:100%;height:100%;object-fit:cover;" />` : initials}
+          <div class="co-emp-dossier-profile">
+            <div class="co-emp-dossier-avatar">
+              ${emp.avatar_url ? `<img src="${escapeHtml(emp.avatar_url)}" alt="${escapeHtml(emp.name)}" />` : initials}
             </div>
-            <div style="flex:1;">
-              <h4 style="margin:0 0 4px 0;font-size:1.15rem;font-weight:800;color:var(--text-primary);">${escapeHtml(emp.name)}</h4>
-              <div style="font-size:0.82rem;color:var(--text-secondary);display:flex;gap:8px;flex-wrap:wrap;">
+            <div class="co-emp-dossier-info">
+              <h4 class="co-emp-dossier-name">${escapeHtml(emp.name)}</h4>
+              <div class="co-emp-dossier-meta">
                 <span>${icon('mail', 12)} ${escapeHtml(emp.email)}</span>
                 ${emp.work_email && emp.work_email !== emp.email ? `<span>&bull; ${icon('briefcase', 12)} ${escapeHtml(emp.work_email)}</span>` : ''}
               </div>
             </div>
-            <div>
+            <div class="co-emp-dossier-status">
               <span class="co-status-pill co-status-pill--${(emp.employment_status || '').toLowerCase().includes('reg') ? 'regular' : 'probationary'}">
                 ${escapeHtml(emp.employment_status || 'Probationary')}
               </span>
@@ -791,7 +1023,7 @@ export async function renderEmployees(container) {
             <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;color:#005930;letter-spacing:0.04em;margin-bottom:8px;">
               ${icon('graduationCap', 13)} CHMSU Academic Profile
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:0.85rem;">
+            <div class="co-emp-grid-2" style="font-size:0.85rem;">
               <div>
                 <span style="color:var(--text-tertiary);display:block;font-size:0.72rem;">DEGREE PROGRAM</span>
                 <strong>${escapeHtml(emp.course || 'BSIT')}</strong>
@@ -808,7 +1040,7 @@ export async function renderEmployees(container) {
             <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;color:#005930;letter-spacing:0.04em;margin-bottom:8px;">
               ${icon('briefcase', 13)} Company Deployment Details
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:0.85rem;">
+            <div class="co-emp-grid-2" style="font-size:0.85rem;">
               <div>
                 <span style="color:var(--text-tertiary);display:block;font-size:0.72rem;">DESIGNATION</span>
                 <strong>${escapeHtml(emp.job_title)}</strong>
@@ -826,7 +1058,7 @@ export async function renderEmployees(container) {
                 <strong style="color:#005930;">${escapeHtml(emp.salary || 'Negotiable')}</strong>
               </div>
               ${emp.supervisor_name ? `
-                <div style="grid-column: span 2;">
+                <div class="co-emp-grid-full">
                   <span style="color:var(--text-tertiary);display:block;font-size:0.72rem;">REPORTING SUPERVISOR</span>
                   <strong>${escapeHtml(emp.supervisor_name)}</strong>
                 </div>
@@ -890,7 +1122,7 @@ export async function renderEmployees(container) {
       <div class="co-emp-modal-card">
         <div class="co-emp-modal-header">
           <div style="display:flex;align-items:center;gap:10px;">
-            <div style="width:34px;height:34px;border-radius:50%;background:rgba(0,89,48,0.1);color:#005930;display:flex;align-items:center;justify-content:center;">
+            <div style="width:34px;height:34px;border-radius:50%;background:rgba(0,89,48,0.1);color:#005930;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
               ${icon('edit', 18)}
             </div>
             <div>
@@ -898,7 +1130,7 @@ export async function renderEmployees(container) {
               <div style="font-size:0.75rem;color:var(--text-tertiary);">${escapeHtml(emp.name)} &bull; ${escapeHtml(emp.employee_number)}</div>
             </div>
           </div>
-          <button type="button" class="btn btn--outline btn--sm" id="btn-close-edit">&times;</button>
+          <button type="button" class="btn btn--outline btn--sm" id="btn-close-edit" style="padding:4px 8px;min-width:32px;min-height:32px;">&times;</button>
         </div>
 
         <form id="form-edit-emp">
@@ -914,7 +1146,7 @@ export async function renderEmployees(container) {
               </select>
             </div>
 
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="co-emp-grid-2">
               <div class="form-group">
                 <label class="form-label">Employee ID / Number</label>
                 <input type="text" class="form-input" name="employee_number" value="${escapeHtml(emp.employee_number || '')}" />
@@ -925,7 +1157,7 @@ export async function renderEmployees(container) {
               </div>
             </div>
 
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="co-emp-grid-2">
               <div class="form-group">
                 <label class="form-label">Monthly Salary</label>
                 <input type="text" class="form-input" name="salary" value="${escapeHtml(emp.salary || '')}" placeholder="e.g. ₱45,000/month" />
@@ -1014,7 +1246,7 @@ export async function renderEmployees(container) {
       <div class="co-emp-modal-card">
         <div class="co-emp-modal-header">
           <div style="display:flex;align-items:center;gap:10px;">
-            <div style="width:34px;height:34px;border-radius:50%;background:rgba(0,89,48,0.1);color:#005930;display:flex;align-items:center;justify-content:center;">
+            <div style="width:34px;height:34px;border-radius:50%;background:rgba(0,89,48,0.1);color:#005930;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
               ${icon('userPlus', 18)}
             </div>
             <div>
@@ -1022,7 +1254,7 @@ export async function renderEmployees(container) {
               <div style="font-size:0.75rem;color:var(--text-tertiary);">Add an alumni hire to your company roster</div>
             </div>
           </div>
-          <button type="button" class="btn btn--outline btn--sm" id="btn-close-add">&times;</button>
+          <button type="button" class="btn btn--outline btn--sm" id="btn-close-add" style="padding:4px 8px;min-width:32px;min-height:32px;">&times;</button>
         </div>
 
         <div id="add-hire-modal-content" style="padding:40px;text-align:center;color:var(--text-secondary);">
@@ -1075,7 +1307,7 @@ export async function renderEmployees(container) {
               </select>
             </div>
 
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="co-emp-grid-2">
               <div class="form-group">
                 <label class="form-label">Employment Status *</label>
                 <select class="form-input" name="employment_status" required>
@@ -1090,7 +1322,7 @@ export async function renderEmployees(container) {
               </div>
             </div>
 
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="co-emp-grid-2">
               <div class="form-group">
                 <label class="form-label">Monthly Salary *</label>
                 <input type="text" class="form-input" name="salary" id="add-salary" placeholder="e.g. ₱40,000/month" required />

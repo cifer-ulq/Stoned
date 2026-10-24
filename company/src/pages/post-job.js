@@ -570,7 +570,7 @@ export async function renderPostJob(container) {
 
   if (!editId && !canPost) {
     container.innerHTML = `
-      <div class="fade-in" style="max-width:680px;margin:48px auto;padding:40px 32px;background:#ffffff;border:1px solid #e2e8f0;border-radius:18px;box-shadow:0 8px 30px rgba(0,0,0,0.05);text-align:center;">
+      <div class="pj-restricted-card fade-in" style="max-width:680px;margin:48px auto;padding:40px 32px;background:#ffffff;border:1px solid #e2e8f0;border-radius:18px;box-shadow:0 8px 30px rgba(0,0,0,0.05);text-align:center;">
         <div style="width:68px;height:68px;border-radius:50%;background:rgba(0,89,48,0.09);color:#005930;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
           ${icon('fileText', 32)}
         </div>

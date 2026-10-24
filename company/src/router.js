@@ -43,6 +43,11 @@ function resolveRoute() {
     tab.classList.toggle('navbar__tab--active', route === routePath);
   });
 
+  document.querySelectorAll('.mobile-bottom-nav__tab').forEach(tab => {
+    const route = tab.getAttribute('data-route');
+    tab.classList.toggle('mobile-bottom-nav__tab--active', route === routePath);
+  });
+
   document.querySelectorAll('.sidebar-nav__item').forEach(item => {
     const route = item.getAttribute('data-route');
     item.classList.toggle('sidebar-nav__item--active', route === routePath);

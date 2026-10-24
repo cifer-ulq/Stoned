@@ -13,7 +13,7 @@ import './styles/responsive.css';
 
 import { getState, setState } from './store.js';
 import { registerRoute, initRouter } from './router.js';
-import { createNavbar } from './components/navbar.js';
+import { createNavbar, createMobileBottomNav } from './components/navbar.js';
 import { createSidebarLeft } from './components/sidebar-left.js';
 import { apiGet, apiCache, revalidateEndpoint } from './api/client.js';
 
@@ -297,6 +297,17 @@ async function initApp() {
 
   app.appendChild(layout);
 
+  // Mobile sidebar backdrop
+  const sidebarBackdrop = document.createElement('div');
+  sidebarBackdrop.className = 'sidebar-backdrop';
+  sidebarBackdrop.id = 'sidebar-backdrop';
+  sidebarBackdrop.addEventListener('click', closeMobileMenu);
+  app.appendChild(sidebarBackdrop);
+
+  // Mobile bottom navigation bar (matches student & company portal)
+  const mobileBottomNav = createMobileBottomNav();
+  app.appendChild(mobileBottomNav);
+
   // Register routes with Keep-Alive View Manager
   registerRoute('/', renderPage('/', dashboardPage));
   registerRoute('/trainees', renderPage('/trainees', traineesPage));
@@ -309,6 +320,32 @@ async function initApp() {
   initRouter();
   scheduleActiveViewCheck(6000);
 }
+
+function toggleMobileMenu() {
+  const leftSidebar = document.getElementById('sidebar-left');
+  const backdrop = document.getElementById('sidebar-backdrop');
+  const isOpen = leftSidebar?.classList.toggle('sidebar-left--open');
+  backdrop?.classList.toggle('sidebar-backdrop--open', !!isOpen);
+}
+
+function closeMobileMenu() {
+  document.getElementById('sidebar-left')?.classList.remove('sidebar-left--open');
+  document.getElementById('sidebar-backdrop')?.classList.remove('sidebar-backdrop--open');
+}
+
+document.addEventListener('click', (e) => {
+  if (e.target.closest('#mobile-sidebar-toggle')) {
+    toggleMobileMenu();
+    return;
+  }
+  if (e.target.closest('#sidebar-backdrop') || e.target.closest('.sidebar-left a[href]')) {
+    closeMobileMenu();
+    return;
+  }
+  if (!e.target.closest('.sidebar-left') && !e.target.closest('#mobile-sidebar-toggle')) {
+    closeMobileMenu();
+  }
+});
 
 function applyUserToStore(u) {
   if (!u) return;

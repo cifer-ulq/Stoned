@@ -1,0 +1,9 @@
+# Treat PDF and binary files as binary (no CRLF conversion)
+*.pdf binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary

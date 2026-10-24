@@ -578,17 +578,17 @@ function showJobDetail(container, job) {
 
   backdrop.innerHTML = `
     <div class="modal modal--visible jd-modal" style="max-width:660px;">
-      <div style="background:linear-gradient(135deg,var(--color-primary-dark) 0%,var(--color-primary) 100%);padding:22px 24px 20px;position:relative;">
+      <div class="jd-modal__header" style="background:linear-gradient(135deg,var(--color-primary-dark) 0%,var(--color-primary) 100%);padding:22px 24px 20px;position:relative;">
         <button class="jd-modal__close-btn" id="modal-close">${icon('x',15)}</button>
-        <div style="display:flex;align-items:center;gap:16px;">
-          <div style="width:52px;height:52px;border-radius:12px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:1.25rem;font-weight:700;color:#fff;flex-shrink:0;letter-spacing:-.02em;">${initials(job.title)}</div>
-          <div>
-            <h3 style="color:#fff;font-size:1.1rem;font-weight:700;margin:0 0 5px;line-height:1.2;">${job.title}</h3>
+        <div class="jd-modal__header-content" style="display:flex;align-items:center;gap:16px;">
+          <div class="jd-modal__avatar" style="width:52px;height:52px;border-radius:12px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:1.25rem;font-weight:700;color:#fff;flex-shrink:0;letter-spacing:-.02em;">${initials(job.title)}</div>
+          <div class="jd-modal__meta" style="min-width:0;flex:1;">
+            <h3 style="color:#fff;font-size:1.1rem;font-weight:700;margin:0 0 5px;line-height:1.2;word-break:break-word;">${job.title}</h3>
             ${job.department ? '<p style="color:rgba(255,255,255,.75);font-size:.8rem;margin:0;">' + job.department + '</p>' : ''}
           </div>
         </div>
       </div>
-      <div style="display:flex;flex-wrap:wrap;gap:8px;padding:14px 24px;border-bottom:1px solid var(--border-default);background:var(--bg-secondary);">
+      <div class="jd-modal__pills" style="display:flex;flex-wrap:wrap;gap:8px;padding:14px 24px;border-bottom:1px solid var(--border-default);background:var(--bg-secondary);">
         <span class="jd-pill" style="background:${sb};color:${sc};border-color:${sc}25;">${(job.status||'').toUpperCase()}</span>
         ${job.location ? '<span class="jd-pill">'+icon('mapPin',11)+' '+job.location+'</span>' : ''}
         ${job.type     ? '<span class="jd-pill">'+icon('clock',11)+' '+job.type+'</span>' : ''}

@@ -502,7 +502,7 @@ function renderEmergencyBannerHtml(ojt) {
   if (isResumedFromLeave) {
     return `
       <section class="page-section animate-fade-in-up" style="margin-bottom:14px;" id="sec-resumed-banner">
-        <div class="jp-card" style="background:linear-gradient(135deg, rgba(16,185,129,0.07) 0%, rgba(2,132,199,0.05) 100%);border:1.5px solid rgba(16,185,129,0.3);border-left:5px solid #059669;padding:16px 20px;border-radius:12px;">
+        <div class="jp-card ojt-status-banner-card" style="background:linear-gradient(135deg, rgba(16,185,129,0.07) 0%, rgba(2,132,199,0.05) 100%);border:1.5px solid rgba(16,185,129,0.3);border-left:5px solid #059669;padding:16px 20px;border-radius:12px;">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:14px;">
             <div style="display:flex;align-items:flex-start;gap:14px;">
               <div style="width:42px;height:42px;border-radius:10px;background:rgba(16,185,129,0.15);color:#059669;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
@@ -523,7 +523,7 @@ function renderEmergencyBannerHtml(ojt) {
                 ` : ''}
               </div>
             </div>
-            <div style="display:flex;align-items:center;gap:8px;">
+            <div class="ojt-status-banner-actions" style="display:flex;align-items:center;gap:8px;">
               ${em.fit_to_work_url ? `
                 <a href="${em.fit_to_work_url}" target="_blank" rel="noopener noreferrer" class="btn btn--outline btn--sm" style="gap:6px;color:#059669;border-color:rgba(16,185,129,0.4);font-weight:600;">
                   ${icon('fileText', 14)} View Clearance Certificate
@@ -542,7 +542,7 @@ function renderEmergencyBannerHtml(ojt) {
   if (isActivelyOnLeave) {
     return `
       <section class="page-section animate-fade-in-up" style="margin-bottom:14px;">
-        <div class="jp-card" style="background:linear-gradient(135deg, rgba(2,132,199,0.06) 0%, rgba(16,185,129,0.06) 100%);border:1.5px solid rgba(2,132,199,0.3);border-left:5px solid #0284c7;padding:16px 20px;border-radius:12px;">
+        <div class="jp-card ojt-status-banner-card" style="background:linear-gradient(135deg, rgba(2,132,199,0.06) 0%, rgba(16,185,129,0.06) 100%);border:1.5px solid rgba(2,132,199,0.3);border-left:5px solid #0284c7;padding:16px 20px;border-radius:12px;">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:14px;">
             <div style="display:flex;align-items:flex-start;gap:14px;">
               <div style="width:42px;height:42px;border-radius:10px;background:rgba(2,132,199,0.14);color:#0284c7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
@@ -574,7 +574,7 @@ function renderEmergencyBannerHtml(ojt) {
                 ` : ''}
               </div>
             </div>
-            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+            <div class="ojt-status-banner-actions" style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
               ${(em.has_fit_to_work || em.fit_to_work_url) ? `
                 <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
                   ${em.fit_to_work_url ? `
@@ -603,7 +603,7 @@ function renderEmergencyBannerHtml(ojt) {
   if (ojt.is_withdrawn || (em.coordinator_status === 'approved' && em.type === 'permanent_withdrawal')) {
     return `
       <section class="page-section animate-fade-in-up" style="margin-bottom:14px;">
-        <div class="jp-card" style="background:#FEF2F2;border:1.5px solid rgba(239,68,68,0.3);border-left:5px solid #dc2626;padding:16px 20px;border-radius:12px;">
+        <div class="jp-card ojt-status-banner-card" style="background:#FEF2F2;border:1.5px solid rgba(239,68,68,0.3);border-left:5px solid #dc2626;padding:16px 20px;border-radius:12px;">
           <div style="display:flex;align-items:flex-start;gap:14px;">
             <div style="width:42px;height:42px;border-radius:10px;background:rgba(239,68,68,0.12);color:#dc2626;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
               ${icon('alertTriangle', 22)}
@@ -633,7 +633,7 @@ function renderEmergencyBannerHtml(ojt) {
   if (ojt.emergency_pending || em.coordinator_status === 'pending') {
     return `
       <section class="page-section animate-fade-in-up" style="margin-bottom:14px;">
-        <div class="jp-card" style="background:#FFFBEB;border:1.5px solid rgba(245,158,11,0.35);border-left:5px solid #F59E0B;padding:14px 18px;border-radius:12px;">
+        <div class="jp-card ojt-status-banner-card" style="background:#FFFBEB;border:1.5px solid rgba(245,158,11,0.35);border-left:5px solid #F59E0B;padding:14px 18px;border-radius:12px;">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;">
             <div style="display:flex;align-items:flex-start;gap:12px;">
               <div style="width:38px;height:38px;border-radius:10px;background:rgba(245,158,11,0.15);color:#d97706;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
@@ -651,7 +651,7 @@ function renderEmergencyBannerHtml(ojt) {
                 </p>
               </div>
             </div>
-            <div style="display:flex;align-items:center;gap:8px;">
+            <div class="ojt-status-banner-actions" style="display:flex;align-items:center;gap:8px;">
               <button class="btn btn--outline btn--sm" id="tracker-btn-coord-chat-top" style="padding:4px 10px;font-size:0.75rem;gap:5px;color:#92400e;border-color:rgba(146,64,14,0.3);">
                 ${icon('messageCircle', 13)} Contact Coordinator
               </button>
@@ -672,7 +672,7 @@ function renderPullOutBannerHtml(ojt) {
   if (po.status === 'pending_supervisor') {
     return `
       <section class="page-section animate-fade-in-up" style="margin-bottom:14px;">
-        <div class="jp-card" style="background:#FFFBEB;border:1.5px solid rgba(245,158,11,0.35);border-left:5px solid #F59E0B;padding:16px 20px;border-radius:12px;">
+        <div class="jp-card ojt-status-banner-card" style="background:#FFFBEB;border:1.5px solid rgba(245,158,11,0.35);border-left:5px solid #F59E0B;padding:16px 20px;border-radius:12px;">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;">
             <div style="display:flex;align-items:flex-start;gap:14px;">
               <div style="width:40px;height:40px;border-radius:10px;background:rgba(245,158,11,0.15);color:#d97706;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
@@ -698,7 +698,7 @@ function renderPullOutBannerHtml(ojt) {
                 </div>
               </div>
             </div>
-            <div style="display:flex;align-items:center;gap:8px;">
+            <div class="ojt-status-banner-actions" style="display:flex;align-items:center;gap:8px;">
               <button class="btn btn--outline btn--sm" id="btn-cancel-pull-out" style="padding:4px 10px;font-size:0.75rem;color:#dc2626;border-color:rgba(220,38,38,0.35);">
                 ${icon('x', 13)} Cancel Request
               </button>
@@ -712,7 +712,7 @@ function renderPullOutBannerHtml(ojt) {
   if (po.status === 'recommended_by_supervisor') {
     return `
       <section class="page-section animate-fade-in-up" style="margin-bottom:14px;">
-        <div class="jp-card" style="background:linear-gradient(135deg, rgba(2,132,199,0.06) 0%, rgba(59,130,246,0.06) 100%);border:1.5px solid rgba(2,132,199,0.3);border-left:5px solid #0284c7;padding:16px 20px;border-radius:12px;">
+        <div class="jp-card ojt-status-banner-card" style="background:linear-gradient(135deg, rgba(2,132,199,0.06) 0%, rgba(59,130,246,0.06) 100%);border:1.5px solid rgba(2,132,199,0.3);border-left:5px solid #0284c7;padding:16px 20px;border-radius:12px;">
           <div style="display:flex;align-items:flex-start;gap:14px;">
             <div style="width:40px;height:40px;border-radius:10px;background:rgba(2,132,199,0.14);color:#0284c7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
               ${icon('checkCircle', 20)}
@@ -743,7 +743,7 @@ function renderPullOutBannerHtml(ojt) {
     const isEmailed = po.status === 'emailed_to_dean';
     return `
       <section class="page-section animate-fade-in-up" style="margin-bottom:14px;">
-        <div class="jp-card" style="background:linear-gradient(135deg, rgba(79,70,229,0.06) 0%, rgba(99,102,241,0.06) 100%);border:1.5px solid rgba(79,70,229,0.3);border-left:5px solid #4f46e5;padding:16px 20px;border-radius:12px;">
+        <div class="jp-card ojt-status-banner-card" style="background:linear-gradient(135deg, rgba(79,70,229,0.06) 0%, rgba(99,102,241,0.06) 100%);border:1.5px solid rgba(79,70,229,0.3);border-left:5px solid #4f46e5;padding:16px 20px;border-radius:12px;">
           <div style="display:flex;align-items:flex-start;gap:14px;">
             <div style="width:40px;height:40px;border-radius:10px;background:rgba(79,70,229,0.12);color:#4f46e5;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
               ${icon(isEmailed ? 'send' : 'printer', 20)}
@@ -773,7 +773,7 @@ function renderPullOutBannerHtml(ojt) {
   if (po.status === 'approved') {
     return `
       <section class="page-section animate-fade-in-up" style="margin-bottom:14px;">
-        <div class="jp-card" style="background:linear-gradient(135deg, rgba(0,89,48,0.06) 0%, rgba(16,185,129,0.08) 100%);border:1.5px solid rgba(0,89,48,0.25);border-left:5px solid #005930;padding:16px 20px;border-radius:12px;">
+        <div class="jp-card ojt-status-banner-card" style="background:linear-gradient(135deg, rgba(0,89,48,0.06) 0%, rgba(16,185,129,0.08) 100%);border:1.5px solid rgba(0,89,48,0.25);border-left:5px solid #005930;padding:16px 20px;border-radius:12px;">
           <div style="display:flex;align-items:flex-start;gap:14px;">
             <div style="width:40px;height:40px;border-radius:10px;background:rgba(0,89,48,0.12);color:#005930;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
               ${icon('checkCircle', 20)}
@@ -798,7 +798,7 @@ function renderPullOutBannerHtml(ojt) {
   if (po.status === 'rejected' || po.status === 'rejected_by_supervisor') {
     return `
       <section class="page-section animate-fade-in-up" style="margin-bottom:14px;">
-        <div class="jp-card" style="background:#FEF2F2;border:1.5px solid rgba(239,68,68,0.3);border-left:5px solid #dc2626;padding:14px 18px;border-radius:12px;">
+        <div class="jp-card ojt-status-banner-card" style="background:#FEF2F2;border:1.5px solid rgba(239,68,68,0.3);border-left:5px solid #dc2626;padding:14px 18px;border-radius:12px;">
           <div style="display:flex;align-items:flex-start;gap:12px;">
             <div style="width:38px;height:38px;border-radius:10px;background:rgba(239,68,68,0.12);color:#dc2626;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
               ${icon('alertTriangle', 18)}
@@ -828,7 +828,7 @@ function openPullOutModal(ojt, onSubmitted) {
   bd.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,0.65);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:99999;padding:16px;opacity:1 !important;visibility:visible !important;';
 
   bd.innerHTML = `
-    <div class="modal modal--visible" style="max-width:580px;width:100%;max-height:92vh;overflow-y:auto;border-radius:14px;background:var(--bg-card,#fff);box-shadow:0 20px 45px rgba(0,0,0,0.25);">
+    <div class="modal modal--visible ojt-tracker-modal ojt-pull-out-modal" style="max-width:580px;width:100%;max-height:92vh;overflow-y:auto;border-radius:14px;background:var(--bg-card,#fff);box-shadow:0 20px 45px rgba(0,0,0,0.25);">
       <div style="padding:18px 22px;border-bottom:1px solid var(--border-light,#e2e8f0);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg, rgba(185,28,28,0.06) 0%, rgba(217,119,6,0.06) 100%);">
         <div style="display:flex;align-items:center;gap:10px;">
           <div style="width:38px;height:38px;border-radius:10px;background:rgba(185,28,28,0.12);color:#b91c1c;display:flex;align-items:center;justify-content:center;">
@@ -941,7 +941,7 @@ function openEmergencyModal(ojt, onSubmitted) {
   const todayIso = new Date().toISOString().split('T')[0];
 
   bd.innerHTML = `
-    <div class="modal modal--visible" style="max-width:560px;width:100%;max-height:90vh;overflow-y:auto;border-radius:14px;background:var(--bg-card,#fff);box-shadow:0 20px 45px rgba(0,0,0,0.25);">
+    <div class="modal modal--visible ojt-tracker-modal ojt-emergency-modal" style="max-width:560px;width:100%;max-height:90vh;overflow-y:auto;border-radius:14px;background:var(--bg-card,#fff);box-shadow:0 20px 45px rgba(0,0,0,0.25);">
       <div style="padding:18px 22px;border-bottom:1px solid var(--border-light,#e2e8f0);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg, rgba(239,68,68,0.06) 0%, rgba(245,158,11,0.06) 100%);">
         <div style="display:flex;align-items:center;gap:10px;">
           <div style="width:38px;height:38px;border-radius:10px;background:rgba(239,68,68,0.12);color:#dc2626;display:flex;align-items:center;justify-content:center;">
@@ -1099,7 +1099,7 @@ function openFitToWorkModal(emergency, onSubmitted) {
   bd.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,0.65);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:99999;padding:16px;opacity:1 !important;visibility:visible !important;';
 
   bd.innerHTML = `
-    <div class="modal modal--visible" style="max-width:480px;width:100%;border-radius:14px;background:var(--bg-card,#fff);box-shadow:0 20px 45px rgba(0,0,0,0.25);">
+    <div class="modal modal--visible ojt-tracker-modal ojt-ftw-modal" style="max-width:480px;width:100%;border-radius:14px;background:var(--bg-card,#fff);box-shadow:0 20px 45px rgba(0,0,0,0.25);">
       <div style="padding:18px 22px;border-bottom:1px solid var(--border-light,#e2e8f0);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg, rgba(2,132,199,0.06) 0%, rgba(16,185,129,0.06) 100%);">
         <div style="display:flex;align-items:center;gap:10px;">
           <div style="width:38px;height:38px;border-radius:10px;background:rgba(2,132,199,0.12);color:#0284c7;display:flex;align-items:center;justify-content:center;">
@@ -1195,7 +1195,7 @@ function renderEvaluationBannerHtml(evaluation) {
   if (hasLegacy) {
     return `
       <section class="page-section animate-fade-in-up" style="animation-delay:40ms;margin-bottom:16px;">
-        <div class="jp-card" style="background:linear-gradient(135deg, rgba(0,89,48,0.06) 0%, rgba(16,185,129,0.08) 100%);border:1.5px solid rgba(0,89,48,0.25);border-radius:var(--radius-lg);padding:20px 24px;">
+        <div class="jp-card ojt-eval-banner-card" style="background:linear-gradient(135deg, rgba(0,89,48,0.06) 0%, rgba(16,185,129,0.08) 100%);border:1.5px solid rgba(0,89,48,0.25);border-radius:var(--radius-lg);padding:20px 24px;">
           <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;">
             <div style="display:flex;align-items:center;gap:14px;">
               <div style="width:48px;height:48px;border-radius:50%;background:#005930;color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.3rem;font-weight:700;">
@@ -1236,7 +1236,7 @@ function renderEvaluationBannerHtml(evaluation) {
   // Dual-Term Evaluation Presentation
   return `
     <section class="page-section animate-fade-in-up" style="animation-delay:40ms;margin-bottom:16px;">
-      <div class="jp-card" style="background:var(--bg-card,#fff);border:1.5px solid var(--border-light,#e2e8f0);border-radius:var(--radius-lg);padding:22px 24px;box-shadow:0 4px 15px rgba(0,0,0,0.03);">
+      <div class="jp-card ojt-eval-banner-card" style="background:var(--bg-card,#fff);border:1.5px solid var(--border-light,#e2e8f0);border-radius:var(--radius-lg);padding:22px 24px;box-shadow:0 4px 15px rgba(0,0,0,0.03);">
         
         <!-- Header & Composite Score Badge -->
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;border-bottom:1px solid var(--border-light,#e2e8f0);padding-bottom:16px;margin-bottom:16px;">
@@ -1272,7 +1272,7 @@ function renderEvaluationBannerHtml(evaluation) {
         </div>
 
         <!-- Two Columns: Midterm & Endterm Cards -->
-        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:16px;">
+        <div class="ojt-eval-terms-grid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:16px;">
           
           <!-- Midterm Card -->
           <div style="border:1.5px solid ${midterm?.status === 'submitted' ? 'rgba(0,89,48,0.25)' : (midterm?.is_waived ? 'rgba(245,158,11,0.3)' : 'var(--border-light,#e2e8f0)')};border-radius:10px;padding:16px;background:${midterm?.status === 'submitted' ? 'rgba(0,89,48,0.03)' : (midterm?.is_waived ? '#FFFBEB' : '#fafafa')};">
@@ -1545,17 +1545,17 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
 
   container.innerHTML = `
     <!-- ── Page Header ── -->
-    <section class="page-section animate-fade-in-up">
-      <div style="display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:4px;">
-        <div>
-          <h1 style="font-size:var(--text-2xl); font-weight:700; display:flex; align-items:center; gap:10px;">
+    <section class="page-section animate-fade-in-up ojt-tracker-header-section">
+      <div class="ojt-tracker-header" style="display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:4px;">
+        <div class="ojt-tracker-header__title-col">
+          <h1 class="ojt-tracker-title" style="font-size:var(--text-2xl); font-weight:700; display:flex; align-items:center; gap:10px;">
             ${icon('clock', 26)} OJT Time Tracker
           </h1>
-          <p class="text-secondary" style="margin-top:4px;">Log your daily attendance (Morning &amp; Afternoon sessions) and monitor your OJT hours progress.</p>
+          <p class="text-secondary ojt-tracker-subtitle" style="margin-top:4px;">Log your daily attendance (Morning &amp; Afternoon sessions) and monitor your OJT hours progress.</p>
         </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <div class="ojt-tracker-header-actions" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
           ${shiftText ? `
-            <div style="display:inline-flex;align-items:center;gap:6px;background:rgba(0,89,48,0.08);color:#005930;border:1px solid rgba(0,89,48,0.2);padding:6px 14px;border-radius:99px;font-size:0.78rem;font-weight:600;">
+            <div class="ojt-shift-pill" style="display:inline-flex;align-items:center;gap:6px;background:rgba(0,89,48,0.08);color:#005930;border:1px solid rgba(0,89,48,0.2);padding:6px 14px;border-radius:99px;font-size:0.78rem;font-weight:600;">
               ${icon('calendar', 13)}
               <span>${esc(schedDays || 'Mon–Fri')} &middot; ${esc(shiftText)}${lunchText ? ' · ' + esc(lunchText) : ''}</span>
             </div>` : ''}
@@ -1575,7 +1575,7 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
 
     <!-- ── Academic Credit Applied Banner ── -->
     ${ojt.accreditedHours > 0 ? `
-    <div class="animate-fade-in-up" style="margin-bottom:14px;padding:12px 18px;border-radius:10px;background:rgba(0,89,48,0.06);border:1.5px solid rgba(0,89,48,0.22);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+    <div class="animate-fade-in-up ojt-accredited-banner" style="margin-bottom:14px;padding:12px 18px;border-radius:10px;background:rgba(0,89,48,0.06);border:1.5px solid rgba(0,89,48,0.22);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
       <div style="display:flex;align-items:center;gap:12px;">
         <div style="width:36px;height:36px;border-radius:8px;background:#005930;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
           ${icon('award', 20)}
@@ -1597,10 +1597,10 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
 
     <!-- ── Hours Progress + OJT Info ── -->
     <section class="page-section animate-fade-in-up" style="animation-delay:60ms;">
-      <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:stretch;">
+      <div class="ojt-tracker-progress-row" style="display:flex;gap:16px;flex-wrap:wrap;align-items:stretch;">
 
         <!-- Circular progress ring -->
-        <div class="jp-card" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:190px;padding:24px 20px;text-align:center;">
+        <div class="jp-card ojt-progress-ring-card" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:190px;padding:24px 20px;text-align:center;">
           <svg width="124" height="124" viewBox="0 0 124 124" style="overflow:visible;">
             <circle cx="62" cy="62" r="54" fill="none" stroke="var(--bg-tertiary)" stroke-width="10"/>
             <circle cx="62" cy="62" r="54" fill="none"
@@ -1620,10 +1620,10 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
         </div>
 
         <!-- OJT deployment details -->
-        <div class="jp-card" style="flex:1;min-width:240px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+        <div class="jp-card ojt-deployment-card" style="flex:1;min-width:240px;">
+          <div class="ojt-deployment-card__header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
             <p class="text-xs text-tertiary" style="font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin:0;">Active OJT Deployment</p>
-            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <div class="ojt-deployment-card__actions" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
               ${!ojt.is_withdrawn ? `
                 <button class="btn btn--outline btn--sm btn-trigger-emergency" id="tracker-btn-emergency" style="padding:4px 10px;font-size:0.75rem;gap:5px;color:#dc2626;border-color:rgba(239,68,68,0.3);display:inline-flex;align-items:center;">
                   ${icon('alertTriangle', 13)} ${ojt.emergency_pending || ojt.is_on_leave ? 'Emergency Info' : 'Emergency / Leave Notice'}
@@ -1691,10 +1691,12 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
             <a href="https://www.openstreetmap.org/search?query=${encodeURIComponent(ojt.location || '')}" target="_blank" rel="noopener noreferrer" style="font-size:0.68rem;color:var(--color-primary);font-weight:600;text-decoration:none;display:flex;align-items:center;gap:3px;">Open Maps ${icon('arrowRight', 10)}</a>
           </div>
           <div id="ojt-map" style="flex:1;min-height:300px;background:var(--bg-secondary);"></div>
-          <div style="padding:8px 14px;display:flex;align-items:center;gap:12px;border-top:1px solid var(--border-light);background:var(--bg-secondary);flex-shrink:0;flex-wrap:wrap;">
-            <span style="display:flex;align-items:center;gap:5px;font-size:0.68rem;color:var(--text-secondary);"><span style="width:10px;height:10px;border-radius:50%;background:#ef4444;display:inline-block;flex-shrink:0;"></span>Company</span>
-            <span style="display:flex;align-items:center;gap:5px;font-size:0.68rem;color:var(--text-secondary);"><span style="width:10px;height:10px;border-radius:50%;border:1.5px dashed #005930;background:rgba(34,197,94,0.2);display:inline-block;flex-shrink:0;"></span>100m Geofence</span>
-            <div style="display:flex;align-items:center;gap:4px;margin-left:auto;flex-wrap:wrap;">
+          <div class="ojt-map-footer" style="padding:8px 14px;display:flex;align-items:center;gap:12px;border-top:1px solid var(--border-light);background:var(--bg-secondary);flex-shrink:0;flex-wrap:wrap;">
+            <div class="ojt-map-legend" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+              <span style="display:flex;align-items:center;gap:5px;font-size:0.68rem;color:var(--text-secondary);"><span style="width:10px;height:10px;border-radius:50%;background:#ef4444;display:inline-block;flex-shrink:0;"></span>Company</span>
+              <span style="display:flex;align-items:center;gap:5px;font-size:0.68rem;color:var(--text-secondary);"><span style="width:10px;height:10px;border-radius:50%;border:1.5px dashed #005930;background:rgba(34,197,94,0.2);display:inline-block;flex-shrink:0;"></span>100m Geofence</span>
+            </div>
+            <div class="ojt-map-filters" style="display:flex;align-items:center;gap:4px;margin-left:auto;flex-wrap:wrap;">
               <button id="map-filter-all" class="btn btn--outline btn--sm active" style="height:22px;padding:0 8px;font-size:0.65rem;border-radius:99px;font-weight:600;background:rgba(0,89,48,0.1);color:#005930;border-color:#005930;">All Pins</button>
               <button id="map-filter-in" class="btn btn--outline btn--sm" style="height:22px;padding:0 8px;font-size:0.65rem;border-radius:99px;font-weight:600;display:flex;align-items:center;gap:4px;"><span style="width:7px;height:7px;border-radius:50%;background:#22c55e;"></span>Log In</button>
               <button id="map-filter-out" class="btn btn--outline btn--sm" style="height:22px;padding:0 8px;font-size:0.65rem;border-radius:99px;font-weight:600;display:flex;align-items:center;gap:4px;"><span style="width:7px;height:7px;border-radius:50%;background:#f97316;"></span>Log Out</button>
@@ -2583,7 +2585,7 @@ function showLogInModal(sessionLabelOrSuccess, onSuccessMaybe) {
   const bd = document.createElement('div');
   bd.className = 'modal-backdrop modal-backdrop--visible';
   bd.innerHTML = `
-    <div class="modal modal--visible" style="max-width:420px;">
+    <div class="modal modal--visible ojt-tracker-modal ojt-login-modal" style="max-width:420px;">
       <div class="modal__header">
         <h3 class="modal__title" style="display:flex;align-items:center;gap:8px;">${icon('logIn', 20)} ${esc(sessionLabel)}</h3>
         <button class="modal__close" id="li-close">${icon('x', 20)}</button>
@@ -2711,7 +2713,7 @@ function showLogOutModal(todayLog, sessionLabelOrSuccess, onSuccessMaybe) {
   const bd = document.createElement('div');
   bd.className = 'modal-backdrop modal-backdrop--visible';
   bd.innerHTML = `
-    <div class="modal modal--visible" style="max-width:420px;">
+    <div class="modal modal--visible ojt-tracker-modal ojt-logout-modal" style="max-width:420px;">
       <div class="modal__header">
         <h3 class="modal__title" style="display:flex;align-items:center;gap:8px;color:#d97706;">${icon('logOut', 20)} ${esc(sessionLabel)}</h3>
         <button class="modal__close" id="lo-close">${icon('x', 20)}</button>

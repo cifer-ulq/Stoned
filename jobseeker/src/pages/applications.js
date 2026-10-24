@@ -429,7 +429,7 @@ function openApplicationDetailsModal(item, onWithdrawSuccess, onDecisionSuccess)
             </button>
           ` : ''}
         </div>
-        <div style="display:flex; gap:10px; align-items:center;">
+        <div class="app-details-modal__actions" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
           <button
             class="app-card__btn app-card__btn--msg modal-btn-msg"
             data-id="${item.id}"
@@ -907,7 +907,7 @@ export async function renderApplications(container) {
           </button>
         </div>
 
-        <div style="display:flex; gap:10px; align-items:center;">
+        <div class="app-type-tabs-actions" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
           <a href="#/jobs" class="btn btn--sm" style="background:var(--bg-secondary); color:var(--text-primary); border:1px solid var(--border-default); border-radius:99px; font-size:0.76rem; text-decoration:none; display:inline-flex; align-items:center; gap:5px; font-weight:600; padding:6px 14px;">
             ${icon('briefcase', 13)} Browse Job Matches
           </a>

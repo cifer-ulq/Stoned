@@ -1366,10 +1366,10 @@ function injectStyles() {
   }
   @media (max-width: 580px) {
     .an-header { flex-direction: column; align-items: flex-start; }
-    .an-kpi-grid { grid-template-columns: 1fr; }
-    .an-tabs-bar { width: 100%; overflow-x: auto; }
-    .an-tabs { width: 100%; }
-    .an-tab { flex: 1; justify-content: center; padding: 7px 10px; }
+    .an-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .an-tabs-bar { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .an-tabs { display: flex; flex-wrap: nowrap; gap: 4px; width: max-content; }
+    .an-tab { white-space: nowrap; flex-shrink: 0; padding: 7px 14px; }
   }
   `;
   document.head.appendChild(s);

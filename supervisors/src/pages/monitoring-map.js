@@ -78,8 +78,21 @@ export default function monitoringMapPage(container) {
   return () => destroyMap();
 }
 
+let resizeHandler = null;
+
+/* ── Clean numeric hours formatting (prevents 10.239999999999998 floating point artifacts) ── */
+function fmtHours(h) {
+  if (h == null || isNaN(h)) return 0;
+  const num = Number(h);
+  return Number.isInteger(num) ? num : parseFloat(num.toFixed(1));
+}
+
 /* ── Destroy Leaflet map cleanly ── */
 function destroyMap() {
+  if (resizeHandler) {
+    window.removeEventListener('resize', resizeHandler);
+    resizeHandler = null;
+  }
   if (mapInstance) {
     try {
       mapInstance.remove();
@@ -366,8 +379,8 @@ function siteCard(co) {
     statusIcon  = 'compass';
   }
 
-  const totalHrs   = students.reduce((a, s) => a + (s.completedHours || 0), 0);
-  const reqHrs     = students.reduce((a, s) => a + (s.requiredHours || 0), 0);
+  const totalHrs   = fmtHours(students.reduce((a, s) => a + (s.completedHours || 0), 0));
+  const reqHrs     = fmtHours(students.reduce((a, s) => a + (s.requiredHours || 0), 0));
   const preview    = students.slice(0, 4);
   const extraCount = students.length - preview.length;
   const initial    = (co.company || 'C').trim().charAt(0).toUpperCase();
@@ -432,8 +445,8 @@ function siteCard(co) {
           `).join('')}
           ${extraCount > 0 ? `<div class="mon-avatar-dot mon-avatar-dot--more">+${extraCount}</div>` : ''}
         </div>
-        <button class="mon-card-action" tabindex="-1">
-          <span>View Site &amp; Map</span>
+        <button class="mon-card-action" tabindex="-1" aria-label="View Site">
+          <span>View Site</span>
           ${icon('chevronRight', 13)}
         </button>
       </div>
@@ -613,7 +626,7 @@ function traineeCardRow(s) {
         </div>
 
         <div class="mon-roster-footer">
-          <span class="mon-roster-hrs">${s.completedHours || 0} / ${s.requiredHours || 0} hrs</span>
+          <span class="mon-roster-hrs">${fmtHours(s.completedHours || 0)} / ${fmtHours(s.requiredHours || 0)} hrs</span>
           ${hasGps
             ? `<span class="mon-gps-badge mon-gps-badge--active">${icon('mapPin', 9)} GPS Logged</span>`
             : `<span class="mon-gps-badge mon-gps-badge--none">${icon('mapPin', 9)} No GPS</span>`}
@@ -647,6 +660,7 @@ function initCompanyMap(container, company) {
   mapInstance = L.map('mon-map', {
     zoomControl: true,
     attributionControl: false,
+    scrollWheelZoom: false,
   }).setView([centerLat, centerLng], 15);
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -704,7 +718,14 @@ function initCompanyMap(container, company) {
     } catch (_) {}
   }
 
-  setTimeout(() => mapInstance && mapInstance.invalidateSize(), 250);
+  resizeHandler = () => {
+    if (mapInstance) mapInstance.invalidateSize();
+  };
+  window.addEventListener('resize', resizeHandler);
+
+  setTimeout(() => mapInstance && mapInstance.invalidateSize(), 100);
+  setTimeout(() => mapInstance && mapInstance.invalidateSize(), 300);
+  setTimeout(() => mapInstance && mapInstance.invalidateSize(), 600);
 }
 
 /* ══════════════════════════════════════
@@ -767,7 +788,7 @@ async function openStudentDetail(container, company, student) {
           </div>
         </div>
         <div class="mon-student-hrs-summary">
-          <div class="mon-hrs-val">${student.completedHours || 0} / ${student.requiredHours || 0}</div>
+          <div class="mon-hrs-val">${fmtHours(student.completedHours || 0)} / ${fmtHours(student.requiredHours || 0)}</div>
           <div class="mon-hrs-lbl">Total Hours Rendered</div>
         </div>
       </div>
@@ -864,6 +885,7 @@ function initLogMap(container, company) {
   mapInstance = L.map('mon-map', {
     zoomControl: true,
     attributionControl: false,
+    scrollWheelZoom: false,
   }).setView([centerLat, centerLng], 15);
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -905,7 +927,14 @@ function initLogMap(container, company) {
     `);
   }
 
-  setTimeout(() => mapInstance && mapInstance.invalidateSize(), 250);
+  resizeHandler = () => {
+    if (mapInstance) mapInstance.invalidateSize();
+  };
+  window.addEventListener('resize', resizeHandler);
+
+  setTimeout(() => mapInstance && mapInstance.invalidateSize(), 100);
+  setTimeout(() => mapInstance && mapInstance.invalidateSize(), 300);
+  setTimeout(() => mapInstance && mapInstance.invalidateSize(), 600);
 }
 
 /* ── Render Log GPS Pins on Map ── */
