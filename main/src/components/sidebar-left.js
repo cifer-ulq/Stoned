@@ -13,8 +13,8 @@ export function createLeftSidebar() {
     ? (user.avatar.startsWith('http') ? user.avatar : `http://localhost:8000${user.avatar}`)
     : null;
   const avatarInner = avatarSrc
-    ? `<img src="${avatarSrc}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;">`
-    : user.initials;
+    ? `<img src="${avatarSrc}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" onerror="this.onerror=null;this.parentElement.textContent='${user.initials || 'U'}';">`
+    : (user.initials || 'U');
 
   const sidebar = document.createElement('aside');
   sidebar.className = 'sidebar-left';

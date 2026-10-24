@@ -315,6 +315,7 @@
   width: 280px;
   padding: var(--space-3) var(--space-2);
   overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   z-index: 10;
@@ -430,6 +431,9 @@
 
 .sidebar-section {
   margin-top: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
 }
 
 .sidebar-section__title {
@@ -1682,7 +1686,7 @@ textarea.form-input { min-height: 80px; resize: vertical; }
   bottom: 0;
   left: 0;
   right: 0;
-  height: 60px;
+  height: calc(60px + env(safe-area-inset-bottom, 0px));
   background: var(--bg-elevated);
   border-top: 1px solid var(--border-default);
   box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
@@ -1691,6 +1695,7 @@ textarea.form-input { min-height: 80px; resize: vertical; }
   justify-content: space-around;
   padding: 0 var(--space-1);
   padding-bottom: env(safe-area-inset-bottom, 0px);
+  box-sizing: border-box;
 }
 
 .mobile-bottom-nav__tab {

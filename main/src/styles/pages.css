@@ -11,9 +11,11 @@
 .home-hero__title {
   font-size: var(--text-5xl);
   font-weight: var(--weight-extrabold);
-  line-height: 1.1;
+  line-height: 1.15;
   margin-bottom: var(--space-4);
   letter-spacing: -0.03em;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .home-hero__title span {
@@ -29,6 +31,7 @@
   max-width: 560px;
   margin: 0 auto var(--space-8);
   line-height: var(--leading-relaxed);
+  overflow-wrap: break-word;
 }
 
 .home-hero__actions {
@@ -36,6 +39,7 @@
   align-items: center;
   justify-content: center;
   gap: var(--space-4);
+  flex-wrap: wrap;
 }
 
 .home-stats {
@@ -51,6 +55,8 @@
   padding: var(--space-6);
   text-align: center;
   transition: all var(--duration-fast) var(--ease-default);
+  min-width: 0;
+  overflow-wrap: break-word;
 }
 
 .stat-card:hover {
@@ -67,6 +73,7 @@
   align-items: center;
   justify-content: center;
   margin: 0 auto var(--space-3);
+  flex-shrink: 0;
 }
 
 .stat-card__icon svg {
@@ -79,11 +86,16 @@
   font-size: var(--text-3xl);
   font-weight: var(--weight-bold);
   margin-bottom: var(--space-1);
+  overflow-wrap: break-word;
+  word-break: break-word;
+  line-height: 1.2;
 }
 
 .stat-card__label {
   font-size: var(--text-sm);
   color: var(--text-secondary);
+  line-height: 1.3;
+  overflow-wrap: break-word;
 }
 
 .activity-feed {
@@ -101,6 +113,7 @@
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
   transition: background var(--duration-fast);
+  min-width: 0;
 }
 
 .activity-item:hover {
@@ -124,11 +137,15 @@
 
 .activity-item__content {
   flex: 1;
+  min-width: 0;
 }
 
 .activity-item__title {
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
+  overflow-wrap: break-word;
+  word-break: break-word;
+  line-height: 1.35;
 }
 
 .activity-item__time {
@@ -5025,6 +5042,8 @@
   cursor: pointer;
   transition: all var(--duration-fast);
   text-align: center;
+  min-width: 0;
+  touch-action: manipulation;
 }
 
 .quick-action:hover {
@@ -5040,6 +5059,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .quick-action__icon svg {
@@ -5050,6 +5070,9 @@
 .quick-action__label {
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
+  overflow-wrap: break-word;
+  word-break: break-word;
+  line-height: 1.25;
 }
 
 /* Applied badge (top-right of card, replaces HOT MATCH) */

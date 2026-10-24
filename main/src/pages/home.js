@@ -59,7 +59,7 @@ export async function renderHome(container) {
   const hasCachedActivity = cachedDash && cachedDash.activity;
 
   container.innerHTML = `
-    <div class="page-enter">
+    <div class="page-enter home-dashboard">
       <!-- Hero Section -->
       <section class="home-hero">
         <h1 class="home-hero__title animate-fade-in-up">
