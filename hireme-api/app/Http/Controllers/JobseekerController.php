@@ -1002,7 +1002,7 @@ class JobseekerController extends Controller
     public function peopleYouMayKnow(Request $request)
     {
         $user = $request->user();
-        $people = PeerPortfolioService::getPeopleYouKnow($user, 20);
+        $people = PeerPortfolioService::getPeopleYouKnow($user, 50);
 
         return response()->json(['data' => $people, 'total' => count($people)]);
     }

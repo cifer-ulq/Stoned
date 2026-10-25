@@ -2475,7 +2475,7 @@ class StudentController extends Controller
     public function peopleYouKnow(Request $request)
     {
         $user = $request->user();
-        $peers = PeerPortfolioService::getPeopleYouKnow($user, 20);
+        $peers = PeerPortfolioService::getPeopleYouKnow($user, 50);
 
         return response()->json([
             'data'  => $peers,

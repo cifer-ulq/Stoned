@@ -897,11 +897,14 @@
 .widget-person-item {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-2) 0;
-  border-bottom: 1px solid var(--border-light);
+  gap: var(--space-2);
+  padding: 5px 6px;
+  border-radius: var(--radius-md);
+  transition: background var(--duration-fast) var(--ease-default);
 }
-.widget-person-item:last-child { border-bottom: none; }
+.widget-person-item:hover {
+  background: var(--bg-hover, var(--bg-secondary));
+}
 .widget-person-item__avatar {
   width: 34px;
   height: 34px;

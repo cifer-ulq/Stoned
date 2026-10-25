@@ -15,7 +15,7 @@ class PeerPortfolioService
     /**
      * Get recommended peers (both students and graduates) for sidebar widgets.
      */
-    public static function getPeopleYouKnow(User $currentUser, int $limit = 20): array
+    public static function getPeopleYouKnow(User $currentUser, int $limit = 50): array
     {
         $currentId = $currentUser->id;
 
