@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\OnboardingController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\CompanyRegisterController;
+use App\Http\Controllers\Auth\SocialAuthController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\OjtController;
@@ -134,6 +135,11 @@ Route::prefix('auth')->group(function () {
     Route::post('set-password',      [LoginController::class,   'setPassword']); // company onboarding
     Route::post('forgot-password',   [LoginController::class,   'forgotPassword'])->middleware('throttle:5,1');
     Route::post('reset-password',    [LoginController::class,   'resetPassword'])->middleware('throttle:10,1');
+
+    // Social Authentication (Google & LinkedIn)
+    Route::get('{provider}/url',      [SocialAuthController::class, 'getAuthUrl'])->where('provider', 'google|linkedin');
+    Route::get('{provider}/redirect', [SocialAuthController::class, 'redirect'])->where('provider', 'google|linkedin');
+    Route::get('{provider}/callback', [SocialAuthController::class, 'handleCallback'])->where('provider', 'google|linkedin');
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('logout',                    [LoginController::class,      'logout']);

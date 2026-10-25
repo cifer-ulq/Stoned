@@ -521,11 +521,27 @@ function attachTemporaryPasswordEvents(cachedUser) {
 
 function render(animate = true) {
   const urlParams = new URLSearchParams(window.location.search);
+  const oauthToken = urlParams.get('oauth_token');
+  if (oauthToken) {
+    localStorage.setItem('hireme_token', oauthToken);
+  }
+
   const cachedUserStr = localStorage.getItem('hireme_user');
   let cachedUser = null;
   try {
     cachedUser = cachedUserStr ? JSON.parse(cachedUserStr) : null;
   } catch (_) {}
+
+  if (oauthToken && !cachedUser) {
+    fetch('http://localhost:8000/api/auth/me', {
+      headers: { 'Authorization': `Bearer ${oauthToken}`, 'Accept': 'application/json' },
+    }).then(r => r.json()).then(data => {
+      const user = data.data || data.user;
+      if (user) {
+        localStorage.setItem('hireme_user', JSON.stringify(user));
+      }
+    }).catch(() => {});
+  }
 
   const isTemporaryPassword = urlParams.get('mode') === 'temporary-password' || Boolean(cachedUser?.must_change_password);
 
@@ -946,6 +962,8 @@ async function handleNext() {
 
     if (signup) {
       await completeRegistration(JSON.parse(signup));
+    } else if (localStorage.getItem('hireme_token')) {
+      await completeOAuthOnboarding();
     } else {
       // Already logged in — just save locally (fallback)
       finishLocally();
@@ -1019,6 +1037,60 @@ async function completeRegistration(credentials) {
     finishLocally();
   } catch {
     alert('Could not connect to server. Is the backend running on port 8000?');
+    if (nextBtn) { nextBtn.disabled = false; nextBtn.querySelector('span').textContent = 'Complete Setup'; }
+  }
+}
+
+async function completeOAuthOnboarding() {
+  const nextBtn = document.getElementById('next-btn');
+  if (nextBtn) { nextBtn.disabled = true; nextBtn.querySelector('span').textContent = 'Saving profile…'; }
+
+  const token = localStorage.getItem('hireme_token');
+  const cachedUserStr = localStorage.getItem('hireme_user');
+  let cachedUser = null;
+  try {
+    cachedUser = cachedUserStr ? JSON.parse(cachedUserStr) : null;
+  } catch (_) {}
+
+  try {
+    const profilePayload = buildProfilePayload();
+    const onbRes = await fetch('http://localhost:8000/api/auth/onboarding', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(profilePayload),
+    });
+    const onbData = await onbRes.json();
+
+    if (!onbRes.ok) {
+      const msg = Object.values(onbData.errors || {})[0]?.[0] || onbData.message || 'Profile setup failed.';
+      alert(msg);
+      if (nextBtn) { nextBtn.disabled = false; nextBtn.querySelector('span').textContent = 'Complete Setup'; }
+      return;
+    }
+
+    if (onbData.pending_approval) {
+      localStorage.removeItem('hireme_token');
+      localStorage.removeItem('hireme_user');
+      showPendingApprovalModal({
+        name: cachedUser?.name || 'Student',
+        studentId: formData.studentId,
+        program: formData.program,
+        email: cachedUser?.email || '',
+      });
+      return;
+    }
+
+    if (onbData.user) {
+      localStorage.setItem('hireme_user', JSON.stringify(onbData.user));
+    }
+
+    finishLocally();
+  } catch {
+    alert('Could not connect to server to complete profile.');
     if (nextBtn) { nextBtn.disabled = false; nextBtn.querySelector('span').textContent = 'Complete Setup'; }
   }
 }

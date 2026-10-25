@@ -21,6 +21,9 @@ class User extends Authenticatable
         'role',
         'onboarding_completed',
         'avatar_url',
+        'google_id',
+        'linkedin_id',
+        'provider',
     ];
 
     protected $hidden = [

@@ -709,12 +709,12 @@ function attachEvents() {
     updatePasswordStrength(e.target.value, 'cr-ps', 'cr-pw-label');
   });
 
-  // Social buttons (stub)
+  // Social buttons (OAuth: Google & LinkedIn)
   document.getElementById('google-btn')?.addEventListener('click', () => {
-    showToast('Google sign-in coming soon');
+    handleSocialLogin('google');
   });
   document.getElementById('linkedin-btn')?.addEventListener('click', () => {
-    showToast('LinkedIn sign-in coming soon');
+    handleSocialLogin('linkedin');
   });
 
   // Form submit — standard
@@ -1105,5 +1105,91 @@ function startResendTimer() {
   }, 1000);
 }
 
+/* ── Social Login Handler ── */
+async function handleSocialLogin(provider) {
+  const btn = document.getElementById(provider + '-btn');
+  const originalHtml = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="login-spinner"></span> Connecting…';
+  }
+
+  try {
+    const res = await fetch(`http://localhost:8000/api/auth/${provider}/url`, {
+      headers: { 'Accept': 'application/json' },
+    });
+    const data = await res.json();
+
+    if (!res.ok || !data.configured) {
+      const providerTitle = provider === 'google' ? 'Google' : 'LinkedIn';
+      showToast(data.message || `${providerTitle} OAuth is not yet configured. Please set your Client ID in server environment.`);
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+      }
+      return;
+    }
+
+    if (data.url) {
+      window.location.href = data.url;
+    } else {
+      window.location.href = `http://localhost:8000/api/auth/${provider}/redirect`;
+    }
+  } catch (err) {
+    // If API check fails, fallback to direct redirect
+    window.location.href = `http://localhost:8000/api/auth/${provider}/redirect`;
+  }
+}
+
+/* ── Check Incoming OAuth Token / Error ── */
+async function checkOAuthCallback() {
+  const oauthToken = urlParams.get('oauth_token');
+  const oauthError = urlParams.get('oauth_error');
+
+  if (oauthError) {
+    showToast(decodeURIComponent(oauthError));
+    history.replaceState(null, '', window.location.pathname);
+    return;
+  }
+
+  if (oauthToken) {
+    localStorage.setItem('hireme_token', oauthToken);
+
+    try {
+      showToast('Authenticating with social account…');
+      const res = await fetch('http://localhost:8000/api/auth/me', {
+        headers: {
+          'Authorization': `Bearer ${oauthToken}`,
+          'Accept': 'application/json',
+        },
+      });
+      const data = await res.json();
+      const user = data.data || data.user;
+
+      if (user) {
+        localStorage.setItem('hireme_user', JSON.stringify(user));
+        if (user.role === 'student' && (!user.onboarding_completed || urlParams.get('new_account') === '1')) {
+          window.location.href = './onboarding.html';
+          return;
+        }
+        const destinations = {
+          student:    '/main/',
+          graduate:   '/jobseeker/',
+          jobseeker:  '/jobseeker/',
+          company:    '/company/',
+          supervisor: '/supervisors/',
+          admin:      '/admin/',
+        };
+        window.location.href = destinations[user.role] || '/main/';
+        return;
+      }
+    } catch (err) {
+      console.error('[OAuth] Failed to hydrate session:', err);
+      history.replaceState(null, '', window.location.pathname);
+    }
+  }
+}
+
 /* ── Init ── */
 render();
+checkOAuthCallback();
