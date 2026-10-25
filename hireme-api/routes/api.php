@@ -144,6 +144,7 @@ Route::prefix('auth')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('logout',                    [LoginController::class,      'logout']);
         Route::get('me',                         [LoginController::class,      'me']);
+        Route::post('avatar',                    [LoginController::class,      'uploadAvatar']);
         Route::post('accept-terms',               [LoginController::class,      'acceptTerms']);
         Route::post('onboarding',                [OnboardingController::class, 'store']);
         Route::post('change-temporary-password', [LoginController::class,      'changeTemporaryPassword']);
@@ -160,6 +161,7 @@ Route::middleware('auth:sanctum')->prefix('ojt')->group(function () {
 
 // ── Company routes ────────────────────────────────────────────────────────────
 Route::middleware('auth:sanctum')->prefix('company')->group(function () {
+    Route::post('logo',                           [CompanyController::class, 'uploadLogo']);
     Route::post('profile/complete',               [CompanyController::class, 'completeProfile']); // onboarding step 2
     Route::get('profile',                         [CompanyController::class, 'getProfile']);
     Route::post('profile',                        [CompanyController::class, 'saveProfile']);
@@ -357,6 +359,7 @@ Route::middleware('auth:sanctum')->prefix('student')->group(function () {
 Route::middleware('auth:sanctum')->prefix('jobseeker')->group(function () {
     Route::get('profile',           [JobseekerController::class, 'getProfile']);
     Route::post('profile',          [JobseekerController::class, 'saveProfile']);
+    Route::post('avatar',           [LoginController::class,     'uploadAvatar']);
     Route::get('dashboard',         [JobseekerController::class, 'dashboard']);
     Route::get('portfolio',         [JobseekerController::class, 'portfolio']);
     Route::get('jobs',              [JobseekerController::class, 'jobs']);

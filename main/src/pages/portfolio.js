@@ -169,14 +169,14 @@ function emptyState(msg) {
 
 /* ── Update every avatar element in the shell (sidebar + navbar) ── */
 function syncAvatarEverywhere(url) {
-  const absUrl = url.startsWith('http') ? url : `http://localhost:8000${url}`;
-  const imgHtml = `<img src="${absUrl}" alt="Profile" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;">`;
+  const photoUrl = storageUrl(url);
+  const imgHtml = `<img src="${photoUrl}" alt="Profile" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" onerror="this.onerror=null;this.style.display='none';">`;
   document.querySelectorAll('[data-user-avatar]').forEach(el => { el.innerHTML = imgHtml; });
-  setState('user.avatar', url);
+  setState('user.avatar', photoUrl);
   // Persist so next full page load shows the image too
   try {
     const cached = JSON.parse(localStorage.getItem('hireme_user') || '{}');
-    cached.avatar_url = url;
+    cached.avatar_url = photoUrl;
     localStorage.setItem('hireme_user', JSON.stringify(cached));
   } catch (_) {}
 }
@@ -3178,8 +3178,8 @@ export async function renderPortfolio(container) {
   const avatarEl = container.querySelector('#profile-avatar');
   const initials = (P.name || storeUser?.name || storeUser?.email || '?').trim().split(/\s+/).map(n=>n[0]).join('').toUpperCase().slice(0,2);
   if (P.avatar_url) {
-    const absUrl = P.avatar_url.startsWith('http') ? P.avatar_url : `http://localhost:8000${P.avatar_url}`;
-    avatarEl.innerHTML = `<img src="${absUrl}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" onerror="this.onerror=null;this.parentElement.innerHTML='<span class=\'profile-header__initials\'>${initials}</span>';">`;
+    const photoUrl = storageUrl(P.avatar_url);
+    avatarEl.innerHTML = `<img src="${photoUrl}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" onerror="this.onerror=null;this.parentElement.innerHTML='<span class=\'profile-header__initials\'>${initials}</span>';">`;
   } else {
     avatarEl.innerHTML = `<span class="profile-header__initials">${initials}</span>`;
   }
@@ -3251,16 +3251,15 @@ export async function renderPortfolio(container) {
 
       if (res?.avatar_url) {
         P.avatar_url = res.avatar_url;
-        // Use absolute URL so it works from any sub-path
-        const absUrl = `http://localhost:8000${res.avatar_url}`;
-        avatarEl.innerHTML = `<img src="${absUrl}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;">`;
+        const photoUrl = storageUrl(res.avatar_url);
+        avatarEl.innerHTML = `<img src="${photoUrl}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" onerror="this.onerror=null;this.parentElement.innerHTML='<span class=\'profile-header__initials\'>${initials}</span>';">`;
         // Push the new photo to sidebar + navbar instantly
         syncAvatarEverywhere(res.avatar_url);
       } else {
         // Revert to initials on failure
         const initials = (P.name || '?').trim().split(/\s+/).map(n => n[0]).join('').toUpperCase().slice(0, 2);
         avatarEl.innerHTML = `<span class="profile-header__initials">${initials}</span>`;
-        alert(res?.message || 'Upload failed. Please try a smaller image (max 2 MB).');
+        alert(res?.message || 'Upload failed. Please try a smaller image (max 5 MB).');
       }
     } catch {
       const initials = (P.name || '?').trim().split(/\s+/).map(n => n[0]).join('').toUpperCase().slice(0, 2);

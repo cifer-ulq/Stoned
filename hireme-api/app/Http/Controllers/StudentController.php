@@ -501,13 +501,13 @@ class StudentController extends Controller
     public function uploadAvatar(Request $request)
     {
         $request->validate([
-            'avatar' => ['required', 'image', 'mimes:jpeg,jpg,png,gif,webp', 'max:2048'],
+            'avatar' => ['required', 'file', 'image', 'mimes:jpeg,jpg,png,gif,webp', 'max:5120'],
         ]);
 
         $user = $request->user();
 
         // Delete the old stored file if it was one we uploaded
-        if ($user->avatar_url && str_starts_with($user->avatar_url, '/storage/student-avatars/')) {
+        if ($user->avatar_url && str_starts_with($user->avatar_url, '/storage/')) {
             $old = str_replace('/storage/', '', $user->avatar_url);
             \Illuminate\Support\Facades\Storage::disk('public')->delete($old);
         }
@@ -516,7 +516,11 @@ class StudentController extends Controller
         $url  = '/storage/' . $path;
         $user->update(['avatar_url' => $url]);
 
-        return response()->json(['avatar_url' => $url]);
+        return response()->json([
+            'success'    => true,
+            'message'    => 'Avatar updated successfully.',
+            'avatar_url' => $url,
+        ]);
     }
 
     /* ═══════════════════════════════════════════

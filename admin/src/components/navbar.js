@@ -2,6 +2,7 @@
 import { getState, setState } from '../store.js';
 import { icon, renderIcons } from './icons.js';
 import { initNotifications } from './notifications.js';
+import { storageUrl } from '../api/client.js';
 
 const pageNames = {
   '/': 'Dashboard',
@@ -31,6 +32,11 @@ export function initNavbar() {
 
   function render() {
     const currentTheme = getState('ui.theme');
+    const avatarSrc = user.avatar || user.avatar_url;
+    const avatarHtml = avatarSrc
+      ? `<img src="${storageUrl(avatarSrc)}" alt="${user.name}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" onerror="this.onerror=null;this.parentElement.textContent='${user.initials || 'AD'}';" />`
+      : (user.initials || 'AD');
+
     navbar.innerHTML = `
       <nav class="navbar">
         <div class="navbar__inner">
@@ -57,7 +63,7 @@ export function initNavbar() {
             </div>
             <div class="navbar__divider"></div>
             <div class="navbar__user">
-              <div class="navbar__avatar">${user.initials}</div>
+              <div class="navbar__avatar">${avatarHtml}</div>
               <div class="navbar__user-info">
                 <span class="navbar__user-name">${user.name.split(' ').slice(0, 2).join(' ')}</span>
                 <span class="navbar__user-role">${user.role}</span>

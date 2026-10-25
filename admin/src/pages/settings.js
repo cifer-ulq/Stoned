@@ -1,10 +1,15 @@
 /* ── Settings Page — Admin Portal (Redesigned) ── */
 import { getState, setState } from '../store.js';
 import { icon, renderIcons } from '../components/icons.js';
-import { clearCache } from '../api/client.js';
+import { clearCache, storageUrl, apiUpload } from '../api/client.js';
 
 export default function SettingsPage(container) {
   const theme = getState('ui.theme');
+  const user = getState('user') || {};
+  const avatarSrc = user.avatar || user.avatar_url;
+  const avatarHtml = avatarSrc
+    ? `<img src="${storageUrl(avatarSrc)}" alt="${user.name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.onerror=null;this.parentElement.textContent='${user.initials || 'AD'}';" />`
+    : (user.initials || 'AD');
 
   container.innerHTML = `
     <div class="page-header">
@@ -26,6 +31,26 @@ export default function SettingsPage(container) {
       </div>
 
       <div style="display:flex;flex-direction:column;gap:var(--space-5);">
+        <!-- Administrator Profile Photo -->
+        <div class="card" id="section-admin-profile">
+          <div class="card__header"><h3 class="card__title">${icon('users', 16)} Administrator Profile Photo</h3></div>
+          <div class="card__body" style="display:flex;align-items:center;gap:20px;padding:20px;">
+            <div id="admin-settings-avatar-box" style="width:72px;height:72px;border-radius:50%;overflow:hidden;background:var(--color-primary-bg, #E8F5E9);color:var(--color-primary, #005930);display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:700;flex-shrink:0;border:2px solid var(--border-default);">
+              ${avatarHtml}
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <span style="font-weight:600;font-size:0.95rem;color:var(--text-primary);">${user.name || 'System Administrator'}</span>
+              <span style="font-size:0.8rem;color:var(--text-secondary);">Upload a new photo for your administrative profile (JPG, PNG, WebP up to 5MB).</span>
+              <div style="margin-top:6px;">
+                <label class="btn btn--primary btn--sm" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;">
+                  ${icon('camera', 14)} <span>Upload New Photo</span>
+                  <input type="file" id="admin-avatar-upload" accept="image/png,image/jpeg,image/webp,image/gif" hidden />
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- General -->
         <div class="card" id="section-general">
           <div class="card__header"><h3 class="card__title">${icon('settings', 16)} General</h3></div>
@@ -146,6 +171,57 @@ export default function SettingsPage(container) {
   `;
 
   renderIcons();
+
+  /* Admin Avatar Upload */
+  const avatarUpload = container.querySelector('#admin-avatar-upload');
+  avatarUpload?.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Photo file size is too large. Maximum allowed size is 5 MB.');
+      return;
+    }
+
+    const form = new FormData();
+    form.append('avatar', file);
+
+    const box = container.querySelector('#admin-settings-avatar-box');
+    if (box) {
+      const reader = new FileReader();
+      reader.onload = ev => {
+        box.innerHTML = `<img src="${ev.target.result}" alt="Preview" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" />`;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    try {
+      const res = await apiUpload('/auth/avatar', form);
+      if (res?.avatar_url) {
+        const photoUrl = storageUrl(res.avatar_url);
+        const currentUser = getState('user') || {};
+        currentUser.avatar = photoUrl;
+        currentUser.avatar_url = photoUrl;
+        setState('user', currentUser);
+        try {
+          const cached = JSON.parse(localStorage.getItem('hireme_user') || '{}');
+          cached.avatar_url = photoUrl;
+          localStorage.setItem('hireme_user', JSON.stringify(cached));
+        } catch (_) {}
+
+        const newImg = `<img src="${photoUrl}" alt="${currentUser.name || 'Admin'}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" onerror="this.onerror=null;this.parentElement.textContent='${currentUser.initials || 'AD'}';" />`;
+        if (box) box.innerHTML = newImg;
+        document.querySelectorAll('.navbar__avatar').forEach(el => { el.innerHTML = newImg; });
+
+        alert('Administrator profile photo updated successfully!');
+      } else {
+        alert(res?.message || 'Failed to update profile photo.');
+      }
+    } catch {
+      alert('Error uploading profile photo. Check connection and try again.');
+    } finally {
+      e.target.value = '';
+    }
+  });
 
   /* Clear Cache Button */
   const clearBtn = container.querySelector('#btn-clear-cache');

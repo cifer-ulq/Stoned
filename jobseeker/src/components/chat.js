@@ -4,9 +4,9 @@
  * Renders a chat icon in the navbar that opens a sliding panel.
  */
 import { icon } from './icons.js';
-import { apiGet, apiPost } from '../api/client.js';
+import { apiGet, apiPost, storageUrl } from '../api/client.js';
 
-const API = 'http://localhost:8000/api';
+const API = '/api';
 
 // ── Tiny relative-time helper ────────────────────────────────────────────────
 function relativeTime(iso) {
@@ -31,8 +31,8 @@ function esc(str) {
 function avatarHtml(name, avatarUrl, size = 36) {
   const initials = (name || '?').trim().split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 2);
   if (avatarUrl) {
-    const src = avatarUrl.startsWith('http') ? avatarUrl : `http://localhost:8000${avatarUrl}`;
-    return `<img src="${src}" alt="${esc(name)}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;">`;
+    const src = storageUrl(avatarUrl);
+    return `<img src="${src}" alt="${esc(name)}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;" onerror="this.onerror=null;this.parentElement.innerHTML='<div style=\\'width:${size}px;height:${size}px;border-radius:50%;background:var(--color-primary-bg-strong);color:var(--color-primary);display:flex;align-items:center;justify-content:center;font-size:${Math.floor(size * 0.38)}px;font-weight:700;flex-shrink:0;\\'>${initials}</div>';">`;
   }
   return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:var(--color-primary-bg-strong);color:var(--color-primary);display:flex;align-items:center;justify-content:center;font-size:${Math.floor(size * 0.38)}px;font-weight:700;flex-shrink:0;">${initials}</div>`;
 }

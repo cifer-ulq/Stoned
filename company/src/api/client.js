@@ -28,9 +28,15 @@ export function clearAuth() {
 
 export function resolveStorageUrl(path) {
   if (!path) return '';
-  if (path.startsWith('http://') || path.startsWith('https://')) return path;
-  return `http://localhost:8000${path.startsWith('/') ? '' : '/'}${path}`;
+  if (typeof path !== 'string') return '';
+  if (path.startsWith('data:') || path.startsWith('blob:')) return path;
+  if (path.startsWith('https://') || path.startsWith('http://')) {
+    return path.replace(/^https?:\/\/(localhost|127\.0\.0\.1):8000/, '');
+  }
+  return path.startsWith('/') ? path : `/${path}`;
 }
+
+export const storageUrl = resolveStorageUrl;
 
 /**
  * Automatically invalidate cached endpoints based on the mutated path.

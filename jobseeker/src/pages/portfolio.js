@@ -2738,10 +2738,11 @@ export async function renderPortfolio(container) {
 
   // ── Fill header ──
   const avatarEl = container.querySelector('#profile-avatar');
+  const initials = (P.name || storeUser.name || '?').trim().split(/\s+/).map(n=>n[0]).join('').toUpperCase().slice(0,2);
   if (P.avatar_url) {
-    avatarEl.innerHTML = `<img src="${P.avatar_url}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;">`;
+    const photoUrl = storageUrl(P.avatar_url);
+    avatarEl.innerHTML = `<img src="${photoUrl}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" onerror="this.onerror=null;this.parentElement.innerHTML='<span class=\\'profile-header__initials\\'>${initials}</span>';">`;
   } else {
-    const initials = (P.name || storeUser.name || '?').trim().split(/\s+/).map(n=>n[0]).join('').toUpperCase().slice(0,2);
     avatarEl.innerHTML = `<span class="profile-header__initials">${initials}</span>`;
   }
 
@@ -2794,15 +2795,62 @@ export async function renderPortfolio(container) {
   if (P.portfolio_url)links.push(`<a class="profile-link" href="https://${P.portfolio_url}" target="_blank" rel="noopener">${icon('externalLink',12)} Portfolio</a>`);
   linksEl.innerHTML = links.join('');
 
+  function syncAvatarEverywhere(url) {
+    const photoUrl = storageUrl(url);
+    const imgHtml = `<img src="${photoUrl}" alt="Profile" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" onerror="this.onerror=null;this.style.display='none';">`;
+    document.querySelectorAll('[data-user-avatar], .navbar__avatar, .sidebar-user__avatar').forEach(el => { el.innerHTML = imgHtml; });
+    import('../store.js').then(({ setState }) => {
+      setState('user.avatar', photoUrl);
+    }).catch(() => {});
+    try {
+      const cached = JSON.parse(localStorage.getItem('hireme_user') || '{}');
+      cached.avatar_url = photoUrl;
+      localStorage.setItem('hireme_user', JSON.stringify(cached));
+    } catch (_) {}
+  }
+
   // ── Avatar upload ──
-  container.querySelector('#avatar-upload').addEventListener('change', (e) => {
+  const avatarEditLabel = container.querySelector('.profile-header__avatar-edit');
+  container.querySelector('#avatar-upload')?.addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+
+    // Instant local preview
     const reader = new FileReader();
     reader.onload = (ev) => {
       avatarEl.innerHTML = `<img src="${ev.target.result}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;">`;
     };
     reader.readAsDataURL(file);
+
+    if (avatarEditLabel) {
+      avatarEditLabel.style.opacity = '0.5';
+      avatarEditLabel.style.pointerEvents = 'none';
+    }
+
+    try {
+      const form = new FormData();
+      form.append('avatar', file);
+      const res = await apiUpload('/auth/avatar', form);
+
+      if (res?.avatar_url) {
+        P.avatar_url = res.avatar_url;
+        const photoUrl = storageUrl(res.avatar_url);
+        avatarEl.innerHTML = `<img src="${photoUrl}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" onerror="this.onerror=null;this.parentElement.innerHTML='<span class=\\'profile-header__initials\\'>${initials}</span>';">`;
+        syncAvatarEverywhere(res.avatar_url);
+      } else {
+        avatarEl.innerHTML = `<span class="profile-header__initials">${initials}</span>`;
+        alert(res?.message || 'Upload failed. Please try a smaller image (max 5 MB).');
+      }
+    } catch {
+      avatarEl.innerHTML = `<span class="profile-header__initials">${initials}</span>`;
+      alert('Upload failed. Check your connection and try again.');
+    } finally {
+      if (avatarEditLabel) {
+        avatarEditLabel.style.opacity = '';
+        avatarEditLabel.style.pointerEvents = '';
+      }
+      e.target.value = '';
+    }
   });
 
   // ── Header buttons ──

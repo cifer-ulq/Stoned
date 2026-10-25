@@ -197,6 +197,55 @@ class LoginController extends Controller
         ]);
     }
 
+    /**
+     * POST /api/auth/avatar
+     * Universal profile photo / avatar upload for all authenticated users (students, alumni, companies, supervisors, admins).
+     */
+    public function uploadAvatar(Request $request)
+    {
+        $request->validate([
+            'avatar' => ['required', 'file', 'image', 'mimes:jpeg,jpg,png,webp,gif', 'max:5120'],
+        ]);
+
+        $user = $request->user();
+
+        // Delete previous uploaded avatar file if it was a local storage file
+        if ($user->avatar_url && str_starts_with($user->avatar_url, '/storage/')) {
+            $oldPath = str_replace('/storage/', '', $user->avatar_url);
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($oldPath);
+        }
+
+        $folder = match ($user->role) {
+            'company'    => 'company-logos',
+            'supervisor' => 'supervisor-avatars',
+            'admin'      => 'admin-avatars',
+            'jobseeker', 'graduate' => 'jobseeker-avatars',
+            default      => 'student-avatars',
+        };
+
+        $path = $request->file('avatar')->store($folder, 'public');
+        $url  = '/storage/' . $path;
+
+        $user->update(['avatar_url' => $url]);
+
+        // If company user, synchronize logo_url on company profile as well
+        if ($user->companyProfile) {
+            $user->companyProfile->update(['logo_url' => $url]);
+        }
+
+        return response()->json([
+            'success'    => true,
+            'message'    => 'Profile photo updated successfully.',
+            'avatar_url' => $url,
+            'user'       => [
+                'id'         => $user->id,
+                'name'       => $user->name,
+                'role'       => $user->role,
+                'avatar_url' => $url,
+            ],
+        ]);
+    }
+
     /* ── POST /api/auth/set-password ── (public, token-based) */
     public function setPassword(Request $request)
     {

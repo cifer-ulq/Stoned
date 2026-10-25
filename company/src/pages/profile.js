@@ -6,7 +6,7 @@
 import { icon } from '../components/icons.js';
 import { getState, setState } from '../store.js';
 import { navigate } from '../router.js';
-import { apiGet } from '../api/client.js';
+import { apiGet, apiUpload, storageUrl } from '../api/client.js';
 import { openMoaRequestModal, showPostingRestrictedModal } from '../components/moa-modal.js';
 
 const INDUSTRIES = [
@@ -114,12 +114,12 @@ function render(container) {
           <div class="profile-header__avatar-wrap">
             <div class="profile-header__avatar" id="profile-avatar">
               ${C.logoUrl
-                ? `<img src="${escapeHtml(C.logoUrl)}" alt="${escapeHtml(C.name)}" />`
+                ? `<img src="${escapeHtml(storageUrl(C.logoUrl))}" alt="${escapeHtml(C.name)}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" onerror="this.onerror=null;this.parentElement.innerHTML='<span class=\\'profile-header__initials\\'>${initials}</span>';" />`
                 : `<span class="profile-header__initials">${initials}</span>`}
             </div>
             <label class="profile-header__avatar-edit" title="Change logo">
               ${icon('camera', 14)}
-              <input type="file" accept="image/png,image/jpeg" id="avatar-upload" hidden />
+              <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" id="avatar-upload" hidden />
             </label>
           </div>
           <div class="profile-header__name-actions">
@@ -230,30 +230,48 @@ function render(container) {
   avatarUpload?.addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) { showToast('File too large. Max 2MB.', 'error'); return; }
+    if (file.size > 5 * 1024 * 1024) { showToast('File too large. Max 5MB.', 'error'); return; }
+
+    const av = container.querySelector('#profile-avatar');
+    if (av) {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        av.innerHTML = `<img src="${ev.target.result}" alt="Logo" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" />`;
+      };
+      reader.readAsDataURL(file);
+    }
+
     const fd = new FormData();
     fd.append('logo', file);
-    fd.append('company_name', C.name);
-    fd.append('company_type', C.industry);
-    fd.append('company_size', C.companySize);
-    fd.append('company_location', C.location);
-    fd.append('contact_email', C.contactEmail);
-    const token = localStorage.getItem('hireme_token');
     try {
-      const res = await fetch('http://localhost:8000/api/company/profile', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-        body: fd,
-      });
-      const json = await res.json();
-      if (json.success && json.data.logo_url) {
-        C.logoUrl = json.data.logo_url;
+      const json = await apiUpload('/company/logo', fd);
+      if (json && (json.logo_url || json.data?.logo_url)) {
+        const logoUrl = json.logo_url || json.data.logo_url;
+        C.logoUrl = logoUrl;
         setState('company', C);
-        const av = container.querySelector('#profile-avatar');
-        if (av) av.innerHTML = `<img src="${escapeHtml(C.logoUrl)}" alt="${escapeHtml(C.name)}" />`;
-        showToast('Logo updated!');
+        try {
+          localStorage.setItem('hireme_company_user', JSON.stringify(C));
+        } catch (_) {}
+
+        const finalUrl = storageUrl(logoUrl);
+        if (av) {
+          av.innerHTML = `<img src="${escapeHtml(finalUrl)}" alt="${escapeHtml(C.name)}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" onerror="this.onerror=null;this.parentElement.innerHTML='<span class=\\'profile-header__initials\\'>${initials}</span>';" />`;
+        }
+
+        // Sync navbar and sidebar logo instantly
+        document.querySelectorAll('.navbar__avatar, .sidebar-user__avatar').forEach(el => {
+          el.innerHTML = `<img src="${finalUrl}" alt="Logo" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" onerror="this.onerror=null;this.textContent='${initials}';" />`;
+        });
+
+        showToast('Logo updated successfully!');
+      } else {
+        showToast(json?.message || 'Logo upload failed.', 'error');
       }
-    } catch { showToast('Logo upload failed.', 'error'); }
+    } catch {
+      showToast('Logo upload failed. Check connection.', 'error');
+    } finally {
+      e.target.value = '';
+    }
   });
 
   // Load stats async

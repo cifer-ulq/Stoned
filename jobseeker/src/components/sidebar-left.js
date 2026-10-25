@@ -3,12 +3,13 @@
  */
 import { icon } from './icons.js';
 import { getState, subscribe } from '../store.js';
+import { storageUrl } from '../api/client.js';
 
 export function createLeftSidebar() {
   const user = getState('user');
 
   const avatarHtml = user.avatar
-    ? `<img src="${user.avatar}" alt="${user.name}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" />`
+    ? `<img src="${storageUrl(user.avatar)}" alt="${user.name}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" onerror="this.onerror=null;this.parentElement.textContent='${user.initials}';" />`
     : user.initials;
 
   const sidebar = document.createElement('aside');

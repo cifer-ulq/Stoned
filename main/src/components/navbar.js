@@ -4,16 +4,14 @@
 import { icon } from './icons.js';
 import { getState } from '../store.js';
 import { navigate } from '../router.js';
-import { apiPost, clearAuth } from '../api/client.js';
+import { apiPost, clearAuth, storageUrl } from '../api/client.js';
 import { initNotifications } from './notifications.js';
 import { initChat } from './chat.js';
 
 export function createNavbar() {
   const user = getState('user');
   const isAlumni = user.is_alumni || user.status === 'alumni' || user.rawRole === 'graduate' || user.role?.toLowerCase().includes('graduate') || user.role?.toLowerCase().includes('alumni');
-  const avatarSrc = user.avatar
-    ? (user.avatar.startsWith('http') ? user.avatar : `http://localhost:8000${user.avatar}`)
-    : null;
+  const avatarSrc = user.avatar ? storageUrl(user.avatar) : null;
   const avatarInner = avatarSrc
     ? `<img src="${avatarSrc}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" onerror="this.onerror=null;this.parentElement.textContent='${user.initials || 'U'}';">`
     : (user.initials || 'U');

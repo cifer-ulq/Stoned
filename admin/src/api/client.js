@@ -23,13 +23,16 @@ export {
 };
 
 const API_BASE = 'http://localhost:8000/api';
-const STORAGE_BASE = 'http://localhost:8000';
 const DELAY = 600;
 
 export function storageUrl(path) {
   if (!path) return null;
-  if (path.startsWith('http')) return path;
-  return STORAGE_BASE + path;
+  if (typeof path !== 'string') return null;
+  if (path.startsWith('data:') || path.startsWith('blob:')) return path;
+  if (path.startsWith('https://') || path.startsWith('http://')) {
+    return path.replace(/^https?:\/\/(localhost|127\.0\.0\.1):8000/, '');
+  }
+  return path.startsWith('/') ? path : `/${path}`;
 }
 
 function delay(ms) {
@@ -238,6 +241,8 @@ export async function apiPostForm(path, formData) {
 
   return data;
 }
+
+export const apiUpload = apiPostForm;
 
 /* ── Mock data fetch ── */
 export async function apiFetch(endpoint, _opts = {}) {

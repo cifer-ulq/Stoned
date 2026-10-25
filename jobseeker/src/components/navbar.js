@@ -4,7 +4,7 @@
 import { icon } from './icons.js';
 import { getState } from '../store.js';
 import { navigate } from '../router.js';
-import { apiPost, clearAuth } from '../api/client.js';
+import { apiPost, clearAuth, storageUrl } from '../api/client.js';
 import { initNotifications } from './notifications.js';
 import { initChat } from './chat.js';
 
@@ -15,7 +15,7 @@ export function createNavbar() {
   nav.id = 'main-navbar';
 
   const avatarHtml = user.avatar
-    ? `<img src="${user.avatar}" alt="${user.name}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" />`
+    ? `<img src="${storageUrl(user.avatar)}" alt="${user.name}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" onerror="this.onerror=null;this.parentElement.textContent='${user.initials}';" />`
     : user.initials;
 
   nav.innerHTML = `

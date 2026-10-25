@@ -4,7 +4,7 @@
 import { icon } from './icons.js';
 import { getState } from '../store.js';
 import { navigate } from '../router.js';
-import { clearAuth } from '../api/client.js';
+import { clearAuth, storageUrl } from '../api/client.js';
 import { initNotifications } from './notifications.js';
 import { initChat } from './chat.js';
 
@@ -16,6 +16,10 @@ export function createNavbar() {
   const role        = company.role          || 'HR Manager';
   const initials    = company.initials
     || personName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+
+  const logoHtml = company.logoUrl
+    ? `<img src="${storageUrl(company.logoUrl)}" alt="Logo" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" onerror="this.onerror=null;this.parentElement.textContent='${initials}';" />`
+    : initials;
 
   const nav = document.createElement('header');
   nav.className = 'navbar';
@@ -86,11 +90,11 @@ export function createNavbar() {
 
         <div class="profile-dropdown" id="profile-dropdown">
           <button class="navbar__avatar-btn" id="profile-trigger">
-            <div class="navbar__avatar">${initials}</div>
+            <div class="navbar__avatar">${logoHtml}</div>
           </button>
           <div class="profile-dropdown__menu" id="profile-menu">
             <div class="profile-dropdown__header">
-              <div class="profile-dropdown__avatar-lg">${initials}</div>
+              <div class="profile-dropdown__avatar-lg">${logoHtml}</div>
               <div>
                 <div class="profile-dropdown__name">${personName}</div>
                 <div class="profile-dropdown__role">${role} · ${companyName}</div>

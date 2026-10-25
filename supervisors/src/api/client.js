@@ -227,6 +227,11 @@ export async function apiFetch(endpoint, options = {}) {
 
 export function storageUrl(path) {
   if (!path) return '';
-  if (path.startsWith('http://') || path.startsWith('https://')) return path;
-  return `http://localhost:8000/storage/${path.replace(/^\//, '')}`;
+  if (typeof path !== 'string') return '';
+  if (path.startsWith('data:') || path.startsWith('blob:')) return path;
+  if (path.startsWith('https://') || path.startsWith('http://')) {
+    return path.replace(/^https?:\/\/(localhost|127\.0\.0\.1):8000/, '');
+  }
+  const clean = path.replace(/^\//, '');
+  return clean.startsWith('storage/') ? `/${clean}` : `/storage/${clean}`;
 }

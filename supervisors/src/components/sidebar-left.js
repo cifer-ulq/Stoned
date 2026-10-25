@@ -4,18 +4,24 @@
 
 import { icon } from './icons.js';
 import { getState } from '../store.js';
+import { storageUrl } from '../api/client.js';
 
 export function createSidebarLeft() {
-  const user = getState('user');
+  const user = getState('user') || {};
 
   const aside = document.createElement('aside');
   aside.className = 'sidebar-left';
   aside.id = 'sidebar-left';
 
+  const avatarSrc = user.avatar || user.avatar_url;
+  const avatarHtml = avatarSrc
+    ? `<img src="${storageUrl(avatarSrc)}" alt="${user.name}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" onerror="this.onerror=null;this.parentElement.textContent='${user.initials || 'SP'}';" />`
+    : (user.initials || 'SP');
+
   aside.innerHTML = `
     <!-- User Card -->
     <a class="sidebar-user" href="#/" data-route="/">
-      <div class="sidebar-user__avatar">${user.initials}</div>
+      <div class="sidebar-user__avatar">${avatarHtml}</div>
       <div class="sidebar-user__info">
         <div class="sidebar-user__name">${user.name}</div>
         <div class="sidebar-user__role" title="${user.course || user.role}" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;">${user.course ? `${user.course} Coordinator` : user.role}</div>

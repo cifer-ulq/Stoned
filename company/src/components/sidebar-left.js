@@ -3,6 +3,7 @@
  */
 import { icon } from './icons.js';
 import { getState } from '../store.js';
+import { storageUrl } from '../api/client.js';
 
 export function createLeftSidebar() {
   const company = getState('company');
@@ -13,7 +14,7 @@ export function createLeftSidebar() {
   sidebar.id = 'sidebar-left';
 
   const logoHtml = company.logoUrl
-    ? `<img src="${company.logoUrl}" alt="${company.name}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" />`
+    ? `<img src="${storageUrl(company.logoUrl)}" alt="${company.name}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" onerror="this.onerror=null;this.parentElement.textContent='${company.initials || 'CO'}';" />`
     : (company.initials || 'CO');
 
   sidebar.innerHTML = `

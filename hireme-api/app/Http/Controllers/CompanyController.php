@@ -1824,13 +1824,18 @@ class CompanyController extends Controller
             'description'      => 'nullable|string',
             'ownership_type'   => 'nullable|string|max:100',
             'year_founded'     => 'nullable|string|max:10',
-            'logo'             => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+            'logo'             => 'nullable|image|mimes:jpg,jpeg,png,webp,gif|max:5120',
         ]);
 
         $logoUrl = null;
         if ($request->hasFile('logo')) {
+            if ($cp && $cp->logo_url && str_starts_with($cp->logo_url, '/storage/')) {
+                $old = str_replace('/storage/', '', $cp->logo_url);
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($old);
+            }
             $path    = $request->file('logo')->store('company-logos', 'public');
             $logoUrl = '/storage/' . $path;
+            $user->update(['avatar_url' => $logoUrl]);
         }
 
         // Merge fields: prioritize provided validated fields, fall back to existing profile or defaults
@@ -1914,6 +1919,44 @@ class CompanyController extends Controller
                 'description'       => $cp->description,
                 'logo_url'          => $cp->logo_url,
                 'profile_completed' => true,
+            ],
+        ]);
+    }
+
+    /**
+     * POST /api/company/logo
+     * Dedicated direct logo upload for company profile and user avatar.
+     */
+    public function uploadLogo(Request $request)
+    {
+        $request->validate([
+            'logo' => ['required', 'file', 'image', 'mimes:jpeg,jpg,png,webp,gif', 'max:5120'],
+        ]);
+
+        $user = $request->user();
+        $cp   = $user->companyProfile;
+
+        // Delete previous logo if local file
+        if ($cp && $cp->logo_url && str_starts_with($cp->logo_url, '/storage/')) {
+            $oldPath = str_replace('/storage/', '', $cp->logo_url);
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($oldPath);
+        }
+
+        $path = $request->file('logo')->store('company-logos', 'public');
+        $url  = '/storage/' . $path;
+
+        if ($cp) {
+            $cp->update(['logo_url' => $url]);
+        }
+        $user->update(['avatar_url' => $url]);
+
+        return response()->json([
+            'success'  => true,
+            'message'  => 'Company logo updated successfully.',
+            'logo_url' => $url,
+            'data'     => [
+                'logo_url'   => $url,
+                'avatar_url' => $url,
             ],
         ]);
     }
