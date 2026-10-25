@@ -129,9 +129,11 @@ Route::middleware('auth:sanctum')->prefix('notifications')->group(function () {
 Route::prefix('auth')->group(function () {
     Route::post('register',          [RegisterController::class, 'register']);
     Route::post('register/company',  [CompanyRegisterController::class, 'register']); // company self-registration
-    Route::post('login',         [LoginController::class,   'login']);
-    Route::post('admin-login',   [LoginController::class,   'adminLogin']);
-    Route::post('set-password',  [LoginController::class,   'setPassword']); // company onboarding
+    Route::post('login',             [LoginController::class,   'login']);
+    Route::post('admin-login',       [LoginController::class,   'adminLogin']);
+    Route::post('set-password',      [LoginController::class,   'setPassword']); // company onboarding
+    Route::post('forgot-password',   [LoginController::class,   'forgotPassword'])->middleware('throttle:5,1');
+    Route::post('reset-password',    [LoginController::class,   'resetPassword'])->middleware('throttle:10,1');
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('logout',                    [LoginController::class,      'logout']);

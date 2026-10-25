@@ -64,6 +64,7 @@ export default defineConfig({
         login: resolve(__dirname, 'login/index.html'),
         adminLogin: resolve(__dirname, 'login/admin-login.html'),
         setPassword: resolve(__dirname, 'login/set-password.html'),
+        resetPassword: resolve(__dirname, 'login/reset-password.html'),
         onboarding: resolve(__dirname, 'login/onboarding.html'),
         admin: resolve(__dirname, 'admin/index.html'),
         company: resolve(__dirname, 'company/index.html'),

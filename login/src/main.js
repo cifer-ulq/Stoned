@@ -12,8 +12,24 @@ import { icon } from './icons.js';
 const savedTheme = localStorage.getItem('hireme-theme') || 'light';
 document.documentElement.setAttribute('data-theme', savedTheme);
 
+/* ── Safe HTML Escaper ── */
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 /* ── State ── */
-let currentView = 'signin'; // 'signin' | 'signup' | 'company-signup' | 'company-success'
+const urlParams = new URLSearchParams(window.location.search);
+let currentView = urlParams.get('view') === 'forgot' ? 'forgot' : 'signin'; // 'signin' | 'signup' | 'company-signup' | 'company-success' | 'forgot' | 'forgot-success'
+let resetSuccess = urlParams.get('reset') === 'success';
+let resetRequestedEmail = '';
+let resendTimer = null;
+let resendSeconds = 60;
 
 /* ── App root ── */
 const app = document.getElementById('app');
@@ -26,6 +42,8 @@ function render() {
   const isCompanySignup = currentView === 'company-signup';
   const isSuccess       = currentView === 'company-success';
   const isSignup        = currentView === 'signup';
+  const isForgot        = currentView === 'forgot';
+  const isForgotSuccess = currentView === 'forgot-success';
 
   app.innerHTML = `
     <div class="login-root">
@@ -49,12 +67,16 @@ function render() {
           <h1 class="lp-headline">
             ${isCompanySignup || isSuccess
               ? 'Partner with<br><span>CHMSU HireMe.</span>'
-              : 'Connect. Learn.<br><span>Launch Your Career.</span>'}
+              : (isForgot || isForgotSuccess
+                ? 'Account Recovery<br><span>CHMSU HireMe.</span>'
+                : 'Connect. Learn.<br><span>Launch Your Career.</span>')}
           </h1>
           <p class="lp-subtitle">
             ${isCompanySignup || isSuccess
               ? 'Register your company and connect with talented CHMSU students ready for OJT and career opportunities.'
-              : 'CHMSU\'s official OJT and career management platform — built for students, supervisors, and companies to collaborate seamlessly.'}
+              : (isForgot || isForgotSuccess
+                ? 'Verify your registered email address to receive a secure link and reset your password.'
+                : 'CHMSU\'s official OJT and career management platform — built for students, supervisors, and companies to collaborate seamlessly.')}
           </p>
 
           ${isCompanySignup || isSuccess ? `
@@ -142,7 +164,9 @@ function render() {
 
           ${isSuccess ? renderSuccessView() : ''}
           ${isCompanySignup ? renderCompanySignupForm() : ''}
-          ${!isCompanySignup && !isSuccess ? renderStandardForm(isSignin, isSignup) : ''}
+          ${isForgot ? renderForgotPasswordForm() : ''}
+          ${isForgotSuccess ? renderForgotPasswordSuccess() : ''}
+          ${!isCompanySignup && !isSuccess && !isForgot && !isForgotSuccess ? renderStandardForm(isSignin, isSignup) : ''}
 
         </div>
       </main>
@@ -155,6 +179,16 @@ function render() {
 /* ─── Standard Sign In / Sign Up form ─── */
 function renderStandardForm(isSignin, isSignup) {
   return `
+    ${resetSuccess && isSignin ? `
+    <div style="background: rgba(16, 185, 129, 0.12); border: 1.5px solid #10B981; border-radius: 12px; padding: 14px 16px; margin-bottom: 1.25rem; display: flex; align-items: flex-start; gap: 10px; color: #065F46; font-size: 0.84rem; line-height: 1.5;">
+      <span style="font-size: 1.15rem; flex-shrink: 0; line-height: 1;">✓</span>
+      <div>
+        <strong style="display: block; color: #047857; margin-bottom: 2px; font-size: 0.88rem;">Password Reset Successful!</strong>
+        Your password has been updated. You can now sign in with your new password.
+      </div>
+    </div>
+    ` : ''}
+
     <div class="login-header">
       <h2 class="login-header__title">${isSignin ? 'Welcome back' : 'Create account'}</h2>
       <p class="login-header__subtitle">
@@ -512,6 +546,78 @@ function renderSuccessView() {
   `;
 }
 
+/* ─── Forgot Password Request Form ─── */
+function renderForgotPasswordForm() {
+  return `
+    <div class="login-header">
+      <h2 class="login-header__title">Reset Password</h2>
+      <p class="login-header__subtitle">
+        Enter your registered email address and we'll send you a secure link to reset your password.
+      </p>
+    </div>
+
+    <form class="login-form" id="forgot-form" novalidate>
+      <div class="lf-field">
+        <div class="lf-field__wrap" id="wrap-forgot-email">
+          <span class="lf-field__icon">${icon('mail', 18)}</span>
+          <input class="lf-field__input" type="email" id="forgot-email" name="email"
+            placeholder="x" autocomplete="email" autofocus />
+          <label class="lf-field__label" for="forgot-email">Email Address</label>
+        </div>
+        <span class="lf-field__error" id="err-forgot-email"></span>
+      </div>
+
+      <div style="font-size: 0.76rem; color: var(--text-tertiary); line-height: 1.5; padding: 0 2px;">
+        💡 Works for students, supervisors, company partners, and alumni. Make sure to enter your official registered email.
+      </div>
+
+      <button class="login-submit" id="forgot-submit-btn" type="submit">
+        <span id="forgot-submit-label">Send Reset Link</span>
+      </button>
+
+      <p class="login-toggle" style="margin-top: 1.25rem;">
+        <span class="login-toggle__link" id="back-to-signin-from-forgot">
+          ← Back to Sign In
+        </span>
+      </p>
+    </form>
+  `;
+}
+
+/* ─── Forgot Password Success Confirmation ─── */
+function renderForgotPasswordSuccess() {
+  return `
+    <div style="text-align: center; padding: 0.5rem 0;">
+      <div style="width: 68px; height: 68px; border-radius: 50%; background: rgba(0, 89, 48, 0.1); color: var(--color-primary); display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; font-size: 1.8rem; box-shadow: 0 4px 16px rgba(0, 89, 48, 0.12);">
+        ✉️
+      </div>
+
+      <h2 class="login-header__title" style="margin-bottom: 0.5rem;">Check Your Email</h2>
+      <p class="login-header__subtitle" style="margin-bottom: 1.5rem; line-height: 1.6;">
+        We've sent a password reset link to<br>
+        <strong style="color: var(--text-primary); font-size: 0.95rem; display: inline-block; margin-top: 4px;">${escapeHtml(resetRequestedEmail)}</strong>
+      </p>
+
+      <div style="background: var(--bg-secondary); border: 1.5px solid var(--border-default); border-radius: 12px; padding: 14px 16px; margin-bottom: 1.5rem; text-align: left; font-size: 0.82rem; color: var(--text-secondary); line-height: 1.55;">
+        <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+          <span>⏱️</span> Link expires in 60 minutes
+        </div>
+        Click the link in your email to choose a new password. If you don't see it within a minute, please check your <strong>Spam</strong> or <strong>Junk</strong> folder.
+      </div>
+
+      <button class="login-submit" id="btn-resend-forgot" type="button" style="margin-bottom: 1rem; background: var(--bg-elevated); color: var(--color-primary); border: 1.5px solid var(--border-default); box-shadow: none;">
+        <span id="resend-forgot-label">Resend Reset Link</span>
+      </button>
+
+      <p class="login-toggle">
+        <span class="login-toggle__link" id="back-to-signin-from-success">
+          ← Return to Sign In
+        </span>
+      </p>
+    </div>
+  `;
+}
+
 /* ═══════════════════════════════════════
    EVENTS
    ═══════════════════════════════════════ */
@@ -616,6 +722,27 @@ function attachEvents() {
 
   // Form submit — company
   document.getElementById('company-form')?.addEventListener('submit', handleCompanySubmit);
+
+  // Forgot password link click
+  document.querySelector('.login-forgot')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    clearErrors();
+    currentView = 'forgot';
+    render();
+  });
+
+  // Back to sign in from forgot form
+  document.getElementById('back-to-signin-from-forgot')?.addEventListener('click', () => {
+    clearErrors();
+    currentView = 'signin';
+    render();
+  });
+
+  // Form submit — forgot password
+  document.getElementById('forgot-form')?.addEventListener('submit', handleForgotSubmit);
+
+  // Resend reset email
+  document.getElementById('btn-resend-forgot')?.addEventListener('click', handleForgotResend);
 }
 
 /* ── Password Strength ── */
@@ -855,6 +982,127 @@ async function handleSubmit(e) {
     btn.disabled = false;
     lbl.textContent = 'Sign In';
   }
+}
+
+/* ── Forgot Password Submit ── */
+async function handleForgotSubmit(e) {
+  e.preventDefault();
+  clearErrors();
+
+  const emailInput = document.getElementById('forgot-email');
+  const email = emailInput?.value.trim().toLowerCase() || '';
+  const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  if (!email || !emailRe.test(email)) {
+    showError('forgot-email', 'Please enter a valid email address.');
+    emailInput?.focus();
+    return;
+  }
+
+  const btn = document.getElementById('forgot-submit-btn');
+  const lbl = document.getElementById('forgot-submit-label');
+  btn.disabled = true;
+  lbl.innerHTML = '<span class="login-spinner"></span> Sending link…';
+
+  try {
+    const res = await fetch('http://localhost:8000/api/auth/forgot-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      if (res.status === 404) {
+        showError('forgot-email', data.message || 'No account found with this email address. Please check your spelling.');
+      } else if (res.status === 429) {
+        showError('forgot-email', 'Too many requests. Please wait a minute before requesting another reset email.');
+      } else {
+        showError('forgot-email', data.message || 'Unable to send reset email. Please try again.');
+      }
+      btn.disabled = false;
+      lbl.textContent = 'Send Reset Link';
+      emailInput?.focus();
+      return;
+    }
+
+    resetRequestedEmail = email;
+    currentView = 'forgot-success';
+    render();
+    startResendTimer();
+  } catch (err) {
+    showError('forgot-email', 'Could not connect to server. Please check your connection.');
+    btn.disabled = false;
+    lbl.textContent = 'Send Reset Link';
+  }
+}
+
+/* ── Resend Reset Email ── */
+async function handleForgotResend() {
+  if (!resetRequestedEmail) return;
+
+  const btn = document.getElementById('btn-resend-forgot');
+  const lbl = document.getElementById('resend-forgot-label');
+  if (!btn || btn.disabled) return;
+
+  btn.disabled = true;
+  lbl.innerHTML = '<span class="login-spinner"></span> Resending…';
+
+  try {
+    const res = await fetch('http://localhost:8000/api/auth/forgot-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ email: resetRequestedEmail }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      showToast(data.message || 'Failed to resend reset email.');
+      btn.disabled = false;
+      lbl.textContent = 'Resend Reset Link';
+      return;
+    }
+
+    showToast('Reset email resent successfully! Check your inbox.');
+    startResendTimer();
+  } catch {
+    showToast('Could not connect to server.');
+    btn.disabled = false;
+    lbl.textContent = 'Resend Reset Link';
+  }
+}
+
+/* ── Resend Countdown Timer ── */
+function startResendTimer() {
+  resendSeconds = 60;
+  if (resendTimer) clearInterval(resendTimer);
+
+  const btn = document.getElementById('btn-resend-forgot');
+  const lbl = document.getElementById('resend-forgot-label');
+  if (!btn || !lbl) return;
+
+  btn.disabled = true;
+  lbl.textContent = `Resend in ${resendSeconds}s`;
+
+  resendTimer = setInterval(() => {
+    resendSeconds--;
+    const currentBtn = document.getElementById('btn-resend-forgot');
+    const currentLbl = document.getElementById('resend-forgot-label');
+    if (!currentBtn || !currentLbl) {
+      clearInterval(resendTimer);
+      return;
+    }
+
+    if (resendSeconds <= 0) {
+      clearInterval(resendTimer);
+      currentBtn.disabled = false;
+      currentLbl.textContent = 'Resend Reset Link';
+    } else {
+      currentLbl.textContent = `Resend in ${resendSeconds}s`;
+    }
+  }, 1000);
 }
 
 /* ── Init ── */
