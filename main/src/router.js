@@ -24,13 +24,15 @@ function resolveRoute() {
   // Ignore non-route hashes (e.g. Leaflet popup close button sets href="#close")
   if (raw && !raw.startsWith('/')) return;
 
-  const hash = raw || '/';
+  const [pathname, queryString] = (raw || '/').split('?');
+  const queryParams = Object.fromEntries(new URLSearchParams(queryString || ''));
+  const hash = pathname || '/';
 
   // Try exact match first
   let handler = routes[hash];
-  let params = {};
+  let params = { ...queryParams };
 
-  // Then try parameterized routes (e.g. /company/:id)
+  // Then try parameterized routes (e.g. /company/:id, /portfolio/:id)
   if (!handler) {
     for (const pattern of Object.keys(routes)) {
       if (!pattern.includes(':')) continue;
@@ -49,7 +51,7 @@ function resolveRoute() {
       }
       if (matched) {
         handler = routes[pattern];
-        params = extracted;
+        params = { ...queryParams, ...extracted };
         break;
       }
     }
@@ -75,7 +77,9 @@ function resolveRoute() {
   handler(params);
 
   // Map parameterized routes to their parent nav item for sidebar highlighting
-  const activeRoute = hash.startsWith('/company/') ? '/companies' : hash;
+  const activeRoute = hash.startsWith('/company/') 
+    ? '/companies' 
+    : (hash.startsWith('/portfolio/') ? '/portfolio' : hash);
 
   // Update active nav links
   document.querySelectorAll('.navbar__link').forEach(link => {

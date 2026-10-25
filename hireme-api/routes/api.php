@@ -275,7 +275,8 @@ Route::middleware('auth:sanctum')->prefix('supervisor')->group(function () {
 Route::middleware('auth:sanctum')->prefix('student')->group(function () {
     Route::get('dashboard', [StudentController::class, 'dashboard']);
     Route::get('profile',   [StudentController::class, 'profile']);
-    Route::get('portfolio', [StudentController::class, 'portfolio']);
+    Route::get('portfolio',      [StudentController::class, 'portfolio']);
+    Route::get('portfolio/{id}', [StudentController::class, 'peerPortfolio']);
     Route::post('avatar',   [StudentController::class, 'uploadAvatar']);
 
     // About & Resume
@@ -362,6 +363,7 @@ Route::middleware('auth:sanctum')->prefix('jobseeker')->group(function () {
     Route::post('avatar',           [LoginController::class,     'uploadAvatar']);
     Route::get('dashboard',         [JobseekerController::class, 'dashboard']);
     Route::get('portfolio',         [JobseekerController::class, 'portfolio']);
+    Route::get('portfolio/{id}',    [JobseekerController::class, 'peerPortfolio']);
     Route::get('jobs',              [JobseekerController::class, 'jobs']);
     Route::get('external-jobs',     [JobseekerController::class, 'externalJobs']);
     Route::get('applications',      [JobseekerController::class, 'applications']);

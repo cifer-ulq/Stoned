@@ -204,6 +204,9 @@ function getEndpointsForRoute(routePath, params = {}) {
     const id = params.id;
     return id ? [`/companies/${id}`, `/companies/${id}/jobs`, `/companies/${id}/ojt-postings`] : ['/companies'];
   }
+  if (routePath.startsWith('/portfolio/') && params.id) {
+    return ['/student/portfolio/' + params.id];
+  }
   return routeEndpointMap[routePath] || [];
 }
 
@@ -417,6 +420,7 @@ initAuth().then(authenticated => {
 
   registerRoute('/',             renderPage('/', renderHome));
   registerRoute('/portfolio',    renderPage('/portfolio', renderPortfolio));
+  registerRoute('/portfolio/:id',(params) => renderPage('/portfolio/:id', renderPortfolio)(params));
   registerRoute('/jobs',         renderPage('/jobs', renderJobs));
   registerRoute('/applications', renderPage('/applications', renderApplications));
   registerRoute('/ojt',          (params) => {

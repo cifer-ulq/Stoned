@@ -2,7 +2,7 @@
  * CHMSU HireMe — Job Seeker Portal Right Sidebar
  */
 import { icon } from './icons.js';
-import { apiGet } from '../api/client.js';
+import { apiGet, storageUrl } from '../api/client.js';
 import { getState } from '../store.js';
 
 export function createRightSidebar() {
@@ -116,15 +116,29 @@ async function loadPeopleYouMayKnow(sidebar) {
       container.innerHTML = `<p class="text-secondary text-sm">No suggestions yet.</p>`;
       return;
     }
-    container.innerHTML = people.slice(0, 5).map(p => `
-      <div class="widget-person-item">
-        <div class="widget-person-item__avatar">${p.initials}</div>
-        <div class="widget-person-item__info">
-          <div class="widget-person-item__name">${p.name}</div>
-          <div class="widget-person-item__role">${p.desired_job_title}${p.work_preference ? ' · ' + p.work_preference : ''}</div>
-        </div>
-      </div>
-    `).join('');
+    container.innerHTML = people.slice(0, 6).map(p => {
+      const avatarHtml = p.avatar_url
+        ? `<img src="${storageUrl(p.avatar_url)}" alt="${p.name}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" onerror="this.onerror=null;this.parentElement.textContent='${p.initials}';" />`
+        : `<span>${p.initials}</span>`;
+
+      const roleBadge = p.is_alumni
+        ? `<span style="font-size:0.6rem;font-weight:700;padding:1px 5px;border-radius:4px;background:rgba(16,185,129,0.12);color:#059669;margin-left:4px;display:inline-flex;align-items:center;flex-shrink:0;">Graduate</span>`
+        : `<span style="font-size:0.6rem;font-weight:700;padding:1px 5px;border-radius:4px;background:rgba(74,108,247,0.12);color:#4A6CF7;margin-left:4px;display:inline-flex;align-items:center;flex-shrink:0;">Student</span>`;
+
+      return `
+        <a href="#/portfolio/${p.id}" class="widget-person-item widget-person-item--link" style="text-decoration:none;color:inherit;display:flex;align-items:center;padding:6px 0;cursor:pointer;border-bottom:1px solid var(--border-light);" title="View ${p.name}'s Portfolio">
+          <div class="widget-person-item__avatar" style="overflow:hidden;flex-shrink:0;">${avatarHtml}</div>
+          <div class="widget-person-item__info" style="margin-left:8px;flex:1;min-width:0;">
+            <div class="widget-person-item__name" style="display:flex;align-items:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+              <span style="overflow:hidden;text-overflow:ellipsis;">${p.name}</span>
+              ${roleBadge}
+            </div>
+            <div class="widget-person-item__role" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.headline || p.desired_job_title || p.program || ''}</div>
+          </div>
+          <span class="status-indicator__dot status-indicator__dot--online" style="width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-left:6px;" title="Online"></span>
+        </a>
+      `;
+    }).join('');
   } catch {
     container.innerHTML = `<p class="text-secondary text-sm">Could not load suggestions.</p>`;
   }

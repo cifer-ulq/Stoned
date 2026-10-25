@@ -13,6 +13,7 @@ use App\Models\PortfolioProject;
 use App\Models\AppNotification;
 use App\Models\JobListing;
 use App\Services\RecommendationService;
+use App\Services\PeerPortfolioService;
 use App\Services\ExternalJobService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -1001,29 +1002,27 @@ class JobseekerController extends Controller
     public function peopleYouMayKnow(Request $request)
     {
         $user = $request->user();
+        $people = PeerPortfolioService::getPeopleYouKnow($user, 20);
 
-        $people = \App\Models\User::with('jobseekerProfile')
-            ->where('role', 'jobseeker')
-            ->where('id', '!=', $user->id)
-            ->whereHas('jobseekerProfile')
-            ->limit(8)
-            ->get()
-            ->map(function ($u) {
-                $nameParts = explode(' ', trim($u->name));
-                $initials  = strtoupper(
-                    substr($nameParts[0], 0, 1) .
-                    (isset($nameParts[1]) ? substr($nameParts[1], 0, 1) : '')
-                );
-                return [
-                    'id'                => $u->id,
-                    'name'              => $u->name,
-                    'initials'          => $initials,
-                    'desired_job_title' => $u->jobseekerProfile->desired_job_title ?? 'Job Seeker',
-                    'work_preference'   => $u->jobseekerProfile->work_preference ?? '',
-                ];
-            })
-            ->values();
+        return response()->json(['data' => $people, 'total' => count($people)]);
+    }
 
-        return response()->json(['data' => $people, 'total' => $people->count()]);
+    /**
+     * GET /api/jobseeker/portfolio/{id}
+     * Returns sanitized peer portfolio data (read-only) for any graduate or student.
+     */
+    public function peerPortfolio(Request $request, $id)
+    {
+        $viewer = $request->user();
+        $data = PeerPortfolioService::getPeerPortfolio($id, $viewer->id);
+
+        if (!$data) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Profile not found or inaccessible.',
+            ], 404);
+        }
+
+        return response()->json($data);
     }
 }

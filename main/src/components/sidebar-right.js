@@ -2,7 +2,7 @@
  * CHMSU HireMe — Right Sidebar (Facebook-style contacts/info panel)
  */
 import { icon } from './icons.js';
-import { apiGet } from '../api/client.js';
+import { apiGet, storageUrl } from '../api/client.js';
 import { getState } from '../store.js';
 
 const MAX_PEOPLE = 7;
@@ -254,15 +254,26 @@ function renderPeopleYouKnow(container, students, total) {
 }
 
 function renderPersonRow(s) {
+  const avatarHtml = s.avatar_url
+    ? `<img src="${storageUrl(s.avatar_url)}" alt="${s.name}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" onerror="this.onerror=null;this.parentElement.textContent='${s.initials}';" />`
+    : `<span>${s.initials}</span>`;
+
+  const roleBadge = s.is_alumni
+    ? `<span style="font-size:0.6rem;font-weight:700;padding:1px 5px;border-radius:4px;background:rgba(16,185,129,0.12);color:#059669;margin-left:4px;display:inline-flex;align-items:center;flex-shrink:0;">Graduate</span>`
+    : '';
+
   return `
-    <div class="widget-contact">
-      <div class="widget-contact__avatar">${s.initials}</div>
-      <div class="widget-contact__info">
-        <span class="text-sm">${s.name}</span>
-        <span class="text-xs text-tertiary">${s.program || s.role || ''}</span>
+    <a href="#/portfolio/${s.id}" class="widget-contact widget-contact--link" style="text-decoration:none;color:inherit;display:flex;align-items:center;padding:6px 4px;border-radius:var(--radius-md);transition:background 0.15s ease;" title="View ${s.name}'s Portfolio">
+      <div class="widget-contact__avatar" style="overflow:hidden;flex-shrink:0;">${avatarHtml}</div>
+      <div class="widget-contact__info" style="margin-left:8px;flex:1;min-width:0;">
+        <div class="text-sm font-semibold" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;">
+          <span style="overflow:hidden;text-overflow:ellipsis;">${s.name}</span>
+          ${roleBadge}
+        </div>
+        <div class="text-xs text-tertiary" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${s.headline || s.program || ''}</div>
       </div>
-      <span class="status-indicator__dot status-indicator__dot--online" style="width:8px;height:8px;border-radius:50%;flex-shrink:0;"></span>
-    </div>
+      <span class="status-indicator__dot status-indicator__dot--online" style="width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-left:6px;" title="Online"></span>
+    </a>
   `;
 }
 

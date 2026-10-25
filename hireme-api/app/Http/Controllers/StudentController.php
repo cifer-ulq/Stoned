@@ -17,6 +17,7 @@ use App\Models\PortfolioProject;
 use App\Models\StudentOjtRequirement;
 use App\Models\OjtEmergencyRequest;
 use App\Services\RecommendationService;
+use App\Services\PeerPortfolioService;
 use App\Services\ExternalJobService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -2469,37 +2470,36 @@ class StudentController extends Controller
 
     /**
      * GET /api/student/people-you-know
-     * Returns other student users for the "People You Know" sidebar widget.
+     * Returns peer recommendations (students and graduates) for the "People You Know" sidebar widget.
      */
     public function peopleYouKnow(Request $request)
     {
         $user = $request->user();
-
-        $students = \App\Models\User::with('studentProfile')
-            ->where('role', 'student')
-            ->where('id', '!=', $user->id)
-            ->whereHas('studentProfile')
-            ->get()
-            ->map(function ($u) {
-                $nameParts = explode(' ', trim($u->name));
-                $initials  = strtoupper(
-                    substr($nameParts[0], 0, 1) .
-                    (isset($nameParts[1]) ? substr($nameParts[1], 0, 1) : '')
-                );
-                return [
-                    'id'       => $u->id,
-                    'name'     => $u->name,
-                    'initials' => $initials,
-                    'program'  => $u->studentProfile->program ?? 'Student',
-                    'year'     => $u->studentProfile->year_level ?? '',
-                ];
-            })
-            ->values();
+        $peers = PeerPortfolioService::getPeopleYouKnow($user, 20);
 
         return response()->json([
-            'data'  => $students,
-            'total' => $students->count(),
+            'data'  => $peers,
+            'total' => count($peers),
         ]);
+    }
+
+    /**
+     * GET /api/student/portfolio/{id}
+     * Returns sanitized peer portfolio data (read-only) for any student or graduate.
+     */
+    public function peerPortfolio(Request $request, $id)
+    {
+        $viewer = $request->user();
+        $data = PeerPortfolioService::getPeerPortfolio($id, $viewer->id);
+
+        if (!$data) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Profile not found or inaccessible.',
+            ], 404);
+        }
+
+        return response()->json($data);
     }
 
     /* ═══════════════════════════════════════════

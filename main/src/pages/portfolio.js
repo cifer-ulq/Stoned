@@ -71,6 +71,7 @@ let activeOjt = null; // active OJT deployment info
 let storeUser = {}; // authenticated user info from store
 let currentTab = 'about';
 let tabContent;
+let isPeerView = false;
 
 export function getReqItemName(it) {
   if (!it) return '';
@@ -227,21 +228,21 @@ function renderAbout() {
       <div class="profile-section">
         <div class="profile-section__header">
           <h3 class="profile-section__title">${icon('user', 20)} About Me</h3>
-          <button class="btn btn--secondary btn--sm" id="edit-about-btn">${icon('edit', 14)} Edit</button>
+          ${isPeerView ? '' : `<button class="btn btn--secondary btn--sm" id="edit-about-btn">${icon('edit', 14)} Edit</button>`}
         </div>
-        <p class="profile-section__bio">${P.bio || '<span class="text-tertiary">No bio yet. Click Edit to add one.</span>'}</p>
+        <p class="profile-section__bio">${P.bio || (isPeerView ? '<span class="text-tertiary">No bio provided.</span>' : '<span class="text-tertiary">No bio yet. Click Edit to add one.</span>')}</p>
         <div class="profile-contact-grid mt-2">
           ${P.phone       ? `<span class="contact-chip">${icon('phone', 13)} ${P.phone}</span>` : ''}
           ${P.location    ? `<span class="contact-chip">${icon('mapPin', 13)} ${P.location}</span>` : ''}
           ${P.github_url  ? `<a class="contact-chip contact-chip--link" href="https://${P.github_url}" target="_blank" rel="noopener">${icon('github', 13)} ${P.github_url}</a>` : ''}
           ${P.linkedin_url? `<a class="contact-chip contact-chip--link" href="https://${P.linkedin_url}" target="_blank" rel="noopener">${icon('linkedin', 13)} ${P.linkedin_url}</a>` : ''}
           ${P.portfolio_url?`<a class="contact-chip contact-chip--link" href="https://${P.portfolio_url}" target="_blank" rel="noopener">${icon('externalLink', 13)} ${P.portfolio_url}</a>` : ''}
-          ${P.requirements_drive_url?`<a class="contact-chip contact-chip--link" href="${P.requirements_drive_url}" target="_blank" rel="noopener" style="color:#0284c7;border-color:rgba(2,132,199,0.3);background:rgba(2,132,199,0.06);font-weight:600;">${icon('folder', 13)} OJT Requirements Drive</a>` : ''}
+          ${(!isPeerView && P.requirements_drive_url)?`<a class="contact-chip contact-chip--link" href="${P.requirements_drive_url}" target="_blank" rel="noopener" style="color:#0284c7;border-color:rgba(2,132,199,0.3);background:rgba(2,132,199,0.06);font-weight:600;">${icon('folder', 13)} OJT Requirements Drive</a>` : ''}
         </div>
       </div>
 
       <!-- OJT Requirements Section (Rich Checklist & Guidance or Unassigned State) -->
-      ${activeReq ? `
+      ${isPeerView ? '' : (activeReq ? `
       <div class="profile-section portfolio-reqs-section" style="padding:18px 22px;border:1px solid ${reqStatus === 'needs_revision' ? 'rgba(239,68,68,0.3)' : reqStatus === 'verified' ? 'rgba(16,185,129,0.3)' : reqStatus === 'submitted' ? 'rgba(2,132,199,0.3)' : 'rgba(245,158,11,0.3)'};background:${reqStatus === 'needs_revision' ? 'rgba(239,68,68,0.02)' : reqStatus === 'verified' ? 'rgba(16,185,129,0.02)' : reqStatus === 'submitted' ? 'rgba(2,132,199,0.02)' : 'rgba(245,158,11,0.02)'};border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,0.02);">
         <div class="portfolio-reqs-header">
           <div class="portfolio-reqs-info">
@@ -373,13 +374,13 @@ function renderAbout() {
           </div>
         ` : ''}
       </div>
-      `}
+      `)}
 
       <!-- Experience -->
       <div class="profile-section">
         <div class="profile-section__header">
           <h3 class="profile-section__title">${icon('briefcase', 20)} Experience</h3>
-          <button class="btn btn--secondary btn--sm" id="add-exp-btn">${icon('plus', 14)} Add</button>
+          ${isPeerView ? '' : `<button class="btn btn--secondary btn--sm" id="add-exp-btn">${icon('plus', 14)} Add</button>`}
         </div>
         <div id="exp-list">
           ${(() => {
@@ -420,8 +421,10 @@ function renderAbout() {
                   </div>
                   <div style="display:flex;gap:6px;align-items:center;">
                     <span class="profile-timeline-item__date">${exp.period}</span>
-                    <button class="btn btn--icon btn--xs edit-exp-btn" data-id="${exp.id}" title="Edit">${icon('edit', 13)}</button>
-                    <button class="btn btn--icon btn--xs btn--danger-ghost del-exp-btn" data-id="${exp.id}" title="Delete">${icon('trash', 13)}</button>
+                    ${isPeerView ? '' : `
+                      <button class="btn btn--icon btn--xs edit-exp-btn" data-id="${exp.id}" title="Edit">${icon('edit', 13)}</button>
+                      <button class="btn btn--icon btn--xs btn--danger-ghost del-exp-btn" data-id="${exp.id}" title="Delete">${icon('trash', 13)}</button>
+                    `}
                   </div>
                 </div>
                 <p class="profile-timeline-item__desc">${exp.description || ''}</p>
@@ -439,7 +442,7 @@ function renderAbout() {
       <div class="profile-section">
         <div class="profile-section__header">
           <h3 class="profile-section__title">${icon('bookOpen', 20)} Education</h3>
-          <button class="btn btn--secondary btn--sm" id="add-edu-btn">${icon('plus', 14)} Add</button>
+          ${isPeerView ? '' : `<button class="btn btn--secondary btn--sm" id="add-edu-btn">${icon('plus', 14)} Add</button>`}
         </div>
         <div id="edu-list">
           ${(() => {
@@ -481,8 +484,10 @@ function renderAbout() {
                       </div>
                       <div style="display:flex;gap:6px;align-items:center;">
                         <span class="profile-timeline-item__date">${edu.period}</span>
-                        <button class="btn btn--icon btn--xs edit-edu-btn" data-id="${edu.id}" title="Edit">${icon('edit', 13)}</button>
-                        <button class="btn btn--icon btn--xs btn--danger-ghost del-edu-btn" data-id="${edu.id}" title="Delete">${icon('trash', 13)}</button>
+                        ${isPeerView ? '' : `
+                          <button class="btn btn--icon btn--xs edit-edu-btn" data-id="${edu.id}" title="Edit">${icon('edit', 13)}</button>
+                          <button class="btn btn--icon btn--xs btn--danger-ghost del-edu-btn" data-id="${edu.id}" title="Delete">${icon('trash', 13)}</button>
+                        `}
                       </div>
                     </div>
                     ${edu.description ? `<p class="profile-timeline-item__desc">${edu.description}</p>` : ''}
@@ -509,9 +514,10 @@ function renderAbout() {
               <p class="skills-header__subtitle">Technical competencies and self-assessed proficiency ratings</p>
             </div>
           </div>
+          ${isPeerView ? '' : `
           <button class="btn btn--primary btn--sm skills-header__add-btn" id="add-skill-btn">
             ${icon('plus', 14)} <span>Add Skill</span>
-          </button>
+          </button>`}
         </div>
 
         ${SKL.length === 0 ? `
@@ -520,8 +526,8 @@ function renderAbout() {
               ${icon('zap', 26)}
             </div>
             <h4 class="skills-empty-title">No skills added yet</h4>
-            <p class="skills-empty-desc">Highlight your programming languages, frameworks, and tools so employers can discover your strengths.</p>
-            <button class="btn btn--primary btn--sm" id="empty-add-skill-btn">${icon('plus', 14)} Add Your First Skill</button>
+            <p class="skills-empty-desc">${isPeerView ? 'No skills have been showcased on this profile yet.' : 'Highlight your programming languages, frameworks, and tools so employers can discover your strengths.'}</p>
+            ${isPeerView ? '' : `<button class="btn btn--primary btn--sm" id="empty-add-skill-btn">${icon('plus', 14)} Add Your First Skill</button>`}
           </div>
         ` : `
           <!-- Top Stats Banner -->
@@ -605,6 +611,7 @@ function renderAbout() {
                                 </span>
                               </div>
                             </div>
+                            ${isPeerView ? '' : `
                             <div class="skill-item-card__actions">
                               <button type="button" class="skill-action-btn edit-skill-btn" data-id="${s.id}" title="Edit ${s.name}">
                                 ${icon('edit', 12)}
@@ -612,7 +619,7 @@ function renderAbout() {
                               <button type="button" class="skill-action-btn skill-action-btn--del del-skill-btn" data-id="${s.id}" title="Delete ${s.name}">
                                 ${icon('trash', 12)}
                               </button>
-                            </div>
+                            </div>`}
                           </div>
                         `;
                       }).join('')}
@@ -625,40 +632,45 @@ function renderAbout() {
       </div>
     </div>`;
 
-  // ── Bind about edit & requirements drive ──
-  tabContent.querySelector('#edit-about-btn').onclick = () => openEditAboutModal();
-  tabContent.querySelectorAll('#edit-drive-btn, #empty-add-drive-btn').forEach(btn => {
-    btn.onclick = () => openRequirementsDriveModal();
-  });
+  if (!isPeerView) {
+    // ── Bind about edit & requirements drive ──
+    const editAboutBtn = tabContent.querySelector('#edit-about-btn');
+    if (editAboutBtn) editAboutBtn.onclick = () => openEditAboutModal();
+    tabContent.querySelectorAll('#edit-drive-btn, #empty-add-drive-btn').forEach(btn => {
+      btn.onclick = () => openRequirementsDriveModal();
+    });
 
-  // ── Experience ──
-  tabContent.querySelector('#add-exp-btn').onclick = () => openExpModal(null);
-  tabContent.querySelectorAll('.edit-exp-btn').forEach(b => b.onclick = () => openExpModal(EXP.find(e => e.id == b.dataset.id)));
-  tabContent.querySelectorAll('.del-exp-btn').forEach(b => b.onclick = () => confirmDelete('Delete this experience entry?', async () => {
-    await apiDelete(`/student/experience/${b.dataset.id}`);
-    EXP = EXP.filter(e => e.id != b.dataset.id);
-    renderAbout();
-  }));
+    // ── Experience ──
+    const addExpBtn = tabContent.querySelector('#add-exp-btn');
+    if (addExpBtn) addExpBtn.onclick = () => openExpModal(null);
+    tabContent.querySelectorAll('.edit-exp-btn').forEach(b => b.onclick = () => openExpModal(EXP.find(e => e.id == b.dataset.id)));
+    tabContent.querySelectorAll('.del-exp-btn').forEach(b => b.onclick = () => confirmDelete('Delete this experience entry?', async () => {
+      await apiDelete(`/student/experience/${b.dataset.id}`);
+      EXP = EXP.filter(e => e.id != b.dataset.id);
+      renderAbout();
+    }));
 
-  // ── Education ──
-  tabContent.querySelector('#add-edu-btn').onclick = () => openEduModal(null);
-  tabContent.querySelectorAll('.edit-edu-btn').forEach(b => b.onclick = () => openEduModal(EDU.find(e => e.id == b.dataset.id)));
-  tabContent.querySelectorAll('.del-edu-btn').forEach(b => b.onclick = () => confirmDelete('Delete this education entry?', async () => {
-    await apiDelete(`/student/education/${b.dataset.id}`);
-    EDU = EDU.filter(e => e.id != b.dataset.id);
-    renderAbout();
-  }));
+    // ── Education ──
+    const addEduBtn = tabContent.querySelector('#add-edu-btn');
+    if (addEduBtn) addEduBtn.onclick = () => openEduModal(null);
+    tabContent.querySelectorAll('.edit-edu-btn').forEach(b => b.onclick = () => openEduModal(EDU.find(e => e.id == b.dataset.id)));
+    tabContent.querySelectorAll('.del-edu-btn').forEach(b => b.onclick = () => confirmDelete('Delete this education entry?', async () => {
+      await apiDelete(`/student/education/${b.dataset.id}`);
+      EDU = EDU.filter(e => e.id != b.dataset.id);
+      renderAbout();
+    }));
 
-  // ── Skills ──
-  tabContent.querySelectorAll('#add-skill-btn, #empty-add-skill-btn').forEach(b => {
-    b.onclick = () => openSkillModal(null);
-  });
-  tabContent.querySelectorAll('.edit-skill-btn').forEach(b => b.onclick = () => openSkillModal(SKL.find(s => s.id == b.dataset.id)));
-  tabContent.querySelectorAll('.del-skill-btn').forEach(b => b.onclick = () => confirmDelete('Delete this skill?', async () => {
-    await apiDelete(`/student/skills/${b.dataset.id}`);
-    SKL = SKL.filter(s => s.id != b.dataset.id);
-    renderAbout();
-  }));
+    // ── Skills ──
+    tabContent.querySelectorAll('#add-skill-btn, #empty-add-skill-btn').forEach(b => {
+      b.onclick = () => openSkillModal(null);
+    });
+    tabContent.querySelectorAll('.edit-skill-btn').forEach(b => b.onclick = () => openSkillModal(SKL.find(s => s.id == b.dataset.id)));
+    tabContent.querySelectorAll('.del-skill-btn').forEach(b => b.onclick = () => confirmDelete('Delete this skill?', async () => {
+      await apiDelete(`/student/skills/${b.dataset.id}`);
+      SKL = SKL.filter(s => s.id != b.dataset.id);
+      renderAbout();
+    }));
+  }
 }
 
 /* ── Shared inline styles for profile form modals ── */
@@ -1954,7 +1966,7 @@ function renderResume() {
           <span class="resume-toolbar__desc">Executive single-page ATS-ready format</span>
         </div>
         <div class="resume-toolbar__actions">
-          <button class="btn btn--sm resume-action-btn" id="edit-objective-btn">${icon('edit', 14)} Edit Summary</button>
+          ${isPeerView ? '' : `<button class="btn btn--sm resume-action-btn" id="edit-objective-btn">${icon('edit', 14)} Edit Summary</button>`}
           <button class="btn btn--sm resume-action-btn" id="view-resume-btn">${icon('eye', 14)} Fullscreen / Print</button>
           <button class="btn btn--sm resume-download-btn" id="download-resume-btn">${icon('download', 14)} Download PDF</button>
         </div>
@@ -2127,7 +2139,8 @@ function renderResume() {
   };
 
   // Edit objective/summary
-  tabContent.querySelector('#edit-objective-btn').onclick = () => openModal({
+  if (!isPeerView && tabContent.querySelector('#edit-objective-btn')) {
+    tabContent.querySelector('#edit-objective-btn').onclick = () => openModal({
     title: `${icon('fileText', 18)} Edit Professional Summary / Objective`,
     body: `
       <p class="modal-error" style="color:var(--color-danger);font-size:.85rem;min-height:1.2em;"></p>
@@ -2152,6 +2165,7 @@ function renderResume() {
       renderResume();
     },
   });
+  }
 
   // PDF download
   tabContent.querySelector('#download-resume-btn').onclick = async () => {
@@ -2203,16 +2217,17 @@ function renderProjects() {
         <div class="profile-section__header">
           <div>
             <h3 class="profile-section__title" style="display:flex;align-items:center;gap:8px;">
-              ${icon('folder', 20)} My Projects
+              ${icon('folder', 20)} ${isPeerView ? 'Projects' : 'My Projects'}
             </h3>
-            <p class="text-tertiary text-xs" style="margin:2px 0 0;">Showcase your academic capstones, internships, client work, and personal open source applications.</p>
+            <p class="text-tertiary text-xs" style="margin:2px 0 0;">${isPeerView ? 'Academic capstones, internships, client work, and personal open source applications.' : 'Showcase your academic capstones, internships, client work, and personal open source applications.'}</p>
           </div>
+          ${isPeerView ? '' : `
           <button class="btn btn--primary btn--sm" id="add-project-btn" style="gap:5px;">
             ${icon('plus', 14)} Add Project
-          </button>
+          </button>`}
         </div>
 
-        ${PRJ.length === 0 ? emptyState('No projects added yet. Click "Add Project" to showcase your work with verifiable evidence.') : `
+        ${PRJ.length === 0 ? emptyState(isPeerView ? 'No projects added to this portfolio yet.' : 'No projects added yet. Click "Add Project" to showcase your work with verifiable evidence.') : `
         <div class="works-gallery">
           ${PRJ.map((p, i) => {
             const cat = p.category || 'Project';
@@ -2236,10 +2251,11 @@ function renderProjects() {
               <div class="work-card__body">
                 <div class="work-card__header-row">
                   <h4 class="work-card__title">${p.title}</h4>
+                  ${isPeerView ? '' : `
                   <div style="display:flex;gap:4px;flex-shrink:0;">
                     <button class="btn btn--icon btn--xs edit-proj-btn" data-id="${p.id}" title="Edit Project">${icon('edit', 13)}</button>
                     <button class="btn btn--icon btn--xs btn--danger-ghost del-proj-btn" data-id="${p.id}" title="Delete Project">${icon('trash', 13)}</button>
-                  </div>
+                  </div>`}
                 </div>
 
                 <div class="work-card__meta">
@@ -2279,13 +2295,16 @@ function renderProjects() {
       </div>
     </div>`;
 
-  tabContent.querySelector('#add-project-btn').onclick = () => openProjectModal(null);
-  tabContent.querySelectorAll('.edit-proj-btn').forEach(b => b.onclick = () => openProjectModal(PRJ.find(p => p.id == b.dataset.id)));
-  tabContent.querySelectorAll('.del-proj-btn').forEach(b => b.onclick = () => confirmDelete('Delete this project?', async () => {
-    await apiDelete(`/student/projects/${b.dataset.id}`);
-    PRJ = PRJ.filter(p => p.id != b.dataset.id);
-    renderProjects();
-  }));
+  if (!isPeerView) {
+    const addProjBtn = tabContent.querySelector('#add-project-btn');
+    if (addProjBtn) addProjBtn.onclick = () => openProjectModal(null);
+    tabContent.querySelectorAll('.edit-proj-btn').forEach(b => b.onclick = () => openProjectModal(PRJ.find(p => p.id == b.dataset.id)));
+    tabContent.querySelectorAll('.del-proj-btn').forEach(b => b.onclick = () => confirmDelete('Delete this project?', async () => {
+      await apiDelete(`/student/projects/${b.dataset.id}`);
+      PRJ = PRJ.filter(p => p.id != b.dataset.id);
+      renderProjects();
+    }));
+  }
 }
 
 /* ── Add / Edit Project Modal ── */
@@ -2617,14 +2636,15 @@ function renderAchievements() {
             <h3 class="profile-section__title" style="display:flex;align-items:center;gap:8px;">
               ${icon('award', 20)} Achievements & Certifications
             </h3>
-            <p class="text-tertiary text-xs" style="margin:2px 0 0;">Add verified credentials, certificates, honors, and competition distinctions to build employer trust.</p>
+            <p class="text-tertiary text-xs" style="margin:2px 0 0;">${isPeerView ? 'Verified credentials, certificates, honors, and competition distinctions.' : 'Add verified credentials, certificates, honors, and competition distinctions to build employer trust.'}</p>
           </div>
+          ${isPeerView ? '' : `
           <button class="btn btn--primary btn--sm" id="add-ach-btn" style="gap:5px;">
             ${icon('plus', 14)} Add Achievement
-          </button>
+          </button>`}
         </div>
 
-        ${ACH.length === 0 ? emptyState('No achievements or certifications added yet. Click "Add Achievement" to add verifiable credentials.') : `
+        ${ACH.length === 0 ? emptyState(isPeerView ? 'No achievements or certifications added to this portfolio yet.' : 'No achievements or certifications added yet. Click "Add Achievement" to add verifiable credentials.') : `
         <div class="achievements-grid">
           ${ACH.map(a => {
             const catType = a.type || 'certification';
@@ -2652,10 +2672,11 @@ function renderAchievements() {
                     </div>
                   </div>
 
+                  ${isPeerView ? '' : `
                   <div class="achievement-card__actions">
                     <button class="achievement-card__action-btn edit-ach-btn" data-id="${a.id}" title="Edit Achievement">${icon('edit', 14)}</button>
                     <button class="achievement-card__action-btn achievement-card__action-btn--delete del-ach-btn" data-id="${a.id}" title="Delete Achievement">${icon('trash', 14)}</button>
-                  </div>
+                  </div>`}
                 </div>
 
                 <h4 class="achievement-card__title">${a.title}</h4>
@@ -2703,7 +2724,7 @@ function renderAchievements() {
                       <button class="btn btn--primary btn--xs view-cert-btn" data-id="${a.id}" style="gap:4px;">
                         ${icon('fileText', 11)} View Proof
                       </button>` : ''}
-                    ${!hasProof ? `
+                    ${(!hasProof && !isPeerView) ? `
                       <button class="btn btn--ghost btn--xs edit-ach-btn" data-id="${a.id}" style="gap:3px;font-size:0.7rem;color:var(--color-primary);" title="Upload Certificate Proof">
                         + Attach Proof
                       </button>` : ''}
@@ -2716,17 +2737,20 @@ function renderAchievements() {
       </div>
     </div>`;
 
-  tabContent.querySelector('#add-ach-btn').onclick = () => openAchModal(null);
-  tabContent.querySelectorAll('.edit-ach-btn').forEach(b => b.onclick = () => openAchModal(ACH.find(a => a.id == b.dataset.id)));
+  if (!isPeerView) {
+    const addAchBtn = tabContent.querySelector('#add-ach-btn');
+    if (addAchBtn) addAchBtn.onclick = () => openAchModal(null);
+    tabContent.querySelectorAll('.edit-ach-btn').forEach(b => b.onclick = () => openAchModal(ACH.find(a => a.id == b.dataset.id)));
+    tabContent.querySelectorAll('.del-ach-btn').forEach(b => b.onclick = () => confirmDelete('Delete this achievement?', async () => {
+      await apiDelete(`/student/achievements/${b.dataset.id}`);
+      ACH = ACH.filter(a => a.id != b.dataset.id);
+      renderAchievements();
+    }));
+  }
   tabContent.querySelectorAll('.view-cert-btn').forEach(b => b.onclick = () => {
     const item = ACH.find(a => a.id == b.dataset.id);
     if (item) openCertificateViewer(item);
   });
-  tabContent.querySelectorAll('.del-ach-btn').forEach(b => b.onclick = () => confirmDelete('Delete this achievement?', async () => {
-    await apiDelete(`/student/achievements/${b.dataset.id}`);
-    ACH = ACH.filter(a => a.id != b.dataset.id);
-    renderAchievements();
-  }));
 }
 
 /* ── Add / Edit Achievement Modal ── */
@@ -3097,11 +3121,27 @@ function openCertificateViewer(ach) {
 /* ══════════════════════════════════════════════════
    MAIN RENDER
    ══════════════════════════════════════════════════ */
-export async function renderPortfolio(container) {
+export async function renderPortfolio(container, params = {}) {
   storeUser = getState('user') || {};
+  const targetId = params?.id ? Number(params.id) : null;
+  isPeerView = Boolean(targetId && targetId !== storeUser.id);
 
   container.innerHTML = `
     <div class="page-enter">
+      ${isPeerView ? `
+        <div class="portfolio-peer-banner" style="background:var(--bg-elevated);border:1px solid var(--border-default);border-radius:var(--radius-lg);padding:10px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;box-shadow:var(--shadow-xs);">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <button class="btn btn--secondary btn--sm" id="peer-back-btn" style="gap:6px;font-size:0.8rem;padding:5px 12px;cursor:pointer;">
+              ${icon('arrowLeft', 14)} Back to My Portfolio
+            </button>
+            <div id="peer-banner-name" style="font-size:0.85rem;color:var(--text-secondary);">
+              Loading Profile…
+            </div>
+          </div>
+          <span class="badge badge--info" id="peer-banner-badge" style="font-size:0.72rem;padding:3px 10px;text-transform:uppercase;letter-spacing:0.04em;">Peer</span>
+        </div>
+      ` : ''}
+
       <!-- Cover -->
       <div class="profile-cover" id="profile-cover">
         <div class="profile-cover__gradient"></div>
@@ -3112,12 +3152,14 @@ export async function renderPortfolio(container) {
         <div class="profile-header__top">
           <div class="profile-header__avatar-wrap">
             <div class="profile-header__avatar" id="profile-avatar">
-              <span class="profile-header__initials">${storeUser?.initials || '?'}</span>
+              <span class="profile-header__initials">${isPeerView ? '?' : (storeUser?.initials || '?')}</span>
             </div>
-            <label class="profile-header__avatar-edit" title="Change photo">
-              ${icon('camera', 14)}
-              <input type="file" accept="image/*" id="avatar-upload" hidden>
-            </label>
+            ${isPeerView ? '' : `
+              <label class="profile-header__avatar-edit" title="Change photo">
+                ${icon('camera', 14)}
+                <input type="file" accept="image/*" id="avatar-upload" hidden>
+              </label>
+            `}
           </div>
           <div class="profile-header__name-actions">
             <div>
@@ -3125,7 +3167,7 @@ export async function renderPortfolio(container) {
               <p class="profile-header__headline" id="profile-headline">—</p>
             </div>
             <div class="profile-header__actions">
-              <button class="btn btn--primary" id="edit-profile-btn">${icon('edit', 16)} Edit Profile</button>
+              ${isPeerView ? '' : `<button class="btn btn--primary" id="edit-profile-btn">${icon('edit', 16)} Edit Profile</button>`}
               <button class="btn btn--secondary" id="download-resume-top-btn">${icon('download', 16)} Resume</button>
             </div>
           </div>
@@ -3158,9 +3200,11 @@ export async function renderPortfolio(container) {
   // ── Load all portfolio data ──
   let data;
   try {
-    data = await apiGet('/student/portfolio');
+    data = isPeerView 
+      ? await apiGet('/student/portfolio/' + targetId)
+      : await apiGet('/student/portfolio');
   } catch {
-    tabContent.innerHTML = `<div class="empty-state">${icon('alertCircle',32)}<p class="text-secondary mt-2">Could not load portfolio. Make sure the API server is running.</p></div>`;
+    tabContent.innerHTML = `<div class="empty-state">${icon('alertCircle',32)}<p class="text-secondary mt-2">Could not load portfolio. Profile may be private or inaccessible.</p></div>`;
     return;
   }
 
@@ -3227,53 +3271,80 @@ export async function renderPortfolio(container) {
 
   renderProfileLinks();
 
-  // ── Avatar upload ──
-  const avatarEditLabel = container.querySelector('.profile-header__avatar-edit');
-  container.querySelector('#avatar-upload').addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+  // ── Peer view banner setup ──
+  if (isPeerView) {
+    const peerNameEl = container.querySelector('#peer-banner-name');
+    if (peerNameEl) peerNameEl.innerHTML = `Viewing <strong style="color:var(--text-primary);">${P.name || 'Peer'}</strong>'s Portfolio`;
+    const peerBadgeEl = container.querySelector('#peer-banner-badge');
+    if (peerBadgeEl) {
+      peerBadgeEl.textContent = P.is_alumni ? 'Alumni' : 'Student';
+      peerBadgeEl.className = `badge ${P.is_alumni ? 'badge--info' : 'badge--success'}`;
+    }
+    const peerBackBtn = container.querySelector('#peer-back-btn');
+    if (peerBackBtn) {
+      peerBackBtn.onclick = () => {
+        window.location.hash = '#/portfolio';
+      };
+    }
+  }
 
-    // Instant local preview while uploading
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      avatarEl.innerHTML = `<img src="${ev.target.result}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;">`;
-    };
-    reader.readAsDataURL(file);
+  // ── Avatar upload (owner only) ──
+  const avatarUploadInput = container.querySelector('#avatar-upload');
+  if (!isPeerView && avatarUploadInput) {
+    const avatarEditLabel = container.querySelector('.profile-header__avatar-edit');
+    avatarUploadInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
 
-    // Show uploading state
-    avatarEditLabel.style.opacity = '0.5';
-    avatarEditLabel.style.pointerEvents = 'none';
+      // Instant local preview while uploading
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        avatarEl.innerHTML = `<img src="${ev.target.result}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;">`;
+      };
+      reader.readAsDataURL(file);
 
-    try {
-      const form = new FormData();
-      form.append('avatar', file);
-      const res = await apiUpload('/student/avatar', form);
+      // Show uploading state
+      if (avatarEditLabel) {
+        avatarEditLabel.style.opacity = '0.5';
+        avatarEditLabel.style.pointerEvents = 'none';
+      }
 
-      if (res?.avatar_url) {
-        P.avatar_url = res.avatar_url;
-        const photoUrl = storageUrl(res.avatar_url);
-        avatarEl.innerHTML = `<img src="${photoUrl}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" onerror="this.onerror=null;this.parentElement.innerHTML='<span class=\'profile-header__initials\'>${initials}</span>';">`;
-        // Push the new photo to sidebar + navbar instantly
-        syncAvatarEverywhere(res.avatar_url);
-      } else {
-        // Revert to initials on failure
+      try {
+        const form = new FormData();
+        form.append('avatar', file);
+        const res = await apiUpload('/student/avatar', form);
+
+        if (res?.avatar_url) {
+          P.avatar_url = res.avatar_url;
+          const photoUrl = storageUrl(res.avatar_url);
+          avatarEl.innerHTML = `<img src="${photoUrl}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" onerror="this.onerror=null;this.parentElement.innerHTML='<span class=\\'profile-header__initials\\'>${initials}</span>';">`;
+          // Push the new photo to sidebar + navbar instantly
+          syncAvatarEverywhere(res.avatar_url);
+        } else {
+          // Revert to initials on failure
+          const initials = (P.name || '?').trim().split(/\s+/).map(n => n[0]).join('').toUpperCase().slice(0, 2);
+          avatarEl.innerHTML = `<span class="profile-header__initials">${initials}</span>`;
+          alert(res?.message || 'Upload failed. Please try a smaller image (max 5 MB).');
+        }
+      } catch {
         const initials = (P.name || '?').trim().split(/\s+/).map(n => n[0]).join('').toUpperCase().slice(0, 2);
         avatarEl.innerHTML = `<span class="profile-header__initials">${initials}</span>`;
-        alert(res?.message || 'Upload failed. Please try a smaller image (max 5 MB).');
+        alert('Upload failed. Check your connection and try again.');
+      } finally {
+        if (avatarEditLabel) {
+          avatarEditLabel.style.opacity = '';
+          avatarEditLabel.style.pointerEvents = '';
+        }
+        e.target.value = '';
       }
-    } catch {
-      const initials = (P.name || '?').trim().split(/\s+/).map(n => n[0]).join('').toUpperCase().slice(0, 2);
-      avatarEl.innerHTML = `<span class="profile-header__initials">${initials}</span>`;
-      alert('Upload failed. Check your connection and try again.');
-    } finally {
-      avatarEditLabel.style.opacity = '';
-      avatarEditLabel.style.pointerEvents = '';
-      e.target.value = '';
-    }
-  });
+    });
+  }
 
   // ── Header buttons ──
-  container.querySelector('#edit-profile-btn').onclick = () => openEditAboutModal();
+  const editProfileBtn = container.querySelector('#edit-profile-btn');
+  if (!isPeerView && editProfileBtn) {
+    editProfileBtn.onclick = () => openEditAboutModal();
+  }
   container.querySelector('#download-resume-top-btn').onclick = () => {
     switchTab('resume');
     container.querySelectorAll('.profile-tabs__item').forEach(b => b.classList.toggle('profile-tabs__item--active', b.dataset.tab === 'resume'));
@@ -3299,25 +3370,27 @@ export async function renderPortfolio(container) {
   // Initial render
   renderAbout();
 
-  // ── Reactive Real-Time Event Listeners (Zero Hard Refresh) ──
-  const onRequirementsUpdated = async () => {
-    try {
-      const res = await apiGet('/student/requirements');
-      if (res && Array.isArray(res.requirements)) {
-        REQS = res.requirements;
-        if (res.requirements_drive_url) {
-          P.requirements_drive_url = res.requirements_drive_url;
+  // ── Reactive Real-Time Event Listeners (Zero Hard Refresh, owner only) ──
+  if (!isPeerView) {
+    const onRequirementsUpdated = async () => {
+      try {
+        const res = await apiGet('/student/requirements');
+        if (res && Array.isArray(res.requirements)) {
+          REQS = res.requirements;
+          if (res.requirements_drive_url) {
+            P.requirements_drive_url = res.requirements_drive_url;
+          }
+          if (currentTab === 'about' && tabContent) {
+            renderAbout();
+          }
         }
-        if (currentTab === 'about' && tabContent) {
-          renderAbout();
-        }
-      }
-    } catch (_) {}
-  };
+      } catch (_) {}
+    };
 
-  if (container._reqHandler) {
-    window.removeEventListener('hireme:requirements-updated', container._reqHandler);
+    if (container._reqHandler) {
+      window.removeEventListener('hireme:requirements-updated', container._reqHandler);
+    }
+    container._reqHandler = onRequirementsUpdated;
+    window.addEventListener('hireme:requirements-updated', onRequirementsUpdated);
   }
-  container._reqHandler = onRequirementsUpdated;
-  window.addEventListener('hireme:requirements-updated', onRequirementsUpdated);
 }

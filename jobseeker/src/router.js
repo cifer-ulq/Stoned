@@ -18,13 +18,18 @@ export function getCurrentRoute() {
 }
 
 function resolveRoute() {
-  const hash = window.location.hash.slice(1) || '/';
+  const raw = window.location.hash.slice(1);
+  if (raw && !raw.startsWith('/')) return;
+
+  const [pathname, queryString] = (raw || '/').split('?');
+  const queryParams = Object.fromEntries(new URLSearchParams(queryString || ''));
+  const hash = pathname || '/';
   
   // First try exact match
   let handler = routes[hash];
-  let params = {};
+  let params = { ...queryParams };
 
-  // Then try parameterized routes (e.g. /company/:id)
+  // Then try parameterized routes (e.g. /company/:id, /portfolio/:id)
   if (!handler) {
     for (const pattern of Object.keys(routes)) {
       if (!pattern.includes(':')) continue;
@@ -43,7 +48,7 @@ function resolveRoute() {
       }
       if (matched) {
         handler = routes[pattern];
-        params = extracted;
+        params = { ...queryParams, ...extracted };
         break;
       }
     }
@@ -58,7 +63,9 @@ function resolveRoute() {
   handler(params);
 
   // Map parameterized routes to their parent nav item for sidebar highlighting
-  const activeRoute = hash.startsWith('/company/') ? '/companies' : hash;
+  const activeRoute = hash.startsWith('/company/') 
+    ? '/companies' 
+    : (hash.startsWith('/portfolio/') ? '/portfolio' : hash);
   document.querySelectorAll('.sidebar-nav__item').forEach(item => {
     item.classList.toggle('sidebar-nav__item--active', item.getAttribute('data-route') === activeRoute);
   });
