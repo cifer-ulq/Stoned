@@ -1,5 +1,6 @@
 /**
  * CHMSU HireMe — Password Reset Page
+ * Fully Responsive (320px to 1440px+)
  * Accessed via emailed reset link: ?token=xxx&email=yyy
  */
 
@@ -7,6 +8,7 @@ import './styles/variables.css';
 import './styles/reset.css';
 import './styles/admin-login.css';
 import './styles/set-password.css';
+import './styles/reset-password.css';
 import { icon } from './icons.js';
 
 /* ── Theme Initialization ── */
@@ -36,7 +38,7 @@ function renderNav() {
   const theme = document.documentElement.getAttribute('data-theme');
   return `
     <header class="sp-nav">
-      <a href="./" class="sp-brand">
+      <a href="./" class="sp-brand" aria-label="CHMSU HireMe Home">
         <div class="sp-brand__logo">H</div>
         <div class="sp-brand__info">
           <span class="sp-brand__sub">Carlos Hilado Memorial State University</span>
@@ -60,29 +62,32 @@ function renderInvalid(title, message) {
       <main class="sp-main">
         <div class="sp-card" style="max-width: 480px; text-align: center;">
           <div class="sp-card__accent" style="background: linear-gradient(90deg, #EF4444, #F59E0B);"></div>
-          <div class="sp-card__body" style="padding: 3rem 2rem;">
-            <div style="width: 68px; height: 68px; border-radius: 50%; background: rgba(239, 68, 68, 0.1); color: #EF4444; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; font-size: 2rem;">
-              ⚠️
+          <div class="sp-card__body">
+            <div style="width: 64px; height: 64px; border-radius: 50%; background: rgba(239, 68, 68, 0.1); color: #EF4444; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem;">
+              ${icon('alert-triangle', 32)}
             </div>
-            <div class="sp-badge" style="background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.25); color: #EF4444; margin-bottom: 1rem;">
+            <div class="sp-badge" style="background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.25); color: #EF4444; margin-bottom: 0.85rem;">
               <span class="sp-badge__dot" style="background: #EF4444;"></span>
               Link Unavailable
             </div>
             <h1 class="sp-title" style="font-size: 1.35rem; margin-bottom: 0.75rem;">${escapeHtml(title)}</h1>
-            <p class="sp-subtitle" style="font-size: 0.88rem; line-height: 1.6; margin-bottom: 2rem;">
+            <p class="sp-subtitle" style="font-size: 0.86rem; line-height: 1.6; margin-bottom: 1.75rem;">
               ${escapeHtml(message)}
             </p>
             <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-              <a href="./?view=forgot" class="sp-btn sp-btn--primary" style="text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px;">
+              <a href="./?view=forgot" class="sp-btn-submit" style="text-decoration: none;">
                 Request a New Reset Link ${icon('arrow-right', 16)}
               </a>
-              <a href="./" class="sp-btn sp-btn--secondary" style="text-decoration: none; display: flex; align-items: center; justify-content: center;">
-                Back to Sign In
+              <a href="./" style="display: inline-block; padding: 10px; color: var(--text-secondary); text-decoration: none; font-size: 0.86rem; font-weight: 500;">
+                Return to Login
               </a>
             </div>
           </div>
         </div>
       </main>
+      <footer class="sp-footer">
+        Carlos Hilado Memorial State University &bull; CIER Portal &bull; <a href="./">Back to Login</a>
+      </footer>
     </div>
   `;
   attachNavEvents();
@@ -96,24 +101,27 @@ function renderSuccess(message, redirectUrl) {
       <main class="sp-main">
         <div class="sp-card" style="max-width: 480px; text-align: center;">
           <div class="sp-card__accent" style="background: linear-gradient(90deg, #10B981, #005930);"></div>
-          <div class="sp-card__body" style="padding: 3rem 2rem;">
-            <div style="width: 68px; height: 68px; border-radius: 50%; background: rgba(16, 185, 129, 0.12); color: #10B981; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; font-size: 2.2rem;">
-              ✓
+          <div class="sp-card__body">
+            <div style="width: 68px; height: 68px; border-radius: 50%; background: rgba(16, 185, 129, 0.12); color: #10B981; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem;">
+              ${icon('check-circle', 36)}
             </div>
-            <div class="sp-badge" style="background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.25); color: #059669; margin-bottom: 1rem;">
+            <div class="sp-badge" style="background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.25); color: #059669; margin-bottom: 0.85rem;">
               <span class="sp-badge__dot" style="background: #10B981;"></span>
               Password Updated
             </div>
             <h1 class="sp-title" style="font-size: 1.4rem; margin-bottom: 0.75rem;">Password Reset Successfully!</h1>
-            <p class="sp-subtitle" style="font-size: 0.88rem; line-height: 1.6; margin-bottom: 2rem;">
+            <p class="sp-subtitle" style="font-size: 0.88rem; line-height: 1.6; margin-bottom: 1.75rem;">
               ${escapeHtml(message)}
             </p>
-            <a href="${redirectUrl}" class="sp-btn sp-btn--primary" id="btn-continue" style="text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px;">
+            <a href="${redirectUrl}" class="sp-btn-submit" id="btn-continue" style="text-decoration: none;">
               Continue to Portal ${icon('arrow-right', 16)}
             </a>
           </div>
         </div>
       </main>
+      <footer class="sp-footer">
+        Carlos Hilado Memorial State University &bull; CIER &bull; <a href="./">Return to Login</a>
+      </footer>
     </div>
   `;
   attachNavEvents();
@@ -126,86 +134,120 @@ function renderResetForm() {
       ${renderNav()}
 
       <main class="sp-main">
-        <div class="sp-card" style="max-width: 520px;">
+        <div class="sp-card">
           <div class="sp-card__accent"></div>
 
-          <div class="sp-card__body" style="padding: 2.25rem 2rem;">
+          <div class="sp-card__body">
 
             <!-- Header Badge & Title -->
-            <div style="text-align: center; margin-bottom: 1.75rem;">
-              <div class="sp-badge" style="background: rgba(0, 89, 48, 0.08); border-color: rgba(0, 89, 48, 0.2); color: var(--color-primary); margin-bottom: 0.75rem;">
-                <span class="sp-badge__dot" style="background: var(--color-primary);"></span>
+            <div class="sp-header">
+              <div class="sp-badge">
+                <span class="sp-badge__dot"></span>
                 Secure Account Recovery
               </div>
-              <h1 class="sp-title" style="font-size: 1.5rem; margin-bottom: 0.4rem;">Create New Password</h1>
-              <p class="sp-subtitle" style="font-size: 0.84rem;">
+              <h1 class="sp-title">Create New Password</h1>
+              <p class="sp-subtitle">
                 Please choose a strong, secure password for your account.
               </p>
             </div>
 
             <!-- Account Email Verified Pill -->
-            <div style="background: var(--bg-secondary); border: 1.5px solid var(--border-default); border-radius: 12px; padding: 12px 16px; margin-bottom: 1.75rem; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
-              <div style="display: flex; align-items: center; gap: 10px; overflow: hidden;">
-                <span style="color: var(--color-primary); font-size: 1.1rem; flex-shrink: 0;">👤</span>
-                <div style="overflow: hidden;">
-                  <div style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-tertiary); font-weight: 600;">Account Email</div>
-                  <div style="font-size: 0.86rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(email)}</div>
-                </div>
+            <div class="sp-account-badge">
+              <span style="color: var(--color-primary); flex-shrink: 0;">${icon('mail', 18)}</span>
+              <div style="min-width: 0; overflow: hidden; flex: 1;">
+                <span style="display: block; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-tertiary); font-weight: 700;">Account</span>
+                <strong style="display: block; word-break: break-all; font-size: 0.88rem; line-height: 1.3;">${escapeHtml(email)}</strong>
               </div>
-              <span style="font-size: 0.68rem; font-weight: 600; padding: 3px 8px; border-radius: 999px; background: rgba(16, 185, 129, 0.12); color: #059669; border: 1px solid rgba(16, 185, 129, 0.25); white-space: nowrap;">Verified</span>
+              <span style="font-size: 0.68rem; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: rgba(16, 185, 129, 0.12); color: #059669; border: 1px solid rgba(16, 185, 129, 0.25); white-space: nowrap; flex-shrink: 0;">Verified</span>
             </div>
 
-            <!-- Form -->
-            <form id="reset-form" novalidate style="display: flex; flex-direction: column; gap: 1.25rem;">
+            <!-- Server Error Alert -->
+            <div class="sp-alert-error" id="sp-server-error" style="display: none;">
+              <span style="flex-shrink: 0;">${icon('alert-triangle', 18)}</span>
+              <span id="sp-server-error-msg" style="flex: 1;"></span>
+            </div>
 
-              <!-- New Password -->
-              <div class="sp-field">
-                <label class="sp-label" for="password">New Password</label>
-                <div class="sp-input-wrap" id="wrap-password">
-                  <span class="sp-input-icon">${icon('lock', 18)}</span>
-                  <input class="sp-input" type="password" id="password" name="password"
-                    placeholder="Enter at least 8 characters" autocomplete="new-password" />
-                  <button class="sp-eye-toggle" id="pw-toggle" type="button" aria-label="Toggle password visibility">
-                    ${icon('eye', 18)}
+            <form class="sp-form" id="reset-form" novalidate>
+
+              <!-- New Password Field -->
+              <div class="sp-field-group">
+                <label class="sp-field-label" for="password">
+                  New Password <span class="sp-required">*</span>
+                </label>
+                <div class="sp-input-box" id="box-password">
+                  <span class="sp-input-icon">${icon('lock', 16)}</span>
+                  <input
+                    class="sp-input"
+                    type="password"
+                    id="password"
+                    name="password"
+                    placeholder="Enter at least 8 characters"
+                    autocomplete="new-password"
+                    required
+                  />
+                  <button class="sp-toggle-btn" id="pw-toggle" type="button" aria-label="Toggle password visibility">
+                    ${icon('eye', 16)}
                   </button>
                 </div>
-                
-                <!-- Password Strength Meter -->
-                <div class="pw-strength" style="display: flex; gap: 4px; margin-top: 6px;">
-                  <div class="pw-strength__bar" id="ps-1" style="flex: 1; height: 4px; border-radius: 999px; background: var(--border-default); transition: background 0.3s;"></div>
-                  <div class="pw-strength__bar" id="ps-2" style="flex: 1; height: 4px; border-radius: 999px; background: var(--border-default); transition: background 0.3s;"></div>
-                  <div class="pw-strength__bar" id="ps-3" style="flex: 1; height: 4px; border-radius: 999px; background: var(--border-default); transition: background 0.3s;"></div>
-                  <div class="pw-strength__bar" id="ps-4" style="flex: 1; height: 4px; border-radius: 999px; background: var(--border-default); transition: background 0.3s;"></div>
+                <div class="sp-field-error" id="err-password"></div>
+
+                <!-- Password Strength Visual Indicator -->
+                <div class="sp-strength-meter">
+                  <div class="sp-strength-bar" id="str-1"></div>
+                  <div class="sp-strength-bar" id="str-2"></div>
+                  <div class="sp-strength-bar" id="str-3"></div>
+                  <div class="sp-strength-bar" id="str-4"></div>
                 </div>
-                <div id="pw-label" style="font-size: 0.72rem; color: var(--text-tertiary); margin-top: 4px;"></div>
-                <span class="sp-field__error" id="err-password" style="font-size: 0.75rem; color: var(--color-error); display: none; margin-top: 4px;"></span>
+                <div class="sp-strength-label" id="str-label"></div>
+
+                <!-- Requirements Checklist -->
+                <div class="sp-criteria">
+                  <div class="sp-criteria-item" id="crit-len">
+                    <span class="sp-criteria-item__icon">${icon('check', 10)}</span>
+                    <span>At least 8 characters</span>
+                  </div>
+                  <div class="sp-criteria-item" id="crit-upper">
+                    <span class="sp-criteria-item__icon">${icon('check', 10)}</span>
+                    <span>Contains an uppercase letter</span>
+                  </div>
+                  <div class="sp-criteria-item" id="crit-num">
+                    <span class="sp-criteria-item__icon">${icon('check', 10)}</span>
+                    <span>Contains a number or special symbol</span>
+                  </div>
+                </div>
               </div>
 
-              <!-- Confirm Password -->
-              <div class="sp-field">
-                <label class="sp-label" for="password_confirmation">Confirm New Password</label>
-                <div class="sp-input-wrap" id="wrap-confirm">
-                  <span class="sp-input-icon">${icon('lock', 18)}</span>
-                  <input class="sp-input" type="password" id="password_confirmation" name="password_confirmation"
-                    placeholder="Re-enter your new password" autocomplete="new-password" />
-                  <button class="sp-eye-toggle" id="confirm-toggle" type="button" aria-label="Toggle password confirmation visibility">
-                    ${icon('eye', 18)}
+              <!-- Confirm Password Field -->
+              <div class="sp-field-group">
+                <label class="sp-field-label" for="password_confirmation">
+                  Confirm New Password <span class="sp-required">*</span>
+                </label>
+                <div class="sp-input-box" id="box-confirm">
+                  <span class="sp-input-icon">${icon('lock', 16)}</span>
+                  <input
+                    class="sp-input"
+                    type="password"
+                    id="password_confirmation"
+                    name="password_confirmation"
+                    placeholder="Re-enter your new password"
+                    autocomplete="new-password"
+                    required
+                  />
+                  <button class="sp-toggle-btn" id="confirm-toggle" type="button" aria-label="Toggle password confirmation visibility">
+                    ${icon('eye', 16)}
                   </button>
                 </div>
-                <span class="sp-field__error" id="err-confirm" style="font-size: 0.75rem; color: var(--color-error); display: none; margin-top: 4px;"></span>
+                <div class="sp-field-error" id="err-confirm"></div>
               </div>
-
-              <!-- Global Alert Box -->
-              <div id="reset-alert" style="display: none; padding: 12px 16px; border-radius: 10px; font-size: 0.82rem; line-height: 1.5; background: #FEF2F2; border: 1.5px solid #EF4444; color: #991B1B;"></div>
 
               <!-- Submit Button -->
-              <button class="sp-btn sp-btn--primary" id="submit-btn" type="submit" style="width: 100%; padding: 14px; font-size: 0.92rem; font-weight: 600; margin-top: 0.5rem; justify-content: center; box-shadow: 0 4px 16px rgba(0, 89, 48, 0.3);">
+              <button class="sp-btn-submit" id="submit-btn" type="submit">
                 <span id="submit-label">Update Password &amp; Sign In</span>
               </button>
 
               <div style="text-align: center; margin-top: 0.5rem;">
-                <a href="./" style="font-size: 0.82rem; color: var(--text-tertiary); text-decoration: none; transition: color 0.2s;">
-                  ← Back to Sign In
+                <a href="./" style="font-size: 0.85rem; color: var(--text-secondary); text-decoration: none; font-weight: 500; display: inline-flex; align-items: center; gap: 4px;">
+                  &larr; Back to Sign In
                 </a>
               </div>
 
@@ -213,6 +255,9 @@ function renderResetForm() {
           </div>
         </div>
       </main>
+      <footer class="sp-footer">
+        Carlos Hilado Memorial State University &bull; CIER &bull; <a href="./">Return to Login</a>
+      </footer>
     </div>
   `;
 
@@ -240,7 +285,7 @@ function attachFormEvents() {
     if (!pwInput) return;
     const isHidden = pwInput.type === 'password';
     pwInput.type = isHidden ? 'text' : 'password';
-    pwBtn.innerHTML = icon(isHidden ? 'eye-off' : 'eye', 18);
+    pwBtn.innerHTML = icon(isHidden ? 'eye-off' : 'eye', 16);
   });
 
   const confirmInput = document.getElementById('password_confirmation');
@@ -249,47 +294,95 @@ function attachFormEvents() {
     if (!confirmInput) return;
     const isHidden = confirmInput.type === 'password';
     confirmInput.type = isHidden ? 'text' : 'password';
-    confirmBtn.innerHTML = icon(isHidden ? 'eye-off' : 'eye', 18);
+    confirmBtn.innerHTML = icon(isHidden ? 'eye-off' : 'eye', 16);
   });
 
-  // Password Strength Evaluation
-  pwInput?.addEventListener('input', (e) => {
-    const val = e.target.value;
-    updateStrength(val);
+  // Password Input & Real-time Validation
+  pwInput?.addEventListener('input', () => {
+    evaluatePassword();
+  });
+
+  confirmInput?.addEventListener('input', () => {
+    evaluatePassword();
   });
 
   // Form Submission
   document.getElementById('reset-form')?.addEventListener('submit', handleResetSubmit);
 }
 
-/* ── Password Strength Logic ── */
-function updateStrength(pw) {
-  const bars = [1, 2, 3, 4].map(i => document.getElementById(`ps-${i}`));
-  const label = document.getElementById('pw-label');
-  if (!bars[0] || !label) return;
+/* ── Password Strength & Criteria Evaluation ── */
+function evaluatePassword() {
+  const pw = document.getElementById('password')?.value || '';
+  const confirmPw = document.getElementById('password_confirmation')?.value || '';
 
+  const hasLen = pw.length >= 8;
+  const hasUpper = /[A-Z]/.test(pw);
+  const hasNumOrSpec = /[0-9]|[^A-Za-z0-9]/.test(pw);
+
+  const updateCrit = (id, valid) => {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('valid', valid);
+  };
+
+  updateCrit('crit-len', hasLen);
+  updateCrit('crit-upper', hasUpper);
+  updateCrit('crit-num', hasNumOrSpec);
+
+  // Score
   let score = 0;
-  if (pw.length >= 8) score++;
-  if (/[A-Z]/.test(pw)) score++;
-  if (/[0-9]/.test(pw)) score++;
-  if (/[^A-Za-z0-9]/.test(pw)) score++;
+  if (hasLen) score++;
+  if (hasUpper) score++;
+  if (hasNumOrSpec) score++;
+  if (pw.length >= 12 && hasUpper && hasNumOrSpec) score++;
 
-  const colors = ['', '#EF4444', '#F59E0B', '#3B82F6', '#10B981'];
+  const bars = [1, 2, 3, 4].map(i => document.getElementById(`str-${i}`));
+  const label = document.getElementById('str-label');
+
+  const colors = ['', '#EF4444', '#F59E0B', '#10B981', '#005930'];
   const labels = ['', 'Weak (8+ characters needed)', 'Fair', 'Good', 'Strong'];
 
-  bars.forEach((bar, i) => {
-    bar.style.background = i < score ? colors[score] : 'var(--border-default)';
+  bars.forEach((bar, idx) => {
+    if (bar) {
+      bar.style.background = idx < score ? colors[score] : 'var(--border-default)';
+    }
   });
 
-  label.textContent = pw.length ? labels[score] : '';
-  label.style.color = pw.length ? colors[score] : 'var(--text-tertiary)';
+  if (label) {
+    label.textContent = pw.length ? labels[score] : '';
+    label.style.color = colors[score] || 'var(--text-tertiary)';
+  }
+
+  // Real-time Confirm Password Validation
+  const errConfirm = document.getElementById('err-confirm');
+  const boxConfirm = document.getElementById('box-confirm');
+  if (confirmPw.length > 0) {
+    if (pw !== confirmPw) {
+      boxConfirm?.classList.add('sp-input-box--error');
+      if (errConfirm) {
+        errConfirm.textContent = 'Passwords do not match.';
+        errConfirm.style.display = 'block';
+      }
+    } else {
+      boxConfirm?.classList.remove('sp-input-box--error');
+      if (errConfirm) {
+        errConfirm.textContent = '';
+        errConfirm.style.display = 'none';
+      }
+    }
+  } else {
+    boxConfirm?.classList.remove('sp-input-box--error');
+    if (errConfirm) {
+      errConfirm.textContent = '';
+      errConfirm.style.display = 'none';
+    }
+  }
 }
 
 /* ── Field Error Display ── */
-function setFieldError(field, msg) {
-  const wrap = document.getElementById(`wrap-${field}`);
-  const err  = document.getElementById(`err-${field}`);
-  if (wrap) wrap.style.borderColor = 'var(--color-error)';
+function setFieldError(boxId, errId, msg) {
+  const box = document.getElementById(boxId);
+  const err = document.getElementById(errId);
+  box?.classList.add('sp-input-box--error');
   if (err) {
     err.textContent = msg;
     err.style.display = 'block';
@@ -297,19 +390,14 @@ function setFieldError(field, msg) {
 }
 
 function clearFieldErrors() {
-  ['password', 'confirm'].forEach(f => {
-    const wrap = document.getElementById(`wrap-${f}`);
-    const err  = document.getElementById(`err-${f}`);
-    if (wrap) wrap.style.borderColor = '';
-    if (err) {
-      err.textContent = '';
-      err.style.display = 'none';
-    }
+  document.querySelectorAll('.sp-input-box--error').forEach(el => el.classList.remove('sp-input-box--error'));
+  document.querySelectorAll('.sp-field-error').forEach(el => {
+    el.textContent = '';
+    el.style.display = 'none';
   });
-  const alert = document.getElementById('reset-alert');
+  const alert = document.getElementById('sp-server-error');
   if (alert) {
     alert.style.display = 'none';
-    alert.textContent = '';
   }
 }
 
@@ -323,14 +411,14 @@ async function handleResetSubmit(e) {
 
   let valid = true;
   if (!pw || pw.length < 8) {
-    setFieldError('password', 'Password must be at least 8 characters long.');
+    setFieldError('box-password', 'err-password', 'Password must be at least 8 characters long.');
     valid = false;
   }
   if (!cp) {
-    setFieldError('confirm', 'Please confirm your new password.');
+    setFieldError('box-confirm', 'err-confirm', 'Please confirm your new password.');
     valid = false;
   } else if (pw !== cp) {
-    setFieldError('confirm', 'Passwords do not match.');
+    setFieldError('box-confirm', 'err-confirm', 'Passwords do not match.');
     valid = false;
   }
 
@@ -360,15 +448,16 @@ async function handleResetSubmit(e) {
 
     if (!res.ok) {
       // Check if token was expired or invalid
-      if (res.status === 422 && data.message && data.message.includes('expired')) {
+      if (res.status === 422 && data.message && (data.message.includes('expired') || data.message.includes('invalid'))) {
         renderInvalid('Reset Link Expired or Used', data.message);
         return;
       }
 
-      const alert = document.getElementById('reset-alert');
-      if (alert) {
-        alert.textContent = data.message || 'Unable to reset password. Please check your inputs.';
-        alert.style.display = 'block';
+      const alert = document.getElementById('sp-server-error');
+      const alertMsg = document.getElementById('sp-server-error-msg');
+      if (alert && alertMsg) {
+        alertMsg.textContent = data.message || 'Unable to reset password. Please check your inputs.';
+        alert.style.display = 'flex';
       }
       btn.disabled = false;
       lbl.textContent = 'Update Password & Sign In';
@@ -411,10 +500,11 @@ async function handleResetSubmit(e) {
 
   } catch (err) {
     console.error('[ResetPassword] Error:', err);
-    const alert = document.getElementById('reset-alert');
-    if (alert) {
-      alert.textContent = 'Could not connect to server. Please check your network connection.';
-      alert.style.display = 'block';
+    const alert = document.getElementById('sp-server-error');
+    const alertMsg = document.getElementById('sp-server-error-msg');
+    if (alert && alertMsg) {
+      alertMsg.textContent = 'Could not connect to server. Please check your network connection.';
+      alert.style.display = 'flex';
     }
     btn.disabled = false;
     lbl.textContent = 'Update Password & Sign In';
