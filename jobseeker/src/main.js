@@ -18,7 +18,7 @@ import { getState, setState } from './store.js';
 import { apiGet, apiCache, revalidateEndpoint, clearAuth } from './api/client.js';
 
 // Components
-import { createNavbar } from './components/navbar.js';
+import { createNavbar, createMobileBottomNav } from './components/navbar.js';
 import { createLeftSidebar } from './components/sidebar-left.js';
 import { createRightSidebar } from './components/sidebar-right.js';
 
@@ -123,6 +123,11 @@ function buildShell() {
   toastContainer.className = 'toast-container';
   app.appendChild(toastContainer);
 
+  const sidebarBackdrop = document.createElement('div');
+  sidebarBackdrop.className = 'sidebar-backdrop';
+  sidebarBackdrop.id = 'sidebar-backdrop';
+  app.appendChild(sidebarBackdrop);
+
   const layoutWrapper = document.createElement('div');
   layoutWrapper.className = 'layout';
   layoutWrapper.id = 'app-layout';
@@ -140,7 +145,10 @@ function buildShell() {
 
   app.appendChild(layoutWrapper);
 
-  return { leftSidebar, mainContent };
+  const mobileBottomNav = createMobileBottomNav();
+  app.appendChild(mobileBottomNav);
+
+  return { leftSidebar, mainContent, sidebarBackdrop };
 }
 
 /* ─────────────────────────────────────────
@@ -314,6 +322,13 @@ initAuth().then(async (authenticated) => {
   registerRoute('/companies',    renderPage('/companies', renderCompanies));
   registerRoute('/company/:id',  (params) => renderPage('/company/:id', renderCompanyProfile)(params));
 
+  function closeMobileSidebar() {
+    const leftSidebar = document.getElementById('sidebar-left');
+    const backdrop = document.getElementById('sidebar-backdrop');
+    leftSidebar?.classList.remove('sidebar-left--open');
+    backdrop?.classList.remove('sidebar-backdrop--open');
+  }
+
   window.addEventListener('hashchange', () => {
     const hash = window.location.hash.slice(1) || '/';
     // Map parameterized routes to their parent nav item (e.g. /company/3 → /companies)
@@ -324,15 +339,26 @@ initAuth().then(async (authenticated) => {
     document.querySelectorAll('.navbar__tab').forEach(tab => {
       tab.classList.toggle('navbar__tab--active', tab.getAttribute('data-route') === activeRoute);
     });
+    document.querySelectorAll('.mobile-bottom-nav__tab').forEach(tab => {
+      tab.classList.toggle('mobile-bottom-nav__tab--active', tab.getAttribute('data-route') === activeRoute);
+    });
+    closeMobileSidebar();
   });
 
   document.addEventListener('click', (e) => {
     const leftSidebar = document.getElementById('sidebar-left');
+    const backdrop = document.getElementById('sidebar-backdrop');
     if (e.target.closest('#mobile-sidebar-toggle')) {
-      leftSidebar?.classList.toggle('sidebar-left--open');
+      const isOpen = leftSidebar?.classList.toggle('sidebar-left--open');
+      backdrop?.classList.toggle('sidebar-backdrop--open', !!isOpen);
+      return;
+    }
+    if (e.target.closest('#sidebar-backdrop') || e.target.closest('.sidebar-left a[href]')) {
+      closeMobileSidebar();
+      return;
     }
     if (!e.target.closest('.sidebar-left') && !e.target.closest('#mobile-sidebar-toggle')) {
-      leftSidebar?.classList.remove('sidebar-left--open');
+      closeMobileSidebar();
     }
   });
 

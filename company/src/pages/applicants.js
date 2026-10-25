@@ -7,12 +7,14 @@ import { apiGet, apiPost, apiPatch, resolveStorageUrl } from '../api/client.js';
 import { openSetOjtScheduleModal } from '../components/ojt-schedule-modal.js';
 
 const STATUS_LABELS = {
-  all:       'All Stages',
-  applied:   'Applied',
-  reviewed:  'Under Review / Endorsed',
-  interview: 'Interview',
-  offered:   'Offered / Accepted',
-  rejected:  'Rejected',
+  all:        'All Stages',
+  applied:    'Applied',
+  reviewed:   'Under Review / Endorsed',
+  interview:  'Interview',
+  offered:    'Offered',
+  onboarding: 'Onboarding',
+  hired:      'Hired (Roster)',
+  rejected:   'Rejected / Withdrawn',
 };
 
 function escapeHtml(str) {
@@ -197,7 +199,11 @@ function applyFilters(container, allApps, category, status, query) {
 
   // Filter by pipeline status
   if (status !== 'all') {
-    filtered = filtered.filter(a => a.status === status);
+    if (status === 'rejected') {
+      filtered = filtered.filter(a => a.status === 'rejected' || a.status === 'withdrawn');
+    } else {
+      filtered = filtered.filter(a => a.status === status);
+    }
   }
 
   // Filter by search query
@@ -235,7 +241,12 @@ function updatePipelineCounts(container, apps, category) {
 
   const counts = { all: scoped.length };
   for (const key of Object.keys(STATUS_LABELS)) {
-    if (key !== 'all') counts[key] = scoped.filter(a => a.status === key).length;
+    if (key === 'all') continue;
+    if (key === 'rejected') {
+      counts[key] = scoped.filter(a => a.status === 'rejected' || a.status === 'withdrawn').length;
+    } else {
+      counts[key] = scoped.filter(a => a.status === key).length;
+    }
   }
   for (const [key, count] of Object.entries(counts)) {
     const el = container.querySelector(`#count-${key}`);
@@ -402,6 +413,14 @@ function renderCards(container, apps, allApps) {
       } else if (a.status === 'reviewed') {
         primaryBtn = `<button class="ap-btn ap-btn--primary ap-btn-status" data-action="interview" data-id="${id}">${icon('video', 14)} Schedule Interview</button>`;
       } else if (a.status === 'interview') {
+        let ivConfirmNotice = '';
+        if (a.interview_candidate_response === 'confirmed') {
+          ivConfirmNotice = `<div style="margin:4px 0 6px;padding:4px 8px;border-radius:4px;font-size:0.72rem;background:rgba(16,185,129,0.1);color:#065f46;font-weight:600;display:inline-flex;align-items:center;gap:4px;">${icon('checkCircle', 12)} Candidate Confirmed Attendance</div>`;
+        } else if (a.interview_candidate_response === 'reschedule_requested') {
+          ivConfirmNotice = `<div style="margin:4px 0 6px;padding:4px 8px;border-radius:4px;font-size:0.72rem;background:rgba(245,158,11,0.15);color:#b45309;font-weight:600;display:inline-flex;align-items:center;gap:4px;">${icon('clock', 12)} Reschedule Requested: ${escapeHtml(a.interview_reschedule_note || 'Candidate requested new time')}</div>`;
+        }
+        ojtNotice = ivConfirmNotice;
+
         if (isPast) {
           primaryBtn = `<button class="ap-btn ap-btn--primary ap-btn-offer" data-id="${id}">${icon('award', 14)} Extend Offer</button>`;
         } else {
@@ -410,7 +429,37 @@ function renderCards(container, apps, allApps) {
         }
       } else if (a.status === 'offered') {
         primaryBtn = `<span class="ap-btn ap-btn--static-success">${icon('checkCircle', 14)} Job Offer Sent</span>`;
+      } else if (a.status === 'onboarding') {
+        statusBadge = 'Onboarding';
+        statusClass = 'offered';
+        const checklist = a.onboarding_checklist || {};
+        const reqKeys = ['nbi_clearance', 'medical_fit_to_work', 'government_ids', 'academic_proof'];
+        const approvedCount = reqKeys.filter(k => checklist[k]?.status === 'approved').length;
+        const uploadedCount = reqKeys.filter(k => checklist[k]?.file_path).length;
+        ojtNotice = `
+          <div class="ap-ojt-notice" style="margin:10px 0 6px;padding:8px 12px;background:rgba(0,89,48,0.08);border-left:3px solid #005930;border-radius:4px;font-size:0.75rem;color:#005930;line-height:1.4;">
+            ${icon('shield', 13)} <strong>Offer Accepted &bull; Pre-Employment Onboarding</strong>: ${approvedCount}/4 Approved (${uploadedCount}/4 Uploaded).
+          </div>`;
+        primaryBtn = `<button class="ap-btn ap-btn--primary ap-btn-onboarding" data-id="${id}" style="background:#005930;border-color:#005930;" title="Inspect & verify candidate pre-employment documents">${icon('shield', 14)} Review Onboarding Docs (${approvedCount}/4)</button>`;
+      } else if (a.status === 'hired') {
+        statusBadge = 'Hired & Active';
+        statusClass = 'reviewed';
+        ojtNotice = `
+          <div class="ap-ojt-notice" style="margin:10px 0 6px;padding:8px 12px;background:rgba(16,185,129,0.08);border-left:3px solid #10b981;border-radius:4px;font-size:0.75rem;color:#065f46;line-height:1.4;">
+            ${icon('checkCircle', 13)} <strong>Enrolled in Staff Roster</strong> &bull; Active employee.
+          </div>`;
+        primaryBtn = `<span class="ap-btn ap-btn--static-success" style="background:#005930;color:#ffffff;border-color:#005930;">${icon('award', 14)} Enrolled in Roster</span>`;
+      } else if (a.status === 'withdrawn') {
+        statusBadge = 'Withdrawn';
+        statusClass = 'rejected';
+        ojtNotice = `
+          <div class="ap-ojt-notice" style="margin:10px 0 6px;padding:8px 12px;background:rgba(148,163,184,0.1);border-left:3px solid #94a3b8;border-radius:4px;font-size:0.75rem;color:#475569;line-height:1.4;">
+            ${icon('info', 13)} <strong>Application Withdrawn</strong>${a.withdrawal_reason ? `: ${escapeHtml(a.withdrawal_reason)}` : ''}
+          </div>`;
+        primaryBtn = `<span class="ap-btn ap-btn--static" style="color:#64748b;">${icon('cornerUpLeft', 14)} Withdrawn</span>`;
       } else if (a.status === 'rejected') {
+        statusBadge = 'Declined';
+        statusClass = 'rejected';
         primaryBtn = `<span class="ap-btn ap-btn--static">${icon('x', 14)} Application Closed</span>`;
       }
     }
@@ -418,7 +467,7 @@ function renderCards(container, apps, allApps) {
     const isViewed = isOjt ? !!a.resume_viewed : (a.status !== 'applied' || !!a.resume_viewed);
     const showReject = isOjt
       ? (!['rejected', 'ojt_confirmed', 'ojt_started'].includes(a.raw_status) && (a.raw_status !== 'interested' || isViewed))
-      : (a.status !== 'rejected' && a.status !== 'offered' && (a.status !== 'applied' || isViewed));
+      : (!['rejected', 'withdrawn', 'hired', 'onboarding'].includes(a.status) && (a.status !== 'applied' || isViewed));
 
     return `
       <div class="ap-card ap-card--${isOjt ? 'ojt' : 'job'}" data-id="${a.id}">
@@ -646,6 +695,14 @@ function renderCards(container, apps, allApps) {
     btn.addEventListener('click', () => {
       const app = allApps.find(a => String(a.id) === btn.dataset.id);
       if (app) openOfferModal(app, allApps, container, null);
+    });
+  });
+
+  // Wire Onboarding Review buttons
+  grid.querySelectorAll('.ap-btn-onboarding').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const app = allApps.find(a => String(a.id) === btn.dataset.id);
+      if (app) openOnboardingModal(app, allApps, container);
     });
   });
 
@@ -1514,11 +1571,28 @@ function openOfferModal(app, allApps, container, parentBackdrop) {
               placeholder="e.g. Congratulations! We are glad to accept you for our OJT program. The coordinator will be notified to give final approval.">Congratulations ${app.applicant.name}! We were impressed by your interview and are happy to accept you for the ${app.job.title} OJT program.</textarea>
           </div>
         ` : `
-          <!-- Salary -->
+          <!-- Salary & Allowances -->
+          <div class="form-row ap-modal-grid-2">
+            <div>
+              <label style="display:block;font-size:.78rem;font-weight:600;color:var(--text-secondary);margin-bottom:5px;">${icon('zap', 12)} Offered Basic Salary *</label>
+              <input name="salary" type="text" class="form-input" required placeholder="e.g. ₱45,000 / month"
+                value="${app.job.salary_range || ''}" style="width:100%;">
+            </div>
+            <div>
+              <label style="display:block;font-size:.78rem;font-weight:600;color:var(--text-secondary);margin-bottom:5px;">${icon('award', 12)} De Minimis Allowances</label>
+              <input name="allowances" type="text" class="form-input" placeholder="e.g. ₱3,000 Rice/Meal"
+                value="₱3,000 / month (Meal & Rice Subsidy)" style="width:100%;">
+            </div>
+          </div>
+
+          <!-- Employment Status Track -->
           <div>
-            <label style="display:block;font-size:.78rem;font-weight:600;color:var(--text-secondary);margin-bottom:5px;">${icon('zap', 12)} Offered Salary *</label>
-            <input name="salary" type="text" class="form-input" required placeholder="e.g. ₱55,000 / month"
-              value="${app.job.salary_range || ''}" style="width:100%;">
+            <label style="display:block;font-size:.78rem;font-weight:600;color:var(--text-secondary);margin-bottom:5px;">${icon('briefcase', 12)} Employment Appointment Track *</label>
+            <select name="employment_status" class="form-input" style="width:100%;">
+              <option value="Probationary" selected>Probationary (6-Month Evaluation — Art. 296 Labor Code)</option>
+              <option value="Regular">Regular (Immediate Tenured Staff)</option>
+              <option value="Contractual">Contractual / Project-Based Fixed-Term</option>
+            </select>
           </div>
 
           <!-- Dates -->
@@ -1535,16 +1609,16 @@ function openOfferModal(app, allApps, container, parentBackdrop) {
 
           <!-- Benefits -->
           <div>
-            <label style="display:block;font-size:.78rem;font-weight:600;color:var(--text-secondary);margin-bottom:5px;">${icon('star', 12)} Benefits <span style="font-weight:400;opacity:.7;">(one per line)</span></label>
+            <label style="display:block;font-size:.78rem;font-weight:600;color:var(--text-secondary);margin-bottom:5px;">${icon('star', 12)} Benefits & Statutory Coverage <span style="font-weight:400;opacity:.7;">(one per line)</span></label>
             <textarea name="benefits" class="form-input form-textarea" rows="3" style="width:100%;resize:vertical;"
-              placeholder="Health Insurance&#10;Remote Work&#10;Performance Bonus">${(app.job.benefits || []).join('\n')}</textarea>
+              placeholder="Health Insurance&#10;Remote Work&#10;Performance Bonus">${(app.job.benefits && app.job.benefits.length ? app.job.benefits : ['13th Month Pay (Mandatory Presidential Decree No. 851)', 'SSS, PhilHealth & Pag-IBIG Coverage', 'Comprehensive HMO Health Insurance', 'Annual Paid Vacation & Sick Leaves']).join('\n')}</textarea>
           </div>
 
           <!-- Message -->
           <div>
             <label style="display:block;font-size:.78rem;font-weight:600;color:var(--text-secondary);margin-bottom:5px;">${icon('messageSquare', 12)} Message to Candidate</label>
             <textarea name="message" class="form-input form-textarea" rows="4" style="width:100%;resize:vertical;"
-              placeholder="Write a personal note to the candidate...">Dear ${app.applicant.name},\n\nWe are thrilled to extend an offer for the ${app.job.title} position. We were impressed by your skills and believe you would be a fantastic addition to our team.\n\nBest regards,\n${app.job.company || 'HR Team'}</textarea>
+              placeholder="Write a personal note to the candidate...">Dear ${app.applicant.name},\n\nWe are thrilled to extend an official job offer for the ${app.job.title} position at ${app.job.company || 'our company'}. Upon acceptance, you will proceed to the pre-employment onboarding stage to submit required clearances.\n\nBest regards,\n${app.job.company || 'HR Recruitment Team'}</textarea>
           </div>
         `}
 
@@ -1577,11 +1651,14 @@ function openOfferModal(app, allApps, container, parentBackdrop) {
     } : {
       status: 'offered',
       offer_details: {
-        salary:      form.get('salary'),
-        start_date:  form.get('start_date'),
-        expiry_date: form.get('expiry_date'),
-        benefits:    (form.get('benefits') || '').split('\n').map(b => b.trim()).filter(Boolean),
-        message:     form.get('message'),
+        salary:            form.get('salary'),
+        allowances:        form.get('allowances') || '',
+        employment_status: form.get('employment_status') || 'Probationary',
+        department:        app.job?.department || 'General',
+        start_date:        form.get('start_date'),
+        expiry_date:       form.get('expiry_date'),
+        benefits:          (form.get('benefits') || '').split('\n').map(b => b.trim()).filter(Boolean),
+        message:           form.get('message'),
       },
     };
 
@@ -1607,6 +1684,238 @@ function openOfferModal(app, allApps, container, parentBackdrop) {
       submitBtn.innerHTML = icon('award', 14) + (isOjt ? ' Confirm Acceptance' : ' Send Offer');
     }
   });
+}
+
+/* ══════════════════════════════════════════════════
+   PRE-EMPLOYMENT ONBOARDING VERIFICATION MODAL
+   ══════════════════════════════════════════════════ */
+function openOnboardingModal(app, allApps, container) {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-backdrop modal-backdrop--visible';
+  overlay.style.cssText = 'z-index:10001;background:rgba(10,12,20,.72);backdrop-filter:blur(3px);';
+
+  const docDefs = [
+    {
+      key: 'nbi_clearance',
+      title: 'NBI / Police Clearance',
+      desc: 'Official government clearance verifying background eligibility and good moral character.',
+      iconName: 'shield',
+    },
+    {
+      key: 'medical_fit_to_work',
+      title: 'Pre-Employment Medical / Fit-to-Work',
+      desc: 'Physician-certified Fit-to-Work certificate or complete PEME results.',
+      iconName: 'heart',
+    },
+    {
+      key: 'government_ids',
+      title: 'Government Statutory ID Numbers',
+      desc: 'Proof of SSS, TIN, PhilHealth, and Pag-IBIG registration documents.',
+      iconName: 'fileText',
+    },
+    {
+      key: 'academic_proof',
+      title: 'CHMSU Academic Transcript of Records / Diploma',
+      desc: 'Official CHMSU TOR, Certificate of Graduation, or Diploma copy.',
+      iconName: 'award',
+    },
+  ];
+
+  function renderModalContent() {
+    const checklist = app.onboarding_checklist || {};
+    const approvedCount = docDefs.filter(d => checklist[d.key]?.status === 'approved').length;
+    const allApproved = approvedCount === 4;
+
+    overlay.innerHTML = `
+      <div class="modal-box" role="dialog" aria-modal="true" style="max-width:680px;width:100%;padding:0;overflow:hidden;border-radius:16px;">
+        <!-- Header -->
+        <div style="background:linear-gradient(135deg,#005930,#047857);padding:20px 24px 16px;color:#fff;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1rem;color:#fff;flex-shrink:0;">
+              ${app.applicant?.initials || 'CA'}
+            </div>
+            <div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <h3 style="color:#fff;font-size:1.1rem;font-weight:700;margin:0;">Pre-Employment Onboarding Compliance</h3>
+                <span style="background:rgba(255,255,255,0.2);color:#fff;font-size:0.7rem;padding:2px 8px;border-radius:99px;font-weight:600;">
+                  ${approvedCount}/4 Approved
+                </span>
+              </div>
+              <p style="color:rgba(255,255,255,.9);font-size:.82rem;margin:3px 0 0;">
+                ${escapeHtml(app.applicant?.name || 'Candidate')} &bull; ${escapeHtml(app.job?.title || 'Position')}
+              </p>
+            </div>
+            <button id="ob-close" style="margin-left:auto;background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;">
+              ${icon('x', 15)}
+            </button>
+          </div>
+        </div>
+
+        <!-- Body -->
+        <div style="padding:22px 24px;max-height:72vh;overflow-y:auto;display:flex;flex-direction:column;gap:14px;background:#f8fafc;">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;">
+            <div style="font-size:0.83rem;color:#475569;">
+              Review each uploaded legal and medical requirement before authorizing deployment into the company staff roster.
+            </div>
+            <div style="font-weight:700;font-size:0.88rem;color:${allApproved ? '#005930' : '#d97706'};">
+              ${allApproved ? icon('checkCircle', 15) + ' Ready to Enroll' : approvedCount + ' of 4 Cleared'}
+            </div>
+          </div>
+
+          ${docDefs.map(def => {
+            const item = checklist[def.key] || {};
+            const isUploaded = !!item.file_path;
+            const st = item.status || (isUploaded ? 'pending' : 'required');
+            const pillColor = st === 'approved' ? '#059669' : (st === 'rejected' ? '#dc2626' : (isUploaded ? '#d97706' : '#64748b'));
+            const pillBg = st === 'approved' ? 'rgba(16,185,129,0.1)' : (st === 'rejected' ? 'rgba(239,68,68,0.1)' : (isUploaded ? 'rgba(245,158,11,0.1)' : 'rgba(148,163,184,0.1)'));
+            const pillLabel = st === 'approved' ? 'Approved' : (st === 'rejected' ? 'Needs Correction' : (isUploaded ? 'Pending Review' : 'Awaiting Upload'));
+
+            return `
+              <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:10px;box-shadow:0 1px 3px rgba(0,0,0,0.02);">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
+                  <div>
+                    <div style="font-weight:700;font-size:0.92rem;color:#0f172a;display:flex;align-items:center;gap:6px;">
+                      ${icon(def.iconName, 15)} ${def.title}
+                    </div>
+                    <div style="font-size:0.77rem;color:#64748b;margin-top:2px;">
+                      ${def.desc}
+                    </div>
+                  </div>
+                  <span style="font-size:0.72rem;font-weight:700;padding:3px 10px;border-radius:99px;background:${pillBg};color:${pillColor};text-transform:uppercase;letter-spacing:0.03em;flex-shrink:0;">
+                    ${pillLabel}
+                  </span>
+                </div>
+
+                ${isUploaded ? `
+                  <div style="background:#f1f5f9;border-radius:8px;padding:8px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:0.8rem;">
+                    <div style="display:flex;align-items:center;gap:8px;min-width:0;">
+                      ${icon('fileText', 14)}
+                      <span style="font-weight:600;color:#1e293b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                        ${escapeHtml(item.file_name || 'Document')}
+                      </span>
+                      <span style="font-size:0.72rem;color:#94a3b8;flex-shrink:0;">
+                        Uploaded ${item.uploaded_at ? new Date(item.uploaded_at).toLocaleDateString() : 'Recently'}
+                      </span>
+                    </div>
+                    <a href="${resolveStorageUrl(item.file_url)}" target="_blank" rel="noopener noreferrer"
+                       class="btn btn--sm btn--outline" style="font-size:0.75rem;padding:3px 8px;min-height:26px;gap:4px;flex-shrink:0;color:#005930;border-color:#005930;">
+                      ${icon('externalLink', 12)} View Document
+                    </a>
+                  </div>
+                ` : `
+                  <div style="font-size:0.78rem;color:#94a3b8;font-style:italic;display:flex;align-items:center;gap:6px;">
+                    ${icon('clock', 13)} Candidate has not uploaded this document yet.
+                  </div>
+                `}
+
+                ${item.reviewer_notes ? `
+                  <div style="font-size:0.78rem;padding:6px 10px;border-radius:6px;background:rgba(239,68,68,0.06);border-left:3px solid #dc2626;color:#b91c1c;">
+                    <strong>Reviewer Correction Note:</strong> ${escapeHtml(item.reviewer_notes)}
+                  </div>
+                ` : ''}
+
+                ${isUploaded ? `
+                  <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:2px;padding-top:8px;border-top:1px solid #f1f5f9;">
+                    <button type="button" class="btn btn--sm btn--outline btn-reject-doc" data-type="${def.key}" style="font-size:0.75rem;padding:4px 10px;color:#dc2626;border-color:#dc2626;">
+                      ${icon('x', 12)} Request Correction
+                    </button>
+                    <button type="button" class="btn btn--sm btn--primary btn-approve-doc" data-type="${def.key}" style="font-size:0.75rem;padding:4px 12px;background:#005930;border-color:#005930;color:#fff;">
+                      ${icon('check', 12)} ${st === 'approved' ? 'Re-Approve' : 'Approve Document'}
+                    </button>
+                  </div>
+                ` : ''}
+              </div>
+            `;
+          }).join('')}
+        </div>
+
+        <!-- Footer -->
+        <div style="padding:14px 24px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;gap:12px;background:#ffffff;">
+          <button type="button" id="ob-cancel" class="btn btn--outline" style="min-height:38px;">Close</button>
+          <button type="button" id="ob-finalize" class="btn btn--primary" ${allApproved ? '' : 'disabled'}
+            style="min-height:38px;padding:0 20px;background:#005930;border-color:#005930;display:inline-flex;align-items:center;gap:8px;${allApproved ? 'box-shadow:0 4px 12px rgba(0,89,48,0.3);' : 'opacity:0.5;cursor:not-allowed;'}">
+            ${icon('award', 16)} Finalize & Enroll in Staff Roster
+          </button>
+        </div>
+      </div>
+    `;
+
+    overlay.querySelector('#ob-close').onclick = () => overlay.remove();
+    overlay.querySelector('#ob-cancel').onclick = () => overlay.remove();
+
+    overlay.querySelectorAll('.btn-approve-doc').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const docType = btn.dataset.type;
+        btn.disabled = true;
+        btn.textContent = 'Approving...';
+        const res = await apiPost(`/company/applications/${app.id}/onboarding-verify`, {
+          document_type: docType,
+          action: 'approved',
+        });
+        if (res && res.success) {
+          app.onboarding_checklist = res.onboarding_checklist;
+          renderModalContent();
+          showToast('Document verified & approved!', 'success');
+          refreshApplicantUI(container, allApps);
+        } else {
+          alert(res?.message || 'Failed to approve document.');
+          btn.disabled = false;
+        }
+      });
+    });
+
+    overlay.querySelectorAll('.btn-reject-doc').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const docType = btn.dataset.type;
+        const notes = prompt('Enter correction reason or instructions for the candidate:');
+        if (notes === null) return;
+        btn.disabled = true;
+        btn.textContent = 'Saving...';
+        const res = await apiPost(`/company/applications/${app.id}/onboarding-verify`, {
+          document_type: docType,
+          action: 'rejected',
+          reviewer_notes: notes,
+        });
+        if (res && res.success) {
+          app.onboarding_checklist = res.onboarding_checklist;
+          renderModalContent();
+          showToast('Candidate notified to resubmit document.', 'info');
+          refreshApplicantUI(container, allApps);
+        } else {
+          alert(res?.message || 'Failed to update document.');
+          btn.disabled = false;
+        }
+      });
+    });
+
+    const finBtn = overlay.querySelector('#ob-finalize');
+    if (finBtn && allApproved) {
+      finBtn.addEventListener('click', async () => {
+        if (!confirm(`Are you ready to finalize ${app.applicant?.name || 'this candidate'}'s onboarding and enroll them into your active Employee Directory & Staff Roster?`)) return;
+        finBtn.disabled = true;
+        finBtn.textContent = 'Enrolling candidate...';
+        const res = await apiPost(`/company/applications/${app.id}/finalize-hire`, {});
+        if (res && res.success) {
+          overlay.remove();
+          app.status = 'hired';
+          showToast(`${app.applicant?.name || 'Staff member'} is now officially hired and enrolled in your Employee Roster!`, 'success');
+          const cat = container.querySelector('.ap-cat-tab--active')?.dataset.cat || 'all';
+          updatePipelineCounts(container, allApps, cat);
+          const q = container.querySelector('#applicant-search')?.value || '';
+          const st = container.querySelector('.ap-pipe-btn--active')?.dataset.status || 'all';
+          applyFilters(container, allApps, cat, st, q);
+        } else {
+          alert(res?.message || 'Failed to finalize hire.');
+          finBtn.disabled = false;
+          finBtn.innerHTML = `${icon('award', 16)} Finalize & Enroll in Staff Roster`;
+        }
+      });
+    }
+  }
+
+  document.body.appendChild(overlay);
+  renderModalContent();
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
 }
 
 /* ══════════════════════════════════════════════════
@@ -1669,6 +1978,13 @@ async function showResumeModal(app, allApps, container, newStatus) {
             ${rec.icon}
             <span>${rec.label} (${scoreVal}%)</span>
           </span>
+          ${app.custom_resume_url ? `
+            <a href="${resolveStorageUrl(app.custom_resume_url)}" target="_blank" rel="noopener noreferrer"
+               style="color:#fff;background:#005930;text-decoration:none;display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:4px;font-size:.73rem;font-weight:700;border:1px solid rgba(255,255,255,0.2);"
+               title="View Candidate Uploaded Custom PDF Resume">
+              ${icon('fileText', 12)} Custom Resume PDF
+            </a>
+          ` : ''}
           <a href="./student-profile.html?student=${app.applicant.id}&${isOjt ? `slot=${app.job?.id || ''}&interest=${app.raw_id || ''}&category=ojt` : `job=${app.job?.id || ''}&application=${app.id}&category=job`}" target="_blank" rel="noopener noreferrer"
              style="color:#10b981;text-decoration:none;display:inline-flex;align-items:center;gap:4px;background:rgba(16,185,129,.12);padding:3px 10px;border-radius:4px;font-size:.73rem;font-weight:600;border:1px solid rgba(16,185,129,0.3);">
             ${icon('externalLink', 12)} Full Profile
@@ -1676,6 +1992,13 @@ async function showResumeModal(app, allApps, container, newStatus) {
           <button id="ar-close" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);color:#d1d5db;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-left:4px;">${icon('x', 14)}</button>
         </div>
       </div>
+
+      ${(app.expected_salary || app.earliest_start_date) ? `
+        <div style="background:#0f172a;color:#cbd5e1;padding:6px 18px;font-size:0.77rem;display:flex;align-items:center;gap:16px;border-top:1px solid #334155;flex-wrap:wrap;">
+          ${app.earliest_start_date ? `<span>${icon('calendar', 12)} <strong>Available Start:</strong> ${app.earliest_start_date}</span>` : ''}
+          ${app.expected_salary ? `<span>${icon('zap', 12)} <strong>Expected Salary:</strong> ${escapeHtml(app.expected_salary)}</span>` : ''}
+        </div>
+      ` : ''}
 
       <!-- Gray PDF reader area + loading paper -->
       <div id="pdf-paper-area" style="background:#475569;overflow-y:auto;max-height:calc(96vh - 100px);padding:28px 40px;display:flex;justify-content:center;">

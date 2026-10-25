@@ -12,6 +12,11 @@ class JobApplication extends Model
         'status',
         'match_score',
         'cover_letter',
+        'custom_resume_url',
+        'earliest_start_date',
+        'expected_salary',
+        'withdrawal_reason',
+        'onboarding_checklist',
         'notes',
         'offer_details',
         'offer_decision',
@@ -19,8 +24,10 @@ class JobApplication extends Model
     ];
 
     protected $casts = [
-        'offer_details'   => 'array',
-        'offer_decided_at'=> 'datetime',
+        'offer_details'        => 'array',
+        'offer_decided_at'     => 'datetime',
+        'onboarding_checklist' => 'array',
+        'earliest_start_date'  => 'date',
     ];
 
     public function jobListing()

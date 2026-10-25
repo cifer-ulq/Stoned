@@ -185,10 +185,12 @@ Route::middleware('auth:sanctum')->prefix('company')->group(function () {
     Route::get('employees/available-candidates', [CompanyController::class, 'availableCandidatesForHire']);
 
     // Job Applications (incoming)
-    Route::get('applications',                   [CompanyController::class, 'listApplications']);
-    Route::patch('applications/{id}/status',     [CompanyController::class, 'updateApplicationStatus']);
-    Route::get('applications/{id}/resume',       [CompanyController::class, 'getApplicantResume']);
-    Route::post('applications/{id}/interview',   [CompanyController::class, 'scheduleInterview']);
+    Route::get('applications',                         [CompanyController::class, 'listApplications']);
+    Route::patch('applications/{id}/status',           [CompanyController::class, 'updateApplicationStatus']);
+    Route::get('applications/{id}/resume',             [CompanyController::class, 'getApplicantResume']);
+    Route::post('applications/{id}/interview',         [CompanyController::class, 'scheduleInterview']);
+    Route::post('applications/{id}/onboarding-verify', [CompanyController::class, 'verifyOnboardingDocument']);
+    Route::post('applications/{id}/finalize-hire',     [CompanyController::class, 'finalizeHire']);
 
     // Interviews
     Route::get('interviews',                       [CompanyController::class, 'listInterviews']);
@@ -321,9 +323,12 @@ Route::middleware('auth:sanctum')->prefix('student')->group(function () {
     Route::get('applications',          [StudentController::class, 'applications']);
     Route::post('apply/{jobId}',        [StudentController::class, 'apply']);
     Route::delete('applications/{id}',  [StudentController::class, 'withdrawApplication']);
-    Route::post('applications/{id}/accept-offer', [StudentController::class, 'acceptOffer']);
-    Route::post('applications/{id}/reject-offer', [StudentController::class, 'rejectOffer']);
+    Route::post('applications/{id}/accept-offer',      [StudentController::class, 'acceptOffer']);
+    Route::post('applications/{id}/reject-offer',      [StudentController::class, 'rejectOffer']);
+    Route::post('applications/{id}/onboarding-upload',  [StudentController::class, 'uploadOnboardingDocument']);
+    Route::get('applications/{id}/onboarding',         [StudentController::class, 'getOnboardingStatus']);
     Route::get('interviews',            [StudentController::class, 'interviews']);
+    Route::post('interviews/{id}/respond', [StudentController::class, 'respondInterview']);
 
     // Employment / OJT status gate (used by jobs & OJT pages)
     Route::get('employment-status',     [StudentController::class, 'employmentStatus']);
@@ -349,10 +354,13 @@ Route::middleware('auth:sanctum')->prefix('jobseeker')->group(function () {
     Route::get('external-jobs',     [JobseekerController::class, 'externalJobs']);
     Route::get('applications',      [JobseekerController::class, 'applications']);
     Route::delete('applications/{id}', [JobseekerController::class, 'withdrawApplication']);
-    Route::post('applications/{id}/accept-offer', [JobseekerController::class, 'acceptOffer']);
-    Route::post('applications/{id}/reject-offer', [JobseekerController::class, 'rejectOffer']);
+    Route::post('applications/{id}/accept-offer',      [JobseekerController::class, 'acceptOffer']);
+    Route::post('applications/{id}/reject-offer',      [JobseekerController::class, 'rejectOffer']);
+    Route::post('applications/{id}/onboarding-upload',  [JobseekerController::class, 'uploadOnboardingDocument']);
+    Route::get('applications/{id}/onboarding',         [JobseekerController::class, 'getOnboardingStatus']);
     Route::post('apply/{jobId}',    [JobseekerController::class, 'apply']);
     Route::get('interviews',        [JobseekerController::class, 'interviews']);
+    Route::post('interviews/{id}/respond', [JobseekerController::class, 'respondInterview']);
 
     // About
     Route::put('about',             [JobseekerController::class, 'updateAbout']);

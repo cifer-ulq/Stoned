@@ -2082,14 +2082,25 @@ class CompanyController extends Controller
                 'raw_status'     => $app->status,
                 'status_label'   => ucfirst($app->status),
                 'cover_letter'   => $app->cover_letter,
+                'custom_resume_url'    => $app->custom_resume_url,
+                'earliest_start_date'  => $app->earliest_start_date?->toDateString(),
+                'expected_salary'      => $app->expected_salary,
+                'withdrawal_reason'    => $app->withdrawal_reason,
+                'onboarding_checklist' => $app->onboarding_checklist ?? (object)[],
+                'offer_details'        => $app->offer_details,
+                'offer_decision'       => $app->offer_decision,
+                'offer_decided_at'     => $app->offer_decided_at?->toIso8601String(),
                 'notes'          => $app->notes,
                 'applied_at'           => $app->created_at->format('M d, Y'),
                 'created_at_raw'       => $app->created_at->toISOString(),
                 'match_score'          => $score,
                 'match_recommendation' => $this->getRecommendationTier($score),
                 'matched_skills'       => $matched,
-                'interview_id'   => $latestInterview?->id,
-                'interview_date' => $latestInterview?->scheduled_date?->toDateString(),
+                'interview_id'                 => $latestInterview?->id,
+                'interview_date'               => $latestInterview?->scheduled_date?->toDateString(),
+                'interview_candidate_response' => $latestInterview?->candidate_response ?? 'pending',
+                'interview_reschedule_note'    => $latestInterview?->candidate_reschedule_note,
+                'interview_responded_at'       => $latestInterview?->candidate_responded_at?->toIso8601String(),
                 'resume_viewed'  => $app->status !== 'applied',
                 'job' => [
                     'id'              => $app->jobListing?->id,
@@ -2274,7 +2285,7 @@ class CompanyController extends Controller
         $userId = $request->user()->id;
 
         $data = $request->validate([
-            'status'        => ['required', 'in:applied,reviewed,interview,offered,rejected'],
+            'status'        => ['required', 'in:applied,reviewed,interview,offered,onboarding,hired,withdrawn,rejected'],
             'notes'         => ['nullable', 'string'],
             'offer_details' => ['nullable', 'array'],
         ]);
@@ -2387,12 +2398,16 @@ class CompanyController extends Controller
         $jobTitle  = $app->jobListing->title ?? 'a position';
 
         $notifMap = [
-            'reviewed' => ['application_reviewed', 'Application Under Review',
-                           "Your application for \"$jobTitle\" is now being reviewed by the company."],
-            'offered'  => ['application_offered',  'You Have a Job Offer! 🎉',
-                           "Congratulations! You received a job offer for \"$jobTitle\". Check your applications to respond."],
-            'rejected' => ['application_rejected', 'Application Status Update',
-                           "Your application for \"$jobTitle\" was not shortlisted this time. Keep applying!"],
+            'reviewed'   => ['application_reviewed', 'Application Under Review',
+                             "Your application for \"$jobTitle\" is now being reviewed by the company."],
+            'offered'    => ['application_offered',  'You Have a Job Offer! 🎉',
+                             "Congratulations! You received a job offer for \"$jobTitle\". Check your applications to respond."],
+            'rejected'   => ['application_rejected', 'Application Status Update',
+                             "Your application for \"$jobTitle\" was not shortlisted this time. Keep applying!"],
+            'withdrawn'  => ['application_withdrawn', 'Application Withdrawn',
+                             "Your application for \"$jobTitle\" has been marked as withdrawn."],
+            'onboarding' => ['onboarding_started', 'Onboarding In Progress',
+                             "You are now in the pre-employment onboarding stage for \"$jobTitle\". Please upload your required documents."],
         ];
 
         if (isset($notifMap[$newStatus])) {
@@ -2680,6 +2695,131 @@ class CompanyController extends Controller
         return response()->json(['success' => true, 'data' => $interview], 201);
     }
 
+    /* ── POST /company/applications/{id}/onboarding-verify ── */
+    public function verifyOnboardingDocument(Request $request, $id)
+    {
+        $userId = $request->user()->id;
+
+        $validated = $request->validate([
+            'document_type'  => 'required|in:nbi_clearance,medical_fit_to_work,government_ids,academic_proof',
+            'action'         => 'required|in:approved,rejected',
+            'reviewer_notes' => 'nullable|string|max:500',
+        ]);
+
+        $app = JobApplication::whereHas('jobListing', fn ($q) => $q->where('company_user_id', $userId))
+            ->with(['jobListing', 'applicant'])
+            ->findOrFail($id);
+
+        $checklist = $app->onboarding_checklist ?? [];
+        $docType   = $validated['document_type'];
+
+        if (!isset($checklist[$docType]) || empty($checklist[$docType]['file_path'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'The candidate has not uploaded this document yet.',
+            ], 422);
+        }
+
+        $checklist[$docType]['status']         = $validated['action'];
+        $checklist[$docType]['reviewer_notes'] = $validated['reviewer_notes'] ?? null;
+        $checklist[$docType]['reviewed_at']    = now()->toIso8601String();
+
+        $app->update(['onboarding_checklist' => $checklist]);
+
+        $docNames = [
+            'nbi_clearance'       => 'NBI / Police Clearance',
+            'medical_fit_to_work' => 'Medical Fit-to-Work Certificate',
+            'government_ids'      => 'Government IDs Proof',
+            'academic_proof'      => 'Academic Transcript / Diploma',
+        ];
+        $docName = $docNames[$docType] ?? 'Document';
+        $statusLabel = $validated['action'] === 'approved' ? 'Approved' : 'Needs Correction';
+
+        AppNotification::send(
+            $app->applicant_user_id,
+            'onboarding_updated',
+            "Onboarding Document {$statusLabel}",
+            "Your {$docName} has been {$validated['action']} by the company." . ($validated['reviewer_notes'] ? " Note: {$validated['reviewer_notes']}" : ''),
+            ['application_id' => $app->id, 'document_type' => $docType, 'action' => $validated['action']]
+        );
+
+        $allApproved = collect(['nbi_clearance', 'medical_fit_to_work', 'government_ids', 'academic_proof'])
+            ->every(fn ($key) => isset($checklist[$key]) && ($checklist[$key]['status'] ?? '') === 'approved');
+
+        return response()->json([
+            'success'              => true,
+            'message'              => "Document {$validated['action']} successfully.",
+            'onboarding_checklist' => $checklist,
+            'all_approved'         => $allApproved,
+        ]);
+    }
+
+    /* ── POST /company/applications/{id}/finalize-hire ── */
+    public function finalizeHire(Request $request, $id)
+    {
+        $userId = $request->user()->id;
+
+        $app = JobApplication::whereHas('jobListing', fn ($q) => $q->where('company_user_id', $userId))
+            ->with(['jobListing', 'applicant'])
+            ->findOrFail($id);
+
+        $checklist   = $app->onboarding_checklist ?? [];
+        $requiredKeys = ['nbi_clearance', 'medical_fit_to_work', 'government_ids', 'academic_proof'];
+
+        $missingOrPending = [];
+        $docNames = [
+            'nbi_clearance'       => 'NBI / Police Clearance',
+            'medical_fit_to_work' => 'Medical Fit-to-Work Certificate',
+            'government_ids'      => 'Government IDs Proof',
+            'academic_proof'      => 'Academic Transcript / Diploma',
+        ];
+        foreach ($requiredKeys as $rk) {
+            if (!isset($checklist[$rk]) || ($checklist[$rk]['status'] ?? '') !== 'approved') {
+                $missingOrPending[] = $docNames[$rk];
+            }
+        }
+
+        if (!empty($missingOrPending)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot finalize hire: All 4 pre-employment requirements must be approved. Pending/missing: ' . implode(', ', $missingOrPending),
+            ], 422);
+        }
+
+        $offer = is_array($app->offer_details)
+            ? $app->offer_details
+            : (json_decode($app->offer_details ?? '{}', true) ?: []);
+
+        if (empty($offer['employee_number'])) {
+            $offer['employee_number'] = 'EMP-' . str_pad($app->id, 4, '0', STR_PAD_LEFT);
+        }
+        if (empty($offer['employment_status'])) {
+            $offer['employment_status'] = 'Probationary';
+        }
+
+        $app->update([
+            'status'           => 'hired',
+            'offer_decision'   => 'accepted',
+            'offer_decided_at' => now(),
+            'offer_details'    => $offer,
+        ]);
+
+        $jobTitle = $app->jobListing?->title ?? 'your new role';
+        AppNotification::send(
+            $app->applicant_user_id,
+            'hired_officially',
+            'Welcome to the Team! 🎓🎉',
+            "All your onboarding documents have been verified and approved. You are officially enrolled in the Employee Roster as a {$offer['employment_status']} staff member for \"{$jobTitle}\"!",
+            ['application_id' => $app->id, 'job_title' => $jobTitle]
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Candidate successfully verified and enrolled in the Company Staff Roster!',
+            'data'    => $app,
+        ]);
+    }
+
     /* ── GET /company/interviews ── */
     public function listInterviews(Request $request)
     {
@@ -2730,8 +2870,11 @@ class CompanyController extends Controller
                 'platform'         => $iv->platform ?? 'Online',
                 'meeting_link'     => $iv->meeting_link ?? '#',
                 'location'         => $iv->platform ?? 'Online Meeting',
-                'interviewer_name' => $iv->interviewer_name ?? '',
-                'notes'            => $iv->notes ?? '',
+                'interviewer_name'          => $iv->interviewer_name ?? '',
+                'notes'                     => $iv->notes ?? '',
+                'candidate_response'        => $iv->candidate_response ?? 'pending',
+                'candidate_reschedule_note' => $iv->candidate_reschedule_note,
+                'candidate_responded_at'    => $iv->candidate_responded_at?->toIso8601String(),
                 'candidate'        => [
                     'id'       => $applicant?->id,
                     'name'     => $applicant?->name ?? 'Candidate',

@@ -59,13 +59,14 @@ function effectiveStatus(iv) {
 function statusBadge(status) {
   const map = {
     upcoming:  { label: 'Upcoming',  color: 'var(--color-primary)',  bg: 'var(--color-primary-bg)',  iconName: 'clock' },
-    done:      { label: 'Finished',  color: 'var(--color-success)',  bg: 'var(--color-success-bg)', iconName: 'checkCircle' },
-    completed: { label: 'Finished',  color: 'var(--color-success)',  bg: 'var(--color-success-bg)', iconName: 'checkCircle' },
-    past:      { label: 'Finished',  color: 'var(--color-success)',  bg: 'var(--color-success-bg)', iconName: 'checkCircle' },
+    done:      { label: 'Finished',  color: '#d97706',  bg: 'rgba(245, 158, 11, 0.12)', border: '1px solid rgba(245, 158, 11, 0.3)', iconName: 'checkCircle' },
+    completed: { label: 'Finished',  color: '#d97706',  bg: 'rgba(245, 158, 11, 0.12)', border: '1px solid rgba(245, 158, 11, 0.3)', iconName: 'checkCircle' },
+    past:      { label: 'Finished',  color: '#d97706',  bg: 'rgba(245, 158, 11, 0.12)', border: '1px solid rgba(245, 158, 11, 0.3)', iconName: 'checkCircle' },
     cancelled: { label: 'Cancelled', color: 'var(--color-error)',    bg: 'var(--color-error-bg)',   iconName: 'x' },
   };
   const s = map[status] || map.upcoming;
-  return `<span class="iv-badge" style="background:${s.bg};color:${s.color};">${icon(s.iconName, 11)} ${s.label}</span>`;
+  const borderStyle = s.border ? `border:${s.border};` : '';
+  return `<span class="iv-badge" style="background:${s.bg};color:${s.color};${borderStyle}">${icon(s.iconName, 11)} ${s.label}</span>`;
 }
 
 /* ── Calendar helpers ── */
@@ -508,6 +509,12 @@ export async function renderInterview(container) {
             <div class="iv-skel"></div>
           </div>
 
+          <!-- Pagination Bar -->
+          <div class="iv-pagination" id="iv-pagination" style="display:none;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-top:16px;padding-top:14px;border-top:1px solid var(--border-default);">
+            <div class="iv-pagination__info text-xs text-secondary" id="iv-pagination-info" style="font-weight:500;">Showing 1–5 of 0 interviews</div>
+            <div class="iv-pagination__controls" id="iv-pagination-controls" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;"></div>
+          </div>
+
           <div class="iv-list__empty" id="iv-empty" style="display:none">
             <div class="iv-list__empty-icon">${icon('calendar', 48)}</div>
             <h3 id="iv-empty-title">No interviews scheduled</h3>
@@ -663,7 +670,25 @@ export async function renderInterview(container) {
 
     grid.querySelectorAll('.iv-cal__cell--iv').forEach(el => {
       el.addEventListener('click', () => {
-        const card = container.querySelector(`.iv-card[data-date="${el.dataset.date}"]`);
+        const targetIso = el.dataset.date;
+        const filtered = getFilteredInterviews();
+        let targetIdx = filtered.findIndex(iv => isoFromStr(iv.date) === targetIso);
+        if (targetIdx === -1) {
+          // Switch to all interviews if not in current filter
+          currentFilter = 'all';
+          container.querySelectorAll('.iv-filter-btn').forEach(b => {
+            b.classList.toggle('iv-filter-btn--active', b.dataset.filter === 'all');
+          });
+          const allList = getFilteredInterviews();
+          targetIdx = allList.findIndex(iv => isoFromStr(iv.date) === targetIso);
+        }
+
+        if (targetIdx !== -1) {
+          currentPage = Math.floor(targetIdx / PAGE_SIZE) + 1;
+          renderCards();
+        }
+
+        const card = container.querySelector(`.iv-card[data-date="${targetIso}"]`);
         if (card) {
           card.scrollIntoView({ behavior: 'smooth', block: 'center' });
           card.classList.add('iv-card--flash');
@@ -711,31 +736,115 @@ export async function renderInterview(container) {
     nextUp.style.display = 'none';
   }
 
-  /* ── Filter & Render Cards ── */
+  /* ── Filter & Render Cards with 5-Item Pagination ── */
   let currentFilter = 'all';
+  let currentPage = 1;
+  const PAGE_SIZE = 5;
   const cardsEl = container.querySelector('#iv-cards');
   const emptyEl = container.querySelector('#iv-empty');
+  const paginationEl = container.querySelector('#iv-pagination');
+  const paginationInfoEl = container.querySelector('#iv-pagination-info');
+  const paginationControlsEl = container.querySelector('#iv-pagination-controls');
 
-  function renderCards() {
-    let filtered = interviews;
+  function getFilteredInterviews() {
     if (currentFilter === 'ojt') {
-      filtered = interviews.filter(iv => iv.category === 'ojt');
+      return interviews.filter(iv => iv.category === 'ojt');
     } else if (currentFilter === 'job') {
-      filtered = interviews.filter(iv => iv.category === 'job');
+      return interviews.filter(iv => iv.category === 'job');
     } else if (currentFilter === 'upcoming') {
-      filtered = interviews.filter(iv => effectiveStatus(iv) === 'upcoming');
+      return interviews.filter(iv => effectiveStatus(iv) === 'upcoming');
     } else if (currentFilter === 'past') {
-      filtered = interviews.filter(iv => {
+      return interviews.filter(iv => {
         const s = effectiveStatus(iv);
         return s === 'done' || s === 'completed' || s === 'cancelled';
       });
     }
+    return interviews;
+  }
+
+  function renderPagination(totalCount, totalPages, startIndex, endIndex) {
+    if (!paginationEl || !paginationInfoEl || !paginationControlsEl) return;
+
+    if (totalPages <= 1) {
+      paginationEl.style.display = 'none';
+      return;
+    }
+
+    paginationEl.style.display = 'flex';
+    paginationInfoEl.textContent = `Showing ${startIndex + 1}–${endIndex} of ${totalCount} interviews`;
+
+    let btnsHtml = `
+      <button class="btn btn--outline btn--sm iv-page-btn" id="iv-prev-btn" style="height:30px;padding:0 10px;font-size:0.75rem;display:inline-flex;align-items:center;gap:4px;" ${currentPage === 1 ? 'disabled' : ''}>
+        ${icon('chevronLeft', 12)} Prev
+      </button>
+    `;
+
+    const getPages = () => {
+      if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+      if (currentPage <= 4) return [1, 2, 3, 4, 5, '...', totalPages];
+      if (currentPage >= totalPages - 3) return [1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+      return [1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages];
+    };
+
+    getPages().forEach(p => {
+      if (p === '...') {
+        btnsHtml += `<span style="padding:0 4px;font-size:0.8rem;color:var(--text-tertiary);">&hellip;</span>`;
+      } else {
+        const isAct = p === currentPage;
+        btnsHtml += `
+          <button class="btn ${isAct ? 'btn--primary' : 'btn--outline'} btn--sm iv-page-btn iv-page-num" data-page="${p}" style="height:30px;min-width:30px;padding:0 6px;font-size:0.75rem;font-weight:${isAct ? '700' : '600'};">
+            ${p}
+          </button>
+        `;
+      }
+    });
+
+    btnsHtml += `
+      <button class="btn btn--outline btn--sm iv-page-btn" id="iv-next-btn" style="height:30px;padding:0 10px;font-size:0.75rem;display:inline-flex;align-items:center;gap:4px;" ${currentPage === totalPages ? 'disabled' : ''}>
+        Next ${icon('chevronRight', 12)}
+      </button>
+    `;
+
+    paginationControlsEl.innerHTML = btnsHtml;
+
+    paginationControlsEl.querySelector('#iv-prev-btn')?.addEventListener('click', () => {
+      if (currentPage > 1) {
+        currentPage--;
+        renderCards(true);
+      }
+    });
+
+    paginationControlsEl.querySelector('#iv-next-btn')?.addEventListener('click', () => {
+      if (currentPage < totalPages) {
+        currentPage++;
+        renderCards(true);
+      }
+    });
+
+    paginationControlsEl.querySelectorAll('.iv-page-num').forEach(b => {
+      b.addEventListener('click', () => {
+        const p = parseInt(b.dataset.page, 10);
+        if (p && p !== currentPage) {
+          currentPage = p;
+          renderCards(true);
+        }
+      });
+    });
+  }
+
+  function renderCards(scrollUp = false) {
+    const filtered = getFilteredInterviews();
+    const totalCount = filtered.length;
+    const totalPages = Math.ceil(totalCount / PAGE_SIZE) || 1;
+    if (currentPage > totalPages) currentPage = totalPages;
+    if (currentPage < 1) currentPage = 1;
 
     container.querySelector('#iv-list-count').textContent =
-      `${filtered.length} interview${filtered.length !== 1 ? 's' : ''}`;
+      `${totalCount} interview${totalCount !== 1 ? 's' : ''}`;
 
-    if (filtered.length === 0) {
+    if (totalCount === 0) {
       cardsEl.style.display = 'none';
+      if (paginationEl) paginationEl.style.display = 'none';
       emptyEl.style.display = '';
       const emptyTitle = container.querySelector('#iv-empty-title');
       const emptyDesc  = container.querySelector('#iv-empty-desc');
@@ -749,16 +858,30 @@ export async function renderInterview(container) {
         emptyTitle.textContent = 'No interviews scheduled';
         emptyDesc.textContent = 'When you have scheduled interviews, they will be listed here.';
       }
-    } else {
-      cardsEl.style.display = 'flex';
-      emptyEl.style.display = 'none';
-      cardsEl.innerHTML = filtered.map((iv, i) => {
-        const iso = isoFromStr(iv.date);
-        return interviewCard(iv, i).replace('data-id=', `data-date="${iso}" data-id=`);
-      }).join('');
+      return;
+    }
 
-      // Attach card listeners
-      attachCardListeners();
+    cardsEl.style.display = 'flex';
+    emptyEl.style.display = 'none';
+
+    // 5-item page slice
+    const startIndex = (currentPage - 1) * PAGE_SIZE;
+    const endIndex = Math.min(startIndex + PAGE_SIZE, totalCount);
+    const paginatedItems = filtered.slice(startIndex, endIndex);
+
+    cardsEl.innerHTML = paginatedItems.map((iv, i) => {
+      const iso = isoFromStr(iv.date);
+      return interviewCard(iv, startIndex + i).replace('data-id=', `data-date="${iso}" data-id=`);
+    }).join('');
+
+    // Attach card listeners
+    attachCardListeners();
+
+    // Render pagination controls
+    renderPagination(totalCount, totalPages, startIndex, endIndex);
+
+    if (scrollUp) {
+      cardsEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
   }
 
@@ -816,6 +939,7 @@ export async function renderInterview(container) {
       container.querySelectorAll('.iv-filter-btn').forEach(b => b.classList.remove('iv-filter-btn--active'));
       btn.classList.add('iv-filter-btn--active');
       currentFilter = btn.dataset.filter;
+      currentPage = 1;
       renderCards();
     });
   });

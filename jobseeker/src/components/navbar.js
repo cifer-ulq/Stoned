@@ -20,7 +20,11 @@ export function createNavbar() {
 
   nav.innerHTML = `
     <div class="navbar__inner">
+      <!-- Left: Mobile Toggle + Logo -->
       <div class="navbar__left">
+        <button class="navbar__mobile-toggle" id="mobile-sidebar-toggle" aria-label="Open navigation menu" title="Menu">
+          ${icon('menu', 20)}
+        </button>
         <a class="navbar__logo" href="#/" data-route="/">
           <div class="navbar__logo-icon">H</div>
           <span class="navbar__logo-text">HireMe</span>
@@ -149,4 +153,39 @@ export function createNavbar() {
   initChat(nav);
 
   return nav;
+}
+
+/**
+ * Sticky Mobile Bottom Navigation Bar (visible at <= 768px for Graduate / Alumni)
+ */
+export function createMobileBottomNav() {
+  const bottomNav = document.createElement('nav');
+  bottomNav.className = 'mobile-bottom-nav';
+  bottomNav.id = 'mobile-bottom-nav';
+  bottomNav.setAttribute('aria-label', 'Mobile Navigation');
+
+  bottomNav.innerHTML = `
+    <a class="mobile-bottom-nav__tab mobile-bottom-nav__tab--active" href="#/" data-route="/" title="Home">
+      ${icon('home', 20)}
+      <span>Home</span>
+    </a>
+    <a class="mobile-bottom-nav__tab" href="#/portfolio" data-route="/portfolio" title="My Portfolio">
+      ${icon('user', 20)}
+      <span>Portfolio</span>
+    </a>
+    <a class="mobile-bottom-nav__tab" href="#/jobs" data-route="/jobs" title="Job Match">
+      ${icon('briefcase', 20)}
+      <span>Jobs</span>
+    </a>
+    <a class="mobile-bottom-nav__tab" href="#/applications" data-route="/applications" title="My Applications">
+      ${icon('inbox', 20)}
+      <span>Apps</span>
+    </a>
+    <a class="mobile-bottom-nav__tab" href="#/interview" data-route="/interview" title="Interviews">
+      ${icon('video', 20)}
+      <span>Interviews</span>
+    </a>
+  `;
+
+  return bottomNav;
 }

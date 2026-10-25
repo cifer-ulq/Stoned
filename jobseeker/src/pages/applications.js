@@ -3,7 +3,7 @@
  * Unified application list and interactive details modal matching the student experience
  */
 import { icon } from '../components/icons.js';
-import { apiGet, apiPost, apiDelete } from '../api/client.js';
+import { apiGet, apiPost, apiDelete, apiUpload, storageUrl } from '../api/client.js';
 
 /* ── HTML Escape Helper ── */
 function escapeHtml(str) {
@@ -32,12 +32,14 @@ function showToast(message, type = 'success') {
    CONFIGURATIONS & METAS
    ───────────────────────────────────────────────────────────────────────────── */
 const jobStatusConfig = {
-  applied:     { label: 'Applied',    color: 'var(--color-primary, #005930)', bg: 'rgba(0,89,48,0.08)', icon: 'inbox', gradient: 'linear-gradient(135deg, #005930, #10B981)', step: 1 },
+  applied:     { label: 'Applied',    color: 'var(--color-primary, #005930)', bg: 'rgba(0,89,48,0.08)', icon: 'inbox',       gradient: 'linear-gradient(135deg, #005930, #10B981)', step: 1 },
   screened:    { label: 'Reviewed',   color: 'var(--color-info)',  bg: 'var(--color-info-bg)',   icon: 'eye',         gradient: 'linear-gradient(135deg, #005930, #16a34a)', step: 2 },
   interview:   { label: 'Interview',  color: '#d97706',            bg: '#fef3c7',                icon: 'video',       gradient: 'linear-gradient(135deg, #FFB547, #FFCC70)', step: 3 },
   interviewed: { label: 'Interview',  color: '#d97706',            bg: '#fef3c7',                icon: 'video',       gradient: 'linear-gradient(135deg, #FFB547, #FFCC70)', step: 3 },
   offered:     { label: 'Offered',    color: '#16a34a',            bg: '#dcfce7',                icon: 'checkCircle', gradient: 'linear-gradient(135deg, #34C759, #30D158)', step: 4 },
-  hired:       { label: 'Hired',      color: '#15803d',            bg: '#bbf7d0',                icon: 'award',       gradient: 'linear-gradient(135deg, #16a34a, #22c55e)', step: 5 },
+  onboarding:  { label: 'Onboarding', color: '#0d9488',            bg: '#ccfbf1',                icon: 'shieldCheck', gradient: 'linear-gradient(135deg, #0d9488, #14b8a6)', step: 5 },
+  hired:       { label: 'Hired',      color: '#15803d',            bg: '#bbf7d0',                icon: 'award',       gradient: 'linear-gradient(135deg, #16a34a, #22c55e)', step: 6 },
+  withdrawn:   { label: 'Withdrawn',  color: '#64748b',            bg: '#f1f5f9',                icon: 'x',           gradient: 'linear-gradient(135deg, #64748b, #94a3b8)', step: 0 },
   rejected:    { label: 'Rejected',   color: 'var(--color-error)', bg: 'var(--color-error-bg)',  icon: 'x',           gradient: 'linear-gradient(135deg, #FF3B30, #FF6B6B)', step: 0 },
 };
 
@@ -45,12 +47,14 @@ const jobStatusOrder = ['applied', 'screened', 'interview', 'offered'];
 const jobStatusAlias = { reviewed: 'screened', interviewed: 'interview', offer: 'offered' };
 
 const jobGuidance = {
-  applied:   'Your application has been received and is currently under review by the hiring team.',
-  screened:  'Your application has been screened and shortlisted! The company will contact you for the next interview step.',
-  interview: 'An interview has been scheduled! Review the schedule, format, and venue or meeting link below.',
-  offered:   'Congratulations! The employer has extended a formal job offer. Review the compensation and details below.',
-  hired:     'Congratulations on your new career role! You have officially accepted the job offer and are hired.',
-  rejected:  'Your application was not selected for this position. Explore more career opportunities on your job match feed.',
+  applied:    'Your application has been received and is currently under review by the hiring team.',
+  screened:   'Your application has been screened and shortlisted! The company will contact you for the next interview step.',
+  interview:  'An interview has been scheduled! Review the schedule, format, and venue or meeting link below, and confirm your attendance.',
+  offered:    'Congratulations! The employer has extended a formal job offer. Review the compensation and details below to accept.',
+  onboarding: 'Offer accepted! You are now completing pre-employment requirements. Please upload the 4 required verification documents below.',
+  hired:      'Congratulations on your new career role! All onboarding requirements are verified and you are officially enrolled in the host company employee roster.',
+  withdrawn:  'This application was withdrawn.',
+  rejected:   'Your application was not selected for this position. Explore more career opportunities on your job match feed.',
 };
 
 /* ── Date formatting helpers ── */
@@ -82,24 +86,30 @@ function openApplicationDetailsModal(item, onWithdrawSuccess, onDecisionSuccess)
   const statusKey = item.status;
   const isDeclinedByCandidate = item.offerDecision === 'rejected';
   const isRejected = item.status === 'rejected';
-  const isRejectedAny = isRejected || isDeclinedByCandidate;
+  const isWithdrawn = item.status === 'withdrawn';
+  const isRejectedAny = isRejected || isDeclinedByCandidate || isWithdrawn;
   const isHired = item.status === 'hired';
+  const isOnboarding = item.status === 'onboarding';
   const isOffered = item.status === 'offered';
 
   let sc = jobStatusConfig[statusKey] || jobStatusConfig.applied;
-  if (isDeclinedByCandidate) {
+  if (isWithdrawn) {
+    sc = { label: 'Withdrawn', color: '#64748b', bg: '#f1f5f9', icon: 'x', gradient: 'linear-gradient(135deg, #64748b, #94a3b8)', step: 0 };
+  } else if (isDeclinedByCandidate) {
     sc = { label: 'Offer Declined', color: '#d97706', bg: '#fef3c7', icon: 'alertCircle', gradient: 'linear-gradient(135deg, #d97706, #b45309)', step: 0 };
   } else if (isRejected) {
     sc = { label: 'Not Selected', color: 'var(--color-error)', bg: 'var(--color-error-bg)', icon: 'xCircle', gradient: 'linear-gradient(135deg, #FF3B30, #FF6B6B)', step: 0 };
   }
 
-  const color = isHired ? '#16a34a' : (isDeclinedByCandidate ? '#d97706' : (isRejected ? 'var(--color-error)' : (sc.color || '#005930')));
+  const color = isHired ? '#16a34a' : (isOnboarding ? '#0d9488' : (isWithdrawn ? '#64748b' : (isDeclinedByCandidate ? '#d97706' : (isRejected ? 'var(--color-error)' : (sc.color || '#005930')))));
   const appliedDate = item.appliedDate ? new Date(item.appliedDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : 'Recently';
 
-  const canWithdraw = !['hired', 'rejected', 'offered'].includes(item.status) && !isDeclinedByCandidate;
-  const guidanceText = isDeclinedByCandidate
-    ? `You voluntarily declined the job offer${item.offerDecidedAt ? ' on ' + fmtDate(item.offerDecidedAt) : ''}.`
-    : (isRejected ? 'Your application was not selected for this position. Explore more career opportunities on your job match feed.' : (jobGuidance[item.status] || 'Your application is progressing through the company hiring pipeline.'));
+  const canWithdraw = !['hired', 'rejected', 'offered', 'onboarding', 'withdrawn'].includes(item.status) && !isDeclinedByCandidate;
+  const guidanceText = isWithdrawn
+    ? (item.withdrawalReason ? `Application withdrawn: ${item.withdrawalReason}` : 'This application has been withdrawn.')
+    : (isDeclinedByCandidate
+      ? `You voluntarily declined the job offer${item.offerDecidedAt ? ' on ' + fmtDate(item.offerDecidedAt) : ''}.`
+      : (isRejected ? 'Your application was not selected for this position. Explore more career opportunities on your job match feed.' : (jobGuidance[item.status] || 'Your application is progressing through the company hiring pipeline.')));
 
   const overlay = document.createElement('div');
   overlay.id = 'app-details-modal';
@@ -145,14 +155,16 @@ function openApplicationDetailsModal(item, onWithdrawSuccess, onDecisionSuccess)
           <h4 class="app-details-section__title">${icon('trendingUp', 14)} Application Pipeline & Progress</h4>
           <div class="app-details-timeline-card">
             ${isRejectedAny ? `
-              <div class="app-status-callout app-status-callout--rejected" style="padding:14px 16px; background:rgba(239,68,68,0.06); border-left:4px solid ${isDeclinedByCandidate ? '#d97706' : 'var(--color-error)'}; border-radius:8px;">
-                <div style="display:flex; align-items:center; gap:8px; font-weight:700; color:${isDeclinedByCandidate ? '#d97706' : 'var(--color-error)'}; font-size:0.95rem; margin-bottom:6px;">
-                  ${icon(isDeclinedByCandidate ? 'alertCircle' : 'xCircle', 18)} ${isDeclinedByCandidate ? 'Offer Declined by You' : 'Application Not Selected'}
+              <div class="app-status-callout app-status-callout--rejected" style="padding:14px 16px; background:${isWithdrawn ? '#f8fafc' : 'rgba(239,68,68,0.06)'}; border-left:4px solid ${isWithdrawn ? '#64748b' : (isDeclinedByCandidate ? '#d97706' : 'var(--color-error)')}; border-radius:8px;">
+                <div style="display:flex; align-items:center; gap:8px; font-weight:700; color:${isWithdrawn ? '#475569' : (isDeclinedByCandidate ? '#d97706' : 'var(--color-error)')}; font-size:0.95rem; margin-bottom:6px;">
+                  ${icon(isWithdrawn ? 'x' : (isDeclinedByCandidate ? 'alertCircle' : 'xCircle'), 18)} ${isWithdrawn ? 'Application Withdrawn' : (isDeclinedByCandidate ? 'Offer Declined by You' : 'Application Not Selected')}
                 </div>
                 <p style="margin:0 0 8px; font-size:0.85rem; color:var(--text-secondary); line-height:1.5;">
-                  ${isDeclinedByCandidate 
-                    ? `You declined this employment offer${item.offerDecidedAt ? ' on ' + fmtDate(item.offerDecidedAt) : ''}.`
-                    : 'Your application was not selected for this position. Explore more career opportunities on your job match feed.'}
+                  ${isWithdrawn
+                    ? (item.withdrawalReason || 'This application was withdrawn.')
+                    : (isDeclinedByCandidate 
+                      ? `You declined this employment offer${item.offerDecidedAt ? ' on ' + fmtDate(item.offerDecidedAt) : ''}.`
+                      : 'Your application was not selected for this position. Explore more career opportunities on your job match feed.')}
                 </p>
                 ${item.notes ? `
                   <div style="margin-top:8px; padding:10px 12px; background:rgba(0,0,0,0.03); border-radius:6px; font-size:0.82rem; color:var(--text-primary);">
@@ -164,9 +176,17 @@ function openApplicationDetailsModal(item, onWithdrawSuccess, onDecisionSuccess)
             ` : `
               <div class="app-tracker" style="margin:0; padding:10px 6px;">
                 ${(() => {
-                  const steps = isHired ? [...jobStatusOrder, 'hired'] : jobStatusOrder;
-                  const labels = isHired ? ['Applied', 'Reviewed', 'Interview', 'Offered', 'Hired!'] : ['Applied', 'Reviewed', 'Interview', 'Offered'];
-                  const currentStep = isHired ? 5 : (sc.step || 1);
+                  const steps = isHired 
+                    ? ['applied', 'screened', 'interview', 'offered', 'onboarding', 'hired']
+                    : (isOnboarding
+                        ? ['applied', 'screened', 'interview', 'offered', 'onboarding']
+                        : ['applied', 'screened', 'interview', 'offered']);
+                  const labels = isHired 
+                    ? ['Applied', 'Reviewed', 'Interview', 'Offered', 'Onboarding', 'Hired!']
+                    : (isOnboarding
+                        ? ['Applied', 'Reviewed', 'Interview', 'Offered', 'Onboarding']
+                        : ['Applied', 'Reviewed', 'Interview', 'Offered']);
+                  const currentStep = isHired ? 6 : (isOnboarding ? 5 : (sc.step || 1));
 
                   return steps.map((s, sIdx) => {
                     const stepCfg = jobStatusConfig[s] || jobStatusConfig.applied;
@@ -212,11 +232,29 @@ function openApplicationDetailsModal(item, onWithdrawSuccess, onDecisionSuccess)
             if (ivTypeName === 'face_to_face') ivTypeName = 'In-Person Interview';
             else if (ivTypeName === 'online') ivTypeName = 'Online Video Interview';
 
+            const candResp = iv.candidate_response || 'pending';
+
             return `
               <div class="app-details-note-box" style="border-left-color:var(--color-warning); background:var(--color-warning-bg);">
-                <strong style="color:#d97706; display:flex; align-items:center; gap:6px; margin-bottom:6px;">
-                  ${icon(ivIsFaceToFace ? 'mapPin' : 'video', 15)} Scheduled Interview Details: ${escapeHtml(ivTypeName)}
-                </strong>
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:6px;">
+                  <strong style="color:#d97706; display:flex; align-items:center; gap:6px;">
+                    ${icon(ivIsFaceToFace ? 'mapPin' : 'video', 15)} Scheduled Interview Details: ${escapeHtml(ivTypeName)}
+                  </strong>
+                  ${candResp === 'confirmed' ? `
+                    <span style="font-size:0.75rem; background:#dcfce7; color:#15803d; padding:2px 10px; border-radius:99px; font-weight:700; display:inline-flex; align-items:center; gap:4px;">
+                      ${icon('checkCircle', 12)} Attendance Confirmed
+                    </span>
+                  ` : (candResp === 'reschedule_requested' ? `
+                    <span style="font-size:0.75rem; background:#fef3c7; color:#b45309; padding:2px 10px; border-radius:99px; font-weight:700; display:inline-flex; align-items:center; gap:4px;">
+                      ${icon('clock', 12)} Reschedule Requested
+                    </span>
+                  ` : `
+                    <span style="font-size:0.75rem; background:#e0f2fe; color:#0369a1; padding:2px 10px; border-radius:99px; font-weight:700; display:inline-flex; align-items:center; gap:4px;">
+                      ${icon('alertCircle', 12)} Confirmation Required
+                    </span>
+                  `)}
+                </div>
+
                 <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap:10px; margin-top:8px;">
                   ${iv.scheduled_date ? `<div><span style="font-size:0.75rem; color:var(--text-tertiary);">Date:</span> <strong>${fmtDate(iv.scheduled_date)}</strong></div>` : ''}
                   ${iv.scheduled_time ? `<div><span style="font-size:0.75rem; color:var(--text-tertiary);">Time:</span> <strong>${String(iv.scheduled_time).slice(0,5)}</strong></div>` : ''}
@@ -224,6 +262,7 @@ function openApplicationDetailsModal(item, onWithdrawSuccess, onDecisionSuccess)
                   ${iv.platform ? `<div><span style="font-size:0.75rem; color:var(--text-tertiary);">Platform / Venue:</span> <strong>${escapeHtml(iv.platform)}</strong></div>` : ''}
                   ${iv.interviewer_name ? `<div><span style="font-size:0.75rem; color:var(--text-tertiary);">Interviewer:</span> <strong>${escapeHtml(iv.interviewer_name)}</strong></div>` : ''}
                 </div>
+
                 ${iv.meeting_link && !ivIsFaceToFace ? `
                   <div style="margin-top:12px;">
                     <a href="${escapeHtml(iv.meeting_link)}" target="_blank" rel="noopener noreferrer" class="btn btn--sm" style="background:#d97706; color:#fff; text-decoration:none; display:inline-flex; align-items:center; gap:6px; border-radius:99px; padding:6px 16px; font-weight:600;">
@@ -231,12 +270,32 @@ function openApplicationDetailsModal(item, onWithdrawSuccess, onDecisionSuccess)
                     </a>
                   </div>
                 ` : ''}
+
+                ${candResp === 'reschedule_requested' && iv.candidate_reschedule_note ? `
+                  <div style="margin-top:10px; padding:8px 12px; background:rgba(0,0,0,0.03); border-radius:6px; font-size:0.8rem; color:#78350f;">
+                    <strong>Your Reschedule Note:</strong> "${escapeHtml(iv.candidate_reschedule_note)}"
+                  </div>
+                ` : ''}
+
+                ${candResp === 'pending' ? `
+                  <div style="margin-top:12px; padding-top:10px; border-top:1px dashed rgba(217,119,6,0.3); display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+                    <span style="font-size:0.8rem; color:#92400e; font-weight:600;">Please confirm if you can attend this interview:</span>
+                    <div style="display:flex; gap:8px;">
+                      <button type="button" class="btn btn--sm js-iv-confirm-btn" data-iv-id="${iv.id}" style="background:#005930; color:#fff; border:none; border-radius:6px; padding:6px 14px; font-size:0.78rem; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:5px;">
+                        ${icon('checkCircle', 13)} Confirm Attendance
+                      </button>
+                      <button type="button" class="btn btn--sm js-iv-reschedule-btn" data-iv-id="${iv.id}" style="background:#fff; color:#b45309; border:1px solid #d97706; border-radius:6px; padding:6px 12px; font-size:0.78rem; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:5px;">
+                        ${icon('calendar', 13)} Request Reschedule
+                      </button>
+                    </div>
+                  </div>
+                ` : ''}
               </div>
             `;
           })()}
 
-          <!-- Job Offer Box (If offered or hired) -->
-          ${(isOffered || (isHired && item.offerDetails)) ? `
+          <!-- Job Offer Box (If offered, onboarding, or hired) -->
+          ${(isOffered || isOnboarding || (isHired && item.offerDetails)) ? `
             <div class="app-details-note-box" style="border-left-color:#16a34a; background:#dcfce7; padding:16px;">
               <strong style="color:#15803d; display:flex; align-items:center; gap:6px; margin-bottom:8px; font-size:0.92rem;">
                 ${icon('award', 18)} Official Job Offer Extended
@@ -246,6 +305,12 @@ function openApplicationDetailsModal(item, onWithdrawSuccess, onDecisionSuccess)
                   <span style="font-size:0.75rem; color:#166534; display:block;">Offered Salary:</span>
                   <strong style="color:#14532d;">${escapeHtml(item.offerDetails?.salary || item.salaryRange || 'Competitive')}</strong>
                 </div>
+                ${item.offerDetails?.probationary_period ? `
+                  <div>
+                    <span style="font-size:0.75rem; color:#166534; display:block;">Employment Track:</span>
+                    <strong style="color:#14532d;">${escapeHtml(item.offerDetails.probationary_period)}</strong>
+                  </div>
+                ` : ''}
                 ${item.offerDetails?.start_date ? `
                   <div>
                     <span style="font-size:0.75rem; color:#166534; display:block;">Target Start Date:</span>
@@ -261,7 +326,7 @@ function openApplicationDetailsModal(item, onWithdrawSuccess, onDecisionSuccess)
               </div>
               ${item.offerDetails?.benefits && item.offerDetails.benefits.length > 0 ? `
                 <div style="margin-top:8px; padding-top:8px; border-top:1px dashed rgba(22,101,52,0.2);">
-                  <span style="font-size:0.75rem; color:#166534; font-weight:600; display:block; margin-bottom:4px;">Offered Benefits:</span>
+                  <span style="font-size:0.75rem; color:#166534; font-weight:600; display:block; margin-bottom:4px;">Offered Benefits &amp; Statutory Coverages:</span>
                   <ul style="margin:0; padding-left:18px; color:#14532d; font-size:0.82rem;">
                     ${(Array.isArray(item.offerDetails.benefits) ? item.offerDetails.benefits : []).map(b => `<li>${escapeHtml(b)}</li>`).join('')}
                   </ul>
@@ -282,13 +347,137 @@ function openApplicationDetailsModal(item, onWithdrawSuccess, onDecisionSuccess)
                     ${icon('x', 14)} Decline Offer
                   </button>
                 </div>
-              ` : (item.offerDecision ? `
-                <div style="margin-top:10px; font-size:0.82rem; font-weight:600; color:#15803d;">
-                  Decision: You ${item.offerDecision === 'accepted' ? 'accepted' : 'declined'} this offer${item.offerDecidedAt ? ' on ' + fmtDate(item.offerDecidedAt) : ''}.
+              ` : ((item.offerDecision || isOnboarding || isHired) ? `
+                <div style="margin-top:10px; font-size:0.82rem; font-weight:600; color:#15803d; display:flex; align-items:center; gap:6px;">
+                  ${icon('checkCircle', 14)}
+                  <span>Status: Offer Accepted${item.offerDecidedAt ? ' on ' + fmtDate(item.offerDecidedAt) : ''}. ${isOnboarding ? 'Complete pre-employment verification below.' : (isHired ? 'Enrolled in Employee Roster.' : '')}</span>
                 </div>
               ` : '')}
             </div>
           ` : ''}
+
+          <!-- Pre-Employment Requirements & Compliance Section (When Onboarding or Hired) -->
+          ${(isOnboarding || isHired) ? (() => {
+            const checklist = item.onboardingChecklist || {};
+            const docDefs = [
+              {
+                key: 'nbi_clearance',
+                title: 'NBI / Police Clearance',
+                desc: 'Valid clearance certifying background and character eligibility (issued within past 6 months).',
+              },
+              {
+                key: 'medical_fit_to_work',
+                title: 'Pre-Employment Medical / Fit-to-Work',
+                desc: 'Physician-certified Fit-to-Work certificate or Pre-Employment Medical Exam (PEME) report.',
+              },
+              {
+                key: 'government_ids',
+                title: 'Government Statutory IDs Proof',
+                desc: 'Official proof or ID cards for SSS, PhilHealth, Pag-IBIG (HDMF), and BIR TIN registration.',
+              },
+              {
+                key: 'academic_proof',
+                title: 'Official Transcript of Records / Diploma',
+                desc: 'Certified True Copy of Transcript of Records (TOR), Diploma, or Official Certificate of Graduation.',
+              },
+            ];
+
+            const approvedCount = docDefs.filter(d => checklist[d.key]?.status === 'approved').length;
+            const allApproved = approvedCount === docDefs.length;
+
+            return `
+              <div class="app-details-section" style="background:#f8fafc; border:1.5px solid ${allApproved ? '#86efac' : '#99f6e4'}; border-radius:12px; padding:18px 20px; margin-top:16px;">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
+                  <div>
+                    <h4 style="margin:0; font-size:1.02rem; font-weight:800; color:#0f172a; display:flex; align-items:center; gap:8px;">
+                      <span style="color:#0d9488;">${icon('shieldCheck', 20)}</span>
+                      Pre-Employment Requirements &amp; Verification
+                    </h4>
+                    <p style="margin:4px 0 0; font-size:0.8rem; color:#64748b;">
+                      Upload PDF or Image files for all 4 required credentials. Recruiter verifies each before official staff activation.
+                    </p>
+                  </div>
+                  <div style="display:inline-flex; align-items:center; gap:6px; background:${allApproved ? '#dcfce7' : '#ccfbf1'}; color:${allApproved ? '#15803d' : '#0f766e'}; padding:4px 12px; border-radius:99px; font-size:0.8rem; font-weight:700;">
+                    ${icon(allApproved ? 'checkCircle' : 'clock', 14)}
+                    ${approvedCount} / 4 Requirements Verified
+                  </div>
+                </div>
+
+                ${allApproved ? `
+                  <div style="padding:10px 14px; background:#dcfce7; border:1px solid #bbf7d0; border-radius:8px; font-size:0.83rem; color:#14532d; display:flex; align-items:center; gap:8px; margin-bottom:14px;">
+                    ${icon('checkCircle', 18)}
+                    <strong>All pre-employment documents are fully verified and approved by HR!</strong>
+                  </div>
+                ` : ''}
+
+                <div style="display:grid; grid-template-columns:1fr; gap:12px;">
+                  ${docDefs.map(d => {
+                    const doc = checklist[d.key];
+                    const st = doc?.status || 'not_uploaded';
+                    let pillBg = '#f1f5f9';
+                    let pillColor = '#475569';
+                    let pillText = 'Required';
+
+                    if (st === 'approved') {
+                      pillBg = '#dcfce7'; pillColor = '#15803d'; pillText = 'Approved ✔';
+                    } else if (st === 'pending') {
+                      pillBg = '#fef3c7'; pillColor = '#b45309'; pillText = 'Pending Review';
+                    } else if (st === 'rejected') {
+                      pillBg = '#fee2e2'; pillColor = '#b91c1c'; pillText = 'Needs Correction ❌';
+                    }
+
+                    return `
+                      <div style="background:#ffffff; border:1px solid ${st === 'approved' ? '#bbf7d0' : (st === 'rejected' ? '#fecaca' : '#e2e8f0')}; border-radius:10px; padding:14px 16px;">
+                        <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+                          <div style="flex:1; min-width:240px;">
+                            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                              <strong style="font-size:0.88rem; color:#0f172a;">${escapeHtml(d.title)}</strong>
+                              <span style="font-size:0.72rem; padding:2px 8px; border-radius:99px; background:${pillBg}; color:${pillColor}; font-weight:700;">
+                                ${pillText}
+                              </span>
+                            </div>
+                            <p style="margin:0; font-size:0.78rem; color:#64748b; line-height:1.45;">
+                              ${escapeHtml(d.desc)}
+                            </p>
+                            ${doc?.file_name ? `
+                              <div style="margin-top:8px; font-size:0.78rem; color:#0f172a; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                                <span style="color:#64748b;">Uploaded:</span>
+                                <strong style="color:#005930;">${escapeHtml(doc.file_name)}</strong>
+                                ${doc.uploaded_at ? `<span style="color:#94a3b8;">(${relativeDate(doc.uploaded_at)})</span>` : ''}
+                                ${doc.file_url ? `
+                                  <a href="${storageUrl(doc.file_url)}" target="_blank" rel="noopener noreferrer" style="color:#0284c7; text-decoration:none; font-weight:600; display:inline-flex; align-items:center; gap:3px;">
+                                    ${icon('fileText', 12)} View Document
+                                  </a>
+                                ` : ''}
+                              </div>
+                            ` : ''}
+                            ${(st === 'rejected' && doc?.reviewer_notes) ? `
+                              <div style="margin-top:8px; padding:8px 12px; background:#fef2f2; border-left:3px solid #dc2626; border-radius:4px; font-size:0.78rem; color:#991b1b;">
+                                <strong>HR Correction Note:</strong> "${escapeHtml(doc.reviewer_notes)}"
+                              </div>
+                            ` : ''}
+                          </div>
+
+                          <div style="display:flex; align-items:center; gap:8px;">
+                            ${st !== 'approved' ? `
+                              <label style="cursor:pointer; display:inline-flex; align-items:center; gap:6px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:6px 14px; font-size:0.78rem; font-weight:600; color:#334155; transition:all 0.2s;">
+                                <input type="file" class="js-onboarding-input" data-doc-type="${d.key}" data-app-id="${item.id}" accept=".pdf,image/*" style="display:none;">
+                                ${icon('uploadCloud', 14)} ${doc?.file_name ? 'Re-upload' : 'Upload File'}
+                              </label>
+                            ` : `
+                              <span style="font-size:0.76rem; color:#15803d; font-weight:600; display:inline-flex; align-items:center; gap:4px;">
+                                ${icon('checkCircle', 14)} Verified
+                              </span>
+                            `}
+                          </div>
+                        </div>
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              </div>
+            `;
+          })() : ''}
         </div>
 
         <!-- 2. Position Details Grid -->
@@ -408,6 +597,39 @@ function openApplicationDetailsModal(item, onWithdrawSuccess, onDecisionSuccess)
               </p>
             `}
           </div>
+
+          ${item.customResumeUrl ? `
+            <div style="margin-top:10px; padding:10px 14px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; display:flex; align-items:center; justify-content:space-between; gap:10px;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="color:#005930;">${icon('fileText', 18)}</span>
+                <div>
+                  <div style="font-size:0.82rem; font-weight:700; color:#166534;">Targeted Resume / CV Attached</div>
+                  <div style="font-size:0.74rem; color:#15803d;">Customized PDF submitted specifically for this application</div>
+                </div>
+              </div>
+              <a href="${storageUrl(item.customResumeUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn--sm" style="background:#005930; color:#fff; text-decoration:none; border-radius:6px; padding:5px 12px; font-size:0.75rem; font-weight:600; display:inline-flex; align-items:center; gap:4px;">
+                ${icon('fileText', 12)} View PDF
+              </a>
+            </div>
+          ` : ''}
+
+          ${(item.earliestStartDate || item.expectedSalary) ? `
+            <div style="margin-top:10px; display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+              ${item.earliestStartDate ? `
+                <div style="padding:8px 12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; font-size:0.78rem;">
+                  <span style="color:#64748b; display:block; font-size:0.72rem; margin-bottom:2px;">Earliest Available Start Date:</span>
+                  <strong style="color:#0f172a;">${fmtDate(item.earliestStartDate)}</strong>
+                </div>
+              ` : ''}
+              ${item.expectedSalary ? `
+                <div style="padding:8px 12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; font-size:0.78rem;">
+                  <span style="color:#64748b; display:block; font-size:0.72rem; margin-bottom:2px;">Expected Monthly Compensation:</span>
+                  <strong style="color:#0f172a;">${escapeHtml(item.expectedSalary)}</strong>
+                </div>
+              ` : ''}
+            </div>
+          ` : ''}
+
           ${item.notes ? `
             <div class="app-details-note-box" style="border-left-color:var(--color-warning); background:var(--color-warning-bg); margin-top:8px;">
               <strong style="color:var(--color-warning); display:block; margin-bottom:4px;">Employer Notes / Feedback:</strong>
@@ -492,6 +714,94 @@ function openApplicationDetailsModal(item, onWithdrawSuccess, onDecisionSuccess)
       closeModal();
     }
   });
+
+  // Wire interview candidate actions (confirm attendance & reschedule)
+  overlay.querySelector('.js-iv-confirm-btn')?.addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    const ivId = btn.dataset.ivId;
+    if (!ivId) return;
+    btn.disabled = true;
+    btn.textContent = 'Confirming…';
+    try {
+      await apiPost(`/jobseeker/interviews/${ivId}/respond`, { response: 'confirmed' });
+      showToast('Interview attendance confirmed! See you then! 🎉', 'success');
+      closeModal();
+      await loadData();
+      renderStats();
+      renderFeed(activeFilter);
+      const updated = allApplications.find(a => String(a.id) === String(item.id));
+      if (updated) openApplicationDetailsModal(updated, onWithdrawSuccess, onDecisionSuccess);
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = 'Confirm Attendance';
+      showToast(err?.message || 'Could not confirm attendance.', 'error');
+    }
+  });
+
+  overlay.querySelector('.js-iv-reschedule-btn')?.addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    const ivId = btn.dataset.ivId;
+    if (!ivId) return;
+    const note = prompt('Please describe why you need to reschedule or suggest alternative available times:');
+    if (note === null) return;
+    btn.disabled = true;
+    btn.textContent = 'Requesting…';
+    try {
+      await apiPost(`/jobseeker/interviews/${ivId}/respond`, {
+        response: 'reschedule_requested',
+        reschedule_note: note.trim() || 'Requesting alternative schedule',
+      });
+      showToast('Reschedule request sent to the employer.', 'info');
+      closeModal();
+      await loadData();
+      renderStats();
+      renderFeed(activeFilter);
+      const updated = allApplications.find(a => String(a.id) === String(item.id));
+      if (updated) openApplicationDetailsModal(updated, onWithdrawSuccess, onDecisionSuccess);
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = 'Request Reschedule';
+      showToast(err?.message || 'Could not request reschedule.', 'error');
+    }
+  });
+
+  // Wire onboarding document upload inputs
+  overlay.querySelectorAll('.js-onboarding-input').forEach(input => {
+    input.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      const docType = input.dataset.docType;
+      const appId = input.dataset.appId;
+      if (!file || !docType || !appId) return;
+
+      if (file.size > 5 * 1024 * 1024) {
+        showToast('File size exceeds 5MB limit.', 'warning');
+        input.value = '';
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('document_type', docType);
+      formData.append('file', file);
+
+      try {
+        showToast('Uploading pre-employment document…', 'info');
+        const res = await apiUpload(`/jobseeker/applications/${appId}/onboarding-upload`, formData);
+        if (res?.success) {
+          showToast('Document uploaded successfully for review! 🎉', 'success');
+          closeModal();
+          await loadData();
+          renderStats();
+          renderFeed(activeFilter);
+          const updated = allApplications.find(a => String(a.id) === String(appId));
+          if (updated) openApplicationDetailsModal(updated, onWithdrawSuccess, onDecisionSuccess);
+        } else {
+          showToast(res?.message || 'Upload failed.', 'error');
+        }
+      } catch (err) {
+        showToast(err?.message || 'Failed to upload document.', 'error');
+      }
+    });
+  });
 }
 
 
@@ -516,6 +826,7 @@ function showOfferModal(app, onDecision) {
   const expiry    = od.expiry_date ? fmtDate(od.expiry_date) : '';
   const message   = od.message   || app.notes     || '';
   const benefitsList = (od.benefits || app.benefits || []);
+  const track     = od.probationary_period || '6 Months Probationary Track (Labor Code Art. 296)';
 
   const decisionHtml = alreadyDecided
     ? `<div class="app-offer-decision app-offer-decision--${app.offerDecision}">
@@ -550,15 +861,16 @@ function showOfferModal(app, onDecision) {
       </div>
 
       <div class="app-offer-modal__body">
-        ${detailRow('zap',      'Offered Salary',   salary)}
-        ${detailRow('mapPin',   'Location',         app.location)}
-        ${detailRow('clock',    'Employment Type',  app.employmentType)}
-        ${detailRow('calendar', 'Target Start Date',startDate)}
+        ${detailRow('zap',         'Offered Salary',   salary)}
+        ${detailRow('shieldCheck', 'Employment Track', track)}
+        ${detailRow('mapPin',      'Location',         app.location)}
+        ${detailRow('clock',       'Employment Type',  app.employmentType)}
+        ${detailRow('calendar',    'Target Start Date',startDate)}
         ${detailRow('alertCircle', 'Offer Expiration', expiry)}
 
         ${benefitsList.length > 0 ? `
           <div class="app-offer-benefits">
-            <p class="app-offer-benefits__label">${icon('star', 13)} Offered Benefits & Perks</p>
+            <p class="app-offer-benefits__label">${icon('star', 13)} Offered Benefits &amp; Statutory Coverages</p>
             <ul class="app-offer-benefits__list">
               ${benefitsList.map(b => `<li>${icon('checkCircle', 12)} ${escapeHtml(b)}</li>`).join('')}
             </ul>
@@ -596,7 +908,7 @@ function showOfferModal(app, onDecision) {
     try {
       await apiPost(`/jobseeker/applications/${app.id}/${endpoint}`, {});
       close();
-      showToast(endpoint === 'accept-offer' ? 'Job offer accepted! Congratulations!' : 'Job offer declined.', endpoint === 'accept-offer' ? 'success' : 'info');
+      showToast(endpoint === 'accept-offer' ? 'Job offer accepted! You are now in the pre-employment onboarding stage. Please submit your required documents.' : 'Job offer declined.', endpoint === 'accept-offer' ? 'success' : 'info');
       onDecision?.();
     } catch (err) {
       btnEl.disabled = false;
@@ -614,14 +926,18 @@ function showOfferModal(app, onDecision) {
    ───────────────────────────────────────────────────────────────────────────── */
 function unifiedApplicationCard(item, idx) {
   const isHired = item.status === 'hired';
+  const isOnboarding = item.status === 'onboarding';
   const isRejected = item.status === 'rejected';
+  const isWithdrawn = item.status === 'withdrawn';
   const isDeclinedByCandidate = item.offerDecision === 'rejected';
-  const isRejectedAny = isRejected || isDeclinedByCandidate;
+  const isRejectedAny = isRejected || isDeclinedByCandidate || isWithdrawn;
   const isOffered = item.status === 'offered';
   const appliedDate = relativeDate(item.appliedDate);
 
   let sc = jobStatusConfig[item.status] || jobStatusConfig.applied;
-  if (isDeclinedByCandidate) {
+  if (isWithdrawn) {
+    sc = { label: 'Withdrawn', color: '#64748b', bg: '#f1f5f9', icon: 'x', gradient: 'linear-gradient(135deg, #64748b, #94a3b8)', step: 0 };
+  } else if (isDeclinedByCandidate) {
     sc = { label: 'Offer Declined', color: '#d97706', bg: '#fef3c7', icon: 'alertCircle', gradient: 'linear-gradient(135deg, #d97706, #b45309)', step: 0 };
   } else if (isRejected) {
     sc = { label: 'Not Selected', color: 'var(--color-error)', bg: 'var(--color-error-bg)', icon: 'xCircle', gradient: 'linear-gradient(135deg, #FF3B30, #FF6B6B)', step: 0 };
@@ -629,7 +945,7 @@ function unifiedApplicationCard(item, idx) {
 
   const visSkills = item.requiredSkills.slice(0, 3);
   const extraSkills = item.requiredSkills.length > 3 ? item.requiredSkills.length - 3 : 0;
-  const canWithdraw = !['hired', 'rejected', 'offered'].includes(item.status) && !isDeclinedByCandidate;
+  const canWithdraw = !['hired', 'rejected', 'offered', 'onboarding', 'withdrawn'].includes(item.status) && !isDeclinedByCandidate;
 
   // Latest interview
   const iv = item.interview;
@@ -646,6 +962,16 @@ function unifiedApplicationCard(item, idx) {
     else if (ivTitle === 'online') ivTitle = 'Online Video Interview';
 
     const platformDisplay = iv.platform || (isFaceToFace ? 'On-site / In-person' : 'Online Video Call');
+    const candResp = iv.candidate_response || 'pending';
+
+    let ivBadgeHtml = '';
+    if (candResp === 'confirmed') {
+      ivBadgeHtml = `<span class="app-card__iv-badge" style="background:#dcfce7; color:#15803d; border-color:#bbf7d0;">${icon('checkCircle', 11)} Attendance Confirmed</span>`;
+    } else if (candResp === 'reschedule_requested') {
+      ivBadgeHtml = `<span class="app-card__iv-badge" style="background:#fef3c7; color:#b45309; border-color:#fde68a;">${icon('clock', 11)} Reschedule Requested</span>`;
+    } else {
+      ivBadgeHtml = `<span class="app-card__iv-badge">${icon('clock', 11)} Interview Scheduled</span>`;
+    }
 
     interviewHtml = `
       <div class="app-card__iv">
@@ -661,13 +987,11 @@ function unifiedApplicationCard(item, idx) {
             </div>
           </div>
         </div>
-        <span class="app-card__iv-badge">
-          ${icon('clock', 11)} Interview Scheduled
-        </span>
+        ${ivBadgeHtml}
       </div>`;
   }
 
-  // Offer banner
+  // Offer / Onboarding banner
   let offerBannerHtml = '';
   if (isOffered) {
     offerBannerHtml = `
@@ -681,22 +1005,42 @@ function unifiedApplicationCard(item, idx) {
           View Offer Details ${icon('arrowRight', 14)}
         </button>
       </div>`;
-  } else if (isHired && item.offerDecision === 'accepted') {
+  } else if (isOnboarding) {
+    offerBannerHtml = `
+      <div class="app-offer-banner" style="background:#f0fdfa; border:1px solid #99f6e4;">
+        <div class="app-offer-banner__icon" style="background:#0d9488; color:#ffffff;">${icon('shieldCheck', 18)}</div>
+        <div class="app-offer-banner__text">
+          <strong style="color:#0f766e;">Pre-Employment Onboarding In Progress</strong>
+          <span style="color:#115e59;">Please upload all 4 pre-employment documents (NBI, Medical, IDs, TOR) for HR approval.</span>
+        </div>
+        <button class="app-offer-banner__btn btn-details" data-id="${item.id}" style="background:#0d9488; color:#ffffff;">
+          Upload Documents ${icon('arrowRight', 14)}
+        </button>
+      </div>`;
+  } else if (isHired && (item.offerDecision === 'accepted' || item.status === 'hired')) {
     offerBannerHtml = `
       <div class="app-offer-banner app-offer-banner--hired">
         <div class="app-offer-banner__icon">${icon('checkCircle', 18)}</div>
         <div class="app-offer-banner__text">
-          <strong>Offer Accepted — Congratulations!</strong>
-          <span>You accepted this offer${item.offerDecidedAt ? ' on ' + fmtDate(item.offerDecidedAt) : ''}.</span>
+          <strong>Hired &amp; Verified — Congratulations!</strong>
+          <span>You are an official employee of ${escapeHtml(item.company)}.</span>
         </div>
       </div>`;
   }
 
   // Step tracker
-  const steps = isHired ? [...jobStatusOrder, 'hired'] : jobStatusOrder;
-  const labels = isHired ? ['Applied', 'Reviewed', 'Interview', 'Offered', 'Hired!'] : ['Applied', 'Reviewed', 'Interview', 'Offered'];
-  const currentStep = isHired ? 5 : (sc.step || 1);
-  const borderAccent = isHired ? '#16a34a' : (isDeclinedByCandidate ? '#d97706' : (isRejected ? 'var(--color-error)' : 'var(--color-primary, #005930)'));
+  const steps = isHired 
+    ? ['applied', 'screened', 'interview', 'offered', 'onboarding', 'hired']
+    : (isOnboarding
+        ? ['applied', 'screened', 'interview', 'offered', 'onboarding']
+        : ['applied', 'screened', 'interview', 'offered']);
+  const labels = isHired 
+    ? ['Applied', 'Reviewed', 'Interview', 'Offered', 'Onboarding', 'Hired!']
+    : (isOnboarding
+        ? ['Applied', 'Reviewed', 'Interview', 'Offered', 'Onboarding']
+        : ['Applied', 'Reviewed', 'Interview', 'Offered']);
+  const currentStep = isHired ? 6 : (isOnboarding ? 5 : (sc.step || 1));
+  const borderAccent = isHired ? '#16a34a' : (isOnboarding ? '#0d9488' : (isWithdrawn ? '#64748b' : (isDeclinedByCandidate ? '#d97706' : (isRejected ? 'var(--color-error)' : 'var(--color-primary, #005930)'))));
 
   return `
     <article class="app-card animate-fade-in-up ${isHired ? 'app-card--hired' : ''} ${isRejectedAny ? 'app-card--rejected' : ''}" style="--enter-delay:${idx * 60}ms; border-left: 3.5px solid ${borderAccent};" data-app-id="${item.id}">
@@ -752,19 +1096,21 @@ function unifiedApplicationCard(item, idx) {
         <!-- Latest interview snippet -->
         ${interviewHtml}
 
-        <!-- Offer banner -->
+        <!-- Offer / Onboarding banner -->
         ${offerBannerHtml}
 
         ${isRejectedAny ? `
           <!-- Status callout banner -->
-          <div class="app-status-callout app-status-callout--rejected" style="margin: 10px 0 12px; padding: 12px 14px; background: ${isDeclinedByCandidate ? 'rgba(217,119,6,0.08)' : 'rgba(239,68,68,0.06)'}; border-left: 3.5px solid ${isDeclinedByCandidate ? '#d97706' : 'var(--color-error)'}; border-radius: 6px;">
-            <div style="display:flex; align-items:center; gap:6px; font-weight:700; color:${isDeclinedByCandidate ? '#d97706' : 'var(--color-error)'}; font-size:0.86rem; margin-bottom:4px;">
-              ${icon(isDeclinedByCandidate ? 'alertCircle' : 'xCircle', 15)} ${isDeclinedByCandidate ? 'Offer Declined by You' : 'Application Not Selected'}
+          <div class="app-status-callout app-status-callout--rejected" style="margin: 10px 0 12px; padding: 12px 14px; background: ${isWithdrawn ? '#f8fafc' : (isDeclinedByCandidate ? 'rgba(217,119,6,0.08)' : 'rgba(239,68,68,0.06)')}; border-left: 3.5px solid ${isWithdrawn ? '#64748b' : (isDeclinedByCandidate ? '#d97706' : 'var(--color-error)')}; border-radius: 6px;">
+            <div style="display:flex; align-items:center; gap:6px; font-weight:700; color:${isWithdrawn ? '#475569' : (isDeclinedByCandidate ? '#d97706' : 'var(--color-error)')}; font-size:0.86rem; margin-bottom:4px;">
+              ${icon(isWithdrawn ? 'x' : (isDeclinedByCandidate ? 'alertCircle' : 'xCircle'), 15)} ${isWithdrawn ? 'Application Withdrawn' : (isDeclinedByCandidate ? 'Offer Declined by You' : 'Application Not Selected')}
             </div>
             <p style="margin:0 0 4px; font-size:0.8rem; color:var(--text-secondary); line-height:1.4;">
-              ${isDeclinedByCandidate
-                ? `You declined this job offer${item.offerDecidedAt ? ' on ' + fmtDate(item.offerDecidedAt) : ''}.`
-                : 'Your application was not selected for this position. Explore more career opportunities on your jobs feed.'}
+              ${isWithdrawn
+                ? (item.withdrawalReason || 'This application was withdrawn.')
+                : (isDeclinedByCandidate
+                  ? `You declined this job offer${item.offerDecidedAt ? ' on ' + fmtDate(item.offerDecidedAt) : ''}.`
+                  : 'Your application was not selected for this position. Explore more career opportunities on your jobs feed.')}
             </p>
             ${item.notes ? `
               <div style="margin-top:6px; padding:6px 10px; background:rgba(0,0,0,0.03); border-radius:4px; font-size:0.78rem; color:var(--text-primary);">
@@ -998,6 +1344,11 @@ export async function renderApplications(container) {
         benefits:         Array.isArray(benefits) ? benefits : [],
         requiredSkills:   Array.isArray(requiredSkills) ? requiredSkills : [],
         coverLetter:      a.cover_letter || '',
+        customResumeUrl:  a.custom_resume_url || null,
+        earliestStartDate:a.earliest_start_date || null,
+        expectedSalary:   a.expected_salary || null,
+        withdrawalReason: a.withdrawal_reason || null,
+        onboardingChecklist: a.onboarding_checklist || {},
         notes:            a.notes || '',
         offerDetails:     a.offer_details || null,
         offerDecision:    a.offer_decision || null,
@@ -1016,8 +1367,8 @@ export async function renderApplications(container) {
     const totalCount = allApplications.length;
     const reviewedCount = allApplications.filter(a => a.status === 'screened').length;
     const interviewCount = allApplications.filter(a => a.status === 'interview' || a.rawStatus === 'interviewed').length;
-    const offeredCount = allApplications.filter(a => a.status === 'offered' || a.status === 'hired').length;
-    const rejectedCount = allApplications.filter(a => a.status === 'rejected' || a.offerDecision === 'rejected').length;
+    const offeredCount = allApplications.filter(a => a.status === 'offered' || a.status === 'onboarding' || a.status === 'hired').length;
+    const rejectedCount = allApplications.filter(a => a.status === 'rejected' || a.status === 'withdrawn' || a.offerDecision === 'rejected').length;
 
     statsEl.innerHTML = `
       <div class="app-stat-card app-stat-card--total">
@@ -1107,9 +1458,9 @@ export async function renderApplications(container) {
     } else if (filterType === 'interview') {
       filtered = allApplications.filter(a => a.status === 'interview' || a.rawStatus === 'interviewed');
     } else if (filterType === 'offered') {
-      filtered = allApplications.filter(a => a.status === 'offered' || a.status === 'hired');
+      filtered = allApplications.filter(a => a.status === 'offered' || a.status === 'onboarding' || a.status === 'hired');
     } else if (filterType === 'rejected') {
-      filtered = allApplications.filter(a => a.status === 'rejected' || a.offerDecision === 'rejected');
+      filtered = allApplications.filter(a => a.status === 'rejected' || a.status === 'withdrawn' || a.offerDecision === 'rejected');
     }
 
     if (filtered.length === 0) {

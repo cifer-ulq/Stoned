@@ -2662,12 +2662,28 @@ class StudentController extends Controller
         $matched  = array_filter($required, fn($s) => in_array(strtolower(trim($s)), $userSkills));
         $score    = count($required) > 0 ? (int) round(count($matched) / count($required) * 100) : 50;
 
+        $validated = $request->validate([
+            'cover_letter'        => 'nullable|string|max:2000',
+            'custom_resume'       => 'nullable|file|mimes:pdf|max:5120',
+            'earliest_start_date' => 'nullable|date',
+            'expected_salary'     => 'nullable|string|max:100',
+        ]);
+
+        $customResumeUrl = null;
+        if ($request->hasFile('custom_resume')) {
+            $path = $request->file('custom_resume')->store('resumes', 'public');
+            $customResumeUrl = '/storage/' . $path;
+        }
+
         $application = \App\Models\JobApplication::create([
-            'job_listing_id'    => $jobId,
-            'applicant_user_id' => $user->id,
-            'status'            => 'applied',
-            'match_score'       => $score,
-            'cover_letter'      => $request->input('cover_letter', ''),
+            'job_listing_id'      => $jobId,
+            'applicant_user_id'   => $user->id,
+            'status'              => 'applied',
+            'match_score'         => $score,
+            'cover_letter'        => $validated['cover_letter'] ?? '',
+            'custom_resume_url'   => $customResumeUrl,
+            'earliest_start_date' => $validated['earliest_start_date'] ?? null,
+            'expected_salary'     => $validated['expected_salary'] ?? null,
         ]);
 
         return response()->json(['success' => true, 'id' => $application->id], 201);
@@ -2695,7 +2711,12 @@ class StudentController extends Controller
                 return [
                     'id'           => $app->id,
                     'status'       => $app->status,
-                    'cover_letter'     => $app->cover_letter,
+                    'cover_letter'         => $app->cover_letter,
+                    'custom_resume_url'    => $app->custom_resume_url,
+                    'earliest_start_date'  => $app->earliest_start_date?->toDateString(),
+                    'expected_salary'      => $app->expected_salary,
+                    'withdrawal_reason'    => $app->withdrawal_reason,
+                    'onboarding_checklist' => $app->onboarding_checklist ?? (object)[],
                     'notes'            => $app->notes,
                     'offer_details'    => $app->offer_details,
                     'offer_decision'   => $app->offer_decision,
@@ -2719,15 +2740,18 @@ class StudentController extends Controller
                         'company_name'     => $compName,
                     ] : null,
                     'latest_interview' => $interview ? [
-                        'id'              => $interview->id,
-                        'type'            => $interview->type,
-                        'scheduled_date'  => $interview->scheduled_date?->toDateString(),
-                        'scheduled_time'  => $interview->getRawOriginal('scheduled_time'),
-                        'platform'        => $interview->platform,
-                        'status'          => $interview->status,
-                        'meeting_link'    => $interview->meeting_link,
-                        'interviewer_name'=> $interview->interviewer_name,
-                        'duration'        => $interview->duration,
+                        'id'                       => $interview->id,
+                        'type'                     => $interview->type,
+                        'scheduled_date'           => $interview->scheduled_date?->toDateString(),
+                        'scheduled_time'           => $interview->getRawOriginal('scheduled_time'),
+                        'platform'                 => $interview->platform,
+                        'status'                   => $interview->status,
+                        'candidate_response'        => $interview->candidate_response ?? 'pending',
+                        'candidate_reschedule_note' => $interview->candidate_reschedule_note,
+                        'candidate_responded_at'    => $interview->candidate_responded_at?->toIso8601String(),
+                        'meeting_link'             => $interview->meeting_link,
+                        'interviewer_name'         => $interview->interviewer_name,
+                        'duration'                 => $interview->duration,
                     ] : null,
                 ];
             });
@@ -2762,7 +2786,7 @@ class StudentController extends Controller
             ->firstOrFail();
 
         $app->update([
-            'status'           => 'hired',
+            'status'           => 'onboarding',
             'offer_decision'   => 'accepted',
             'offer_decided_at' => now(),
         ]);
@@ -2770,22 +2794,160 @@ class StudentController extends Controller
         // Auto-withdraw all other active (non-final) applications
         \App\Models\JobApplication::where('applicant_user_id', $user->id)
             ->where('id', '!=', $id)
-            ->whereNotIn('status', ['hired', 'rejected'])
-            ->update(['status' => 'rejected']);
+            ->whereNotIn('status', ['hired', 'withdrawn', 'rejected'])
+            ->update([
+                'status'            => 'withdrawn',
+                'withdrawal_reason' => 'Candidate accepted an employment offer from another company.',
+            ]);
 
-        // Notify the company that the offer was accepted
+        // Notify the company that the offer was accepted and onboarding has started
         if ($app->jobListing) {
             $jobTitle = $app->jobListing->title ?? 'a position';
             AppNotification::send(
                 $app->jobListing->company_user_id,
                 'offer_accepted',
-                'Offer Accepted! 🎉',
-                "{$user->name} has accepted your job offer for \"{$jobTitle}\".",
+                'Job Offer Accepted — Onboarding In Progress! 🎉',
+                "{$user->name} has accepted your job offer for \"{$jobTitle}\" and is now in the pre-employment onboarding stage.",
                 ['application_id' => $app->id, 'job_title' => $jobTitle, 'applicant_name' => $user->name]
             );
         }
 
-        return response()->json(['success' => true, 'message' => 'Offer accepted. Congratulations!']);
+        return response()->json([
+            'success' => true,
+            'message' => 'Job offer accepted! You are now in the pre-employment onboarding stage. Please submit your required documents.',
+        ]);
+    }
+
+    /* ── POST /student/interviews/{id}/respond ── */
+    public function respondInterview(Request $request, $id)
+    {
+        $user = $request->user();
+        $validated = $request->validate([
+            'response'        => 'required|in:confirmed,reschedule_requested',
+            'reschedule_note' => 'nullable|string|max:1000',
+        ]);
+
+        $interview = \App\Models\Interview::whereHas('application', fn ($q) => $q->where('applicant_user_id', $user->id))
+            ->with(['application.jobListing'])
+            ->findOrFail($id);
+
+        $interview->update([
+            'candidate_response'        => $validated['response'],
+            'candidate_reschedule_note' => $validated['reschedule_note'] ?? null,
+            'candidate_responded_at'    => now(),
+        ]);
+
+        $jobTitle = $interview->application?->jobListing?->title ?? 'Position';
+        $dateStr  = $interview->scheduled_date ? $interview->scheduled_date->format('M j, Y') : 'scheduled date';
+        $statusMsg = $validated['response'] === 'confirmed'
+            ? "{$user->name} confirmed attendance for the interview on {$dateStr} for \"{$jobTitle}\"."
+            : "{$user->name} requested to reschedule their interview for \"{$jobTitle}\". Note: " . ($validated['reschedule_note'] ?? 'No reason provided.');
+
+        AppNotification::send(
+            $interview->company_user_id,
+            'interview_response',
+            $validated['response'] === 'confirmed' ? 'Interview Confirmed by Candidate' : 'Interview Reschedule Requested',
+            $statusMsg,
+            ['interview_id' => $interview->id, 'response' => $validated['response']]
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => $validated['response'] === 'confirmed' ? 'Interview attendance confirmed!' : 'Reschedule request submitted to employer.',
+            'data'    => $interview,
+        ]);
+    }
+
+    /* ── POST /student/applications/{id}/onboarding-upload ── */
+    public function uploadOnboardingDocument(Request $request, $id)
+    {
+        $user = $request->user();
+        $validated = $request->validate([
+            'document_type' => 'required|in:nbi_clearance,medical_fit_to_work,government_ids,academic_proof',
+            'file'          => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
+        ]);
+
+        $app = \App\Models\JobApplication::where('applicant_user_id', $user->id)
+            ->whereIn('status', ['offered', 'onboarding', 'hired'])
+            ->with('jobListing')
+            ->findOrFail($id);
+
+        $file     = $request->file('file');
+        $docType  = $validated['document_type'];
+        $path     = $file->store('onboarding-documents', 'public');
+
+        $checklist = $app->onboarding_checklist ?? [];
+        $checklist[$docType] = [
+            'file_path'      => $path,
+            'file_url'       => '/storage/' . $path,
+            'file_name'      => $file->getClientOriginalName(),
+            'file_size'      => $file->getSize(),
+            'uploaded_at'    => now()->toIso8601String(),
+            'status'         => 'pending',
+            'reviewer_notes' => null,
+        ];
+
+        $app->update([
+            'status'               => 'onboarding',
+            'onboarding_checklist' => $checklist,
+        ]);
+
+        if ($app->jobListing) {
+            $docNames = [
+                'nbi_clearance'       => 'NBI / Police Clearance',
+                'medical_fit_to_work' => 'Medical Fit-to-Work Certificate',
+                'government_ids'      => 'Government IDs Proof',
+                'academic_proof'      => 'Academic Transcript / Diploma',
+            ];
+            AppNotification::send(
+                $app->jobListing->company_user_id,
+                'onboarding_document_uploaded',
+                'New Onboarding Document Uploaded',
+                "{$user->name} uploaded their {$docNames[$docType]} for \"{$app->jobListing->title}\".",
+                ['application_id' => $app->id, 'document_type' => $docType]
+            );
+        }
+
+        return response()->json([
+            'success'              => true,
+            'message'              => 'Document uploaded successfully and submitted for recruiter verification.',
+            'onboarding_checklist' => $checklist,
+        ]);
+    }
+
+    /* ── GET /student/applications/{id}/onboarding ── */
+    public function getOnboardingStatus(Request $request, $id)
+    {
+        $app = \App\Models\JobApplication::where('applicant_user_id', $request->user()->id)
+            ->with('jobListing.company')
+            ->findOrFail($id);
+
+        $requiredDocs = [
+            'nbi_clearance' => [
+                'title'       => 'NBI / Police Clearance',
+                'description' => 'Valid clearance certifying background and character eligibility.',
+            ],
+            'medical_fit_to_work' => [
+                'title'       => 'Pre-Employment Medical / Fit-to-Work',
+                'description' => 'Physician-certified Fit-to-Work certificate or PEME results.',
+            ],
+            'government_ids' => [
+                'title'       => 'Government Statutory ID Numbers',
+                'description' => 'Proof of SSS, TIN, PhilHealth, and Pag-IBIG registration documents.',
+            ],
+            'academic_proof' => [
+                'title'       => 'Official Transcript of Records / Diploma',
+                'description' => 'CHMSU official TOR, Certificate of Graduation, or Diploma copy.',
+            ],
+        ];
+
+        return response()->json([
+            'success'              => true,
+            'application_id'       => $app->id,
+            'status'               => $app->status,
+            'required_documents'   => $requiredDocs,
+            'onboarding_checklist' => $app->onboarding_checklist ?? (object)[],
+        ]);
     }
 
     /* ── POST /student/applications/{id}/reject-offer ── */

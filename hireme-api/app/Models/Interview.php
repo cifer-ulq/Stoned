@@ -14,6 +14,9 @@ class Interview extends Model
         'scheduled_time',
         'platform',
         'status',
+        'candidate_response',
+        'candidate_reschedule_note',
+        'candidate_responded_at',
         'notes',
         'interviewer_name',
         'duration',
@@ -21,8 +24,9 @@ class Interview extends Model
     ];
 
     protected $casts = [
-        'scheduled_date' => 'date',
-        'scheduled_time' => 'datetime:H:i',
+        'scheduled_date'         => 'date',
+        'scheduled_time'         => 'datetime:H:i',
+        'candidate_responded_at' => 'datetime',
     ];
 
     public function application()

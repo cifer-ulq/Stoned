@@ -2,7 +2,7 @@
  * CHMSU HireMe — Student Job Matching Page
  */
 import { icon } from '../components/icons.js';
-import { apiGet, apiPost } from '../api/client.js';
+import { apiGet, apiPost, apiUpload } from '../api/client.js';
 import { showToast } from '../utils.js';
 
 /* ── Filter presets ── */
@@ -528,7 +528,7 @@ function applyModal(job) {
 
   return `
     <div class="modal-overlay" id="apply-modal">
-      <div class="modal modal--visible" style="max-width: 540px; width: 100%; border-radius: 16px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.25);">
+      <div class="modal modal--visible" style="max-width: 580px; width: 100%; border-radius: 16px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.25);">
         <!-- Top Accent Line -->
         <div style="height: 4px; background: ${sc.barColor}; width: 100%;"></div>
 
@@ -551,7 +551,7 @@ function applyModal(job) {
         </div>
 
         <!-- Body -->
-        <div class="modal__body" style="padding: 20px 24px; background: #ffffff;">
+        <div class="modal__body" style="padding: 20px 24px; background: #ffffff; max-height: calc(85vh - 140px); overflow-y: auto;">
           ${isNotRec ? `
           <!-- Not Recommended Warning Banner -->
           <div style="display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; background: rgba(239,68,68,0.08); border: 1.5px solid rgba(239,68,68,0.28); border-radius: 10px; margin-bottom: 16px;">
@@ -564,10 +564,47 @@ function applyModal(job) {
           ` : ''}
 
           <!-- Profile attachment notice -->
-          <div style="display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; margin-bottom: 18px;">
+          <div style="display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; margin-bottom: 16px;">
             <span style="color: #15803d; flex-shrink: 0;">${icon('checkCircle', 18)}</span>
             <div style="font-size: 0.82rem; color: #166534; line-height: 1.45;">
-              <strong>Profile Attached Automatically:</strong> Your student profile, academic background, and skills portfolio will be submitted automatically.
+              <strong>Verified Profile Attached:</strong> Your student profile, academic credentials, and skills portfolio will be submitted automatically.
+            </div>
+          </div>
+
+          <!-- Custom Resume Upload (Optional) -->
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label class="form-label" style="font-size: 0.82rem; font-weight: 600; color: #334155; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+              <span>Targeted Resume / CV <span style="color: #94a3b8; font-weight: 400;">(optional, PDF only)</span></span>
+              <span style="font-size: 0.72rem; color: #64748b;">Max 5 MB</span>
+            </label>
+            <div style="position: relative; border: 1.5px dashed #cbd5e1; border-radius: 10px; padding: 12px 16px; background: #f8fafc; transition: border-color 0.2s, background-color 0.2s; display: flex; align-items: center; gap: 12px;" id="resume-dropzone">
+              <span style="color: #005930; flex-shrink: 0;">${icon('fileText', 22)}</span>
+              <div style="flex: 1; min-width: 0;">
+                <input type="file" id="apply-custom-resume" accept=".pdf,application/pdf" style="position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;">
+                <div id="apply-resume-label" style="font-size: 0.82rem; color: #475569; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                  Upload a tailored PDF resume or CV
+                </div>
+                <div style="font-size: 0.72rem; color: #94a3b8;">Click or drag file here to attach (.pdf)</div>
+              </div>
+              <button type="button" id="apply-resume-clear" style="display: none; background: none; border: none; color: #ef4444; cursor: pointer; padding: 4px; border-radius: 4px; position: relative; z-index: 2;" title="Remove selected file">
+                ${icon('x', 16)}
+              </button>
+            </div>
+          </div>
+
+          <!-- Availability & Salary Expectations (2-column grid) -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px;">
+            <div>
+              <label for="apply-start-date" style="font-size: 0.82rem; font-weight: 600; color: #334155; margin-bottom: 6px; display: block;">
+                Earliest Start Date <span style="color: #94a3b8; font-weight: 400;">(optional)</span>
+              </label>
+              <input type="date" id="apply-start-date" class="form-input" style="width: 100%; box-sizing: border-box; font-size: 0.82rem; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 8px; background: #ffffff;">
+            </div>
+            <div>
+              <label for="apply-expected-salary" style="font-size: 0.82rem; font-weight: 600; color: #334155; margin-bottom: 6px; display: block;">
+                Expected Salary / Allowance <span style="color: #94a3b8; font-weight: 400;">(optional)</span>
+              </label>
+              <input type="text" id="apply-expected-salary" class="form-input" placeholder="e.g. ₱20,000 / month" style="width: 100%; box-sizing: border-box; font-size: 0.82rem; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 8px; background: #ffffff;">
             </div>
           </div>
 
@@ -578,10 +615,10 @@ function applyModal(job) {
             </label>
             <textarea id="apply-cover-letter" class="form-textarea" rows="4"
               style="resize: vertical; font-size: 0.88rem; line-height: 1.6; width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 12px;"
-              placeholder="Briefly introduce yourself and why you're interested in this role…"></textarea>
+              placeholder="Highlight relevant coursework, projects, career objectives, and why you're a great fit for this position…"></textarea>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
-              <span style="font-size: 0.72rem; color: #94a3b8;">Max 500 characters</span>
-              <span style="font-size: 0.72rem; color: #94a3b8;"><span id="char-count">0</span> / 500</span>
+              <span style="font-size: 0.72rem; color: #94a3b8;">Max 2,000 characters</span>
+              <span style="font-size: 0.72rem; color: #94a3b8;"><span id="char-count">0</span> / 2000</span>
             </div>
           </div>
         </div>
@@ -1441,30 +1478,74 @@ export async function renderJobs(container) {
     el.querySelector('#apply-modal-cancel').addEventListener('click', close);
     el.addEventListener('click', (e) => { if (e.target === el) close(); });
 
+    /* Custom Resume file handling */
+    const resumeInput = el.querySelector('#apply-custom-resume');
+    const resumeLabel = el.querySelector('#apply-resume-label');
+    const resumeClear = el.querySelector('#apply-resume-clear');
+    let selectedResumeFile = null;
+
+    resumeInput?.addEventListener('change', (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+        showToast('Only PDF files are accepted for custom resumes.', 'warning');
+        resumeInput.value = '';
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        showToast('File size exceeds 5MB limit.', 'warning');
+        resumeInput.value = '';
+        return;
+      }
+      selectedResumeFile = file;
+      resumeLabel.innerHTML = `<strong>Selected:</strong> ${escapeHtml(file.name)} <span style="color:#64748b;">(${(file.size / 1024).toFixed(1)} KB)</span>`;
+      if (resumeClear) resumeClear.style.display = 'inline-block';
+    });
+
+    resumeClear?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      selectedResumeFile = null;
+      if (resumeInput) resumeInput.value = '';
+      if (resumeLabel) resumeLabel.textContent = 'Upload a tailored PDF resume or CV';
+      resumeClear.style.display = 'none';
+    });
+
     /* Character counter */
     const textarea   = el.querySelector('#apply-cover-letter');
     const charCount  = el.querySelector('#char-count');
     textarea.addEventListener('input', () => {
       const len = textarea.value.length;
       charCount.textContent = len;
-      charCount.style.color = len > 500 ? 'var(--color-error)' : 'var(--text-tertiary)';
+      charCount.style.color = len > 2000 ? 'var(--color-error)' : 'var(--text-tertiary)';
     });
 
     el.querySelector('#apply-modal-submit').addEventListener('click', async () => {
       const coverLetter = textarea.value.trim();
-      if (coverLetter.length > 500) { showToast('Cover letter too long (max 500 characters).', 'warning'); return; }
+      if (coverLetter.length > 2000) { showToast('Cover letter too long (max 2,000 characters).', 'warning'); return; }
+
+      const startDateInput = el.querySelector('#apply-start-date');
+      const salaryInput = el.querySelector('#apply-expected-salary');
+      const startDate = startDateInput?.value?.trim() || null;
+      const expectedSalary = salaryInput?.value?.trim() || null;
+
       const submitBtn = el.querySelector('#apply-modal-submit');
       submitBtn.disabled = true;
       submitBtn.innerHTML = icon('clock', 14) + ' Sending…';
 
+      const formData = new FormData();
+      if (coverLetter) formData.append('cover_letter', coverLetter);
+      if (startDate) formData.append('earliest_start_date', startDate);
+      if (expectedSalary) formData.append('expected_salary', expectedSalary);
+      if (selectedResumeFile) formData.append('custom_resume', selectedResumeFile);
+
       try {
-        const res = await apiPost(`/student/apply/${job.id}`, { cover_letter: coverLetter });
+        const res = await apiUpload(`/student/apply/${job.id}`, formData);
 
         if (res?.status === 409 || res?.message?.toLowerCase().includes('already')) {
           showToast('You have already applied for this job.', 'info');
           appliedIds.add(job.id);
           renderCards(false);
-        } else if (res?.id || res?.success || res?.message === 'Application sent.') {
+        } else if (res?.id || res?.success || res?.message === 'Application sent.' || res?.application) {
           showToast('Application sent! Good luck! 🎉', 'success');
           appliedIds.add(job.id);
           renderCards(false);

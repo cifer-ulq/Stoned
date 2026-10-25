@@ -110,6 +110,12 @@ export async function renderInterviews(container) {
             <div class="skeleton skeleton--text-sm"></div>
             <div class="skeleton skeleton--text"></div>
           </div>
+
+          <!-- Pagination Bar -->
+          <div class="iv-pagination" id="iv-pagination" style="display:none;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:12px 20px 16px;border-top:1px solid var(--border-default);">
+            <div class="iv-pagination__info text-xs text-secondary" id="iv-pagination-info" style="font-weight:500;">Showing 1–5 of 0 interviews</div>
+            <div class="iv-pagination__controls" id="iv-pagination-controls" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;"></div>
+          </div>
         </div>
       </div>
 
@@ -159,14 +165,14 @@ export async function renderInterviews(container) {
       container.querySelectorAll('#iv-cat-tabs .iv-cat-tab').forEach(t => t.classList.remove('iv-cat-tab--active'));
       tab.classList.add('iv-cat-tab--active');
       currentCategory = tab.dataset.cat;
-      renderInterviewCards(container, allInterviews, currentCategory, currentTime);
+      renderInterviewCards(container, allInterviews, currentCategory, currentTime, 1);
     });
   });
 
   /* Timeframe filter handler */
   container.querySelector('#iv-filter').addEventListener('change', (e) => {
     currentTime = e.target.value;
-    renderInterviewCards(container, allInterviews, currentCategory, currentTime);
+    renderInterviewCards(container, allInterviews, currentCategory, currentTime, 1);
   });
 
   /* Load interviews from API */
@@ -225,9 +231,42 @@ function renderCalendar(container, year, month, interviews) {
   for (let d = 1; d <= daysInMonth; d++) {
     const isToday  = d === today.getDate() && month === today.getMonth() && year === today.getFullYear();
     const hasEvent = interviewDays.has(d);
-    html += `<div class="iv-cal__day ${isToday ? 'iv-cal__day--today' : ''} ${hasEvent ? 'iv-cal__day--has-event' : ''}">${d}${hasEvent ? '<span class="iv-cal__dot"></span>' : ''}</div>`;
+    html += `<div class="iv-cal__day ${isToday ? 'iv-cal__day--today' : ''} ${hasEvent ? 'iv-cal__day--has-event' : ''}" ${hasEvent ? `data-day="${d}" style="cursor:pointer;" title="Click to view interview"` : ''}>${d}${hasEvent ? '<span class="iv-cal__dot"></span>' : ''}</div>`;
   }
   grid.innerHTML = html;
+
+  // Calendar day pip click: navigate to page containing that interview and scroll into view
+  grid.querySelectorAll('.iv-cal__day--has-event').forEach(dayEl => {
+    dayEl.addEventListener('click', () => {
+      const dayNum = parseInt(dayEl.dataset.day, 10);
+      const target = (interviews || []).find(iv => {
+        const dt = new Date(iv.date_raw);
+        return dt.getFullYear() === year && dt.getMonth() === month && dt.getDate() === dayNum;
+      });
+      if (target) {
+        // Reset category and timeframe filter
+        container.querySelectorAll('#iv-cat-tabs .iv-cat-tab').forEach(t => t.classList.toggle('iv-cat-tab--active', t.dataset.cat === 'all'));
+        const filterSel = container.querySelector('#iv-filter');
+        if (filterSel) filterSel.value = 'all';
+
+        const targetIdx = (interviews || []).findIndex(iv => String(iv.id) === String(target.id));
+        const targetPage = targetIdx !== -1 ? Math.floor(targetIdx / 5) + 1 : 1;
+
+        renderInterviewCards(container, interviews, 'all', 'all', targetPage);
+
+        const card = container.querySelector(`[data-iv-id="${target.id}"]`);
+        if (card) {
+          card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          card.style.outline = '2px solid #f59e0b';
+          card.style.boxShadow = '0 0 12px rgba(245, 158, 11, 0.35)';
+          setTimeout(() => {
+            card.style.outline = '';
+            card.style.boxShadow = '';
+          }, 2200);
+        }
+      }
+    });
+  });
 }
 
 /* ─── Today's schedule sidebar ─── */
@@ -261,7 +300,7 @@ function renderTodaySchedule(container, interviews) {
 }
 
 /* ─── Interview cards ─── */
-function renderInterviewCards(container, interviews, category = 'all', timeFilter = 'all') {
+function renderInterviewCards(container, interviews, category = 'all', timeFilter = 'all', page = 1) {
   const cardsEl  = container.querySelector('#iv-cards');
   if (!cardsEl) return;
 
@@ -287,7 +326,12 @@ function renderInterviewCards(container, interviews, category = 'all', timeFilte
     filtered = filtered.filter(iv => iv.status === 'upcoming' && iv.date_raw >= todayStr);
   }
 
+  const paginationEl = container.querySelector('#iv-pagination');
+  const paginationInfoEl = container.querySelector('#iv-pagination-info');
+  const paginationControlsEl = container.querySelector('#iv-pagination-controls');
+
   if (!filtered.length) {
+    if (paginationEl) paginationEl.style.display = 'none';
     const catText = category === 'job' ? 'Job' : category === 'ojt' ? 'OJT' : '';
     cardsEl.innerHTML = `
       <div class="empty-state" style="padding:48px 16px;text-align:center;">
@@ -304,12 +348,24 @@ function renderInterviewCards(container, interviews, category = 'all', timeFilte
     return;
   }
 
+  const IV_PAGE_SIZE = 5;
+  const totalCount = filtered.length;
+  const totalPages = Math.ceil(totalCount / IV_PAGE_SIZE) || 1;
+  let currentPage = page;
+  if (currentPage > totalPages) currentPage = totalPages;
+  if (currentPage < 1) currentPage = 1;
+
+  const startIndex = (currentPage - 1) * IV_PAGE_SIZE;
+  const endIndex = Math.min(startIndex + IV_PAGE_SIZE, totalCount);
+  const paginatedItems = filtered.slice(startIndex, endIndex);
+
   const badgeVariant = s => s === 'upcoming' ? 'info' : s === 'done' ? 'success' : s === 'cancelled' ? 'neutral' : 'warning';
 
-  cardsEl.innerHTML = filtered.map(iv => {
+  cardsEl.innerHTML = paginatedItems.map(iv => {
     const isOjt = iv.category === 'ojt';
     const isFaceToFace = iv.interview_type === 'face_to_face';
     const avatarBg = isOjt ? 'linear-gradient(135deg, #10b981, #047857)' : 'linear-gradient(135deg, var(--color-primary), var(--color-primary-dark))';
+    const isFinished = iv.status === 'past' || iv.status === 'done' || iv.status === 'completed' || iv.status === 'finished';
 
     return `
     <div class="iv-card" data-iv-id="${iv.id}" style="${iv.status === 'cancelled' ? 'opacity:0.6;' : ''}">
@@ -327,7 +383,10 @@ function renderInterviewCards(container, interviews, category = 'all', timeFilte
             ${iv.candidate?.role || ''} · <strong style="color:var(--text-primary);font-weight:600;">${iv.job?.title || 'Position'}</strong>
           </p>
         </div>
-        <span class="badge badge--${badgeVariant(iv.status)}" style="text-transform:uppercase;font-size:.67rem;letter-spacing:0.5px;">${iv.status === 'past' || iv.status === 'done' ? 'Finished' : iv.status}</span>
+        ${isFinished
+          ? `<span class="badge" style="background:rgba(245, 158, 11, 0.12); color:#d97706; border:1px solid rgba(245, 158, 11, 0.3); text-transform:uppercase; font-size:.67rem; letter-spacing:0.5px; font-weight:700; padding:2px 8px; border-radius:99px; display:inline-flex; align-items:center; gap:4px;">${icon('checkCircle', 11)} Finished</span>`
+          : `<span class="badge badge--${badgeVariant(iv.status)}" style="text-transform:uppercase;font-size:.67rem;letter-spacing:0.5px;">${iv.status}</span>`
+        }
       </div>
 
       <div class="iv-card__details" style="gap:14px;padding:4px 0;">
@@ -377,11 +436,79 @@ function renderInterviewCards(container, interviews, category = 'all', timeFilte
     </div>`;
   }).join('');
 
+  // Pagination Bar Render
+  if (paginationEl && paginationInfoEl && paginationControlsEl) {
+    if (totalCount <= IV_PAGE_SIZE) {
+      paginationEl.style.display = 'none';
+    } else {
+      paginationEl.style.display = 'flex';
+      paginationInfoEl.textContent = `Showing ${startIndex + 1}–${endIndex} of ${totalCount} interviews`;
+
+      let btnsHtml = `
+        <button class="btn btn--outline btn--sm iv-page-btn" id="iv-prev-btn" style="height:30px;padding:0 10px;font-size:0.75rem;display:inline-flex;align-items:center;gap:4px;" ${currentPage === 1 ? 'disabled' : ''}>
+          ${icon('chevronLeft', 12)} Prev
+        </button>
+      `;
+
+      const getPages = () => {
+        if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+        if (currentPage <= 4) return [1, 2, 3, 4, 5, '...', totalPages];
+        if (currentPage >= totalPages - 3) return [1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+        return [1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages];
+      };
+
+      getPages().forEach(p => {
+        if (p === '...') {
+          btnsHtml += `<span style="padding:0 4px;font-size:0.8rem;color:var(--text-tertiary);">&hellip;</span>`;
+        } else {
+          const isAct = p === currentPage;
+          btnsHtml += `
+            <button class="btn ${isAct ? 'btn--primary' : 'btn--outline'} btn--sm iv-page-btn iv-page-num" data-page="${p}" style="height:30px;min-width:30px;padding:0 6px;font-size:0.75rem;font-weight:${isAct ? '700' : '600'};">
+              ${p}
+            </button>
+          `;
+        }
+      });
+
+      btnsHtml += `
+        <button class="btn btn--outline btn--sm iv-page-btn" id="iv-next-btn" style="height:30px;padding:0 10px;font-size:0.75rem;display:inline-flex;align-items:center;gap:4px;" ${currentPage === totalPages ? 'disabled' : ''}>
+          Next ${icon('chevronRight', 12)}
+        </button>
+      `;
+
+      paginationControlsEl.innerHTML = btnsHtml;
+
+      paginationControlsEl.querySelector('#iv-prev-btn')?.addEventListener('click', () => {
+        if (currentPage > 1) {
+          renderInterviewCards(container, interviews, category, timeFilter, currentPage - 1);
+          cardsEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      });
+
+      paginationControlsEl.querySelector('#iv-next-btn')?.addEventListener('click', () => {
+        if (currentPage < totalPages) {
+          renderInterviewCards(container, interviews, category, timeFilter, currentPage + 1);
+          cardsEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      });
+
+      paginationControlsEl.querySelectorAll('.iv-page-num').forEach(b => {
+        b.addEventListener('click', () => {
+          const p = parseInt(b.dataset.page, 10);
+          if (p && p !== currentPage) {
+            renderInterviewCards(container, interviews, category, timeFilter, p);
+            cardsEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+        });
+      });
+    }
+  }
+
   // Attach reschedule listener
   cardsEl.querySelectorAll('.btn--reschedule-iv').forEach(btn => {
     btn.addEventListener('click', () => {
       const iv = (interviews || []).find(i => String(i.id) === btn.dataset.id);
-      if (iv) openRescheduleModal(iv, interviews, container, category, timeFilter);
+      if (iv) openRescheduleModal(iv, interviews, container, category, timeFilter, currentPage);
     });
   });
 
@@ -398,7 +525,7 @@ function renderInterviewCards(container, interviews, category = 'all', timeFilte
         if (idx !== -1) {
           interviews[idx].status = 'cancelled';
         }
-        renderInterviewCards(container, interviews, category, timeFilter);
+        renderInterviewCards(container, interviews, category, timeFilter, currentPage);
         renderTodaySchedule(container, interviews);
         showToast('Interview cancelled successfully', 'info');
       } else {
@@ -411,7 +538,7 @@ function renderInterviewCards(container, interviews, category = 'all', timeFilte
 }
 
 /* ─── Reschedule Modal ─── */
-function openRescheduleModal(iv, allInterviews, container, currentCat, currentTime) {
+function openRescheduleModal(iv, allInterviews, container, currentCat, currentTime, currentPage = 1) {
   const overlay = document.createElement('div');
   overlay.className = 'modal-backdrop modal-backdrop--visible';
   overlay.style.cssText = 'z-index:10001;background:rgba(10,12,20,.72);backdrop-filter:blur(3px);';
@@ -598,7 +725,7 @@ function openRescheduleModal(iv, allInterviews, container, currentCat, currentTi
           status:           'upcoming',
         };
       }
-      renderInterviewCards(container, allInterviews, currentCat, currentTime);
+      renderInterviewCards(container, allInterviews, currentCat, currentTime, currentPage);
       renderCalendar(container, new Date().getFullYear(), new Date().getMonth(), allInterviews);
       renderTodaySchedule(container, allInterviews);
       showToast(`Interview rescheduled for ${iv.candidate?.name || 'Candidate'}`, 'success');
