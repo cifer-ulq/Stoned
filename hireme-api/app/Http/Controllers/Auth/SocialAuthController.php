@@ -16,10 +16,20 @@ class SocialAuthController extends Controller
     /**
      * Resolve the normalized frontend base URL.
      */
-    protected function getFrontendBaseUrl(): string
+    protected function getFrontendBaseUrl(Request $request = null): string
     {
+        if ($request) {
+            $origin = $request->headers->get('origin') ?: $request->headers->get('referer');
+            if ($origin && str_contains($origin, 'vercel.app')) {
+                $parsed = parse_url($origin);
+                if (!empty($parsed['scheme']) && !empty($parsed['host'])) {
+                    return $parsed['scheme'] . '://' . $parsed['host'] . '/login';
+                }
+            }
+        }
+
         $baseUrl = config('app.login_app_url', env('LOGIN_APP_URL'));
-        if (empty($baseUrl)) {
+        if (empty($baseUrl) || str_contains($baseUrl, 'stoned-two')) {
             $baseUrl = 'https://chmsu-hireme.vercel.app/login';
         }
         return rtrim($baseUrl, '/');

@@ -30,7 +30,7 @@ services:
       - key: APP_TIMEZONE
         value: Asia/Manila
       - key: LOGIN_APP_URL
-        value: https://stoned-two.vercel.app/login/
+        value: https://chmsu-hireme.vercel.app/login/
       - key: MAIL_MAILER
         sync: false
       - key: MAIL_HOST

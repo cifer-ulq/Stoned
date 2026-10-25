@@ -268,7 +268,7 @@ class LoginController extends Controller
 
             // Determine frontend login URL (defaults to live production web if unconfigured or fallback)
             $baseUrl = config('app.login_app_url', env('LOGIN_APP_URL'));
-            if (empty($baseUrl)) {
+            if (empty($baseUrl) || str_contains($baseUrl, 'stoned-two')) {
                 $baseUrl = 'https://chmsu-hireme.vercel.app/login';
             }
             $baseUrl = rtrim($baseUrl, '/');
