@@ -7,6 +7,7 @@ import './styles/reset.css';
 import './styles/login.css';
 import './styles/company-register.css';
 import { icon } from './icons.js';
+import { openTermsReader } from '@shared/terms-policy.js';
 
 /* ── Theme ── */
 const savedTheme = localStorage.getItem('hireme-theme') || 'light';
@@ -283,7 +284,15 @@ function renderStandardForm(isSignin, isSignup) {
         </label>
         <a class="login-forgot" href="#">Forgot password?</a>
       </div>
-      ` : ''}
+      ` : `
+      <div class="lf-terms-group" style="margin: 0.85rem 0 1.15rem; text-align: left;">
+        <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; font-size: 0.82rem; color: var(--text-secondary); line-height: 1.45;">
+          <input type="checkbox" id="signup-terms-chk" style="margin-top: 2px; width: 16px; height: 16px; accent-color: var(--color-primary); cursor: pointer; flex-shrink: 0;" required />
+          <span>I have read and agree to the CHMSU HireMe <a href="#" id="link-signup-terms" style="color: var(--color-primary); font-weight: 600; text-decoration: underline;">Terms of Service</a> and <a href="#" id="link-signup-privacy" style="color: var(--color-primary); font-weight: 600; text-decoration: underline;">Privacy Policy</a>.</span>
+        </label>
+        <span class="lf-field__error" id="err-terms" style="margin-top: 4px; display: block;"></span>
+      </div>
+      `}
 
       <button class="login-submit" id="submit-btn" type="submit">
         <span id="submit-label">${isSignin ? 'Sign In' : 'Create Account'}</span>
@@ -462,6 +471,14 @@ function renderCompanySignupForm() {
       <!-- Server error -->
       <div id="cr-server-error" class="cr-server-error" style="display:none;"></div>
 
+      <div class="lf-terms-group" style="margin: 0.85rem 0 1.25rem; text-align: left;">
+        <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; font-size: 0.82rem; color: var(--text-secondary); line-height: 1.45;">
+          <input type="checkbox" id="cr-terms-chk" style="margin-top: 2px; width: 16px; height: 16px; accent-color: var(--color-primary); cursor: pointer; flex-shrink: 0;" required />
+          <span>I represent this company and agree to the CHMSU HireMe <a href="#" id="link-cr-terms" style="color: var(--color-primary); font-weight: 600; text-decoration: underline;">Terms of Service</a> and <a href="#" id="link-cr-privacy" style="color: var(--color-primary); font-weight: 600; text-decoration: underline;">Privacy Policy</a>.</span>
+        </label>
+        <span class="lf-field__error" id="err-cr-terms" style="margin-top: 4px; display: block;"></span>
+      </div>
+
       <button class="login-submit" id="cr-submit" type="submit">
         <span id="cr-submit-label">${icon('building-2', 16)} Register Company</span>
       </button>
@@ -473,7 +490,7 @@ function renderCompanySignupForm() {
     </p>
 
     <p class="login-footer">
-      By registering you agree to our <a href="#">Terms</a> and <a href="#">Privacy Policy</a>.
+      Review our <a href="#" id="link-footer-terms">Terms of Service</a> and <a href="#" id="link-footer-privacy">Privacy Policy</a>.
     </p>
 
     <a class="login-admin-link" href="./admin-login.html">Admin Login</a>
@@ -743,6 +760,32 @@ function attachEvents() {
 
   // Resend reset email
   document.getElementById('btn-resend-forgot')?.addEventListener('click', handleForgotResend);
+
+  // Terms & Privacy modal reader triggers
+  document.getElementById('link-signup-terms')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    openTermsReader('terms');
+  });
+  document.getElementById('link-signup-privacy')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    openTermsReader('privacy');
+  });
+  document.getElementById('link-cr-terms')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    openTermsReader('terms');
+  });
+  document.getElementById('link-cr-privacy')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    openTermsReader('privacy');
+  });
+  document.getElementById('link-footer-terms')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    openTermsReader('terms');
+  });
+  document.getElementById('link-footer-privacy')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    openTermsReader('privacy');
+  });
 }
 
 /* ── Password Strength ── */
@@ -824,6 +867,13 @@ async function handleCompanySubmit(e) {
   if (!email || !emailRe.test(email))  { showError('cr-email',    'Please enter a valid email address.'); valid = false; }
   if (!password || password.length < 8){ showError('cr-password', 'Password must be at least 8 characters.'); valid = false; }
   if (password && confirm !== password){ showError('cr-confirm',  'Passwords do not match.'); valid = false; }
+
+  const termsChk = document.getElementById('cr-terms-chk');
+  if (!termsChk?.checked) {
+    showError('cr-terms', 'You must read and agree to the Terms of Service and Privacy Policy.');
+    valid = false;
+  }
+
   if (!valid) return;
 
   const btn = document.getElementById('cr-submit');
@@ -847,6 +897,7 @@ async function handleCompanySubmit(e) {
         email,
         password,
         password_confirmation: confirm,
+        terms_accepted:        true,
       }),
     });
     const data = await res.json();
@@ -914,6 +965,13 @@ async function handleSubmit(e) {
     showError('password', 'Password must be at least 8 characters.');
     valid = false;
   }
+  if (currentView === 'signup') {
+    const termsChk = document.getElementById('signup-terms-chk');
+    if (!termsChk?.checked) {
+      showError('terms', 'You must read and agree to the Terms of Service and Privacy Policy.');
+      valid = false;
+    }
+  }
   if (!valid) return;
 
   const btn = document.getElementById('submit-btn');
@@ -923,7 +981,7 @@ async function handleSubmit(e) {
 
   if (currentView === 'signup') {
     // Store credentials temporarily — role + profile collected on onboarding
-    sessionStorage.setItem('hireme-signup', JSON.stringify({ name, email, password }));
+    sessionStorage.setItem('hireme-signup', JSON.stringify({ name, email, password, terms_accepted: true }));
     window.location.href = './onboarding.html';
     return;
   }

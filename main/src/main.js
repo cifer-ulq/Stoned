@@ -22,6 +22,7 @@ import { createNavbar, createMobileBottomNav } from './components/navbar.js';
 import { createLeftSidebar } from './components/sidebar-left.js';
 import { createRightSidebar } from './components/sidebar-right.js';
 import { showPromotionCelebrationModal } from './components/promotion-modal.js';
+import { checkAndEnforceTermsGate } from '@shared/terms-policy.js';
 
 // Pages
 import { renderHome } from './pages/home.js';
@@ -99,6 +100,14 @@ async function initAuth() {
   } catch {
     // Network error — keep using cached user, don't redirect
   }
+
+  // Universal Gate for Terms of Service & Privacy Policy
+  try {
+    const activeUser = JSON.parse(localStorage.getItem('hireme_user') || 'null');
+    if (activeUser && !activeUser.must_change_password) {
+      checkAndEnforceTermsGate(activeUser);
+    }
+  } catch (_) {}
 
   return true;
 }

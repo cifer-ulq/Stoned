@@ -15,6 +15,7 @@ import { createLeftSidebar } from './components/sidebar-left.js';
 import { registerRoute, initRouter } from './router.js';
 import { getState, setState } from './store.js';
 import { apiGet, apiCache, revalidateEndpoint } from './api/client.js';
+import { checkAndEnforceTermsGate } from '@shared/terms-policy.js';
 
 import { renderDashboard } from './pages/dashboard.js';
 import { renderJobs } from './pages/jobs.js';
@@ -267,6 +268,8 @@ async function initApp() {
       moaRequestedAt: cp.moa_requested_at || null,
       moaRequestNotes: cp.moa_request_notes || '',
       registrationSource: cp.registration_source || 'admin',
+      terms_accepted_at: u.terms_accepted_at || null,
+      has_accepted_terms: Boolean(u.has_accepted_terms) || Boolean(u.terms_accepted_at),
       canPostOpportunities: cp.can_post_opportunities !== undefined
         ? Boolean(cp.can_post_opportunities)
         : (Boolean(cp.profile_completed) && ['active', 'expiring soon'].includes((cp.moa_status || '').toLowerCase())),
@@ -285,6 +288,9 @@ async function initApp() {
     };
   }
   setState('company', identity);
+
+  // Universal Gate for Terms of Service & Privacy Policy
+  checkAndEnforceTermsGate(identity);
 
   // Restore theme
   const savedTheme = localStorage.getItem('hireme-company-theme') || 'light';

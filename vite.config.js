@@ -5,6 +5,11 @@ const subApps = ['landing', 'main', 'jobseeker', 'login', 'admin', 'company', 's
 
 export default defineConfig({
   appType: 'mpa',
+  resolve: {
+    alias: {
+      '@shared': resolve(__dirname, 'shared'),
+    },
+  },
   plugins: [
     {
       name: 'redirect-sub-apps',

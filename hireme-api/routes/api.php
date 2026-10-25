@@ -144,6 +144,7 @@ Route::prefix('auth')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('logout',                    [LoginController::class,      'logout']);
         Route::get('me',                         [LoginController::class,      'me']);
+        Route::post('accept-terms',               [LoginController::class,      'acceptTerms']);
         Route::post('onboarding',                [OnboardingController::class, 'store']);
         Route::post('change-temporary-password', [LoginController::class,      'changeTemporaryPassword']);
     });

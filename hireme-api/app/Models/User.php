@@ -24,6 +24,9 @@ class User extends Authenticatable
         'google_id',
         'linkedin_id',
         'provider',
+        'terms_accepted_at',
+        'terms_version',
+        'terms_ip',
     ];
 
     protected $hidden = [
@@ -38,7 +41,16 @@ class User extends Authenticatable
             'password'             => 'hashed',
             'onboarding_completed' => 'boolean',
             'must_change_password' => 'boolean',
+            'terms_accepted_at'    => 'datetime',
         ];
+    }
+
+    /**
+     * Determine whether the user has agreed to the Terms of Service and Privacy Policy.
+     */
+    public function hasAcceptedTerms(): bool
+    {
+        return !empty($this->terms_accepted_at);
     }
 
     public function studentProfile()

@@ -75,6 +75,9 @@ class LoginController extends Controller
                     'is_active_ojt'        => $isActiveOjt,
                     'must_change_password' => (bool) $user->must_change_password,
                     'onboarding_completed' => $user->onboarding_completed,
+                    'terms_accepted_at'    => $user->terms_accepted_at?->toIso8601String(),
+                    'has_accepted_terms'   => !empty($user->terms_accepted_at),
+                    'terms_version'        => $user->terms_version,
                     'company_profile'      => $user->companyProfile,
                     'student_profile'      => $user->studentProfile,
                     'jobseeker_profile'    => $user->jobseekerProfile,
@@ -152,6 +155,9 @@ class LoginController extends Controller
                 'is_active_ojt'        => $isActiveOjt,
                 'must_change_password' => (bool) $user->must_change_password,
                 'onboarding_completed' => $user->onboarding_completed,
+                'terms_accepted_at'    => $user->terms_accepted_at?->toIso8601String(),
+                'has_accepted_terms'   => !empty($user->terms_accepted_at),
+                'terms_version'        => $user->terms_version,
                 'avatar_url'           => $user->avatar_url,
                 'company_profile'      => $user->companyProfile,
                 'student_profile'      => $user->studentProfile,
@@ -162,6 +168,33 @@ class LoginController extends Controller
         ];
 
         return response()->json($data);
+    }
+
+    /**
+     * POST /api/auth/accept-terms
+     * Record acceptance of the Terms of Service and Privacy Policy for the authenticated user.
+     */
+    public function acceptTerms(Request $request)
+    {
+        $user = $request->user();
+        $version = $request->input('version', '1.0');
+
+        $user->update([
+            'terms_accepted_at' => now(),
+            'terms_version'     => $version,
+            'terms_ip'          => $request->ip(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Terms of Service and Privacy Policy accepted successfully.',
+            'user'    => [
+                'id'                 => $user->id,
+                'terms_accepted_at'  => $user->terms_accepted_at->toIso8601String(),
+                'has_accepted_terms' => true,
+                'terms_version'      => $user->terms_version,
+            ],
+        ]);
     }
 
     /* ── POST /api/auth/set-password ── (public, token-based) */

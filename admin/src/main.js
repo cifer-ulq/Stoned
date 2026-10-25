@@ -14,6 +14,7 @@ import { initNavbar } from './components/navbar.js';
 import { initSidebarLeft } from './components/sidebar-left.js';
 import { initSidebarRight } from './components/sidebar-right.js';
 import { apiGet, isFresh, revalidateEndpoint } from './api/client.js';
+import { checkAndEnforceTermsGate } from '@shared/terms-policy.js';
 
 /* Pages */
 import DashboardPage from './pages/dashboard.js';
@@ -248,9 +249,18 @@ async function initApp() {
         setState('user.initials', initials);
       });
     }
+    localStorage.setItem('hireme_user', JSON.stringify(u));
   } catch (_) {
     // Network error — allow cached session to proceed
   }
+
+  // Universal Gate for Terms of Service & Privacy Policy
+  try {
+    const activeUser = JSON.parse(localStorage.getItem('hireme_user') || 'null');
+    if (activeUser && !activeUser.must_change_password) {
+      checkAndEnforceTermsGate(activeUser);
+    }
+  } catch (_) {}
 
   /* Register routes with Keep-Alive View Manager */
   registerRoute('/', renderPage('/', DashboardPage));

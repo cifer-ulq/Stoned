@@ -981,10 +981,11 @@ async function completeRegistration(credentials) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
       body: JSON.stringify({
-        name:     credentials.name,
-        email:    credentials.email,
-        password: credentials.password,
-        role:     formData.userType,
+        name:           credentials.name,
+        email:          credentials.email,
+        password:       credentials.password,
+        role:           formData.userType,
+        terms_accepted: credentials.terms_accepted ?? true,
       }),
     });
     const regData = await regRes.json();

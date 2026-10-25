@@ -7,6 +7,7 @@ import './styles/variables.css';
 import './styles/reset.css';
 import './styles/landing.css';
 import { icon } from './icons.js';
+import { openTermsReader } from '@shared/terms-policy.js';
 
 /* ── Icons needed ── */
 const icons = {
@@ -540,8 +541,8 @@ function renderFooter() {
       <div class="landing-footer__bottom">
         <span class="landing-footer__copy">&copy; ${new Date().getFullYear()} CHMSU HireMe. All rights reserved.</span>
         <div class="landing-footer__bottom-links">
-          <a href="#" class="landing-footer__bottom-link">Privacy Policy</a>
-          <a href="#" class="landing-footer__bottom-link">Terms of Service</a>
+          <a href="#" class="landing-footer__bottom-link" id="landing-link-privacy">Privacy Policy</a>
+          <a href="#" class="landing-footer__bottom-link" id="landing-link-terms">Terms of Service</a>
         </div>
       </div>
     </div>
@@ -702,6 +703,16 @@ function attachEvents() {
       });
     });
   }
+
+  /* — Footer Terms & Privacy links — */
+  document.getElementById('landing-link-privacy')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    openTermsReader('privacy');
+  });
+  document.getElementById('landing-link-terms')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    openTermsReader('terms');
+  });
 }
 
 /* ── Scroll Reveal (IntersectionObserver) ── */

@@ -25,6 +25,11 @@ use Illuminate\Support\Facades\Http;
 class StudentController extends Controller
 {
     /**
+     * Strict geofence perimeter radius in meters for OJT time-in and time-out validation.
+     */
+    public const GEOFENCE_RADIUS_METERS = 100;
+
+    /**
      * GET /api/student/dashboard
      * Returns home-page stats and recent activity for the authenticated student.
      */
@@ -1022,6 +1027,10 @@ class StudentController extends Controller
                         'department'      => $posting->department,
                         'location'        => $posting->location,
                         'branchName'      => $posting->branch_name,
+                        'companyLat'      => $posting->latitude !== null ? (float) $posting->latitude : null,
+                        'companyLon'      => $posting->longitude !== null ? (float) $posting->longitude : null,
+                        'geofenceRadius'  => self::GEOFENCE_RADIUS_METERS,
+                        'geofenceEnforced'=> true,
                         'postingTitle'    => $posting->title,
                         'duration'        => $posting->duration,
                         'scheduleType'    => $posting->schedule_type ?? 'Full Day · Mon–Fri',
@@ -1299,6 +1308,10 @@ class StudentController extends Controller
                 'department'      => $posting->department,
                 'location'        => $posting->location,
                 'branchName'      => $posting->branch_name,
+                'companyLat'      => $posting->latitude !== null ? (float) $posting->latitude : null,
+                'companyLon'      => $posting->longitude !== null ? (float) $posting->longitude : null,
+                'geofenceRadius'  => self::GEOFENCE_RADIUS_METERS,
+                'geofenceEnforced'=> true,
                 'postingTitle'    => $posting->title,
                 'duration'        => $posting->duration,
                 'scheduleType'    => $posting->schedule_type ?? 'Full Day · Mon–Fri',
@@ -1684,7 +1697,7 @@ class StudentController extends Controller
             }
         }
 
-        // 3. Location validity & geofence distance
+        // 3. Location validity & strict geofence distance enforcement (<= 100m)
         $locationValidity = null;
         $distanceMeters   = null;
         $lat = $request->latitude  !== null ? (float) $request->latitude  : null;
@@ -1698,12 +1711,31 @@ class StudentController extends Controller
                     (float) $posting->latitude,
                     (float) $posting->longitude
                 ));
-                $locationValidity = $distanceMeters <= 100 ? 'In Site' : 'Too Far';
+                $locationValidity = $distanceMeters <= self::GEOFENCE_RADIUS_METERS ? 'In Site' : 'Too Far';
+
+                // Strict Geofence Enforcement: Block time-in if trainee is outside the 100m radius
+                if ($distanceMeters > self::GEOFENCE_RADIUS_METERS) {
+                    $compName = $posting->company_name ?: 'Host Company';
+                    return response()->json([
+                        'success'               => false,
+                        'error_code'            => 'OUTSIDE_GEOFENCE',
+                        'message'               => "You cannot time in because you are outside the OJT site radius. You are currently {$distanceMeters}m away from {$compName} (maximum allowed radius: 100m).",
+                        'distance_meters'       => $distanceMeters,
+                        'allowed_radius_meters' => self::GEOFENCE_RADIUS_METERS,
+                        'company_name'          => $compName,
+                        'location'              => $posting->location,
+                    ], 422);
+                }
+            } else {
+                return response()->json([
+                    'success'    => false,
+                    'error_code' => 'SITE_COORDINATES_MISSING',
+                    'message'    => "Host training site coordinates have not been configured for your OJT placement. Please contact your company supervisor or OJT coordinator to set the company location pin.",
+                ], 422);
             }
         }
 
-        $logStatus = $locationValidity === 'In Site' ? 'valid'
-                   : ($locationValidity === 'Too Far' ? 'Too Far' : 'No GPS');
+        $logStatus = 'valid';
 
         // 4. Session processing & Lunch Break Validation
         $log = TimeLog::where('user_id', $user->id)->where('log_date', $today)->first();
@@ -2026,7 +2058,7 @@ class StudentController extends Controller
         $outLon = $request->longitude !== null ? (float) $request->longitude : null;
         $reqTimeOut = \Carbon\Carbon::createFromFormat('H:i', $request->time_out);
 
-        // Compute time-out geofence distance if posting coordinates exist
+        // Compute time-out geofence distance and strictly enforce geofence radius (<= 100m)
         $outLocationValidity = null;
         $outDistanceMeters   = null;
         if ($outLat !== null && $outLon !== null && $interest?->posting) {
@@ -2037,7 +2069,27 @@ class StudentController extends Controller
                     (float) $posting->latitude,
                     (float) $posting->longitude
                 ));
-                $outLocationValidity = $outDistanceMeters <= 100 ? 'In Site' : 'Too Far';
+                $outLocationValidity = $outDistanceMeters <= self::GEOFENCE_RADIUS_METERS ? 'In Site' : 'Too Far';
+
+                // Strict Geofence Enforcement: Block time-out if trainee is outside the 100m radius
+                if ($outDistanceMeters > self::GEOFENCE_RADIUS_METERS) {
+                    $compName = $posting->company_name ?: 'Host Company';
+                    return response()->json([
+                        'success'               => false,
+                        'error_code'            => 'OUTSIDE_GEOFENCE',
+                        'message'               => "You cannot time out because you are outside the OJT site radius. You are currently {$outDistanceMeters}m away from {$compName} (maximum allowed radius: 100m).",
+                        'distance_meters'       => $outDistanceMeters,
+                        'allowed_radius_meters' => self::GEOFENCE_RADIUS_METERS,
+                        'company_name'          => $compName,
+                        'location'              => $posting->location,
+                    ], 422);
+                }
+            } else {
+                return response()->json([
+                    'success'    => false,
+                    'error_code' => 'SITE_COORDINATES_MISSING',
+                    'message'    => "Host training site coordinates have not been configured for your OJT placement. Please contact your company supervisor or OJT coordinator to set the company location pin.",
+                ], 422);
             }
         }
 
@@ -2306,7 +2358,26 @@ class StudentController extends Controller
                     (float) $posting->latitude,
                     (float) $posting->longitude
                 ));
-                $locationValidity = $distanceMeters <= 100 ? 'In Site' : 'Too Far';
+                $locationValidity = $distanceMeters <= self::GEOFENCE_RADIUS_METERS ? 'In Site' : 'Too Far';
+
+                if ($distanceMeters > self::GEOFENCE_RADIUS_METERS) {
+                    $compName = $posting->company_name ?: 'Host Company';
+                    return response()->json([
+                        'success'               => false,
+                        'error_code'            => 'OUTSIDE_GEOFENCE',
+                        'message'               => "You cannot log attendance because you are outside the OJT site radius. You are currently {$distanceMeters}m away from {$compName} (maximum allowed radius: 100m).",
+                        'distance_meters'       => $distanceMeters,
+                        'allowed_radius_meters' => self::GEOFENCE_RADIUS_METERS,
+                        'company_name'          => $compName,
+                        'location'              => $posting->location,
+                    ], 422);
+                }
+            } else {
+                return response()->json([
+                    'success'    => false,
+                    'error_code' => 'SITE_COORDINATES_MISSING',
+                    'message'    => "Host training site coordinates have not been configured for your OJT placement. Please contact your company supervisor or OJT coordinator to set the company location pin.",
+                ], 422);
             }
         }
 

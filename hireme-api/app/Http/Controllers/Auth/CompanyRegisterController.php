@@ -23,13 +23,17 @@ class CompanyRegisterController extends Controller
     public function register(Request $request)
     {
         $data = $request->validate([
-            'company_name'  => ['required', 'string', 'max:255'],
-            'industry'      => ['required', 'string', 'max:255'],
-            'location'      => ['nullable', 'string', 'max:255'],
-            'contact_person'=> ['required', 'string', 'max:255'],
-            'email'         => ['required', 'email', 'max:255', 'unique:users,email'],
-            'phone'         => ['nullable', 'string', 'max:50'],
-            'password'      => ['required', 'confirmed', Password::min(8)],
+            'company_name'   => ['required', 'string', 'max:255'],
+            'industry'       => ['required', 'string', 'max:255'],
+            'location'       => ['nullable', 'string', 'max:255'],
+            'contact_person' => ['required', 'string', 'max:255'],
+            'email'          => ['required', 'email', 'max:255', 'unique:users,email'],
+            'phone'          => ['nullable', 'string', 'max:50'],
+            'password'       => ['required', 'confirmed', Password::min(8)],
+            'terms_accepted' => ['required', 'accepted'],
+        ], [
+            'terms_accepted.accepted' => 'You must read and agree to the Terms of Service and Privacy Policy to register your company.',
+            'terms_accepted.required' => 'You must read and agree to the Terms of Service and Privacy Policy to register your company.',
         ]);
 
         // Create the user account
@@ -39,6 +43,9 @@ class CompanyRegisterController extends Controller
             'password'             => Hash::make($data['password']),
             'role'                 => 'company',
             'onboarding_completed' => true,
+            'terms_accepted_at'    => now(),
+            'terms_version'        => '1.0',
+            'terms_ip'             => $request->ip(),
         ]);
 
         // Create the company profile — no MOA yet, pending status
@@ -105,6 +112,8 @@ class CompanyRegisterController extends Controller
                 'email'                => $user->email,
                 'role'                 => $user->role,
                 'onboarding_completed' => $user->onboarding_completed,
+                'terms_accepted_at'    => $user->terms_accepted_at?->toIso8601String(),
+                'has_accepted_terms'   => true,
                 'company_profile'      => [
                     'status'     => 'Pending',
                     'moa_status' => 'Pending',

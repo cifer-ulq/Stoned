@@ -1799,13 +1799,14 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
   const btnMorningIn = container.querySelector('#btn-morning-in');
   if (btnMorningIn) {
     btnMorningIn.addEventListener('click', () => {
-      showLogInModal('Time In (Morning)', async (timeIn24, lat, lon) => {
+      showLogInModal('Time In (Morning)', ojt, async (timeIn24, lat, lon) => {
         const body = { time_in: timeIn24, session: 'morning' };
         if (lat != null) { body.latitude = lat; body.longitude = lon; }
         const res = await apiPost('/student/ojt-tracker/log-in', body);
         if (res && res.log) {
-          if (res.tooFar) showLocationWarning(res.distance);
           refreshAfterLog(res.log, lat, lon, res.message || 'Time In (Morning) recorded!');
+        } else if (res && res.error_code === 'OUTSIDE_GEOFENCE') {
+          showOutsideGeofenceModal(res);
         } else {
           showToast(res?.message || 'Failed to log in. Please try again.', 'error');
         }
@@ -1817,12 +1818,14 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
   const btnMorningOut = container.querySelector('#btn-morning-out');
   if (btnMorningOut) {
     btnMorningOut.addEventListener('click', () => {
-      showLogOutModal(todayLog, 'Time Out (Morning)', async (timeOut24, lat, lon) => {
+      showLogOutModal(todayLog, 'Time Out (Morning)', ojt, async (timeOut24, lat, lon) => {
         const body = { time_out: timeOut24, session: 'morning' };
         if (lat != null) { body.latitude = lat; body.longitude = lon; }
         const res = await apiPost('/student/ojt-tracker/log-out', body);
         if (res && res.log) {
           refreshAfterLog(res.log, lat, lon, res.message || 'Time Out (Morning) recorded. Enjoy your break!');
+        } else if (res && res.error_code === 'OUTSIDE_GEOFENCE') {
+          showOutsideGeofenceModal(res);
         } else {
           showToast(res?.message || 'Failed to log out.', 'error');
         }
@@ -1834,13 +1837,14 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
   const btnAfternoonIn = container.querySelector('#btn-afternoon-in');
   if (btnAfternoonIn) {
     btnAfternoonIn.addEventListener('click', () => {
-      showLogInModal('Time In (Afternoon)', async (timeIn24, lat, lon) => {
+      showLogInModal('Time In (Afternoon)', ojt, async (timeIn24, lat, lon) => {
         const body = { time_in: timeIn24, session: 'afternoon' };
         if (lat != null) { body.latitude = lat; body.longitude = lon; }
         const res = await apiPost('/student/ojt-tracker/log-in', body);
         if (res && res.log) {
-          if (res.tooFar) showLocationWarning(res.distance);
           refreshAfterLog(res.log, lat, lon, res.message || 'Time In (Afternoon) recorded!');
+        } else if (res && res.error_code === 'OUTSIDE_GEOFENCE') {
+          showOutsideGeofenceModal(res);
         } else {
           showToast(res?.message || 'Failed to log in. Please try again.', 'error');
         }
@@ -1852,12 +1856,14 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
   const btnAfternoonOut = container.querySelector('#btn-afternoon-out');
   if (btnAfternoonOut) {
     btnAfternoonOut.addEventListener('click', () => {
-      showLogOutModal(todayLog, 'Time Out (Afternoon)', async (timeOut24, lat, lon) => {
+      showLogOutModal(todayLog, 'Time Out (Afternoon)', ojt, async (timeOut24, lat, lon) => {
         const body = { time_out: timeOut24, session: 'afternoon' };
         if (lat != null) { body.latitude = lat; body.longitude = lon; }
         const res = await apiPost('/student/ojt-tracker/log-out', body);
         if (res && res.log) {
           refreshAfterLog(res.log, lat, lon, res.message || 'Time Out (Afternoon) recorded. Great work today!');
+        } else if (res && res.error_code === 'OUTSIDE_GEOFENCE') {
+          showOutsideGeofenceModal(res);
         } else {
           showToast(res?.message || 'Failed to log out.', 'error');
         }
@@ -1869,13 +1875,14 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
   const fallbackLogIn = container.querySelector('#btn-log-in');
   if (fallbackLogIn) {
     fallbackLogIn.addEventListener('click', () => {
-      showLogInModal('Time In', async (timeIn24, lat, lon) => {
+      showLogInModal('Time In', ojt, async (timeIn24, lat, lon) => {
         const body = { time_in: timeIn24 };
         if (lat != null) { body.latitude = lat; body.longitude = lon; }
         const res = await apiPost('/student/ojt-tracker/log-in', body);
         if (res && res.log) {
-          if (res.tooFar) showLocationWarning(res.distance);
           refreshAfterLog(res.log, lat, lon, res.message || 'Time-in recorded!');
+        } else if (res && res.error_code === 'OUTSIDE_GEOFENCE') {
+          showOutsideGeofenceModal(res);
         } else {
           showToast(res?.message || 'Failed to log in.', 'error');
         }
@@ -1886,12 +1893,14 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
   const fallbackLogOut = container.querySelector('#btn-log-out');
   if (fallbackLogOut) {
     fallbackLogOut.addEventListener('click', () => {
-      showLogOutModal(todayLog, 'Time Out', async (timeOut24, lat, lon) => {
+      showLogOutModal(todayLog, 'Time Out', ojt, async (timeOut24, lat, lon) => {
         const body = { time_out: timeOut24 };
         if (lat != null) { body.latitude = lat; body.longitude = lon; }
         const res = await apiPost('/student/ojt-tracker/log-out', body);
         if (res && res.log) {
           refreshAfterLog(res.log, lat, lon, res.message || 'Time-out recorded!');
+        } else if (res && res.error_code === 'OUTSIDE_GEOFENCE') {
+          showOutsideGeofenceModal(res);
         } else {
           showToast(res?.message || 'Failed to log out.', 'error');
         }
@@ -2284,9 +2293,9 @@ function initLeafletMap(container, ojt, logs = []) {
     function placeCompanyPin(compLat, compLon) {
       allPoints.push([compLat, compLon]);
 
-      // 100-meter Circular Geofence Boundary
+      // Circular Geofence Boundary (100-meter radius)
       L.circle([compLat, compLon], {
-        radius: 100,
+        radius: ojt.geofenceRadius || 100,
         color: '#005930',
         fillColor: '#22c55e',
         fillOpacity: 0.12,
@@ -2294,7 +2303,7 @@ function initLeafletMap(container, ojt, logs = []) {
         dashArray: '6 6',
       }).addTo(map).bindPopup(`
         <div style="font-size:0.8rem;min-width:150px;">
-          <strong style="color:#005930;">100m Geofence Perimeter</strong><br>
+          <strong style="color:#005930;">${ojt.geofenceRadius || 100}m Geofence Perimeter</strong><br>
           <span style="color:#555;font-size:0.75rem;">Verified host site check-in boundary</span>
         </div>
       `);
@@ -2572,12 +2581,78 @@ function requestGeo(geoBox, geoLabel) {
   });
 }
 
-// ── Log In Modal ──────────────────────────────────────────────────────────────
-function showLogInModal(sessionLabelOrSuccess, onSuccessMaybe) {
-  const sessionLabel = typeof sessionLabelOrSuccess === 'string' ? sessionLabelOrSuccess : 'Log In';
-  const onSuccess = typeof sessionLabelOrSuccess === 'function' ? sessionLabelOrSuccess : onSuccessMaybe;
-  let geoResult = null;
+// ── Outside Geofence Modal ───────────────────────────────────────────────────
+function showOutsideGeofenceModal(errOrDistance) {
+  const isObj = errOrDistance && typeof errOrDistance === 'object';
+  const dist = isObj && errOrDistance.distance_meters != null
+    ? `${errOrDistance.distance_meters} m`
+    : (typeof errOrDistance === 'number' ? `${errOrDistance} m` : 'Too far');
+  const allowed = (isObj && errOrDistance.allowed_radius_meters != null) ? `${errOrDistance.allowed_radius_meters} m` : '100 m';
+  const comp = (isObj && (errOrDistance.company_name || errOrDistance.company)) || 'Host Training Site';
+  const loc = (isObj && errOrDistance.location) || '';
 
+  const bd = document.createElement('div');
+  bd.className = 'modal-backdrop modal-backdrop--visible';
+  bd.innerHTML = `
+    <div class="modal modal--visible ojt-tracker-modal" style="max-width:440px;text-align:center;">
+      <div class="modal__body" style="padding:32px 24px 24px;">
+        <div style="width:64px;height:64px;border-radius:50%;background:rgba(239,68,68,0.12);color:#ef4444;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;box-shadow:0 0 0 6px rgba(239,68,68,0.06);">
+          ${icon('mapPin', 30)}
+        </div>
+        <h3 style="font-size:1.15rem;font-weight:800;margin-bottom:8px;color:#ef4444;">Outside OJT Site Radius</h3>
+        <p style="color:var(--text-secondary);font-size:0.87rem;line-height:1.55;margin-bottom:16px;">
+          You cannot record attendance while outside your host company premises.
+        </p>
+        <div style="padding:12px;background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:var(--radius-md);margin-bottom:20px;text-align:left;font-size:0.8rem;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+            <span style="color:var(--text-tertiary);">Host Company:</span>
+            <strong style="color:var(--text-primary);">${esc(comp)}</strong>
+          </div>
+          ${loc ? `
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+            <span style="color:var(--text-tertiary);">Location:</span>
+            <span style="color:var(--text-secondary);text-align:right;max-width:60%;">${esc(loc)}</span>
+          </div>` : ''}
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+            <span style="color:var(--text-tertiary);">Your Distance:</span>
+            <strong style="color:#ef4444;">${dist}</strong>
+          </div>
+          <div style="display:flex;justify-content:space-between;">
+            <span style="color:var(--text-tertiary);">Allowed Perimeter:</span>
+            <strong style="color:#005930;">Within ${allowed}</strong>
+          </div>
+        </div>
+        <p style="font-size:0.75rem;color:var(--text-tertiary);line-height:1.5;margin-bottom:20px;">
+          Please ensure you are physically present at your host company training premises with device GPS enabled before punching your daily attendance.
+        </p>
+        <button class="btn btn--primary" id="og-close" style="width:100%;padding:10px;">Understood</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(bd);
+  const close = () => bd.remove();
+  bd.querySelector('#og-close').addEventListener('click', close);
+  bd.addEventListener('click', e => { if (e.target === bd) close(); });
+}
+
+const showLocationWarning = showOutsideGeofenceModal;
+
+// ── Log In Modal ──────────────────────────────────────────────────────────────
+function showLogInModal(sessionLabelOrSuccess, ojtContextOrSuccess, onSuccessMaybe) {
+  const sessionLabel = typeof sessionLabelOrSuccess === 'string' ? sessionLabelOrSuccess : 'Log In';
+  let ojtContext = null;
+  let onSuccess = null;
+
+  if (typeof ojtContextOrSuccess === 'function') {
+    onSuccess = ojtContextOrSuccess;
+    ojtContext = typeof onSuccessMaybe === 'object' ? onSuccessMaybe : null;
+  } else {
+    ojtContext = typeof ojtContextOrSuccess === 'object' ? ojtContextOrSuccess : null;
+    onSuccess = typeof onSuccessMaybe === 'function' ? onSuccessMaybe : () => {};
+  }
+
+  let geoResult = null;
+  let computedDistance = null;
   const isAfternoon = sessionLabel.toLowerCase().includes('afternoon');
   const nowHM = currentTimeHHMM();
   const defaultTime = isAfternoon && nowHM < '13:00' ? '13:00' : nowHM;
@@ -2600,14 +2675,14 @@ function showLogInModal(sessionLabelOrSuccess, onSuccessMaybe) {
           ${icon('mapPin', 14)}
           <span class="text-xs" id="li-geo-label">Detecting your location…</span>
         </div>
-        <!-- shown only when geo fails -->
+        <!-- Alert panel for GPS errors or out-of-bounds geofence -->
         <div id="li-geo-fail-panel" style="display:none;margin-top:10px;padding:12px;background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.3);border-radius:var(--radius-md);">
-          <p style="font-size:0.78rem;font-weight:600;color:#ef4444;margin-bottom:6px;display:flex;align-items:center;gap:6px;">${icon('alertTriangle',13)} GPS Location Required</p>
-          <p style="font-size:0.72rem;color:var(--text-secondary);line-height:1.55;margin-bottom:10px;">GPS location is mandatory to record attendance. Please enable location permissions in your browser or device settings, then click <strong>Retry Location</strong>.</p>
-          <button class="btn btn--outline" id="li-retry" style="font-size:0.76rem;padding:5px 14px;display:inline-flex;align-items:center;gap:6px;">${icon('refreshCcw',13)} Retry Location</button>
+          <p id="li-fail-title" style="font-size:0.78rem;font-weight:600;color:#ef4444;margin-bottom:6px;display:flex;align-items:center;gap:6px;">${icon('alertTriangle',13)} GPS Location Required</p>
+          <p id="li-fail-desc" style="font-size:0.72rem;color:var(--text-secondary);line-height:1.55;margin-bottom:10px;">GPS location is mandatory to record attendance. Please enable location permissions in your browser or device settings, then click <strong>Retry Location</strong>.</p>
+          <button class="btn btn--outline" id="li-retry" type="button" style="font-size:0.76rem;padding:5px 14px;display:inline-flex;align-items:center;gap:6px;">${icon('refreshCcw',13)} Retry Location</button>
         </div>
         <p class="text-xs text-secondary" style="display:flex;align-items:flex-start;gap:6px;margin-top:10px;padding:10px 12px;background:var(--color-info-bg);border:1px solid var(--color-info);border-radius:var(--radius-md);line-height:1.5;">
-          ${icon('mapPin', 13)} GPS location is required to verify your attendance against the OJT work site geofence.
+          ${icon('mapPin', 13)} GPS location is verified against the host site perimeter (100m radius). Time-in is blocked outside this zone.
         </p>
       </div>
       <div class="modal__footer" style="flex-wrap:wrap;gap:8px;">
@@ -2626,6 +2701,7 @@ function showLogInModal(sessionLabelOrSuccess, onSuccessMaybe) {
 
   function attemptGeo() {
     geoResult = null;
+    computedDistance = null;
     submitBtn.disabled = true;
     failPanel.style.display = 'none';
     geoBox.style.background = 'var(--bg-secondary)';
@@ -2635,17 +2711,67 @@ function showLogInModal(sessionLabelOrSuccess, onSuccessMaybe) {
     requestGeo(geoBox, geoLabel).then(result => {
       geoResult = result;
       if (result && result.lat != null && result.lon != null) {
-        failPanel.style.display = 'none';
-        submitBtn.disabled = false;
+        const compLat = ojtContext?.companyLat != null ? Number(ojtContext.companyLat) : null;
+        const compLon = ojtContext?.companyLon != null ? Number(ojtContext.companyLon) : null;
+        const maxRadius = ojtContext?.geofenceRadius || 100;
+        const compName = ojtContext?.company || 'Host Training Site';
+
+        if (compLat != null && compLon != null) {
+          computedDistance = Math.round(haversineMeters(result.lat, result.lon, compLat, compLon));
+          if (computedDistance <= maxRadius) {
+            // Inside verified geofence perimeter
+            geoBox.style.background = 'var(--color-success-bg, rgba(16,185,129,0.1))';
+            geoBox.style.border = '1px solid var(--color-success, #10b981)';
+            geoLabel.innerHTML = `<span style="color:var(--color-success,#10b981);font-weight:700;">Within OJT site radius</span> <span style="color:var(--text-secondary);font-size:0.75rem;">(${computedDistance}m from ${esc(compName)})</span>`;
+            failPanel.style.display = 'none';
+            submitBtn.disabled = false;
+            submitBtn.title = '';
+          } else {
+            // Outside geofence boundary - BLOCK confirm
+            geoBox.style.background = 'rgba(239,68,68,0.08)';
+            geoBox.style.border = '1px solid rgba(239,68,68,0.4)';
+            geoLabel.innerHTML = `<span style="color:#ef4444;font-weight:700;">Outside OJT Site Radius</span> <span style="color:#ef4444;font-size:0.75rem;">(${computedDistance}m away · limit: ${maxRadius}m)</span>`;
+            failPanel.innerHTML = `
+              <p style="font-size:0.78rem;font-weight:700;color:#ef4444;margin-bottom:6px;display:flex;align-items:center;gap:6px;">
+                ${icon('alertTriangle', 14)} Outside Log-In Radius (${computedDistance}m away)
+              </p>
+              <p style="font-size:0.73rem;color:var(--text-secondary);line-height:1.55;margin-bottom:10px;">
+                You cannot time in because you are outside the host training site perimeter. You must be physically within <strong>${maxRadius} meters</strong> of <strong>${esc(compName)}</strong> to record attendance.
+              </p>
+              <button class="btn btn--outline" id="li-retry" type="button" style="font-size:0.76rem;padding:6px 14px;display:inline-flex;align-items:center;gap:6px;">
+                ${icon('refreshCcw', 13)} Re-check GPS Location
+              </button>
+            `;
+            failPanel.style.display = 'block';
+            failPanel.querySelector('#li-retry')?.addEventListener('click', attemptGeo);
+            submitBtn.disabled = true;
+            submitBtn.title = `Disabled: You are ${computedDistance}m away from the OJT site (must be within ${maxRadius}m)`;
+          }
+        } else {
+          // No coordinates configured on host posting
+          failPanel.style.display = 'none';
+          submitBtn.disabled = false;
+        }
       } else {
+        failPanel.innerHTML = `
+          <p style="font-size:0.78rem;font-weight:600;color:#ef4444;margin-bottom:6px;display:flex;align-items:center;gap:6px;">
+            ${icon('alertTriangle', 13)} GPS Location Required
+          </p>
+          <p style="font-size:0.72rem;color:var(--text-secondary);line-height:1.55;margin-bottom:10px;">
+            GPS location is mandatory to verify your attendance against the host site perimeter. Please enable location permissions in your browser or device settings, then click <strong>Retry Location</strong>.
+          </p>
+          <button class="btn btn--outline" id="li-retry" type="button" style="font-size:0.76rem;padding:5px 14px;display:inline-flex;align-items:center;gap:6px;">
+            ${icon('refreshCcw', 13)} Retry Location
+          </button>
+        `;
         failPanel.style.display = 'block';
+        failPanel.querySelector('#li-retry')?.addEventListener('click', attemptGeo);
         submitBtn.disabled = true;
       }
     });
   }
 
   retryBtn.addEventListener('click', attemptGeo);
-
   attemptGeo();
 
   const close = () => bd.remove();
@@ -2662,6 +2788,16 @@ function showLogInModal(sessionLabelOrSuccess, onSuccessMaybe) {
     }
     if (!geoResult || geoResult.lat == null || geoResult.lon == null) {
       showToast('GPS location is required to log attendance.', 'error');
+      return;
+    }
+    const maxRadius = ojtContext?.geofenceRadius || 100;
+    if (computedDistance != null && computedDistance > maxRadius) {
+      showOutsideGeofenceModal({
+        distance_meters: computedDistance,
+        allowed_radius_meters: maxRadius,
+        company_name: ojtContext?.company,
+        location: ojtContext?.location
+      });
       return;
     }
     close();
@@ -2684,10 +2820,30 @@ function parseTimeTo24(timeStr) {
 }
 
 // ── Log Out Modal ─────────────────────────────────────────────────────────────
-function showLogOutModal(todayLog, sessionLabelOrSuccess, onSuccessMaybe) {
-  const sessionLabel = typeof sessionLabelOrSuccess === 'string' ? sessionLabelOrSuccess : 'Log Out';
-  const onSuccess = typeof sessionLabelOrSuccess === 'function' ? sessionLabelOrSuccess : onSuccessMaybe;
+function showLogOutModal(todayLog, sessionLabelOrOjt, ojtContextOrSuccess, onSuccessMaybe) {
+  let sessionLabel = 'Log Out';
+  let ojtContext = null;
+  let onSuccess = null;
+
+  if (typeof sessionLabelOrOjt === 'string') {
+    sessionLabel = sessionLabelOrOjt;
+    if (typeof ojtContextOrSuccess === 'function') {
+      onSuccess = ojtContextOrSuccess;
+      ojtContext = typeof onSuccessMaybe === 'object' ? onSuccessMaybe : null;
+    } else {
+      ojtContext = typeof ojtContextOrSuccess === 'object' ? ojtContextOrSuccess : null;
+      onSuccess = typeof onSuccessMaybe === 'function' ? onSuccessMaybe : () => {};
+    }
+  } else if (typeof sessionLabelOrOjt === 'object') {
+    ojtContext = sessionLabelOrOjt;
+    onSuccess = typeof ojtContextOrSuccess === 'function' ? ojtContextOrSuccess : () => {};
+  } else if (typeof sessionLabelOrOjt === 'function') {
+    onSuccess = sessionLabelOrOjt;
+  }
+
   let geoResult = null;
+  let computedDistance = null;
+  let isWithinGeofence = true;
 
   const isMorning = sessionLabel.toLowerCase().includes('lunch') || sessionLabel.toLowerCase().includes('morning');
   const loggedInAt = isMorning ? (todayLog?.morningIn || todayLog?.timeIn || '—') : (todayLog?.afternoonIn || todayLog?.timeIn || '—');
@@ -2695,8 +2851,6 @@ function showLogOutModal(todayLog, sessionLabelOrSuccess, onSuccessMaybe) {
   const nowHM = currentTimeHHMM();
 
   // Smart default value:
-  // If current device time is earlier than time in (e.g. testing during off-hours, or same minute):
-  // Default to regular shift end (e.g. '17:00' for afternoon, '12:00' for morning) so user does not get an invalid time.
   let defaultTimeOut = nowHM;
   if (loggedIn24 && nowHM < loggedIn24) {
     if (isMorning) {
@@ -2731,12 +2885,15 @@ function showLogOutModal(todayLog, sessionLabelOrSuccess, onSuccessMaybe) {
           ${icon('mapPin', 14)}
           <span class="text-xs" id="lo-geo-label">Detecting your location…</span>
         </div>
-        <!-- shown only when geo fails -->
+        <!-- Alert panel for GPS errors or out-of-bounds geofence -->
         <div id="lo-geo-fail-panel" style="display:none;margin-top:10px;padding:12px;background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.3);border-radius:var(--radius-md);">
           <p style="font-size:0.78rem;font-weight:600;color:#ef4444;margin-bottom:6px;display:flex;align-items:center;gap:6px;">${icon('alertTriangle',13)} GPS Location Required</p>
           <p style="font-size:0.72rem;color:var(--text-secondary);line-height:1.55;margin-bottom:10px;">GPS location is mandatory to record attendance. Please allow location permissions in your browser or device settings, then click <strong>Retry Location</strong>.</p>
-          <button class="btn btn--outline" id="lo-retry" style="font-size:0.76rem;padding:5px 14px;display:inline-flex;align-items:center;gap:6px;">${icon('refreshCcw',13)} Retry Location</button>
+          <button class="btn btn--outline" id="lo-retry" type="button" style="font-size:0.76rem;padding:5px 14px;display:inline-flex;align-items:center;gap:6px;">${icon('refreshCcw',13)} Retry Location</button>
         </div>
+        <p class="text-xs text-secondary" style="display:flex;align-items:flex-start;gap:6px;margin-top:10px;padding:10px 12px;background:var(--color-info-bg);border:1px solid var(--color-info);border-radius:var(--radius-md);line-height:1.5;">
+          ${icon('mapPin', 13)} GPS location is verified against the host site perimeter (100m radius). Time-out is blocked outside this zone.
+        </p>
       </div>
       <div class="modal__footer" style="flex-wrap:wrap;gap:8px;">
         <button class="btn btn--outline" id="lo-cancel">Cancel</button>
@@ -2775,8 +2932,10 @@ function showLogOutModal(todayLog, sessionLabelOrSuccess, onSuccessMaybe) {
       return false;
     } else {
       warningEl.style.display = 'none';
-      if (geoResult && geoResult.lat != null && geoResult.lon != null) {
+      if (geoResult && geoResult.lat != null && geoResult.lon != null && isWithinGeofence) {
         submitBtn.disabled = false;
+      } else {
+        submitBtn.disabled = true;
       }
       return true;
     }
@@ -2787,6 +2946,8 @@ function showLogOutModal(todayLog, sessionLabelOrSuccess, onSuccessMaybe) {
 
   function attemptGeo() {
     geoResult = null;
+    computedDistance = null;
+    isWithinGeofence = false;
     submitBtn.disabled = true;
     failPanel.style.display = 'none';
     geoBox.style.background = 'var(--bg-secondary)';
@@ -2796,17 +2957,67 @@ function showLogOutModal(todayLog, sessionLabelOrSuccess, onSuccessMaybe) {
     requestGeo(geoBox, geoLabel).then(result => {
       geoResult = result;
       if (result && result.lat != null && result.lon != null) {
-        failPanel.style.display = 'none';
-        checkTimeValidity();
+        const compLat = ojtContext?.companyLat != null ? Number(ojtContext.companyLat) : null;
+        const compLon = ojtContext?.companyLon != null ? Number(ojtContext.companyLon) : null;
+        const maxRadius = ojtContext?.geofenceRadius || 100;
+        const compName = ojtContext?.company || 'Host Training Site';
+
+        if (compLat != null && compLon != null) {
+          computedDistance = Math.round(haversineMeters(result.lat, result.lon, compLat, compLon));
+          if (computedDistance <= maxRadius) {
+            isWithinGeofence = true;
+            geoBox.style.background = 'var(--color-success-bg, rgba(16,185,129,0.1))';
+            geoBox.style.border = '1px solid var(--color-success, #10b981)';
+            geoLabel.innerHTML = `<span style="color:var(--color-success,#10b981);font-weight:700;">Within OJT site radius</span> <span style="color:var(--text-secondary);font-size:0.75rem;">(${computedDistance}m from ${esc(compName)})</span>`;
+            failPanel.style.display = 'none';
+            checkTimeValidity();
+          } else {
+            isWithinGeofence = false;
+            geoBox.style.background = 'rgba(239,68,68,0.08)';
+            geoBox.style.border = '1px solid rgba(239,68,68,0.4)';
+            geoLabel.innerHTML = `<span style="color:#ef4444;font-weight:700;">Outside OJT Site Radius</span> <span style="color:#ef4444;font-size:0.75rem;">(${computedDistance}m away · limit: ${maxRadius}m)</span>`;
+            failPanel.innerHTML = `
+              <p style="font-size:0.78rem;font-weight:700;color:#ef4444;margin-bottom:6px;display:flex;align-items:center;gap:6px;">
+                ${icon('alertTriangle', 14)} Outside Log-Out Radius (${computedDistance}m away)
+              </p>
+              <p style="font-size:0.73rem;color:var(--text-secondary);line-height:1.55;margin-bottom:10px;">
+                You cannot time out because you are outside the host training site perimeter. You must be physically within <strong>${maxRadius} meters</strong> of <strong>${esc(compName)}</strong> to record your exit.
+              </p>
+              <button class="btn btn--outline" id="lo-retry" type="button" style="font-size:0.76rem;padding:6px 14px;display:inline-flex;align-items:center;gap:6px;">
+                ${icon('refreshCcw', 13)} Re-check GPS Location
+              </button>
+            `;
+            failPanel.style.display = 'block';
+            failPanel.querySelector('#lo-retry')?.addEventListener('click', attemptGeo);
+            submitBtn.disabled = true;
+            submitBtn.title = `Disabled: You are ${computedDistance}m away from the OJT site (must be within ${maxRadius}m)`;
+          }
+        } else {
+          isWithinGeofence = true;
+          failPanel.style.display = 'none';
+          checkTimeValidity();
+        }
       } else {
+        isWithinGeofence = false;
+        failPanel.innerHTML = `
+          <p style="font-size:0.78rem;font-weight:600;color:#ef4444;margin-bottom:6px;display:flex;align-items:center;gap:6px;">
+            ${icon('alertTriangle', 13)} GPS Location Required
+          </p>
+          <p style="font-size:0.72rem;color:var(--text-secondary);line-height:1.55;margin-bottom:10px;">
+            GPS location is mandatory to verify your attendance against the host site perimeter. Please allow location permissions in your browser or device settings, then click <strong>Retry Location</strong>.
+          </p>
+          <button class="btn btn--outline" id="lo-retry" type="button" style="font-size:0.76rem;padding:5px 14px;display:inline-flex;align-items:center;gap:6px;">
+            ${icon('refreshCcw', 13)} Retry Location
+          </button>
+        `;
         failPanel.style.display = 'block';
+        failPanel.querySelector('#lo-retry')?.addEventListener('click', attemptGeo);
         submitBtn.disabled = true;
       }
     });
   }
 
   retryBtn.addEventListener('click', attemptGeo);
-
   attemptGeo();
 
   const close = () => bd.remove();
@@ -2825,34 +3036,19 @@ function showLogOutModal(todayLog, sessionLabelOrSuccess, onSuccessMaybe) {
       showToast('GPS location is required to log attendance.', 'error');
       return;
     }
+    const maxRadius = ojtContext?.geofenceRadius || 100;
+    if (computedDistance != null && computedDistance > maxRadius) {
+      showOutsideGeofenceModal({
+        distance_meters: computedDistance,
+        allowed_radius_meters: maxRadius,
+        company_name: ojtContext?.company,
+        location: ojtContext?.location
+      });
+      return;
+    }
     close();
     onSuccess(timeVal, geoResult.lat, geoResult.lon);
   });
-}
-
-// ── Location Warning Popup ────────────────────────────────────────────────────
-function showLocationWarning(distanceMeters) {
-  const bd = document.createElement('div');
-  bd.className = 'modal-backdrop modal-backdrop--visible';
-  bd.innerHTML = `
-    <div class="modal modal--visible" style="max-width:380px;text-align:center;">
-      <div class="modal__body" style="padding:32px 24px;">
-        <div style="width:60px;height:60px;border-radius:50%;background:rgba(239,68,68,0.12);color:#ef4444;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:28px;">
-          ${icon('alertTriangle', 28)}
-        </div>
-        <h3 style="font-size:1.1rem;font-weight:800;margin-bottom:8px;color:#ef4444;">Location Are Too Far</h3>
-        <p style="color:var(--text-secondary);font-size:0.9rem;line-height:1.5;margin-bottom:20px;">
-          You are <strong>${distanceMeters != null ? distanceMeters + ' m' : 'too far'}</strong> away from the OJT site.<br>
-          Your log-in was recorded but marked as <strong>Too Far</strong>.
-        </p>
-        <button class="btn btn--primary" id="lw-ok">OK, Understood</button>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(bd);
-  const close = () => bd.remove();
-  bd.querySelector('#lw-ok').addEventListener('click', close);
-  bd.addEventListener('click', e => { if (e.target === bd) close(); });
 }
 
 

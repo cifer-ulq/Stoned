@@ -16,6 +16,7 @@ import { registerRoute, initRouter } from './router.js';
 import { createNavbar, createMobileBottomNav } from './components/navbar.js';
 import { createSidebarLeft } from './components/sidebar-left.js';
 import { apiGet, apiCache, revalidateEndpoint } from './api/client.js';
+import { checkAndEnforceTermsGate } from '@shared/terms-policy.js';
 
 import dashboardPage from './pages/dashboard.js';
 import traineesPage from './pages/trainees.js';
@@ -273,6 +274,14 @@ async function initApp() {
   } catch (_) {
     // Network or server error — proceed with cached store session
   }
+
+  // Universal Gate for Terms of Service & Privacy Policy
+  try {
+    const activeUser = JSON.parse(localStorage.getItem('hireme_user') || 'null');
+    if (activeUser && !activeUser.must_change_password) {
+      checkAndEnforceTermsGate(activeUser);
+    }
+  } catch (_) {}
 
   // Apply saved theme
   const theme = getState('ui.theme');
