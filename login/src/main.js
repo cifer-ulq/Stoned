@@ -26,7 +26,9 @@ function escapeHtml(str) {
 
 /* ── State ── */
 const urlParams = new URLSearchParams(window.location.search);
-let currentView = urlParams.get('view') === 'forgot' ? 'forgot' : 'signin'; // 'signin' | 'signup' | 'company-signup' | 'company-success' | 'forgot' | 'forgot-success'
+const validViews = ['signin', 'signup', 'company-signup', 'company-success', 'forgot', 'forgot-success'];
+const reqView = urlParams.get('view');
+let currentView = validViews.includes(reqView) ? reqView : 'signin';
 let resetSuccess = urlParams.get('reset') === 'success';
 let resetRequestedEmail = '';
 let resendTimer = null;
@@ -364,30 +366,32 @@ function renderCompanySignupForm() {
         <div class="lf-field">
           <div class="lf-field__wrap cr-select-wrap" id="wrap-cr-industry">
             <span class="lf-field__icon">${icon('briefcase', 18)}</span>
-            <select class="lf-field__input cr-select" id="cr-industry" name="industry">
-              <option value="">Select industry…</option>
-              <option>Software Development</option>
-              <option>IT Consulting</option>
-              <option>Cloud Services</option>
-              <option>Data Analytics &amp; AI</option>
-              <option>Cybersecurity</option>
-              <option>Digital Design &amp; UX</option>
-              <option>IT Outsourcing</option>
-              <option>Telecommunications</option>
-              <option>BPO / Call Center</option>
-              <option>Accounting &amp; Finance</option>
-              <option>Marketing &amp; Advertising</option>
-              <option>Manufacturing</option>
-              <option>Healthcare &amp; Medical</option>
-              <option>Education</option>
-              <option>Government</option>
-              <option>Non-profit / NGO</option>
-              <option>Retail &amp; E-commerce</option>
-              <option>Hospitality &amp; Tourism</option>
-              <option>Construction &amp; Engineering</option>
-              <option>Logistics &amp; Transportation</option>
-              <option>Other</option>
+            <select class="lf-field__input cr-select" id="cr-industry" name="industry" required>
+              <option value="" disabled selected hidden>Select industry…</option>
+              <option value="Software Development">Software Development</option>
+              <option value="IT Consulting">IT Consulting</option>
+              <option value="Cloud Services">Cloud Services</option>
+              <option value="Data Analytics &amp; AI">Data Analytics &amp; AI</option>
+              <option value="Cybersecurity">Cybersecurity</option>
+              <option value="Digital Design &amp; UX">Digital Design &amp; UX</option>
+              <option value="IT Outsourcing">IT Outsourcing</option>
+              <option value="Telecommunications">Telecommunications</option>
+              <option value="BPO / Call Center">BPO / Call Center</option>
+              <option value="Accounting &amp; Finance">Accounting &amp; Finance</option>
+              <option value="Marketing &amp; Advertising">Marketing &amp; Advertising</option>
+              <option value="Manufacturing">Manufacturing</option>
+              <option value="Healthcare &amp; Medical">Healthcare &amp; Medical</option>
+              <option value="Education">Education</option>
+              <option value="Government">Government</option>
+              <option value="Non-profit / NGO">Non-profit / NGO</option>
+              <option value="Retail &amp; E-commerce">Retail &amp; E-commerce</option>
+              <option value="Hospitality &amp; Tourism">Hospitality &amp; Tourism</option>
+              <option value="Construction &amp; Engineering">Construction &amp; Engineering</option>
+              <option value="Logistics &amp; Transportation">Logistics &amp; Transportation</option>
+              <option value="Other">Other</option>
             </select>
+            <label class="lf-field__label" for="cr-industry">Industry</label>
+            <span class="cr-select-arrow" aria-hidden="true">${icon('chevron-down', 16)}</span>
           </div>
           <span class="lf-field__error" id="err-cr-industry"></span>
         </div>
@@ -739,6 +743,24 @@ function attachEvents() {
 
   // Form submit — company
   document.getElementById('company-form')?.addEventListener('submit', handleCompanySubmit);
+
+  // Industry select handler — sync floating label & clear field error on selection
+  const crIndustry = document.getElementById('cr-industry');
+  if (crIndustry) {
+    if (crIndustry.value) crIndustry.classList.add('has-value');
+    crIndustry.addEventListener('change', () => {
+      crIndustry.classList.toggle('has-value', Boolean(crIndustry.value));
+      if (crIndustry.value) {
+        const wrap = document.getElementById('wrap-cr-industry');
+        const err  = document.getElementById('err-cr-industry');
+        wrap?.classList.remove('lf-field__wrap--error');
+        if (err) {
+          err.textContent = '';
+          err.classList.remove('lf-field__error--visible');
+        }
+      }
+    });
+  }
 
   // Forgot password link click
   document.querySelector('.login-forgot')?.addEventListener('click', (e) => {

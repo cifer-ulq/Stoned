@@ -592,6 +592,18 @@
 .login-submit:active { transform: scale(0.98); }
 .login-submit:disabled { opacity: 0.6; cursor: not-allowed; transform: none !important; box-shadow: 0 4px 18px rgba(0,89,48,0.2); }
 
+.login-submit span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.login-submit svg {
+  display: inline-block;
+  flex-shrink: 0;
+}
+
 .login-spinner {
   display: inline-block;
   width: 16px; height: 16px;
