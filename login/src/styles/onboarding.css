@@ -38,12 +38,12 @@
 }
 .ob-bg-orb--2 {
   width: 600px; height: 600px;
-  background: rgba(139, 92, 246, 0.45);
+  background: rgba(26, 122, 74, 0.40);
   bottom: -200px; right: -200px;
   animation: obOrb2 28s ease-in-out infinite alternate;
 }
 [data-theme="dark"] .ob-bg-orb--1 { background: rgba(0, 89, 48, 0.20); }
-[data-theme="dark"] .ob-bg-orb--2 { background: rgba(139, 92, 246, 0.16); }
+[data-theme="dark"] .ob-bg-orb--2 { background: rgba(26, 122, 74, 0.18); }
 @keyframes obOrb1 {
   from { transform: translate(0, 0) scale(1); }
   to   { transform: translate(70px, 50px) scale(1.15); }
@@ -101,7 +101,7 @@
    ══════════════════════════════════════════════════════════════ */
 .ob-panel {
   width: 268px; flex-shrink: 0;
-  background: linear-gradient(160deg, #3B5CE6 0%, #7C3AED 100%);
+  background: linear-gradient(160deg, #004020 0%, #005930 55%, #13693B 100%);
   padding: 2.25rem 1.75rem;
   display: flex; flex-direction: column;
   position: relative; overflow: hidden;
@@ -742,9 +742,9 @@
   transform: translateX(-3px);
 }
 .ob-nav__btn--next {
-  background: linear-gradient(135deg, #005930 0%, #7C3AED 100%);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
   color: #fff;
-  box-shadow: 0 4px 18px rgba(0, 89, 48, 0.40);
+  box-shadow: 0 4px 18px rgba(0, 89, 48, 0.35);
   padding-left: 30px; padding-right: 30px;
 }
 .ob-nav__btn--next::before {
@@ -754,7 +754,7 @@
   opacity: 0; transition: opacity 0.25s ease;
 }
 .ob-nav__btn--next:hover {
-  box-shadow: 0 8px 28px rgba(0, 89, 48, 0.52);
+  box-shadow: 0 8px 28px rgba(0, 89, 48, 0.50);
   transform: translateY(-2px);
 }
 .ob-nav__btn--next:hover::before { opacity: 1; }

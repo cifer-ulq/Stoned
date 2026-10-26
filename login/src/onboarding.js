@@ -83,8 +83,8 @@ const userTypes = [
     title: 'Student',
     subtitle: 'Currently enrolled',
     desc: 'Build your portfolio, find OJT placements, and track your academic journey.',
-    color: '#4A6CF7',
-    gradient: 'linear-gradient(135deg, #4A6CF7 0%, #6D8DFF 100%)',
+    color: '#005930',
+    gradient: 'linear-gradient(135deg, #005930 0%, #1A7A4A 100%)',
     tags: ['OJT Tracking', 'Portfolio', 'Academic'],
   },
   {
@@ -130,7 +130,7 @@ function createParticles() {
 
   function draw() {
     ctx.clearRect(0, 0, w, h);
-    const color = '74, 108, 247';
+    const color = '0, 89, 48';
     particles.forEach((p, i) => {
       p.x += p.dx; p.y += p.dy;
       if (p.x < 0 || p.x > w) p.dx *= -1;
@@ -164,7 +164,7 @@ function createParticles() {
    CONFETTI
    ══════════════════════════════════════ */
 function launchConfetti() {
-  const colors = ['#4A6CF7', '#8B5CF6', '#06b6d4', '#f59e0b', '#34C759', '#FF6B6B'];
+  const colors = ['#005930', '#10B981', '#34D399', '#F59E0B', '#1A7A4A', '#22C55E'];
   const container = document.createElement('div');
   container.className = 'ob-confetti';
   document.body.appendChild(container);
@@ -259,7 +259,7 @@ function renderTemporaryPasswordFlow(cachedUser) {
         <!-- ═══ RIGHT MAIN ═══ -->
         <main class="ob-main" style="display: flex; flex-direction: column; justify-content: space-between;">
           <div class="ob-main__topbar">
-            <span class="ob-main__step-badge" style="background: rgba(74, 108, 247, 0.12); color: #4A6CF7; border: 1px solid rgba(74, 108, 247, 0.25);">
+            <span class="ob-main__step-badge" style="background: rgba(0, 89, 48, 0.10); color: var(--color-primary); border: 1px solid rgba(0, 89, 48, 0.22);">
               Required Security Setup
             </span>
             <button class="ob-theme-toggle" id="theme-toggle" aria-label="Toggle theme">
@@ -272,7 +272,7 @@ function renderTemporaryPasswordFlow(cachedUser) {
               
               <!-- Title & Header -->
               <div style="margin-bottom: 20px;">
-                <div style="display: inline-flex; align-items: center; gap: 8px; color: #4A6CF7; font-weight: 700; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px;">
+                <div style="display: inline-flex; align-items: center; gap: 8px; color: var(--color-primary); font-weight: 700; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px;">
                   ${icon('lock', 16)} Temporary Password Detected
                 </div>
                 <h1 style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary); margin-bottom: 6px;">
