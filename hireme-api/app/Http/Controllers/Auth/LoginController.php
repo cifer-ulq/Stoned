@@ -323,7 +323,11 @@ class LoginController extends Controller
                 'must_change_password' => false,
                 'onboarding_completed' => $user->onboarding_completed,
                 'avatar_url'           => $user->avatar_url,
+                'company_profile'      => $user->companyProfile,
                 'student_profile'      => $user->studentProfile,
+                'supervisor_profile'   => $user->supervisorProfile,
+                'jobseeker_profile'    => $user->jobseekerProfile,
+                'graduate_profile'     => $user->graduateProfile,
             ],
         ]);
     }

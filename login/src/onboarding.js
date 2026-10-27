@@ -212,12 +212,15 @@ function renderTemporaryPasswordFlow(cachedUser) {
   }
 
   const isSupervisor = cachedUser?.role === 'supervisor';
-  const roleTitle = isSupervisor ? 'Supervisor' : 'Student';
-  const userName = cachedUser?.name ? escapeHtml(cachedUser.name) : roleTitle;
-  const userEmail = cachedUser?.email ? escapeHtml(cachedUser.email) : '';
+  const isGraduate   = cachedUser?.role === 'graduate' || cachedUser?.role === 'jobseeker';
+  const roleTitle    = isSupervisor ? 'Supervisor' : (isGraduate ? 'Alumni' : 'Student');
+  const userName     = cachedUser?.name ? escapeHtml(cachedUser.name) : roleTitle;
+  const userEmail    = cachedUser?.email ? escapeHtml(cachedUser.email) : '';
   const descriptionText = isSupervisor
     ? 'Your OJT Supervisor account was created with a temporary password. Please create a personal, secure password to continue to your supervision dashboard.'
-    : 'Your student account was created by the CIER Admin with a temporary password. Please create a personal, secure password to continue to your dashboard.';
+    : (isGraduate
+      ? 'Your alumni account was registered by the CIER Admin with a temporary password. Please create a personal, secure password to continue to your career network dashboard.'
+      : 'Your student account was created by the CIER Admin with a temporary password. Please create a personal, secure password to continue to your dashboard.');
 
   app.innerHTML = `
     <div class="ob-page">

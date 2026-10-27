@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Mail\CompanyInvitation;
 use App\Mail\StudentWelcome;
+use App\Mail\AlumniWelcome;
 use App\Models\User;
 use App\Models\CompanyProfile;
 use App\Models\StudentProfile;
@@ -2569,11 +2570,14 @@ class AdminController extends Controller
         }
 
         // ── Process rows ─────────────────────────────────────────────────────
-        $imported       = 0;
-        $skipped        = 0;
-        $errors         = [];
-        $seenEmails     = [];
-        $seenStudentIds = [];
+        $imported            = 0;
+        $skipped             = 0;
+        $errors              = [];
+        $seenEmails          = [];
+        $seenStudentIds       = [];
+        $importedCredentials = [];
+        $mailErrors          = [];
+        $smtpDead            = false;
 
         $get = function (array $values, string $key) use ($idx): ?string {
             if (! isset($idx[$key])) return null;
@@ -2645,13 +2649,20 @@ class AdminController extends Controller
 
             // ── Create records atomically ────────────────────────────────────
             try {
+                $rawId = trim((string) $studentId);
+                $tempPassword = 'CHMSU@' . preg_replace('/\s+/', '', $rawId);
+                if (strlen($tempPassword) < 8) {
+                    $tempPassword = 'CHMSU@' . str_pad($rawId, 6, '0', STR_PAD_LEFT);
+                }
+
                 DB::transaction(function () use (
-                    $name, $email, $studentId, $course, $section, $campus, $batch
+                    $name, $email, $studentId, $course, $section, $campus, $batch, $tempPassword
                 ) {
                     $user = User::create([
                         'name'                 => $name,
                         'email'                => $email,
-                        'password'             => Hash::make($studentId),   // Student ID = default password
+                        'password'             => Hash::make($tempPassword),
+                        'must_change_password' => true,
                         'role'                 => 'graduate',
                         'onboarding_completed' => true,
                     ]);
@@ -2692,20 +2703,41 @@ class AdminController extends Controller
                     } catch (\Throwable $ne) {
                         // Non-critical notification failure
                     }
-
-                    // Optional welcome email
-                    try {
-                        Mail::to($email)->queue(new StudentWelcome(
-                            studentName: $name,
-                            email:       $email,
-                            studentId:   $studentId,
-                            program:     $course,
-                            campus:      $campus,
-                        ));
-                    } catch (\Throwable $me) {
-                        // Non-critical mail failure
-                    }
                 });
+
+                // Send welcome email with credentials outside DB transaction with SMTP fail-fast protection
+                if (! $smtpDead) {
+                    try {
+                        Mail::to($email)->send(new AlumniWelcome(
+                            alumniName:        $name,
+                            email:             $email,
+                            studentId:         $studentId,
+                            program:           $course,
+                            campus:            $campus,
+                            batch:             $batch,
+                            temporaryPassword: $tempPassword,
+                        ));
+                    } catch (\Throwable $mailError) {
+                        $errMsg = $mailError->getMessage();
+                        \Log::warning("Failed to deliver alumni welcome email to {$email}: {$errMsg}");
+                        $mailErrors[] = "{$email}: {$errMsg}";
+
+                        if (str_contains(strtolower($errMsg), 'timed out') || str_contains(strtolower($errMsg), 'connection could not be established')) {
+                            $smtpDead = true;
+                            $mailErrors[] = 'SMTP unreachable; skipped remaining email dispatches for this batch (credentials still generated).';
+                        }
+                    }
+                }
+
+                $importedCredentials[] = [
+                    'name'               => $name,
+                    'email'              => $email,
+                    'student_id'         => $studentId,
+                    'course'             => $course,
+                    'batch'              => $batch,
+                    'section'            => $section ?? '—',
+                    'temporary_password' => $tempPassword,
+                ];
 
                 $imported++;
 
@@ -2720,12 +2752,14 @@ class AdminController extends Controller
         }
 
         return response()->json([
-            'success'  => true,
-            'imported' => $imported,
-            'skipped'  => $skipped,
-            'errors'   => $errors,
-            'message'  => $imported > 0
-                ? "Successfully registered $imported alumni record(s)."
+            'success'     => true,
+            'imported'    => $imported,
+            'skipped'     => $skipped,
+            'errors'      => $errors,
+            'credentials' => $importedCredentials,
+            'mail_errors' => $mailErrors,
+            'message'     => $imported > 0
+                ? "Successfully registered $imported alumni record(s)." . (!empty($mailErrors) ? " (Note: Email sending encountered an issue; see mail_errors or use downloaded credentials)." : " Credentials generated and welcome emails sent.")
                 : 'No alumni records were imported.',
         ]);
     }

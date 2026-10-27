@@ -53,6 +53,10 @@ async function initAuth() {
   if (cached) {
     try {
       const u = JSON.parse(cached);
+      if (u.must_change_password) {
+        window.location.href = '../login/onboarding.html?mode=temporary-password';
+        return false;
+      }
       applyUserToStore(u);
     } catch (_) { /* ignore */ }
   }
@@ -62,7 +66,13 @@ async function initAuth() {
     const data = await apiGet('/auth/me');
     if (!data) return false;
 
-    const role = data.data?.role || data.role;
+    const userData = data.data || data;
+    if (userData.must_change_password) {
+      window.location.href = '../login/onboarding.html?mode=temporary-password';
+      return false;
+    }
+
+    const role = userData.role;
     if (role && role !== 'jobseeker' && role !== 'graduate') {
       const destinations = {
         student:    '../main/',
@@ -74,8 +84,8 @@ async function initAuth() {
       return false;
     }
 
-    applyUserToStore(data.data || data);
-    localStorage.setItem('hireme_user', JSON.stringify(data.data || data));
+    applyUserToStore(userData);
+    localStorage.setItem('hireme_user', JSON.stringify(userData));
   } catch {
     // Network error — keep using cached user
   }
