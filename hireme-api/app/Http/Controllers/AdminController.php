@@ -1536,13 +1536,122 @@ class AdminController extends Controller
         ];
     }
 
+    private function computeOjtSuitability(
+        string $studentProgram,
+        array $preferredCourses,
+        array $requiredSkills,
+        array $studentSkills,
+        array $skillLevels,
+        array $projects,
+        array $achievements,
+    ): array {
+        // ── 1. Academic Program Alignment (0-100) ───────────────────────────
+        $normStudentProgram = \App\Services\CourseNormalizer::normalize($studentProgram);
+        $normPreferred = array_values(array_filter(array_map(
+            fn($c) => \App\Services\CourseNormalizer::normalize(trim((string) $c)),
+            $preferredCourses
+        )));
+
+        if (empty($normPreferred)) {
+            $courseScore = 100;
+            $courseAlignmentLabel = 'All Programs Welcome';
+        } elseif (in_array($normStudentProgram, $normPreferred, true)) {
+            $courseScore = 100;
+            $courseAlignmentLabel = 'Direct Match';
+        } else {
+            $itCluster = [
+                'Bachelor of Science in Information Technology',
+                'Bachelor of Science in Computer Science',
+                'Bachelor of Science in Information Systems',
+            ];
+            $isStudentInCluster  = in_array($normStudentProgram, $itCluster, true);
+            $hasClusterPreferred = !empty(array_intersect($normPreferred, $itCluster));
+
+            if ($isStudentInCluster && $hasClusterPreferred) {
+                $courseScore = 75;
+                $courseAlignmentLabel = 'Related Discipline';
+            } else {
+                $courseScore = 25;
+                $courseAlignmentLabel = 'Different Field';
+            }
+        }
+
+        // ── 2. Technical Skills Match (0-100) ────────────────────────────────
+        $reqCount = count($requiredSkills);
+        $matchedSkills = !empty($requiredSkills) ? array_intersect($studentSkills, $requiredSkills) : [];
+        $matchedCount  = count($matchedSkills);
+
+        if ($reqCount > 0) {
+            $skillMatchScore = ($matchedCount / $reqCount) * 100;
+        } else {
+            $skillMatchScore = !empty($studentSkills) ? 80 : 50;
+        }
+
+        // ── 3. Skill Proficiency (0-100) ────────────────────────────────────
+        if ($matchedCount > 0) {
+            $levels = array_map(
+                fn($sk) => $skillLevels[$sk] ?? 50,
+                $matchedSkills
+            );
+            $proficiencyScore = array_sum($levels) / count($levels);
+        } else {
+            $proficiencyScore = $reqCount === 0 && !empty($studentSkills) ? 60 : 0;
+        }
+
+        // ── 4. Academic & Portfolio Projects (0-100) ────────────────────────
+        $projRaw = 0;
+        foreach ($projects as $proj) {
+            $stack = array_map(
+                fn($t) => strtolower(trim((string) $t)),
+                $this->toSafeArray($proj->tech_stack)
+            );
+            $overlap = array_intersect($stack, $requiredSkills);
+            if (!empty($overlap)) {
+                $projRaw += (bool) $proj->is_featured ? 50 : 35;
+            } elseif (!empty($stack)) {
+                $projRaw += 15;
+            }
+        }
+        $projectScore = min($projRaw, 100);
+
+        // ── 5. Certifications & Achievements (0-100) ────────────────────────
+        $certPoints = ['certification' => 40, 'professional' => 30, 'competition' => 25, 'academic' => 15];
+        $certRaw = 0;
+        foreach ($achievements as $ach) {
+            $type = $ach->type ?? 'academic';
+            $certRaw += $certPoints[$type] ?? 10;
+        }
+        $certScore = min($certRaw, 100);
+
+        // ── Weighted Total for OJT Suitability ───────────────────────────────
+        // Course: 30%, Skills: 35%, Proficiency: 15%, Projects: 15%, Certs: 5%
+        $total = ($courseScore       * 0.30)
+               + ($skillMatchScore   * 0.35)
+               + ($proficiencyScore  * 0.15)
+               + ($projectScore      * 0.15)
+               + ($certScore         * 0.05);
+
+        return [
+            'score'            => (int) round($total),
+            'matched_count'    => $matchedCount,
+            'course_alignment' => $courseAlignmentLabel,
+            'breakdown'        => [
+                'course_alignment' => (int) round($courseScore),
+                'skill_match'      => (int) round($skillMatchScore),
+                'proficiency'      => (int) round($proficiencyScore),
+                'projects'         => (int) round($projectScore),
+                'certifications'   => (int) round($certScore),
+            ],
+        ];
+    }
+
     public function skillsMatching(Request $request)
     {
         $this->requireAdmin($request);
 
         try {
-            // 1. Load all students AND graduates with all relevant relations
-            $students = User::whereIn('role', ['student', 'graduate'])
+            // 1. Load all candidates (students and graduates) with relations
+            $candidates = User::whereIn('role', ['student', 'graduate'])
                 ->with([
                     'studentProfile',
                     'graduateProfile',
@@ -1552,12 +1661,12 @@ class AdminController extends Controller
                 ])
                 ->get();
 
-            $studentIds = $students->pluck('id');
+            $candidateIds = $candidates->pluck('id');
 
             // Skills from student_skills table — keep both name list AND level map
-            $rawSkillRows = StudentSkill::whereIn('user_id', $studentIds)->get();
+            $rawSkillRows = StudentSkill::whereIn('user_id', $candidateIds)->get();
 
-            // name list per user  (for skill-match check)
+            // name list per user (for skill-match check)
             $tableSkills = $rawSkillRows
                 ->groupBy('user_id')
                 ->map(fn($g) => $g->pluck('name')
@@ -1565,21 +1674,21 @@ class AdminController extends Controller
                     ->toArray()
                 );
 
-            // proficiency map per user:  lowercase_name => level(0-100)
+            // proficiency map per user: lowercase_name => level(0-100)
             $levelMap = $rawSkillRows
                 ->groupBy('user_id')
                 ->map(fn($g) => $g->mapWithKeys(
                     fn($row) => [strtolower(trim($row->name)) => (int) $row->level]
                 )->toArray());
 
-            // Build combined skills map: student_skills + student_experiences[].skills
+            // Build combined skills map: student_skills + experiences[].skills
             $skillsMap = [];
-            foreach ($students as $user) {
+            foreach ($candidates as $user) {
                 $skills = $tableSkills[$user->id] ?? [];
                 foreach ($user->experiences as $exp) {
                     foreach ($this->toSafeArray($exp->skills) as $sk) {
                         $norm = strtolower(trim((string) $sk));
-                        if ($norm !== '' && !in_array($norm, $skills)) {
+                        if ($norm !== '' && !in_array($norm, $skills, true)) {
                             $skills[] = $norm;
                         }
                     }
@@ -1587,147 +1696,285 @@ class AdminController extends Controller
                 $skillsMap[$user->id] = $skills;
             }
 
-            // 2. Load open job listings that have required skills
+            // ══════════════════════════════════════════════════════════════════
+            // 2. CAREER / JOB MATCHING PIPELINE
+            // ══════════════════════════════════════════════════════════════════
             $jobs = JobListing::with(['company.companyProfile'])
                 ->where('status', 'open')
                 ->whereNotNull('required_skills')
                 ->get()
                 ->filter(fn($j) => !empty($this->toSafeArray($j->required_skills)));
 
-            $totalStudents = $students->count();
-            $totalJobs     = $jobs->count();
+            $totalJobCandidates = $candidates->count();
+            $totalJobs          = $jobs->count();
 
-            if ($totalStudents === 0 || $totalJobs === 0) {
-                return response()->json([
-                    'stats'     => ['matchRate' => 0, 'partialMatch' => 0, 'mismatch' => 0],
-                    'topSkills' => [],
-                    'gapSkills' => [],
-                    'matches'   => [],
-                    'meta'      => ['totalUsers' => $totalStudents, 'totalJobs' => $totalJobs],
-                ]);
-            }
-
-            // 3. Top skills demanded by job listings
-            $demandCount = [];
+            $jobDemandCount = [];
             foreach ($jobs as $job) {
                 foreach ($this->toSafeArray($job->required_skills) as $skill) {
                     $k = strtolower(trim((string) $skill));
-                    if ($k !== '') $demandCount[$k] = ($demandCount[$k] ?? 0) + 1;
+                    if ($k !== '') $jobDemandCount[$k] = ($jobDemandCount[$k] ?? 0) + 1;
                 }
             }
-            arsort($demandCount);
+            arsort($jobDemandCount);
 
-            // 4. Skills students already have (for gap analysis)
-            $studentSkillCount = [];
+            $candidateSkillCount = [];
             foreach ($skillsMap as $skills) {
                 foreach ($skills as $sk) {
-                    $studentSkillCount[$sk] = ($studentSkillCount[$sk] ?? 0) + 1;
+                    $candidateSkillCount[$sk] = ($candidateSkillCount[$sk] ?? 0) + 1;
                 }
             }
 
-            // 5. Compute weighted suitability per student × job
-            $allPairs   = [];
-            $bestScores = [];
+            $allJobPairs   = [];
+            $bestJobScores = [];
 
-            foreach ($students as $student) {
-                $studentSkills  = $skillsMap[$student->id]          ?? [];
-                $studentLevels  = $levelMap[$student->id]           ?? [];
-                $experiences    = $student->experiences->all();
-                $achievements   = $student->achievements->all();
-                $portfolios     = $student->portfolioProjects->all();
+            if ($totalJobCandidates > 0 && $totalJobs > 0) {
+                foreach ($candidates as $student) {
+                    $studentSkills  = $skillsMap[$student->id] ?? [];
+                    $studentLevels  = $levelMap[$student->id]  ?? [];
+                    $experiences    = $student->experiences->all();
+                    $achievements   = $student->achievements->all();
+                    $portfolios     = $student->portfolioProjects->all();
 
-                $bestScore = 0;
-                $bestPair  = null;
+                    $bestScore = 0;
+                    $bestPair  = null;
 
-                foreach ($jobs as $job) {
-                    $required = array_map(
-                        'strtolower',
-                        array_map('trim', $this->toSafeArray($job->required_skills))
-                    );
+                    foreach ($jobs as $job) {
+                        $required = array_map(
+                            'strtolower',
+                            array_map('trim', $this->toSafeArray($job->required_skills))
+                        );
 
-                    if (empty($required)) continue;
+                        if (empty($required)) continue;
 
-                    $result = $this->computeSuitability(
-                        $required,
-                        $studentSkills,
-                        $studentLevels,
-                        $experiences,
-                        $achievements,
-                        $portfolios,
-                    );
+                        $result = $this->computeSuitability(
+                            $required,
+                            $studentSkills,
+                            $studentLevels,
+                            $experiences,
+                            $achievements,
+                            $portfolios,
+                        );
 
-                    $score = $result['score'];
+                        $score = $result['score'];
 
-                    if ($score > $bestScore) {
-                        $bestScore = $score;
-                        $cp        = $job->company?->companyProfile;
-                        $bestPair  = [
-                            'student_id'      => $student->id,
-                            'student_name'    => $student->name,
-                            'student_program' => $student->graduateProfile?->course
-                                ?? $student->studentProfile?->program
-                                ?? '—',
-                            'student_role'    => $student->role,
-                            'job_id'          => $job->id,
-                            'job_title'       => $job->title,
-                            'company'         => $cp?->company_name ?? $job->company?->name ?? 'Unknown',
-                            'score'           => $score,
-                            'matched_count'   => $result['matched_count'],
-                            'total_required'  => count($required),
-                            'breakdown'       => $result['breakdown'],
-                        ];
+                        if ($score > $bestScore) {
+                            $bestScore = $score;
+                            $cp        = $job->company?->companyProfile;
+                            $bestPair  = [
+                                'student_id'      => $student->id,
+                                'student_name'    => $student->name,
+                                'student_program' => $student->graduateProfile?->course
+                                    ?? $student->studentProfile?->program
+                                    ?? '—',
+                                'student_role'    => $student->role,
+                                'job_id'          => $job->id,
+                                'job_title'       => $job->title,
+                                'company'         => $cp?->company_name ?? $job->company?->name ?? 'Unknown',
+                                'score'           => $score,
+                                'matched_count'   => $result['matched_count'],
+                                'total_required'  => count($required),
+                                'breakdown'       => $result['breakdown'],
+                            ];
+                        }
                     }
-                }
 
-                $bestScores[] = $bestScore;
-                if ($bestPair) $allPairs[] = $bestPair;
+                    $bestJobScores[] = $bestScore;
+                    if ($bestPair) $allJobPairs[] = $bestPair;
+                }
             }
 
-            // 6. Aggregate stats from best-score-per-student
-            $strongCount  = count(array_filter($bestScores, fn($s) => $s > 70));
-            $partialCount = count(array_filter($bestScores, fn($s) => $s >= 40 && $s <= 70));
-            $weakCount    = $totalStudents - $strongCount - $partialCount;
+            $strongJobCount  = count(array_filter($bestJobScores, fn($s) => $s > 70));
+            $partialJobCount = count(array_filter($bestJobScores, fn($s) => $s >= 40 && $s <= 70));
+            $weakJobCount    = max(0, $totalJobCandidates - $strongJobCount - $partialJobCount);
 
-            $stats = [
-                'matchRate'    => (int) round($strongCount  / $totalStudents * 100),
-                'partialMatch' => (int) round($partialCount / $totalStudents * 100),
-                'mismatch'     => (int) round($weakCount    / $totalStudents * 100),
+            $jobStats = [
+                'matchRate'    => $totalJobCandidates > 0 ? (int) round($strongJobCount  / $totalJobCandidates * 100) : 0,
+                'partialMatch' => $totalJobCandidates > 0 ? (int) round($partialJobCount / $totalJobCandidates * 100) : 0,
+                'mismatch'     => $totalJobCandidates > 0 ? (int) round($weakJobCount    / $totalJobCandidates * 100) : 0,
             ];
 
-            // 7. Sort pairs by score desc, take top 20
-            usort($allPairs, fn($a, $b) => $b['score'] - $a['score']);
-            $topMatches = array_slice($allPairs, 0, 20);
+            usort($allJobPairs, fn($a, $b) => $b['score'] - $a['score']);
+            $topJobMatches = array_slice($allJobPairs, 0, 25);
 
-            // 8. Gap analysis: skills in demand that students lack
-            $gapSkills = [];
-            foreach (array_slice($demandCount, 0, 15, true) as $skill => $demand) {
-                $have     = $studentSkillCount[$skill] ?? 0;
-                $coverage = $totalStudents > 0 ? round($have / $totalStudents * 100) : 0;
-                $gapSkills[] = [
+            $jobGapSkills = [];
+            foreach (array_slice($jobDemandCount, 0, 15, true) as $skill => $demand) {
+                $have     = $candidateSkillCount[$skill] ?? 0;
+                $coverage = $totalJobCandidates > 0 ? round($have / $totalJobCandidates * 100) : 0;
+                $jobGapSkills[] = [
                     'skill'    => ucwords($skill),
                     'demand'   => $demand,
                     'have'     => $have,
                     'coverage' => $coverage,
                 ];
             }
-            usort($gapSkills, fn($a, $b) => ($b['demand'] - $b['have']) - ($a['demand'] - $a['have']));
-            $gapSkills = array_slice($gapSkills, 0, 8);
+            usort($jobGapSkills, fn($a, $b) => ($b['demand'] - $b['have']) - ($a['demand'] - $a['have']));
+            $jobGapSkills = array_slice($jobGapSkills, 0, 8);
 
-            // 9. Top skills in demand (formatted for chart)
-            $topSkills = [];
-            foreach (array_slice($demandCount, 0, 10, true) as $skill => $count) {
-                $topSkills[] = ['skill' => ucwords($skill), 'count' => $count];
+            $jobTopSkills = [];
+            foreach (array_slice($jobDemandCount, 0, 10, true) as $skill => $count) {
+                $jobTopSkills[] = ['skill' => ucwords($skill), 'count' => $count];
             }
 
-            return response()->json([
-                'stats'     => $stats,
-                'topSkills' => $topSkills,
-                'gapSkills' => $gapSkills,
-                'matches'   => $topMatches,
+            // ══════════════════════════════════════════════════════════════════
+            // 3. OJT INTERNSHIP MATCHING PIPELINE
+            // ══════════════════════════════════════════════════════════════════
+            $enrolledStudents = $candidates->filter(fn($u) => $u->role === 'student')->values();
+            $totalEnrolled    = $enrolledStudents->count();
+
+            $ojtPostings = OjtPosting::with(['company.companyProfile'])
+                ->whereIn('status', ['open', 'filling_up'])
+                ->where('slots_remaining', '>', 0)
+                ->get();
+            $totalOjtPostings = $ojtPostings->count();
+            $totalOjtSlots    = (int) $ojtPostings->sum('slots_remaining');
+
+            $ojtDemandCount = [];
+            foreach ($ojtPostings as $posting) {
+                foreach ($this->toSafeArray($posting->required_skills) as $skill) {
+                    $k = strtolower(trim((string) $skill));
+                    if ($k !== '') $ojtDemandCount[$k] = ($ojtDemandCount[$k] ?? 0) + 1;
+                }
+            }
+            arsort($ojtDemandCount);
+
+            $enrolledSkillCount = [];
+            foreach ($enrolledStudents as $stu) {
+                foreach ($skillsMap[$stu->id] ?? [] as $sk) {
+                    $enrolledSkillCount[$sk] = ($enrolledSkillCount[$sk] ?? 0) + 1;
+                }
+            }
+
+            $allOjtPairs   = [];
+            $bestOjtScores = [];
+
+            if ($totalEnrolled > 0 && $totalOjtPostings > 0) {
+                foreach ($enrolledStudents as $student) {
+                    $studentSkills  = $skillsMap[$student->id] ?? [];
+                    $studentLevels  = $levelMap[$student->id]  ?? [];
+                    $studentProgram = (string) ($student->studentProfile?->program ?? '');
+                    $achievements   = $student->achievements->all();
+                    $portfolios     = $student->portfolioProjects->all();
+
+                    $bestScore = 0;
+                    $bestPair  = null;
+
+                    foreach ($ojtPostings as $posting) {
+                        $required = array_map(
+                            'strtolower',
+                            array_map('trim', $this->toSafeArray($posting->required_skills))
+                        );
+                        $preferredCourses = $this->toSafeArray($posting->preferred_courses);
+
+                        $result = $this->computeOjtSuitability(
+                            $studentProgram,
+                            $preferredCourses,
+                            $required,
+                            $studentSkills,
+                            $studentLevels,
+                            $portfolios,
+                            $achievements,
+                        );
+
+                        $score = $result['score'];
+
+                        if ($score > $bestScore) {
+                            $bestScore = $score;
+                            $cp        = $posting->company?->companyProfile;
+                            $bestPair  = [
+                                'student_id'       => $student->id,
+                                'student_name'     => $student->name,
+                                'student_program'  => $student->studentProfile?->program ?? '—',
+                                'student_year'     => $student->studentProfile?->year_level ?? '—',
+                                'student_section'  => $student->studentProfile?->section ?? '—',
+                                'student_status'   => $student->studentProfile?->status ?? 'Active',
+                                'posting_id'       => $posting->id,
+                                'posting_title'    => $posting->title,
+                                'company'          => $cp?->company_name ?? $posting->company_name ?? 'Partner Company',
+                                'department'       => $posting->department ?? 'General IT',
+                                'slots_remaining'  => (int) $posting->slots_remaining,
+                                'slots_total'      => (int) $posting->slots_total,
+                                'duration'         => $posting->duration ?? '486 hours',
+                                'score'            => $score,
+                                'matched_count'    => $result['matched_count'],
+                                'total_required'   => count($required),
+                                'course_alignment' => $result['course_alignment'],
+                                'breakdown'        => $result['breakdown'],
+                            ];
+                        }
+                    }
+
+                    $bestOjtScores[] = $bestScore;
+                    if ($bestPair) $allOjtPairs[] = $bestPair;
+                }
+            }
+
+            $strongOjtCount  = count(array_filter($bestOjtScores, fn($s) => $s > 70));
+            $partialOjtCount = count(array_filter($bestOjtScores, fn($s) => $s >= 40 && $s <= 70));
+            $weakOjtCount    = max(0, $totalEnrolled - $strongOjtCount - $partialOjtCount);
+
+            $ojtStats = [
+                'matchRate'    => $totalEnrolled > 0 ? (int) round($strongOjtCount  / $totalEnrolled * 100) : 0,
+                'partialMatch' => $totalEnrolled > 0 ? (int) round($partialOjtCount / $totalEnrolled * 100) : 0,
+                'mismatch'     => $totalEnrolled > 0 ? (int) round($weakOjtCount    / $totalEnrolled * 100) : 0,
+            ];
+
+            usort($allOjtPairs, fn($a, $b) => $b['score'] - $a['score']);
+            $topOjtMatches = array_slice($allOjtPairs, 0, 25);
+
+            $ojtGapSkills = [];
+            foreach (array_slice($ojtDemandCount, 0, 15, true) as $skill => $demand) {
+                $have     = $enrolledSkillCount[$skill] ?? 0;
+                $coverage = $totalEnrolled > 0 ? round($have / $totalEnrolled * 100) : 0;
+                $ojtGapSkills[] = [
+                    'skill'    => ucwords($skill),
+                    'demand'   => $demand,
+                    'have'     => $have,
+                    'coverage' => $coverage,
+                ];
+            }
+            usort($ojtGapSkills, fn($a, $b) => ($b['demand'] - $b['have']) - ($a['demand'] - $a['have']));
+            $ojtGapSkills = array_slice($ojtGapSkills, 0, 8);
+
+            $ojtTopSkills = [];
+            foreach (array_slice($ojtDemandCount, 0, 10, true) as $skill => $count) {
+                $ojtTopSkills[] = ['skill' => ucwords($skill), 'count' => $count];
+            }
+
+            // ══════════════════════════════════════════════════════════════════
+            // 4. UNIFIED RESPONSE
+            // ══════════════════════════════════════════════════════════════════
+            $jobPayload = [
+                'stats'     => $jobStats,
+                'topSkills' => $jobTopSkills,
+                'gapSkills' => $jobGapSkills,
+                'matches'   => $topJobMatches,
                 'meta'      => [
-                    'totalUsers' => $totalStudents,
+                    'totalUsers' => $totalJobCandidates,
                     'totalJobs'  => $totalJobs,
                 ],
+            ];
+
+            $ojtPayload = [
+                'stats'     => $ojtStats,
+                'topSkills' => $ojtTopSkills,
+                'gapSkills' => $ojtGapSkills,
+                'matches'   => $topOjtMatches,
+                'meta'      => [
+                    'totalStudents'       => $totalEnrolled,
+                    'totalPostings'       => $totalOjtPostings,
+                    'totalSlotsRemaining' => $totalOjtSlots,
+                ],
+            ];
+
+            return response()->json([
+                'jobs'      => $jobPayload,
+                'ojt'       => $ojtPayload,
+                // Root backward-compatibility:
+                'stats'     => $jobStats,
+                'topSkills' => $jobTopSkills,
+                'gapSkills' => $jobGapSkills,
+                'matches'   => $topJobMatches,
+                'meta'      => $jobPayload['meta'],
             ]);
 
         } catch (\Throwable $e) {
