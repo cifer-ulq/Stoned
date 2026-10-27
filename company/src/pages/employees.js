@@ -3,7 +3,7 @@
  * Complete workforce management for hired CHMSU graduates & regular staff.
  */
 import { icon } from '../components/icons.js';
-import { apiGet, apiPost, apiPut } from '../api/client.js';
+import { apiGet, apiPut } from '../api/client.js';
 
 export async function renderEmployees(container) {
   let employees = [];
@@ -64,12 +64,6 @@ export async function renderEmployees(container) {
         color: var(--text-secondary);
         margin: 0;
         line-height: 1.45;
-      }
-      .co-emp-actions {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        flex-wrap: wrap;
       }
 
       /* ── KPI Pulse Strip ── */
@@ -476,16 +470,6 @@ export async function renderEmployees(container) {
         .co-emp-subtitle {
           font-size: 0.84rem;
         }
-        .co-emp-actions {
-          width: 100%;
-          display: flex;
-          gap: 8px;
-        }
-        .co-emp-actions .btn {
-          flex: 1 1 calc(50% - 4px);
-          min-height: 42px;
-          justify-content: center;
-        }
         .co-emp-controls__top {
           flex-direction: column;
           align-items: stretch;
@@ -539,13 +523,6 @@ export async function renderEmployees(container) {
         }
       }
       @media (max-width: 576px) {
-        .co-emp-actions {
-          flex-direction: column;
-        }
-        .co-emp-actions .btn {
-          width: 100%;
-          flex: 1 1 100%;
-        }
         .co-emp-pulse {
           grid-template-columns: repeat(2, 1fr);
           gap: 10px;
@@ -655,14 +632,6 @@ export async function renderEmployees(container) {
           <p class="co-emp-subtitle">
             Manage hired CHMSU graduates, job roles, department deployment, salary compensation, and active employment records.
           </p>
-        </div>
-        <div class="co-emp-actions">
-          <button type="button" class="btn btn--outline" id="btn-export-roster">
-            ${icon('fileText', 16)} Export Roster
-          </button>
-          <button type="button" class="btn btn--primary" id="btn-add-hire" style="background:#005930;border-color:#005930;">
-            ${icon('userPlus', 16)} Add Hired Staff
-          </button>
         </div>
       </div>
 
@@ -828,17 +797,11 @@ export async function renderEmployees(container) {
           <h3 style="margin:0;font-weight:700;color:var(--text-primary);">No Employees Found</h3>
           <p style="margin:0;font-size:0.88rem;max-width:400px;">
             ${employees.length === 0
-              ? 'Your company does not have any recorded employees yet. When an applicant accepts your job offer or you click "Add Hired Staff", they will appear here.'
+              ? 'Your company does not have any recorded employees yet. When an applicant accepts your job offer, they will appear here.'
               : 'No staff members match the selected department or status filters.'}
           </p>
-          ${employees.length === 0 ? `
-            <button type="button" class="btn btn--primary" id="btn-empty-add" style="margin-top:12px;background:#005930;border-color:#005930;">
-              ${icon('userPlus', 16)} Add First Hired Staff
-            </button>
-          ` : ''}
         </div>
       `;
-      tableWrap.querySelector('#btn-empty-add')?.addEventListener('click', openAddHireModal);
       return;
     }
 
@@ -943,39 +906,6 @@ export async function renderEmployees(container) {
       renderTable();
     });
   });
-
-  // Export Roster button
-  container.querySelector('#btn-export-roster').addEventListener('click', () => {
-    if (!employees.length) {
-      alert('No employee records to export.');
-      return;
-    }
-    const headers = ['Employee ID', 'Name', 'Email', 'Role', 'Department', 'Course', 'Campus', 'Year Graduated', 'Status', 'Start Date', 'Salary'];
-    const rows = employees.map(e => [
-      e.employee_number,
-      `"${e.name}"`,
-      e.email,
-      `"${e.job_title}"`,
-      `"${e.department}"`,
-      `"${e.course}"`,
-      `"${e.campus}"`,
-      e.year_graduated,
-      e.employment_status,
-      e.start_date,
-      `"${e.salary}"`,
-    ]);
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `CHMSU_HireMe_Employee_Roster_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  });
-
-  // Add Hired Staff button
-  container.querySelector('#btn-add-hire').addEventListener('click', openAddHireModal);
 
   /* ── Modal: View Employee Dossier ── */
   function openDossierModal(emp) {
@@ -1235,182 +1165,6 @@ export async function renderEmployees(container) {
         submitBtn.innerHTML = `${icon('checkCircle', 14)} Save Record Changes`;
       }
     });
-  }
-
-  /* ── Modal: Add Hired Staff ── */
-  async function openAddHireModal() {
-    const overlay = document.createElement('div');
-    overlay.className = 'co-emp-modal-overlay';
-
-    overlay.innerHTML = `
-      <div class="co-emp-modal-card">
-        <div class="co-emp-modal-header">
-          <div style="display:flex;align-items:center;gap:10px;">
-            <div style="width:34px;height:34px;border-radius:50%;background:rgba(0,89,48,0.1);color:#005930;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-              ${icon('userPlus', 18)}
-            </div>
-            <div>
-              <h3 style="margin:0;font-size:1.15rem;font-weight:700;">Record Hired CHMSU Graduate</h3>
-              <div style="font-size:0.75rem;color:var(--text-tertiary);">Add an alumni hire to your company roster</div>
-            </div>
-          </div>
-          <button type="button" class="btn btn--outline btn--sm" id="btn-close-add" style="padding:4px 8px;min-width:32px;min-height:32px;">&times;</button>
-        </div>
-
-        <div id="add-hire-modal-content" style="padding:40px;text-align:center;color:var(--text-secondary);">
-          Loading available CHMSU graduates &amp; job listings...
-        </div>
-      </div>
-    `;
-
-    document.body.appendChild(overlay);
-    overlay.querySelector('#btn-close-add').onclick = () => overlay.remove();
-    overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) overlay.remove();
-    });
-
-    try {
-      const res = await apiGet('/company/employees/available-candidates');
-      if (!res?.success) throw new Error();
-
-      const candidates = res.candidates || [];
-      const jobs = res.jobs || [];
-
-      const bodyEl = overlay.querySelector('#add-hire-modal-content');
-      bodyEl.style.padding = '0';
-      bodyEl.style.textAlign = 'left';
-
-      bodyEl.innerHTML = `
-        <form id="form-add-hire">
-          <div class="co-emp-modal-body">
-            <!-- Candidate picker -->
-            <div class="form-group">
-              <label class="form-label">Select CHMSU Graduate / Candidate *</label>
-              <select class="form-input" name="candidate_user_id" required>
-                <option value="">-- Choose a graduate --</option>
-                ${candidates.map(c => `
-                  <option value="${c.id}">${escapeHtml(c.name)} &bull; ${escapeHtml(c.course)} (${escapeHtml(c.campus)}, ${c.year_graduated})</option>
-                `).join('')}
-              </select>
-            </div>
-
-            <!-- Job listing picker -->
-            <div class="form-group">
-              <label class="form-label">Position / Job Opening *</label>
-              <select class="form-input" name="job_listing_id" required>
-                <option value="">-- Choose job opening --</option>
-                ${jobs.map(j => `
-                  <option value="${j.id}" data-dept="${escapeHtml(j.department || '')}" data-salary="${escapeHtml(j.salary_range || '')}">
-                    ${escapeHtml(j.title)} &bull; ${escapeHtml(j.department || 'General')} (${escapeHtml(j.employment_type || 'Full-time')})
-                  </option>
-                `).join('')}
-              </select>
-            </div>
-
-            <div class="co-emp-grid-2">
-              <div class="form-group">
-                <label class="form-label">Employment Status *</label>
-                <select class="form-input" name="employment_status" required>
-                  <option value="Probationary">Probationary</option>
-                  <option value="Regular">Regular</option>
-                  <option value="Contractual">Contractual</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Start Date *</label>
-                <input type="date" class="form-input" name="start_date" value="${new Date().toISOString().split('T')[0]}" required />
-              </div>
-            </div>
-
-            <div class="co-emp-grid-2">
-              <div class="form-group">
-                <label class="form-label">Monthly Salary *</label>
-                <input type="text" class="form-input" name="salary" id="add-salary" placeholder="e.g. ₱40,000/month" required />
-              </div>
-              <div class="form-group">
-                <label class="form-label">Employee ID (Optional)</label>
-                <input type="text" class="form-input" name="employee_number" placeholder="e.g. EMP-2026-009" />
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Department</label>
-              <input type="text" class="form-input" name="department" id="add-dept" placeholder="Department" />
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">HR / Onboarding Remarks</label>
-              <textarea class="form-input form-textarea" name="employee_notes" rows="2" placeholder="Hiring notes or onboarding checklist..."></textarea>
-            </div>
-
-            <p id="add-hire-error" style="color:#dc2626;font-size:0.83rem;margin:0;"></p>
-          </div>
-
-          <div class="co-emp-modal-footer">
-            <button type="button" class="btn btn--outline" id="btn-cancel-add">Cancel</button>
-            <button type="submit" class="btn btn--primary" id="btn-submit-add" style="background:#005930;border-color:#005930;">
-              ${icon('award', 14)} Confirm &amp; Add to Roster
-            </button>
-          </div>
-        </form>
-      `;
-
-      overlay.querySelector('#btn-cancel-add').onclick = () => overlay.remove();
-
-      // Auto-populate dept and salary when job is selected
-      const jobSelect = overlay.querySelector('select[name="job_listing_id"]');
-      const deptInput = overlay.querySelector('#add-dept');
-      const salaryInput = overlay.querySelector('#add-salary');
-      jobSelect.addEventListener('change', () => {
-        const selectedOpt = jobSelect.selectedOptions[0];
-        if (selectedOpt) {
-          if (selectedOpt.dataset.dept) deptInput.value = selectedOpt.dataset.dept;
-          if (selectedOpt.dataset.salary) salaryInput.value = selectedOpt.dataset.salary;
-        }
-      });
-
-      overlay.querySelector('#form-add-hire').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const form = new FormData(e.target);
-        const submitBtn = overlay.querySelector('#btn-submit-add');
-        const errEl = overlay.querySelector('#add-hire-error');
-        errEl.textContent = '';
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Recording hire...';
-
-        const payload = {
-          candidate_user_id: form.get('candidate_user_id'),
-          job_listing_id: form.get('job_listing_id'),
-          employment_status: form.get('employment_status'),
-          start_date: form.get('start_date'),
-          salary: form.get('salary'),
-          employee_number: form.get('employee_number'),
-          department: form.get('department'),
-          employee_notes: form.get('employee_notes'),
-        };
-
-        try {
-          const addRes = await apiPost('/company/employees', payload);
-          if (addRes?.success) {
-            overlay.remove();
-            showToast('Graduate successfully added to Employee Roster!');
-            await loadData();
-          } else {
-            errEl.textContent = addRes?.message || 'Failed to record hired staff.';
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = `${icon('award', 14)} Confirm &amp; Add to Roster`;
-          }
-        } catch (err) {
-          errEl.textContent = 'A network error occurred. Please try again.';
-          submitBtn.disabled = false;
-          submitBtn.innerHTML = `${icon('award', 14)} Confirm &amp; Add to Roster`;
-        }
-      });
-    } catch (err) {
-      overlay.querySelector('#add-hire-modal-content').innerHTML = `
-        <div style="color:#dc2626;padding:20px;">Failed to load candidate list. Please try again.</div>
-      `;
-    }
   }
 
   /* ── Helpers ── */
