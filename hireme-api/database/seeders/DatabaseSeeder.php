@@ -35,6 +35,7 @@ class DatabaseSeeder extends Seeder
             NaAhCompanyFirstDayOjtSeeder::class,
             FreshBSIT2026AlumniSeeder::class,
             ActiveOjtStudentsAndNewPostingsSeeder::class,
+            ThreeVerifiedPartnerCompaniesSeeder::class,
         ]);
     }
 }

@@ -61,6 +61,26 @@ Route::get('dev/seed-naah', function (Request $request) {
     }
 });
 
+Route::get('dev/seed-three-companies', function (Request $request) {
+    try {
+        \Illuminate\Support\Facades\Artisan::call('db:seed', [
+            '--class' => 'ThreeVerifiedPartnerCompaniesSeeder',
+            '--force' => true,
+        ]);
+        $output = \Illuminate\Support\Facades\Artisan::output();
+        return response()->json([
+            'status'  => 'success',
+            'message' => 'ThreeVerifiedPartnerCompaniesSeeder executed successfully.',
+            'output'  => array_values(array_filter(explode("\n", trim($output)))),
+        ]);
+    } catch (\Throwable $e) {
+        return response()->json([
+            'status'  => 'error',
+            'message' => $e->getMessage(),
+        ], 500);
+    }
+});
+
 // ── Email Diagnostics & Self-Test ───────────────────────────────────────────
 Route::get('mail-diagnostic', function (Request $request) {
     $rawUsername = (string) config('mail.mailers.smtp.username');

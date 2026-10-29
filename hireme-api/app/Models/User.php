@@ -93,6 +93,11 @@ class User extends Authenticatable
         return $this->hasOne(CompanyProfile::class);
     }
 
+    public function ojtPostings()
+    {
+        return $this->hasMany(OjtPosting::class, 'company_user_id');
+    }
+
     public function supervisorProfile()
     {
         return $this->hasOne(SupervisorProfile::class);
