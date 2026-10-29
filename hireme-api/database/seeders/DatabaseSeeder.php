@@ -36,6 +36,7 @@ class DatabaseSeeder extends Seeder
             FreshBSIT2026AlumniSeeder::class,
             ActiveOjtStudentsAndNewPostingsSeeder::class,
             ThreeVerifiedPartnerCompaniesSeeder::class,
+            TenActiveOjtStudentsSeeder::class,
         ]);
     }
 }
