@@ -1050,7 +1050,7 @@ function renderTable(tbody, list, container, selectedStudents, updateSelectionUI
 }
 
 /* ─── Skeleton loader ───────────────────────────────────────────── */
-function showSkeleton(tbody, count = 8, container = null) {
+function showSkeleton(tbody, count = 9, container = null) {
   tbody.innerHTML = Array.from({ length: count }, () => `
     <tr class="st-skeleton-row" style="opacity: 0.6;">
       <td class="st-checkbox-cell"><div style="height:17px;width:17px;background:var(--bg-tertiary);border-radius:4px;margin:auto;"></div></td>
@@ -1341,7 +1341,7 @@ export default async function StudentsPage(container) {
     const status  = container.querySelector('#filter-status').value;
     const section = container.querySelector('#filter-section').value;
 
-    const params = new URLSearchParams({ per_page: 8, page: currentPage });
+    const params = new URLSearchParams({ per_page: 9, page: currentPage });
     if (search)  params.set('search', search);
     if (course)  params.set('course', course);
     if (status)  params.set('status', status);
@@ -1353,7 +1353,7 @@ export default async function StudentsPage(container) {
     if (cached?.data) {
       applyStudentsResponse(cached.data);
     } else {
-      showSkeleton(tbody, 8, container);
+      showSkeleton(tbody, 9, container);
       paginationEl.innerHTML = '';
     }
 

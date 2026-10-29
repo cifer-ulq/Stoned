@@ -498,7 +498,7 @@ class AdminController extends Controller
         $statusFilter  = $request->input('status', '');
         $sectionFilter = $request->input('section', '');
         $courseFilter  = $request->input('course', $request->input('program', ''));
-        $perPage       = max(1, min(100, (int) $request->input('per_page', 8)));
+        $perPage       = max(1, min(100, (int) $request->input('per_page', 9)));
 
         $query = User::with(['studentProfile', 'ojtRecord'])
             ->where('role', 'student')
