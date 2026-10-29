@@ -5,6 +5,7 @@ import './styles/base.css';
 import './styles/components.css';
 import './styles/pages.css';
 import './styles/companies.css';
+import './styles/students.css';
 import './styles/animations.css';
 import './styles/responsive.css';
 

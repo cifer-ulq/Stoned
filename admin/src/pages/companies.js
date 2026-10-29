@@ -791,8 +791,29 @@ function showAddCompanyModal(container, onSuccess) {
       } else {
         showToast(res?.message || 'Failed to register company.', 'error', 'Registration Failed');
       }
-    } catch {
-      showToast('Network error while registering company.', 'error', 'Network Error');
+    } catch (err) {
+      const response = err?.response;
+      const errors = response?.errors || {};
+      let fieldErrorShown = false;
+
+      if (errors.email && errors.email[0]) {
+        const emailErr = backdrop.querySelector('#err-ac-email');
+        const emailWrap = backdrop.querySelector('#wrap-ac-email');
+        if (emailErr) emailErr.textContent = errors.email[0];
+        if (emailWrap) emailWrap.classList.add('ac-input-wrap--error');
+        fieldErrorShown = true;
+      }
+      if (errors.company_name && errors.company_name[0]) {
+        const nameErr = backdrop.querySelector('#err-ac-name');
+        const nameWrap = backdrop.querySelector('#wrap-ac-name');
+        if (nameErr) nameErr.textContent = errors.company_name[0];
+        if (nameWrap) nameWrap.classList.add('ac-input-wrap--error');
+        fieldErrorShown = true;
+      }
+
+      const errMsg = response?.message || err?.message || 'Network error while registering company.';
+      const toastTitle = response ? 'Registration Failed' : 'Network Error';
+      showToast(errMsg, 'error', toastTitle);
     } finally {
       btnSubmit.disabled = false;
       btnSubmit.querySelector('.btn-text').style.display = 'inline-flex';

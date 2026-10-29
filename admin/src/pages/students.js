@@ -724,6 +724,8 @@ function showModal(s, container, onRefresh) {
 
 /* ─── Table rows renderer ───────────────────────────────────────── */
 function renderTable(tbody, list, container, selectedStudents, updateSelectionUI, onRefresh) {
+  const mobileContainer = container ? container.querySelector('#students-mobile-cards') : null;
+
   if (!list.length) {
     tbody.innerHTML = `
       <tr>
@@ -734,111 +736,143 @@ function renderTable(tbody, list, container, selectedStudents, updateSelectionUI
           </div>
         </td>
       </tr>`;
+    if (mobileContainer) {
+      mobileContainer.innerHTML = `
+        <div class="empty-state" style="padding:var(--space-6) var(--space-4);text-align:center;">
+          <h3 class="empty-state__title" style="font-size:var(--text-base);margin-bottom:4px;">No students found</h3>
+          <p class="empty-state__text" style="font-size:var(--text-xs);color:var(--text-secondary);">Try adjusting your search or filters</p>
+        </div>`;
+    }
     if (typeof updateSelectionUI === 'function') updateSelectionUI();
     return;
   }
 
+  // 1. Generate Desktop & Tablet Table Rows
   tbody.innerHTML = list.map(s => {
     const pct = s.ojt_required > 0
       ? Math.min(100, Math.round((s.ojt_hours / s.ojt_required) * 100))
       : 0;
-    const badgeColor = STATUS_COLORS[s.status] || 'neutral';
     const barColor = pct >= 100 ? '#3B82F6' : pct >= 40 ? '#10B981' : '#F59E0B';
     const isEligible = Boolean(s.is_eligible_for_promotion);
     const isChecked = selectedStudents ? selectedStudents.has(s.id) : false;
-    const acr = getCourseAcronym(s.program);
+
+    // Distinct Section pill formatting (Section A / Section B)
+    const secRaw = s.section ? String(s.section).trim() : '';
+    const isSecA = secRaw === 'A' || secRaw === 'BSIT 4-A' || secRaw === '4-A' || secRaw === '4A';
+    const isSecB = secRaw === 'B' || secRaw === 'BSIT 4-B' || secRaw === '4-B' || secRaw === '4B';
+    const sectionBadge = isSecA
+      ? `<span class="st-section-pill st-section-pill--A">Section A</span>`
+      : isSecB
+        ? `<span class="st-section-pill st-section-pill--B">Section B</span>`
+        : secRaw
+          ? `<span class="st-section-pill st-section-pill--neutral">${escapeHtml(secRaw)}</span>`
+          : '';
+
+    const programTitle = s.program || 'Bachelor of Science in Information Technology';
+    const programAcr = getCourseAcronym(programTitle);
 
     return `
-      <tr data-id="${s.id}">
+      <tr data-id="${s.id}" class="${isChecked ? 'is-selected' : ''}">
         <!-- Checkbox -->
-        <td style="text-align:center;width:38px;padding:10px 8px;">
+        <td class="st-checkbox-cell">
           ${isEligible
-            ? `<input type="checkbox" class="student-select-cb" data-id="${s.id}" ${isChecked ? 'checked' : ''} title="Eligible: Completed ${s.ojt_hours}h / ${s.ojt_required || 600}h OJT + Company Evaluated (${Number(s.evaluation_score || 5).toFixed(1)}★)" style="cursor:pointer;width:15px;height:15px;" />`
-            : `<input type="checkbox" disabled title="Ineligible: ${escapeHtml(s.ineligible_reason || 'Requirements not met')}" style="cursor:not-allowed;opacity:0.25;width:15px;height:15px;" />`}
+            ? `<input type="checkbox" class="student-select-cb st-checkbox" data-id="${s.id}" ${isChecked ? 'checked' : ''} title="Eligible: Completed ${s.ojt_hours}h / ${s.ojt_required || 600}h OJT + Company Evaluated (${Number(s.evaluation_score || 5).toFixed(1)}★)" />`
+            : `<input type="checkbox" disabled class="st-checkbox" title="Ineligible: ${escapeHtml(s.ineligible_reason || 'Requirements not met')}" style="cursor:not-allowed;opacity:0.25;" />`}
         </td>
 
-        <!-- Student -->
-        <td style="padding:10px 12px;min-width:180px;">
-          <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+        <!-- Student Identity -->
+        <td class="st-student-cell">
+          <div class="st-student-profile">
             ${s.avatar_url
-              ? `<img src="${storageUrl(s.avatar_url)}" alt="${escapeHtml(s.name)}" style="width:34px;height:34px;border-radius:var(--radius-full);object-fit:cover;flex-shrink:0;border:1px solid var(--border-default);" />`
-              : `<div style="width:34px;height:34px;border-radius:var(--radius-full);background:var(--color-primary-bg);color:var(--color-primary);display:flex;align-items:center;justify-content:center;font-weight:var(--weight-semibold);font-size:0.75rem;flex-shrink:0;border:1px solid rgba(0,89,48,0.15);">${initials(s.name)}</div>`}
-            <div style="min-width:0;max-width:180px;">
-              <div style="font-weight:600;color:var(--text-primary);font-size:var(--text-sm);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${escapeHtml(s.name)}">${escapeHtml(s.name)}</div>
-              <div style="font-size:0.75rem;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${escapeHtml(s.email)}">${escapeHtml(s.email)}</div>
+              ? `<img src="${storageUrl(s.avatar_url)}" alt="${escapeHtml(s.name)}" class="st-student-avatar" />`
+              : `<div class="st-student-avatar--initials">${initials(s.name)}</div>`}
+            <div class="st-student-meta">
+              <div class="st-student-name" title="${escapeHtml(s.name)}">${escapeHtml(s.name)}</div>
+              <div class="st-student-email" title="${escapeHtml(s.email)}">${escapeHtml(s.email)}</div>
             </div>
           </div>
         </td>
 
         <!-- Student ID -->
-        <td style="padding:10px 12px;white-space:nowrap;">
-          <span style="font-family:monospace;font-size:0.75rem;color:var(--text-secondary);font-weight:600;">${escapeHtml(s.student_id || '—')}</span>
+        <td>
+          <span class="st-id-badge">${escapeHtml(s.student_id || '—')}</span>
         </td>
 
         <!-- Program & Section -->
-        <td style="padding:10px 12px;white-space:nowrap;">
-          <div style="font-weight:600;color:var(--text-primary);font-size:0.82rem;" title="${escapeHtml(s.program || '')}">${escapeHtml(acr)}</div>
-          <div style="font-size:0.72rem;color:var(--text-secondary);display:flex;align-items:center;gap:4px;margin-top:2px;">
-            <span>${escapeHtml(s.year_level || '—')}</span>
-            ${s.section ? `<span>·</span><span class="badge badge--info" style="font-size:0.65rem;padding:0 5px;font-weight:700;">${escapeHtml(s.section)}</span>` : ''}
+        <td class="st-program-cell">
+          <div class="st-program-name" title="${escapeHtml(programTitle)}">${escapeHtml(programTitle)}</div>
+          <div class="st-program-sub">
+            <span>${escapeHtml(s.year_level || '4th Year')}</span>
+            ${sectionBadge ? `<span>&bull;</span>${sectionBadge}` : ''}
           </div>
         </td>
 
         <!-- Host Company & Eval -->
-        <td style="padding:10px 12px;">
+        <td class="st-company-cell">
           ${s.ojt_company
-            ? `<div style="display:flex;align-items:center;gap:5px;font-size:var(--text-sm);font-weight:500;color:var(--text-primary);max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${escapeHtml(s.ojt_company)}">
-                ${icon('briefcase', 12)} <span style="overflow:hidden;text-overflow:ellipsis;">${escapeHtml(s.ojt_company)}</span>
+            ? `<div class="st-company-name" title="${escapeHtml(s.ojt_company)}">
+                ${icon('briefcase', 14)} <span>${escapeHtml(s.ojt_company)}</span>
                </div>
-               <div style="margin-top:2px;">
+               <div>
                  ${s.evaluation_status === 'submitted'
-                   ? `<span class="badge badge--success" title="Evaluated by ${escapeHtml(s.evaluator_name || 'Host Company')}${s.evaluator_position ? ' (' + escapeHtml(s.evaluator_position) + ')' : ''} on ${escapeHtml(s.evaluation_date || 'N/A')}" style="display:inline-flex;align-items:center;gap:3px;font-size:0.68rem;font-weight:600;padding:0 6px;"><span style="color:#F59E0B;">★</span> ${Number(s.evaluation_score || 5).toFixed(1)} Eval</span>`
+                   ? `<span class="st-eval-badge st-eval-badge--submitted" title="Evaluated by ${escapeHtml(s.evaluator_name || 'Host Company')} on ${escapeHtml(s.evaluation_date || 'N/A')}"><span class="star">★</span> ${Number(s.evaluation_score || 5).toFixed(1)} Eval</span>`
                    : s.evaluation_status === 'pending'
-                     ? `<span class="badge badge--warning" title="Evaluation requested, awaiting submission" style="display:inline-flex;align-items:center;gap:3px;font-size:0.68rem;font-weight:600;padding:0 6px;">${icon('clock', 10)} Eval Pending</span>`
-                     : `<span style="font-size:0.68rem;color:var(--text-tertiary);font-style:italic;">No Eval yet</span>`}
+                     ? `<span class="st-eval-badge st-eval-badge--pending">${icon('clock', 11)} Eval Pending</span>`
+                     : `<span style="font-size:0.75rem;color:var(--text-tertiary);font-style:italic;">No Eval yet</span>`}
                </div>`
-            : `<span style="color:var(--text-tertiary);font-size:var(--text-xs);font-style:italic;">Undeployed</span>`}
+            : `<span class="st-undeployed-pill">${icon('briefcase', 13)} Undeployed</span>`}
         </td>
 
         <!-- OJT Progress -->
-        <td style="padding:10px 12px;">
+        <td class="st-progress-cell">
           ${s.ojt_required > 0 ? `
-          <div style="display:flex;align-items:center;gap:7px;min-width:110px;">
-            <div class="progress-bar" style="flex:1;min-width:48px;height:6px;">
-              <div class="progress-bar__fill" style="width:${pct}%;background:${barColor};"></div>
+          <div class="st-progress-wrap">
+            <div class="st-progress-header">
+              <span class="st-progress-hours">${s.ojt_hours} / ${s.ojt_required} hrs</span>
+              <span class="st-progress-pct">${pct}%</span>
             </div>
-            <span style="font-size:0.72rem;font-weight:600;white-space:nowrap;color:var(--text-secondary);">${s.ojt_hours}/${s.ojt_required}h</span>
+            <div class="st-progress-track">
+              <div class="st-progress-fill" style="width:${pct}%;background:${barColor};"></div>
+            </div>
           </div>` : `
             <span style="font-size:var(--text-xs);color:var(--text-tertiary);">—</span>
           `}
         </td>
 
         <!-- Status -->
-        <td style="padding:10px 12px;white-space:nowrap;">
+        <td class="st-status-cell">
           ${s.approval_status === 'pending'
-            ? `<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px;font-size:0.72rem;font-weight:600;border-radius:20px;background:#FEF3C7;color:#92400E;border:1px solid #FCD34D;box-shadow:0 1px 2px rgba(245,158,11,0.06);">
-                 <span style="width:6px;height:6px;border-radius:50%;background:#D97706;display:inline-block;"></span>
+            ? `<span class="st-status-pill st-status-pill--pending">
+                 <span class="st-status-dot"></span>
                  <span>Pending Approval</span>
                </span>`
-            : `<span class="badge badge--${badgeColor}">${escapeHtml(s.status)}</span>`}
+            : s.status === 'Active OJT'
+              ? `<span class="st-status-pill st-status-pill--active">
+                   <span class="st-status-dot"></span>
+                   <span>Active OJT</span>
+                 </span>`
+              : `<span class="st-status-pill st-status-pill--undeployed">
+                   <span class="st-status-dot"></span>
+                   <span>${escapeHtml(s.status || 'Undeployed')}</span>
+                 </span>`}
         </td>
 
         <!-- Actions -->
-        <td style="padding:10px 12px;text-align:right;white-space:nowrap;">
-          <div style="display:inline-flex;align-items:center;justify-content:flex-end;gap:5px;">
+        <td class="st-action-cell">
+          <div class="st-action-group">
             ${s.approval_status === 'pending' ? `
-              <button class="approve-btn" data-id="${s.id}" data-name="${escapeHtml(s.name)}" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;font-size:0.73rem;font-weight:600;background:#005930;color:#ffffff;border:1px solid #005930;border-radius:6px;cursor:pointer;box-shadow:0 1px 2px rgba(0,89,48,0.15);transition:all 0.15s ease;" title="Approve student registration">
-                ${icon('check', 12)} Approve
+              <button class="approve-btn btn btn--primary btn--sm" data-id="${s.id}" data-name="${escapeHtml(s.name)}" style="height:36px;padding:0 12px;font-size:0.775rem;gap:4px;" title="Approve student registration">
+                ${icon('check', 13)} Approve
               </button>
-              <button class="reject-btn" data-id="${s.id}" data-name="${escapeHtml(s.name)}" style="display:inline-flex;align-items:center;gap:3px;padding:4px 8px;font-size:0.73rem;font-weight:600;background:#FFF1F2;color:#E11D48;border:1px solid #FECDD3;border-radius:6px;cursor:pointer;transition:all 0.15s ease;" title="Reject student registration">
-                ${icon('x', 12)} Reject
+              <button class="reject-btn btn btn--outline btn--sm" data-id="${s.id}" data-name="${escapeHtml(s.name)}" style="height:36px;padding:0 10px;font-size:0.775rem;color:#DC2626;border-color:#FCA5A5;gap:3px;" title="Reject student registration">
+                ${icon('x', 13)} Reject
               </button>
-              <button class="view-btn" data-id="${s.id}" style="display:inline-flex;align-items:center;gap:3px;padding:4px 8px;font-size:0.73rem;font-weight:500;background:#ffffff;color:var(--text-secondary,#475569);border:1px solid var(--border-default,#cbd5e1);border-radius:6px;cursor:pointer;" title="View Student Details">
-                ${icon('eye', 12)} View
+              <button class="view-btn st-btn-view" data-id="${s.id}" title="View Student Details">
+                ${icon('eye', 14)} View
               </button>
             ` : `
-              <button class="btn btn--outline btn--sm view-btn" data-id="${s.id}" style="padding:3px 9px;font-size:var(--text-xs);gap:4px;border-radius:6px;">
-                ${icon('eye', 12)} View
+              <button class="view-btn st-btn-view" data-id="${s.id}">
+                ${icon('eye', 14)} View
               </button>
             `}
           </div>
@@ -847,10 +881,108 @@ function renderTable(tbody, list, container, selectedStudents, updateSelectionUI
     `;
   }).join('');
 
+  // 2. Generate Mobile Responsive Card View (< 768px)
+  if (mobileContainer) {
+    mobileContainer.innerHTML = list.map(s => {
+      const pct = s.ojt_required > 0
+        ? Math.min(100, Math.round((s.ojt_hours / s.ojt_required) * 100))
+        : 0;
+      const barColor = pct >= 100 ? '#3B82F6' : pct >= 40 ? '#10B981' : '#F59E0B';
+      const isEligible = Boolean(s.is_eligible_for_promotion);
+      const isChecked = selectedStudents ? selectedStudents.has(s.id) : false;
+      const secRaw = s.section ? String(s.section).trim() : '';
+      const isSecA = secRaw === 'A' || secRaw === 'BSIT 4-A' || secRaw === '4-A' || secRaw === '4A';
+      const isSecB = secRaw === 'B' || secRaw === 'BSIT 4-B' || secRaw === '4-B' || secRaw === '4B';
+      const sectionBadge = isSecA
+        ? `<span class="st-section-pill st-section-pill--A">Section A</span>`
+        : isSecB
+          ? `<span class="st-section-pill st-section-pill--B">Section B</span>`
+          : secRaw
+            ? `<span class="st-section-pill st-section-pill--neutral">${escapeHtml(secRaw)}</span>`
+            : '';
+      const programTitle = s.program || 'Bachelor of Science in Information Technology';
+
+      return `
+        <div class="st-mobile-card ${isChecked ? 'is-selected' : ''}" data-id="${s.id}">
+          <div class="st-mobile-card__header">
+            <div class="st-mobile-card__user">
+              ${isEligible
+                ? `<input type="checkbox" class="student-select-cb st-checkbox" data-id="${s.id}" ${isChecked ? 'checked' : ''} style="margin-right:2px;" />`
+                : ''}
+              ${s.avatar_url
+                ? `<img src="${storageUrl(s.avatar_url)}" alt="${escapeHtml(s.name)}" class="st-student-avatar" />`
+                : `<div class="st-student-avatar--initials">${initials(s.name)}</div>`}
+              <div style="min-width:0;flex:1;">
+                <div class="st-student-name">${escapeHtml(s.name)}</div>
+                <div class="st-student-email">${escapeHtml(s.email)}</div>
+              </div>
+            </div>
+            <div>
+              ${s.status === 'Active OJT'
+                ? `<span class="st-status-pill st-status-pill--active"><span class="st-status-dot"></span> Active</span>`
+                : `<span class="st-status-pill st-status-pill--undeployed"><span class="st-status-dot"></span> ${escapeHtml(s.status || 'Undeployed')}</span>`}
+            </div>
+          </div>
+
+          <div class="st-mobile-card__grid">
+            <div class="st-mobile-card__grid-item">
+              <span class="st-mobile-card__grid-label">Student ID</span>
+              <span class="st-mobile-card__grid-value font-mono">${escapeHtml(s.student_id || '—')}</span>
+            </div>
+            <div class="st-mobile-card__grid-item">
+              <span class="st-mobile-card__grid-label">Section &amp; Year</span>
+              <div style="display:flex;align-items:center;gap:4px;margin-top:2px;">
+                ${sectionBadge || '—'}
+                <span style="font-size:0.75rem;color:var(--text-secondary);">${escapeHtml(s.year_level || '4th Year')}</span>
+              </div>
+            </div>
+            <div class="st-mobile-card__grid-item" style="grid-column: span 2;">
+              <span class="st-mobile-card__grid-label">Degree Program</span>
+              <span class="st-mobile-card__grid-value" style="font-size:0.8rem;">${escapeHtml(programTitle)}</span>
+            </div>
+            <div class="st-mobile-card__grid-item" style="grid-column: span 2;">
+              <span class="st-mobile-card__grid-label">Host Company</span>
+              <span class="st-mobile-card__grid-value">${escapeHtml(s.ojt_company || 'Undeployed (No host company)')}</span>
+            </div>
+          </div>
+
+          <!-- OJT Progress -->
+          ${s.ojt_required > 0 ? `
+          <div class="st-progress-wrap" style="padding:0 2px;">
+            <div class="st-progress-header">
+              <span class="st-progress-hours">OJT Progress: ${s.ojt_hours} / ${s.ojt_required} hrs</span>
+              <span class="st-progress-pct">${pct}%</span>
+            </div>
+            <div class="st-progress-track">
+              <div class="st-progress-fill" style="width:${pct}%;background:${barColor};"></div>
+            </div>
+          </div>` : ''}
+
+          <div class="st-mobile-card__actions">
+            ${s.approval_status === 'pending' ? `
+              <button class="approve-btn btn btn--primary btn--sm" data-id="${s.id}" data-name="${escapeHtml(s.name)}" style="flex:1;height:42px;">
+                ${icon('check', 14)} Approve
+              </button>
+              <button class="reject-btn btn btn--outline btn--sm" data-id="${s.id}" data-name="${escapeHtml(s.name)}" style="flex:1;height:42px;color:#DC2626;">
+                ${icon('x', 14)} Reject
+              </button>
+            ` : ''}
+            <button class="view-btn st-btn-view" data-id="${s.id}">
+              ${icon('eye', 14)} View Student Details
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
   renderIcons();
 
+  // Attach unified event handlers across both Table rows and Mobile cards
+  const root = container || tbody;
+
   // Approve student action
-  tbody.querySelectorAll('.approve-btn').forEach(btn => {
+  root.querySelectorAll('.approve-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const id = parseInt(btn.dataset.id, 10);
@@ -869,7 +1001,7 @@ function renderTable(tbody, list, container, selectedStudents, updateSelectionUI
   });
 
   // Reject student action
-  tbody.querySelectorAll('.reject-btn').forEach(btn => {
+  root.querySelectorAll('.reject-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const id = parseInt(btn.dataset.id, 10);
@@ -887,8 +1019,8 @@ function renderTable(tbody, list, container, selectedStudents, updateSelectionUI
     });
   });
 
-  // Individual checkbox selection handling
-  tbody.querySelectorAll('.student-select-cb').forEach(cb => {
+  // Checkbox selection handling (syncing both desktop and mobile inputs)
+  root.querySelectorAll('.student-select-cb').forEach(cb => {
     cb.addEventListener('change', () => {
       const id = parseInt(cb.dataset.id, 10);
       const student = list.find(s => s.id === id);
@@ -898,12 +1030,16 @@ function renderTable(tbody, list, container, selectedStudents, updateSelectionUI
         } else {
           selectedStudents.delete(id);
         }
+        // Mirror state across both views
+        root.querySelectorAll(`.student-select-cb[data-id="${id}"]`).forEach(box => {
+          box.checked = cb.checked;
+        });
         if (typeof updateSelectionUI === 'function') updateSelectionUI();
       }
     });
   });
 
-  tbody.querySelectorAll('.view-btn').forEach(btn => {
+  root.querySelectorAll('.view-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const st = list.find(s => String(s.id) === btn.dataset.id);
       if (st) showModal(st, container, onRefresh);
@@ -914,107 +1050,164 @@ function renderTable(tbody, list, container, selectedStudents, updateSelectionUI
 }
 
 /* ─── Skeleton loader ───────────────────────────────────────────── */
-function showSkeleton(tbody, count = 8) {
+function showSkeleton(tbody, count = 8, container = null) {
   tbody.innerHTML = Array.from({ length: count }, () => `
-    <tr style="opacity: 0.5;">
-      <td style="text-align:center;padding:10px 8px;"><div style="height:15px;width:15px;background:var(--bg-tertiary);border-radius:3px;margin:auto;"></div></td>
-      <td style="padding:10px 12px;">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <div style="width:34px;height:34px;border-radius:var(--radius-full);background:var(--bg-tertiary);flex-shrink:0;"></div>
-          <div>
-            <div style="height:12px;width:110px;background:var(--bg-tertiary);border-radius:4px;margin-bottom:5px;"></div>
-            <div style="height:10px;width:140px;background:var(--bg-tertiary);border-radius:4px;"></div>
+    <tr class="st-skeleton-row" style="opacity: 0.6;">
+      <td class="st-checkbox-cell"><div style="height:17px;width:17px;background:var(--bg-tertiary);border-radius:4px;margin:auto;"></div></td>
+      <td class="st-student-cell">
+        <div style="display:flex;align-items:center;gap:14px;">
+          <div style="width:42px;height:42px;border-radius:var(--radius-lg);background:var(--bg-tertiary);flex-shrink:0;"></div>
+          <div style="flex:1;">
+            <div style="height:15px;width:140px;background:var(--bg-tertiary);border-radius:4px;margin-bottom:6px;"></div>
+            <div style="height:12px;width:180px;background:var(--bg-tertiary);border-radius:4px;"></div>
           </div>
         </div>
       </td>
-      <td style="padding:10px 12px;"><div style="height:12px;width:75px;background:var(--bg-tertiary);border-radius:4px;"></div></td>
-      <td style="padding:10px 12px;">
-        <div style="height:12px;width:60px;background:var(--bg-tertiary);border-radius:4px;margin-bottom:5px;"></div>
-        <div style="height:10px;width:90px;background:var(--bg-tertiary);border-radius:4px;"></div>
+      <td><div style="height:26px;width:110px;background:var(--bg-tertiary);border-radius:6px;"></div></td>
+      <td class="st-program-cell">
+        <div style="height:15px;width:190px;background:var(--bg-tertiary);border-radius:4px;margin-bottom:6px;"></div>
+        <div style="height:13px;width:110px;background:var(--bg-tertiary);border-radius:12px;"></div>
       </td>
-      <td style="padding:10px 12px;">
-        <div style="height:12px;width:110px;background:var(--bg-tertiary);border-radius:4px;margin-bottom:5px;"></div>
-        <div style="height:10px;width:60px;background:var(--bg-tertiary);border-radius:4px;"></div>
+      <td class="st-company-cell">
+        <div style="height:15px;width:120px;background:var(--bg-tertiary);border-radius:4px;margin-bottom:6px;"></div>
+        <div style="height:13px;width:75px;background:var(--bg-tertiary);border-radius:12px;"></div>
       </td>
-      <td style="padding:10px 12px;"><div style="height:10px;width:95px;background:var(--bg-tertiary);border-radius:4px;"></div></td>
-      <td style="padding:10px 12px;"><div style="height:20px;width:80px;background:var(--bg-tertiary);border-radius:12px;"></div></td>
-      <td style="padding:10px 12px;text-align:right;"><div style="height:26px;width:65px;background:var(--bg-tertiary);border-radius:6px;display:inline-block;"></div></td>
+      <td class="st-progress-cell">
+        <div style="height:13px;width:90px;background:var(--bg-tertiary);border-radius:4px;margin-bottom:6px;"></div>
+        <div style="height:8px;width:100%;background:var(--bg-tertiary);border-radius:9999px;"></div>
+      </td>
+      <td class="st-status-cell"><div style="height:26px;width:95px;background:var(--bg-tertiary);border-radius:9999px;"></div></td>
+      <td class="st-action-cell"><div style="height:36px;width:75px;background:var(--bg-tertiary);border-radius:8px;display:inline-block;"></div></td>
     </tr>`).join('');
+
+  const mobileContainer = container ? container.querySelector('#students-mobile-cards') : null;
+  if (mobileContainer) {
+    mobileContainer.innerHTML = Array.from({ length: 4 }, () => `
+      <div class="st-mobile-card" style="opacity: 0.6;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:42px;height:42px;border-radius:var(--radius-lg);background:var(--bg-tertiary);"></div>
+          <div style="flex:1;">
+            <div style="height:14px;width:140px;background:var(--bg-tertiary);border-radius:4px;margin-bottom:6px;"></div>
+            <div style="height:11px;width:170px;background:var(--bg-tertiary);border-radius:4px;"></div>
+          </div>
+        </div>
+        <div style="height:50px;background:var(--bg-primary);border-radius:var(--radius-lg);"></div>
+        <div style="height:36px;background:var(--bg-tertiary);border-radius:var(--radius-md);"></div>
+      </div>`).join('');
+  }
 }
 
 /* ─── Main page ─────────────────────────────────────────────────── */
 export default async function StudentsPage(container) {
   container.innerHTML = `
-    <div class="page-header">
-      <h1 class="page-header__title">Students</h1>
-      <p class="page-header__subtitle">Academic records, OJT progress, and employment tracking</p>
-    </div>
-    <div class="toolbar">
-      <div class="toolbar__left">
-        <div class="search-box">
-          ${icon('search', 15)}
-          <input class="search-box__input" id="student-search" placeholder="Search name, email, or student ID…" />
+    <div class="st-page">
+      <!-- Header -->
+      <div class="st-header">
+        <div class="st-header__title-group">
+          <h1 class="st-header__title">
+            <span>Students</span>
+          </h1>
+          <p class="st-header__subtitle">Academic records, section placement, OJT progress, and graduation readiness</p>
         </div>
-        <select class="form-select" id="filter-course" style="width:auto;max-width:240px;padding:7px 32px 7px 10px;">
-          <option value="">All Courses</option>
-        </select>
-        <select class="form-select" id="filter-section" style="width:auto;padding:7px 32px 7px 10px;">
-          <option value="">All Sections</option>
-        </select>
-        <select class="form-select" id="filter-status" style="width:auto;padding:7px 32px 7px 10px;">
-          <option value="">All Status</option>
-          <option value="pending">⏳ Pending Approval</option>
-          <option value="Eligible for Promotion">Ready for Graduation (Eligible)</option>
-          <option value="Needs Evaluation">Needs Company Evaluation</option>
-          <option value="Completed OJT">Completed OJT (600h+)</option>
-          <option value="Active OJT">Active OJT</option>
-          <option value="Undeployed">Undeployed</option>
-        </select>
+        <div class="st-header__actions" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <button class="btn btn--outline btn--sm" id="broadcast-students-btn" style="display:inline-flex;align-items:center;gap:6px;height:40px;padding:0 16px;border-radius:var(--radius-lg);font-weight:600;">
+            ${icon('bell', 14)} Broadcast Notice
+          </button>
+          <button class="btn btn--primary btn--sm" id="import-students-btn" style="display:inline-flex;align-items:center;gap:6px;height:40px;padding:0 16px;border-radius:var(--radius-lg);font-weight:600;">
+            ${icon('upload', 15)} Import Students
+          </button>
+        </div>
       </div>
-      <div class="toolbar__right" style="display:flex;align-items:center;gap:8px;">
-        <span id="student-count" style="font-size:var(--text-sm);color:var(--text-tertiary);"></span>
-        <button class="btn btn--outline btn--sm" id="broadcast-students-btn" style="display:inline-flex;align-items:center;gap:6px;">
-          ${icon('bell', 13)} Broadcast Notice
-        </button>
-        <button class="btn btn--primary btn--sm" id="import-students-btn" style="display:inline-flex;align-items:center;gap:6px;">
-          ${icon('upload', 14)} Import Students
-        </button>
-      </div>
-    </div>
-    <div class="table-wrapper anim-fade-in-up" style="background:var(--bg-surface);">
-      <table class="table" id="students-table">
-        <thead>
-          <tr>
-            <th style="width:38px;text-align:center;padding:10px 8px;">
-              <input type="checkbox" id="select-all-students" style="cursor:pointer;width:15px;height:15px;" title="Select all eligible students on this page" />
-            </th>
-            <th style="min-width:180px;padding:10px 12px;">Student</th>
-            <th style="width:110px;padding:10px 12px;">Student ID</th>
-            <th style="width:130px;padding:10px 12px;">Program</th>
-            <th style="min-width:160px;padding:10px 12px;">Host Company</th>
-            <th style="width:130px;padding:10px 12px;">OJT Progress</th>
-            <th style="width:125px;padding:10px 12px;">Status</th>
-            <th style="width:150px;text-align:right;padding:10px 12px;">Actions</th>
-          </tr>
-        </thead>
-        <tbody id="students-tbody"></tbody>
-      </table>
-    </div>
-    <div id="students-pagination" style="display:flex;justify-content:center;gap:8px;margin-top:var(--space-5);flex-wrap:wrap;"></div>
 
-    <!-- Floating Batch Action Bar for Graduation Promotion -->
-    <div id="batch-action-bar" class="batch-action-bar" style="display:none;">
-      <div class="batch-action-bar__info">
-        <span class="batch-action-bar__count-badge" id="batch-selected-count">0</span>
-        <span style="font-weight:var(--weight-semibold);color:var(--text-primary);">Selected</span>
-        <span class="batch-action-bar__divider"></span>
-        <span class="batch-action-bar__pill">${icon('award', 13)} Dual-Gate Qualified</span>
+      <!-- Executive KPI / Filter Quick Pills -->
+      <div class="st-kpi-bar" id="student-kpi-bar">
+        <div class="st-kpi-pill st-kpi-pill--primary">
+          ${icon('users', 14)}
+          <span>Total: <strong id="kpi-total-count">...</strong></span>
+        </div>
+        <div class="st-kpi-pill">
+          <span>Section A: <strong id="kpi-sec-a">...</strong></span>
+        </div>
+        <div class="st-kpi-pill">
+          <span>Section B: <strong id="kpi-sec-b">...</strong></span>
+        </div>
+        <div class="st-kpi-pill">
+          <span>Active OJT: <strong id="kpi-active-ojt">...</strong></span>
+        </div>
       </div>
-      <div class="batch-action-bar__actions">
-        <button class="btn btn--outline btn--sm" id="batch-clear-btn" type="button">Deselect</button>
-        <button class="btn btn--primary btn--sm" id="batch-promote-btn" type="button" style="display:inline-flex;align-items:center;gap:6px;">
-          ${icon('graduation-cap', 14)} Promote to Graduate
-        </button>
+
+      <!-- Responsive Toolbar -->
+      <div class="st-toolbar">
+        <div class="st-toolbar__left">
+          <div class="st-search-box">
+            ${icon('search', 16)}
+            <input class="st-search-input" id="student-search" placeholder="Search by student name, email, or ID…" />
+          </div>
+          <select class="st-select" id="filter-course">
+            <option value="">All Courses</option>
+          </select>
+          <select class="st-select" id="filter-section">
+            <option value="">All Sections</option>
+          </select>
+          <select class="st-select" id="filter-status">
+            <option value="">All Statuses</option>
+            <option value="pending">⏳ Pending Approval</option>
+            <option value="Eligible for Promotion">Ready for Graduation (Eligible)</option>
+            <option value="Needs Evaluation">Needs Company Evaluation</option>
+            <option value="Completed OJT">Completed OJT (600h+)</option>
+            <option value="Active OJT">Active OJT</option>
+            <option value="Undeployed">Undeployed</option>
+          </select>
+        </div>
+        <div class="st-toolbar__right">
+          <span id="student-count" style="font-size:var(--text-sm);font-weight:600;color:var(--text-secondary);"></span>
+        </div>
+      </div>
+
+      <!-- Primary Table Card -->
+      <div class="st-table-card anim-fade-in-up">
+        <!-- Desktop / Tablet Table View -->
+        <div class="st-table-responsive">
+          <table class="st-table" id="students-table">
+            <thead>
+              <tr>
+                <th class="st-checkbox-cell">
+                  <input type="checkbox" id="select-all-students" class="st-checkbox" title="Select all eligible students on this page" />
+                </th>
+                <th class="st-student-cell">Student</th>
+                <th style="min-width:130px;">Student ID</th>
+                <th class="st-program-cell">Course &amp; Section</th>
+                <th class="st-company-cell">Host Company</th>
+                <th class="st-progress-cell">OJT Progress</th>
+                <th class="st-status-cell">Status</th>
+                <th class="st-action-cell">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="students-tbody"></tbody>
+          </table>
+        </div>
+
+        <!-- Mobile Responsive Cards View (Active on screens < 768px) -->
+        <div class="st-mobile-cards" id="students-mobile-cards"></div>
+      </div>
+
+      <!-- Pagination -->
+      <div id="students-pagination" style="display:flex;justify-content:center;gap:8px;margin-top:var(--space-2);flex-wrap:wrap;"></div>
+
+      <!-- Floating Batch Action Bar for Graduation Promotion -->
+      <div id="batch-action-bar" class="batch-action-bar" style="display:none;">
+        <div class="batch-action-bar__info">
+          <span class="batch-action-bar__count-badge" id="batch-selected-count">0</span>
+          <span style="font-weight:var(--weight-semibold);color:var(--text-primary);">Selected</span>
+          <span class="batch-action-bar__divider"></span>
+          <span class="batch-action-bar__pill">${icon('award', 13)} Dual-Gate Qualified</span>
+        </div>
+        <div class="batch-action-bar__actions">
+          <button class="btn btn--outline btn--sm" id="batch-clear-btn" type="button">Deselect</button>
+          <button class="btn btn--primary btn--sm" id="batch-promote-btn" type="button" style="display:inline-flex;align-items:center;gap:6px;">
+            ${icon('graduation-cap', 14)} Promote to Graduate
+          </button>
+        </div>
       </div>
     </div>
   `;
@@ -1098,13 +1291,42 @@ export default async function StudentsPage(container) {
         const isSame = currentOptions.length === res.sections.length && currentOptions.every((v, i) => v === res.sections[i]);
         if (!isSame) {
           secSelect.innerHTML = '<option value="">All Sections</option>' +
-            res.sections.map(sec => `<option value="${sec}"${sec === currentSelected ? ' selected' : ''}>${sec}</option>`).join('');
+            res.sections.map(sec => {
+              const label = sec === 'A' ? 'Section A' : sec === 'B' ? 'Section B' : sec;
+              return `<option value="${sec}"${sec === currentSelected ? ' selected' : ''}>${label}</option>`;
+            }).join('');
         }
       }
     }
 
     currentStudentsList = Array.isArray(res.data) ? res.data : [];
     if (countEl) countEl.textContent = res.total != null ? `${res.total} student${res.total !== 1 ? 's' : ''}` : '';
+
+    // Update KPI stats strip
+    const kpiTotal = container.querySelector('#kpi-total-count');
+    const kpiSecA = container.querySelector('#kpi-sec-a');
+    const kpiSecB = container.querySelector('#kpi-sec-b');
+    const kpiActiveOjt = container.querySelector('#kpi-active-ojt');
+
+    if (kpiTotal) kpiTotal.textContent = res.total ?? currentStudentsList.length;
+    if (kpiSecA) {
+      const aCount = currentStudentsList.filter(s => {
+        const sec = (s.section || '').trim();
+        return sec === 'A' || sec === 'BSIT 4-A' || sec === '4-A' || sec === '4A';
+      }).length;
+      kpiSecA.textContent = aCount;
+    }
+    if (kpiSecB) {
+      const bCount = currentStudentsList.filter(s => {
+        const sec = (s.section || '').trim();
+        return sec === 'B' || sec === 'BSIT 4-B' || sec === '4-B' || sec === '4B';
+      }).length;
+      kpiSecB.textContent = bCount;
+    }
+    if (kpiActiveOjt) {
+      const ojtCount = currentStudentsList.filter(s => s.status === 'Active OJT').length;
+      kpiActiveOjt.textContent = ojtCount;
+    }
 
     renderTable(tbody, currentStudentsList, container, selectedStudents, updateSelectionUI, () => {
       selectedStudents.clear();
@@ -1131,7 +1353,7 @@ export default async function StudentsPage(container) {
     if (cached?.data) {
       applyStudentsResponse(cached.data);
     } else {
-      showSkeleton(tbody);
+      showSkeleton(tbody, 8, container);
       paginationEl.innerHTML = '';
     }
 
@@ -1196,7 +1418,7 @@ export default async function StudentsPage(container) {
       }
     });
 
-    tbody.querySelectorAll('.student-select-cb').forEach(cb => {
+    container.querySelectorAll('.student-select-cb').forEach(cb => {
       const id = parseInt(cb.dataset.id, 10);
       cb.checked = selectedStudents.has(id);
     });
@@ -1206,7 +1428,7 @@ export default async function StudentsPage(container) {
 
   container.querySelector('#batch-clear-btn')?.addEventListener('click', () => {
     selectedStudents.clear();
-    tbody.querySelectorAll('.student-select-cb').forEach(cb => { cb.checked = false; });
+    container.querySelectorAll('.student-select-cb').forEach(cb => { cb.checked = false; });
     updateSelectionUI();
   });
 
