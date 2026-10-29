@@ -1,6 +1,6 @@
 ﻿/* ── Responsive Styles — Admin Portal (Redesigned) ── */
 
-@media (max-width: 1200px) {
+@media (max-width: 1280px) {
   .sidebar-right { display: none; }
   .layout__center { margin-right: 0; }
   .stats-grid { grid-template-columns: repeat(2, 1fr); }

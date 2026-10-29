@@ -794,7 +794,7 @@ function renderTable(tbody, list, container, selectedStudents, updateSelectionUI
         </td>
 
         <!-- Student ID -->
-        <td>
+        <td class="st-id-cell">
           <span class="st-id-badge">${escapeHtml(s.student_id || '—')}</span>
         </td>
 
@@ -1175,7 +1175,7 @@ export default async function StudentsPage(container) {
                   <input type="checkbox" id="select-all-students" class="st-checkbox" title="Select all eligible students on this page" />
                 </th>
                 <th class="st-student-cell">Student</th>
-                <th style="min-width:130px;">Student ID</th>
+                <th class="st-id-cell">Student ID</th>
                 <th class="st-program-cell">Course &amp; Section</th>
                 <th class="st-company-cell">Host Company</th>
                 <th class="st-progress-cell">OJT Progress</th>
