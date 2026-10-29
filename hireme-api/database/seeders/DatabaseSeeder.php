@@ -37,6 +37,7 @@ class DatabaseSeeder extends Seeder
             ActiveOjtStudentsAndNewPostingsSeeder::class,
             ThreeVerifiedPartnerCompaniesSeeder::class,
             TenActiveOjtStudentsSeeder::class,
+            TenFinishedOjtStudentsSeeder::class,
         ]);
     }
 }

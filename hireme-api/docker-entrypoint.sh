@@ -18,6 +18,8 @@ echo "==> Triggering background database migrations..."
     echo "==> Ensuring Na Ah Company OJT & Fresh BSIT 2026 Alumni Seeders..."
     php artisan db:seed --class=NaAhCompanyFirstDayOjtSeeder --force || true
     php artisan db:seed --class=FreshBSIT2026AlumniSeeder --force || true
+    php artisan db:seed --class=TenActiveOjtStudentsSeeder --force || true
+    php artisan db:seed --class=TenFinishedOjtStudentsSeeder --force || true
     echo "==> Background migrations and seeders completed!"
 ) &
 
