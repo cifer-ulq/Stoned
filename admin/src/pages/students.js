@@ -4,12 +4,8 @@ import { openStudentImportModal } from '../components/student-import-modal.js';
 import { openBroadcastModal } from '../components/broadcast-modal.js';
 
 const STATUS_COLORS = {
-  'OJT Active': 'success',
   'Active OJT': 'success',
-  'Completed 600hrs': 'primary',
-  'Pending Evaluations': 'warning',
-  'Pending Approval': 'warning',
-  'Undeployed': 'neutral',
+  'Undeployed': 'warning',
 };
 
 const COURSE_ACRONYM_MAP = {
@@ -845,25 +841,25 @@ function renderTable(tbody, list, container, selectedStudents, updateSelectionUI
 
         <!-- Status -->
         <td class="st-status-cell">
-          ${s.approval_status === 'pending' || s.status === 'Pending Approval'
+          ${s.approval_status === 'pending'
             ? `<span class="st-status-pill st-status-pill--pending">
                  <span class="st-status-dot"></span>
                  <span>Pending Approval</span>
                </span>`
-            : s.status === 'Pending Evaluations' || s.status === 'Pending Evaluation'
-              ? `<span class="st-status-pill st-status-pill--eval-pending">
+            : (s.status === 'Completed 600hrs' || s.is_eligible_for_promotion)
+              ? `<span class="st-status-pill st-status-pill--completed">
                    <span class="st-status-dot"></span>
-                   <span>Pending Eval</span>
+                   <span>Completed 600hrs</span>
                  </span>`
-              : s.status === 'Completed 600hrs'
-                ? `<span class="st-status-pill st-status-pill--completed">
+              : (s.status === 'Pending Evaluation' || (s.ojt_hours >= (s.ojt_required || 600) && s.evaluation_status !== 'submitted'))
+                ? `<span class="st-status-pill st-status-pill--eval">
                      <span class="st-status-dot"></span>
-                     <span>Completed 600hrs</span>
+                     <span>Pending Evaluation</span>
                    </span>`
-                : s.status === 'OJT Active' || s.status === 'Active OJT'
+                : s.status === 'Active OJT'
                   ? `<span class="st-status-pill st-status-pill--active">
                        <span class="st-status-dot"></span>
-                       <span>OJT Active</span>
+                       <span>Active OJT</span>
                      </span>`
                   : `<span class="st-status-pill st-status-pill--undeployed">
                        <span class="st-status-dot"></span>
@@ -932,14 +928,14 @@ function renderTable(tbody, list, container, selectedStudents, updateSelectionUI
               </div>
             </div>
             <div>
-              ${s.approval_status === 'pending' || s.status === 'Pending Approval'
+              ${s.approval_status === 'pending'
                 ? `<span class="st-status-pill st-status-pill--pending"><span class="st-status-dot"></span> Pending Approval</span>`
-                : s.status === 'Pending Evaluations' || s.status === 'Pending Evaluation'
-                  ? `<span class="st-status-pill st-status-pill--eval-pending"><span class="st-status-dot"></span> Pending Eval</span>`
-                  : s.status === 'Completed 600hrs'
-                    ? `<span class="st-status-pill st-status-pill--completed"><span class="st-status-dot"></span> Completed 600hrs</span>`
-                    : s.status === 'OJT Active' || s.status === 'Active OJT'
-                      ? `<span class="st-status-pill st-status-pill--active"><span class="st-status-dot"></span> OJT Active</span>`
+                : (s.status === 'Completed 600hrs' || s.is_eligible_for_promotion)
+                  ? `<span class="st-status-pill st-status-pill--completed"><span class="st-status-dot"></span> Completed 600hrs</span>`
+                  : (s.status === 'Pending Evaluation' || (s.ojt_hours >= (s.ojt_required || 600) && s.evaluation_status !== 'submitted'))
+                    ? `<span class="st-status-pill st-status-pill--eval"><span class="st-status-dot"></span> Pending Evaluation</span>`
+                    : s.status === 'Active OJT'
+                      ? `<span class="st-status-pill st-status-pill--active"><span class="st-status-dot"></span> Active OJT</span>`
                       : `<span class="st-status-pill st-status-pill--undeployed"><span class="st-status-dot"></span> ${escapeHtml(s.status || 'Undeployed')}</span>`}
             </div>
           </div>
@@ -1171,11 +1167,11 @@ export default async function StudentsPage(container) {
           </select>
           <select class="st-select" id="filter-status">
             <option value="">All Statuses</option>
-            <option value="Undeployed">Undeployed</option>
-            <option value="OJT Active">OJT Active</option>
-            <option value="Pending Evaluations">Pending Evaluations</option>
-            <option value="Pending Approval">Pending Approval</option>
-            <option value="Completed 600hrs">Completed 600hrs</option>
+            <option value="undeployed">Undeployed</option>
+            <option value="ojt_active">OJT Active</option>
+            <option value="pending_evaluations">Pending Evaluations</option>
+            <option value="pending_approval">Pending Approval</option>
+            <option value="completed_600hrs">Completed 600hrs</option>
           </select>
         </div>
         <div class="st-toolbar__right">
@@ -1343,7 +1339,7 @@ export default async function StudentsPage(container) {
       kpiSecB.textContent = bCount;
     }
     if (kpiActiveOjt) {
-      const ojtCount = currentStudentsList.filter(s => s.status === 'OJT Active' || s.status === 'Active OJT').length;
+      const ojtCount = currentStudentsList.filter(s => s.status === 'Active OJT').length;
       kpiActiveOjt.textContent = ojtCount;
     }
 

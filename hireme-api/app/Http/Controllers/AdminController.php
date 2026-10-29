@@ -546,45 +546,54 @@ class AdminController extends Controller
             });
         }
 
-        // Status filter: 'Undeployed', 'OJT Active', 'Pending Evaluations', 'Pending Approval', 'Completed 600hrs'
+        // Status filter: 'undeployed', 'ojt_active', 'pending_evaluations', 'pending_approval', 'completed_600hrs'
         if ($statusFilter) {
             $norm = strtolower(trim(str_replace([' ', '_', '-'], '', $statusFilter)));
             if ($norm === 'pending' || $norm === 'pendingapproval') {
                 $query->whereHas('studentProfile', fn($sp) => $sp->where('approval_status', 'pending'));
-            } elseif ($norm === 'completed600hrs' || $norm === 'completed600h' || $norm === 'completedojt' || $norm === 'completed') {
-                $query->whereHas('ojtRecord', function ($oq) {
-                    $oq->where('completed_hours', '>=', 600)
-                       ->orWhere('status', 'completed')
-                       ->orWhereRaw('completed_hours >= required_hours AND required_hours > 0');
-                });
-            } elseif ($norm === 'pendingevaluations' || $norm === 'pendingevaluation' || $norm === 'needsevaluation' || $norm === 'missingevaluation') {
-                $query->whereHas('ojtRecord', function ($oq) {
-                    $oq->where('completed_hours', '>=', 600)
-                       ->orWhere('status', 'completed')
-                       ->orWhereRaw('completed_hours >= required_hours AND required_hours > 0');
-                })
-                ->whereDoesntHave('studentEvaluations', fn($eq) => $eq->where('status', 'submitted'));
-            } elseif ($norm === 'ojtactive' || $norm === 'activeojt' || $norm === 'ojt') {
-                $query->where(function ($sq) {
-                    $sq->whereHas('ojtRecord', fn($oq) => $oq->where('status', '!=', 'pulled_out')->where('completed_hours', '<', 600)->where('status', '!=', 'completed'))
-                       ->orWhere(function ($oq2) {
-                           $oq2->whereHas('ojtInterests', fn($oi) => $oi->whereIn('status', ['ojt_started', 'accepted', 'ojt_confirmed']))
-                               ->whereDoesntHave('ojtRecord', fn($r) => $r->where('completed_hours', '>=', 600)->orWhere('status', 'completed'));
-                       });
-                });
-            } elseif ($norm === 'eligibleforpromotion' || $norm === 'eligible') {
-                $query->whereHas('ojtRecord', function ($oq) {
-                    $oq->where('completed_hours', '>=', 600)
-                       ->orWhere('status', 'completed')
-                       ->orWhereRaw('completed_hours >= required_hours AND required_hours > 0');
-                })
-                ->whereHas('studentEvaluations', fn($eq) => $eq->where('status', 'submitted'));
-            } elseif ($norm === 'undeployed' || $norm === 'active') {
+            } elseif ($norm === 'undeployed') {
                 $query->where(function ($sq) {
                     $sq->whereDoesntHave('ojtRecord')
                        ->orWhereHas('ojtRecord', fn($oq) => $oq->where('status', 'pulled_out'));
                 })
-                ->whereDoesntHave('ojtInterests', fn($oi) => $oi->whereIn('status', ['ojt_started', 'accepted', 'ojt_confirmed']));
+                ->whereDoesntHave('ojtInterests', fn($oi) => $oi->whereIn('status', ['ojt_started', 'accepted', 'ojt_confirmed']))
+                ->whereHas('studentProfile', fn($sp) => $sp->where('approval_status', '!=', 'pending'));
+            } elseif ($norm === 'ojtactive' || $norm === 'activeojt' || $norm === 'active') {
+                $query->where(function ($sq) {
+                    $sq->whereHas('ojtRecord', function ($oq) {
+                        $oq->where('status', '!=', 'pulled_out')
+                           ->where(function ($hq) {
+                               $hq->where('completed_hours', '<', 600)
+                                  ->orWhereNull('completed_hours');
+                           });
+                    })
+                    ->orWhere(function ($sq2) {
+                        $sq2->whereHas('ojtInterests', fn($oi) => $oi->whereIn('status', ['ojt_started', 'accepted', 'ojt_confirmed']))
+                            ->whereDoesntHave('ojtRecord', fn($oq) => $oq->where('completed_hours', '>=', 600));
+                    });
+                })
+                ->whereHas('studentProfile', fn($sp) => $sp->where('approval_status', '!=', 'pending'));
+            } elseif ($norm === 'pendingevaluations' || $norm === 'pendingevaluation' || $norm === 'needsevaluation') {
+                $query->where(function ($q) {
+                    $q->whereHas('studentEvaluations', fn($eq) => $eq->where('status', 'pending'))
+                      ->orWhere(function ($sub) {
+                          $sub->whereHas('ojtRecord', function ($oq) {
+                              $oq->where('completed_hours', '>=', 600)
+                                 ->orWhere('status', 'completed');
+                          })
+                          ->whereDoesntHave('studentEvaluations', fn($eq) => $eq->where('status', 'submitted'));
+                      });
+                })
+                ->whereHas('studentProfile', fn($sp) => $sp->where('approval_status', '!=', 'pending'));
+            } elseif ($norm === 'completed600hrs' || $norm === 'completed600hours' || $norm === 'completedojt' || $norm === 'completed' || $norm === 'eligibleforpromotion' || $norm === 'eligible') {
+                $query->where(function ($q) {
+                    $q->whereHas('ojtRecord', function ($oq) {
+                        $oq->where('completed_hours', '>=', 600)
+                           ->orWhere('status', 'completed')
+                           ->orWhereRaw('completed_hours >= required_hours AND required_hours > 0');
+                    });
+                })
+                ->whereHas('studentProfile', fn($sp) => $sp->where('approval_status', '!=', 'pending'));
             }
         }
 
@@ -696,19 +705,21 @@ class AdminController extends Controller
             $evalSubmittedAt = $submittedEval?->submitted_at?->format('Y-m-d');
 
             // Gate 1: Required OJT hours completed
-            $isHoursCompleted = ($ojtHours >= 600 || ($ojtRequired > 0 && $ojtHours >= $ojtRequired && $ojtHours > 0) || $ojt?->status === 'completed');
+            $isHoursCompleted = ($ojtHours >= 600 || ($ojtRequired > 0 && $ojtHours >= $ojtRequired && $ojtHours > 0));
 
             $approvalStatus = $p?->approval_status ?? 'approved';
             if ($approvalStatus === 'pending') {
                 $status = 'Pending Approval';
             } elseif ($isAlumni) {
                 $status = 'Alumni';
-            } elseif ($isHoursCompleted && !$hasCompanyEval) {
-                $status = 'Pending Evaluations';
             } elseif ($isHoursCompleted) {
-                $status = 'Completed 600hrs';
+                if ($hasCompanyEval) {
+                    $status = 'Completed 600hrs';
+                } else {
+                    $status = 'Pending Evaluation';
+                }
             } elseif ($hasActivePlacement) {
-                $status = 'OJT Active';
+                $status = 'Active OJT';
             } else {
                 $status = 'Undeployed';
             }
