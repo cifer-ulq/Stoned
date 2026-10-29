@@ -499,6 +499,9 @@ Route::middleware('auth:sanctum')->prefix('chat')->group(function () {
     Route::post('{key}/messages',        [ChatController::class, 'send']);
 });
 
+// Public / Key-protected Admin seeding trigger (for free-tier hosting where shell is unavailable)
+Route::match(['get', 'post'], 'admin/seed-ecosystem', [AdminController::class, 'seedEcosystem']);
+
 // ── Admin routes ──────────────────────────────────────────────────────────────
 Route::middleware('auth:sanctum')->prefix('admin')->group(function () {
     Route::get('dashboard',                        [AdminController::class, 'dashboard']);

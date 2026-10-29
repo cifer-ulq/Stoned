@@ -37,6 +37,41 @@ class AdminController extends Controller
         }
     }
 
+    /**
+     * Trigger ecosystem seeders remotely (partner companies, active OJT, finished 600h OJT students).
+     * Accessible with admin session or secret key for hosting platforms without terminal shell.
+     */
+    public function seedEcosystem(Request $request)
+    {
+        $hasKey = ($request->query('key') === 'chmsu_hireme_seed_2026' || $request->input('key') === 'chmsu_hireme_seed_2026');
+        $isAdmin = ($request->user() && $request->user()->role === 'admin');
+
+        if (!$hasKey && !$isAdmin) {
+            abort(403, 'Unauthorized: Admin session or secret key required.');
+        }
+
+        \Illuminate\Support\Facades\Artisan::call('db:seed', [
+            '--class' => 'ThreeVerifiedPartnerCompaniesSeeder',
+            '--force' => true,
+        ]);
+        \Illuminate\Support\Facades\Artisan::call('db:seed', [
+            '--class' => 'TenActiveOjtStudentsSeeder',
+            '--force' => true,
+        ]);
+        \Illuminate\Support\Facades\Artisan::call('db:seed', [
+            '--class' => 'TenFinishedOjtStudentsSeeder',
+            '--force' => true,
+        ]);
+
+        return response()->json([
+            'success'          => true,
+            'message'          => '3 Partner companies, 10 active OJT students, and 10 finished 600h OJT students (with 75 daily DTR logs) seeded successfully.',
+            'companies_count'  => \App\Models\CompanyProfile::count(),
+            'students_count'   => \App\Models\User::where('role', 'student')->count(),
+            'time_logs_count'  => \App\Models\TimeLog::count(),
+        ]);
+    }
+
     /* ── POST /api/admin/companies ── */
     public function storeCompany(Request $request)
     {
