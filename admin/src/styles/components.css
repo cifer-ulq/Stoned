@@ -1515,10 +1515,13 @@
 /* ── Hero Header ── */
 .spm-hero {
   position: relative;
+  flex-shrink: 0 !important;
   background: linear-gradient(135deg, #004D25 0%, #005930 50%, #00361C 100%);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
   overflow: hidden;
   color: #ffffff;
+  z-index: 2;
 }
 
 .spm-hero::before {
@@ -1531,7 +1534,7 @@
 
 .spm-hero__inner {
   position: relative;
-  padding: 24px 28px 20px;
+  padding: 26px 28px 30px;
   display: flex;
   align-items: flex-start;
   gap: 18px;
@@ -1656,6 +1659,7 @@
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+  margin-top: 4px;
 }
 
 .spm-badge {
@@ -1734,7 +1738,9 @@
   flex-direction: column;
   gap: 20px;
   background: var(--bg-surface, #ffffff);
-  max-height: calc(88vh - 160px);
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: calc(88vh - 170px);
   overflow-y: auto;
   overflow-x: hidden !important;
 }
@@ -2272,6 +2278,7 @@
 
 /* ── Modal Footer ── */
 .spm-footer {
+  flex-shrink: 0 !important;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2309,7 +2316,7 @@
 
 /* Responsive Adaptations */
 @media (max-width: 768px) {
-  .spm-hero__inner { padding: 20px 20px 18px; gap: 14px; }
+  .spm-hero__inner { padding: 20px 20px 22px; gap: 14px; }
   .spm-hero__avatar { width: 60px; height: 60px; font-size: 1.3rem; border-radius: 14px; }
   .spm-hero__name { font-size: 1.15rem; }
   .spm-body { padding: 18px 20px; gap: 16px; }
