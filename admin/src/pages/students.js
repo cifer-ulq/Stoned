@@ -729,7 +729,7 @@ function renderTable(tbody, list, container, selectedStudents, updateSelectionUI
   if (!list.length) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="8">
+        <td colspan="7">
           <div class="empty-state" style="padding:var(--space-8) var(--space-4);">
             <h3 class="empty-state__title">No students found</h3>
             <p class="empty-state__text">Try adjusting your search or filters</p>
@@ -791,11 +791,6 @@ function renderTable(tbody, list, container, selectedStudents, updateSelectionUI
               <div class="st-student-email" title="${escapeHtml(s.email)}">${escapeHtml(s.email)}</div>
             </div>
           </div>
-        </td>
-
-        <!-- Student ID -->
-        <td class="st-id-cell">
-          <span class="st-id-badge">${escapeHtml(s.student_id || '—')}</span>
         </td>
 
         <!-- Program & Section -->
@@ -1079,7 +1074,6 @@ function showSkeleton(tbody, count = 9, container = null) {
           </div>
         </div>
       </td>
-      <td><div style="height:26px;width:110px;background:var(--bg-tertiary);border-radius:6px;"></div></td>
       <td class="st-program-cell">
         <div style="height:15px;width:190px;background:var(--bg-tertiary);border-radius:4px;margin-bottom:6px;"></div>
         <div style="height:13px;width:110px;background:var(--bg-tertiary);border-radius:12px;"></div>
@@ -1190,7 +1184,6 @@ export default async function StudentsPage(container) {
                   <input type="checkbox" id="select-all-students" class="st-checkbox" title="Select all eligible students on this page" />
                 </th>
                 <th class="st-student-cell">Student</th>
-                <th class="st-id-cell">Student ID</th>
                 <th class="st-program-cell">Course &amp; Section</th>
                 <th class="st-company-cell">Host Company</th>
                 <th class="st-progress-cell">OJT Progress</th>
@@ -1272,7 +1265,7 @@ export default async function StudentsPage(container) {
     if (!res || res.message) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="8">
+          <td colspan="7">
             <div class="empty-state" style="padding:var(--space-8) var(--space-4);">
               <h3 class="empty-state__title">Failed to load students</h3>
               <p class="empty-state__text">${res?.message || 'Check your connection or login session.'}</p>
