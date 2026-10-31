@@ -3,9 +3,10 @@ import { icon, renderIcons } from '../components/icons.js';
 import { openAdminPullOutModal } from '../components/admin-pullout-modal.js';
 
 const STATUS_COLORS = {
+  'Ongoing':                 'success',
   'On Track':                'success',
-  'Delayed':                 'warning',
   'Completed':               'info',
+  'Delayed':                 'warning',
   'At Risk':                 'error',
   'Endorsed':                'info',
   'Accepted':                'success',
@@ -197,8 +198,8 @@ export default async function OjtManagementPage(container) {
           <input class="search-box__input" id="ojt-search" placeholder="Search trainee or company…" />
         </div>
         <select class="form-select" id="filter-status" style="width:auto;padding:7px 32px 7px 10px;">
-          <option value="">All Status</option>
-          <option>On Track</option><option>Delayed</option><option>At Risk</option><option>Completed</option>
+          <option value="">All Statuses</option>
+          <option>Ongoing</option><option>Completed</option>
           <option>Endorsed</option><option>Accepted</option><option>Endorsement Requested</option><option>Interested</option>
         </select>
       </div>
@@ -227,11 +228,15 @@ export default async function OjtManagementPage(container) {
 
   /* ── Stats ── */
   function renderStats(s) {
+    const ongoingVal = (s.ongoing != null ? s.ongoing : s.onTrack) || 0;
+    const completedVal = s.completed || 0;
+    const rateVal = s.total > 0 ? Math.round((completedVal / s.total) * 100) : 0;
+
     const items = [
-      { label: 'Total Deployed', value: s.total,     ic: 'briefcase',      color: '#6366F1' },
-      { label: 'On Track',       value: s.onTrack,   ic: 'check-circle',   color: '#10B981' },
-      { label: 'Delayed',        value: s.delayed,   ic: 'alert-triangle', color: '#F59E0B' },
-      { label: 'Completed',      value: s.completed, ic: 'award',          color: '#3B82F6' },
+      { label: 'Total Deployed',  value: (s.total || 0).toLocaleString(), ic: 'briefcase',   color: '#6366F1' },
+      { label: 'Ongoing OJT',     value: ongoingVal.toLocaleString(),     ic: 'activity',    color: '#10B981' },
+      { label: 'Completed',       value: completedVal.toLocaleString(),   ic: 'award',       color: '#3B82F6' },
+      { label: 'Completion Rate', value: `${rateVal}%`,                   ic: 'trending-up', color: '#8B5CF6' },
     ];
     statsEl.innerHTML = items.map(st => `
       <div class="stat-card anim-fade-in-up">
@@ -239,7 +244,7 @@ export default async function OjtManagementPage(container) {
           <div class="stat-card__icon" style="background:${st.color}20;color:${st.color};">${icon(st.ic, 18)}</div>
         </div>
         <div class="stat-card__body">
-          <div class="stat-card__value">${st.value.toLocaleString()}</div>
+          <div class="stat-card__value">${st.value}</div>
           <div class="stat-card__label">${st.label}</div>
         </div>
       </div>
@@ -620,12 +625,11 @@ export default async function OjtManagementPage(container) {
     renderIcons();
 
     // Status Donut with center label
+    const ongoingCount = (sb.ongoing != null ? sb.ongoing : sb.onTrack) || 0;
     const statusItems = [
-      {label:'On Track',val:sb.onTrack||0,color:'#10B981'},
-      {label:'Delayed',val:sb.delayed||0,color:'#F59E0B'},
-      {label:'At Risk',val:sb.atRisk||0,color:'#EF4444'},
+      {label:'Ongoing',val:ongoingCount,color:'#10B981'},
       {label:'Completed',val:sb.completed||0,color:'#3B82F6'},
-      {label:'Pending',val:sb.pending||0,color:'#8B5CF6'},
+      {label:'Pipeline Pending',val:sb.pending||0,color:'#8B5CF6'},
     ];
     const total = statusItems.reduce((a,b)=>a+b.val,0)||1;
     let offset=0;

@@ -475,20 +475,30 @@ class AdminController extends Controller
             ->get()
             ->keyBy('user_id');
 
-        // Classify each deployed student using OjtRecord hours when available;
-        // students without an OjtRecord default to "On Track" (freshly started)
-        $stats = ['total' => $startedUserIds->count(), 'onTrack' => 0, 'delayed' => 0, 'completed' => 0, 'atRisk' => 0];
+        // Classify each deployed student using OjtRecord hours when available
+        // Deployed students with < 100% hours are actively "Ongoing", >= 100% are "Completed"
+        $stats = [
+            'total'     => $startedUserIds->count(),
+            'ongoing'   => 0,
+            'completed' => 0,
+            'onTrack'   => 0, // compatibility alias
+            'delayed'   => 0,
+            'atRisk'    => 0,
+        ];
         foreach ($startedUserIds as $uid) {
             $record = $ojtRecords[$uid] ?? null;
             if ($record) {
                 $req = $record->required_hours ?? 0;
                 $pct = $req > 0 ? min(100, (int) round(($record->completed_hours / $req) * 100)) : 0;
-                if ($pct >= 100)      $stats['completed']++;
-                elseif ($pct >= 40)  $stats['onTrack']++;
-                elseif ($pct >= 20)  $stats['delayed']++;
-                else                  $stats['atRisk']++;
+                if ($pct >= 100) {
+                    $stats['completed']++;
+                } else {
+                    $stats['ongoing']++;
+                    $stats['onTrack']++;
+                }
             } else {
-                // No hours tracking yet → default to On Track
+                // Freshly deployed → Ongoing
+                $stats['ongoing']++;
                 $stats['onTrack']++;
             }
         }
@@ -510,7 +520,7 @@ class AdminController extends Controller
             );
 
         $interestStatusMap = [
-            'ojt_started'           => 'On Track',
+            'ojt_started'           => 'Ongoing',
             'endorsed'              => 'Endorsed',
             'company_accepted'      => 'Accepted',
             'endorsement_requested' => 'Endorsement Requested',
@@ -529,7 +539,7 @@ class AdminController extends Controller
             $pct    = $req > 0 ? min(100, (int) round(($done / $req) * 100)) : 0;
 
             $displayStatus = $record
-                ? ($pct >= 100 ? 'Completed' : ($pct >= 40 ? 'On Track' : ($pct >= 20 ? 'Delayed' : 'At Risk')))
+                ? ($pct >= 100 ? 'Completed' : 'Ongoing')
                 : ($interestStatusMap[$interest->status] ?? ucfirst($interest->status));
 
             return [
@@ -555,11 +565,24 @@ class AdminController extends Controller
         });
 
         if ($statusFilter) {
-            $filtered = $filtered->filter(fn($r) => $r['status'] === $statusFilter)->values();
+            $filtered = $filtered->filter(function ($r) use ($statusFilter) {
+                if ($statusFilter === 'Ongoing' || $statusFilter === 'On Track') {
+                    return $r['status'] === 'Ongoing' || $r['status'] === 'On Track';
+                }
+                return $r['status'] === $statusFilter;
+            })->values();
         }
 
-        // Sort: accepted first, then endorsed, then interested
-        $statusOrder = ['On Track' => 0, 'Completed' => 1, 'Delayed' => 2, 'At Risk' => 3, 'Pending' => 4, 'Interested' => 5];
+        // Sort: Ongoing first, then Completed, then pre-deployment pipeline
+        $statusOrder = [
+            'Ongoing'               => 0,
+            'On Track'              => 0,
+            'Completed'             => 1,
+            'Endorsed'              => 2,
+            'Accepted'              => 3,
+            'Endorsement Requested' => 4,
+            'Interested'            => 5,
+        ];
         $filtered = $filtered->sortBy(fn($r) => $statusOrder[$r['status']] ?? 99)->values();
 
         $total    = $filtered->count();
@@ -2252,7 +2275,7 @@ class AdminController extends Controller
         $interested = $interests->whereIn('status', ['interested', 'company_accepted']);                // early-stage interest
 
         // ── 2. Status breakdown (use OjtRecords if available, else interest status) ──
-        $statusCounts = ['onTrack' => 0, 'delayed' => 0, 'atRisk' => 0, 'completed' => 0, 'pending' => 0];
+        $statusCounts = ['ongoing' => 0, 'onTrack' => 0, 'completed' => 0, 'delayed' => 0, 'atRisk' => 0, 'pending' => 0];
 
         $ojtRecords = OjtRecord::all()->keyBy('user_id');
 
@@ -2262,11 +2285,14 @@ class AdminController extends Controller
             if ($record) {
                 $req = $record->required_hours ?? 0;
                 $pct = $req > 0 ? min(100, (int) round(($record->completed_hours / $req) * 100)) : 0;
-                if ($pct >= 100) $statusCounts['completed']++;
-                elseif ($pct >= 40) $statusCounts['onTrack']++;
-                elseif ($pct >= 20) $statusCounts['delayed']++;
-                else $statusCounts['atRisk']++;
+                if ($pct >= 100) {
+                    $statusCounts['completed']++;
+                } else {
+                    $statusCounts['ongoing']++;
+                    $statusCounts['onTrack']++;
+                }
             } else {
+                $statusCounts['ongoing']++;
                 $statusCounts['onTrack']++;
             }
         }
