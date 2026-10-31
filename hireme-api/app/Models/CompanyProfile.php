@@ -88,7 +88,9 @@ class CompanyProfile extends Model
      */
     public function getActiveTraineeCount(): int
     {
-        return StudentOjtInterest::where('company_user_id', $this->user_id)
+        return StudentOjtInterest::whereHas('posting', function ($q) {
+                $q->where('company_user_id', $this->user_id);
+            })
             ->whereIn('status', ['ojt_started', 'accepted'])
             ->count();
     }

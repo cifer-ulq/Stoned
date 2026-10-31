@@ -234,10 +234,11 @@ class AdminController extends Controller
 
         // Active student trainees currently deployed per company (Option A Grace Period tracking)
         $activeTraineesCounts = DB::table('student_ojt_interests')
-            ->whereIn('company_user_id', $userIds)
-            ->whereIn('status', ['ojt_started', 'accepted'])
-            ->groupBy('company_user_id')
-            ->selectRaw('company_user_id, COUNT(*) as total')
+            ->join('ojt_postings', 'student_ojt_interests.ojt_posting_id', '=', 'ojt_postings.id')
+            ->whereIn('ojt_postings.company_user_id', $userIds)
+            ->whereIn('student_ojt_interests.status', ['ojt_started', 'accepted'])
+            ->groupBy('ojt_postings.company_user_id')
+            ->selectRaw('ojt_postings.company_user_id as company_user_id, COUNT(*) as total')
             ->pluck('total', 'company_user_id');
 
         $companies = $profiles->map(function ($p) use ($jobCounts, $ojtSlotTotals, $activeTraineesCounts) {
@@ -253,7 +254,7 @@ class AdminController extends Controller
 
             return [
                 'id'                 => 'C-' . $p->user_id,
-                'name'               => $p->company_name ?? $p->user->name,
+                'name'               => $p->company_name ?? $p->user?->name,
                 'industry'           => $p->company_type ?? 'Unknown',
                 'location'           => $p->company_location ?? '',
                 'status'             => $status,
@@ -261,8 +262,8 @@ class AdminController extends Controller
                 'moaStartDate'       => $p->moa_start_date,
                 'moaExpiry'          => $p->moa_end_date,
                 'moaFileUrl'         => $p->moa_file_path ? url(Storage::url($p->moa_file_path)) : null,
-                'contactPerson'      => $p->contact_person ?? $p->user->name,
-                'email'              => $p->contact_email ?? $p->user->email,
+                'contactPerson'      => $p->contact_person ?? $p->user?->name,
+                'email'              => $p->contact_email ?? $p->user?->email,
                 'phone'              => $p->contact_phone ?? '',
                 'registrationSource' => $p->registration_source ?? 'admin',
                 'moaRequestedAt'     => $p->moa_requested_at?->toIso8601String(),
