@@ -581,29 +581,31 @@ function showAddCompanyModal(container, onSuccess) {
                 <span class="ac-error" id="err-ac-name"></span>
               </div>
 
-              <div class="ac-field">
-                <label class="ac-label" for="ac-industry">Industry / Sector <span class="ac-req">*</span></label>
-                <div class="ac-input-wrap" id="wrap-ac-industry">
-                  <span class="ac-input-icon">${icon('briefcase', 14)}</span>
-                  <select class="ac-input ac-select" id="ac-industry">
-                    <option value="">Select industry</option>
-                    <option>Software Development</option>
-                    <option>IT Consulting &amp; Services</option>
-                    <option>Cloud Computing &amp; DevOps</option>
-                    <option>Data Analytics &amp; AI</option>
-                    <option>Cybersecurity</option>
-                    <option>Digital Design &amp; UX</option>
-                    <option>IT Outsourcing &amp; BPO</option>
-                    <option>Telecommunications</option>
-                    <option>Engineering &amp; Hardware</option>
-                    <option>Agriculture &amp; Food Tech</option>
-                    <option>Financial Services &amp; FinTech</option>
-                    <option>Healthcare &amp; BioTech</option>
-                    <option>Education &amp; EdTech</option>
-                    <option>Government &amp; Public Sector</option>
-                    <option>Retail &amp; E-Commerce</option>
-                    <option>Other</option>
-                  </select>
+              <div class="ac-field" id="field-ac-industry">
+                <label class="ac-label" id="label-ac-industry">Industry / Sector <span class="ac-req">*</span></label>
+                <div class="ac-industry-picker" id="wrap-ac-industry">
+                  <input type="hidden" id="ac-industry" name="industry" value="" />
+                  <button type="button" class="ac-industry-trigger" id="ac-industry-trigger" aria-haspopup="listbox" aria-expanded="false">
+                    <span class="ac-industry-trigger__icon" id="ac-industry-trigger-icon">${icon('briefcase', 14)}</span>
+                    <span class="ac-industry-trigger__content">
+                      <span class="ac-industry-trigger__label ac-industry-trigger__label--placeholder" id="ac-industry-label">Select industry</span>
+                    </span>
+                    <span class="ac-industry-trigger__chevron">${icon('chevron-down', 14)}</span>
+                  </button>
+                  <div class="ac-industry-dropdown" id="ac-industry-dropdown" role="listbox">
+                    <div class="ac-industry-search-wrap">
+                      <span class="ac-industry-search-icon">${icon('search', 13)}</span>
+                      <input type="text" class="ac-industry-search-input" id="ac-industry-search" placeholder="Search industry..." autocomplete="off" />
+                      <button type="button" class="ac-industry-search-clear" id="ac-industry-search-clear" style="display:none;" title="Clear search">
+                        ${icon('x', 12)}
+                      </button>
+                    </div>
+                    <div class="ac-industry-list-header">
+                      <span>AVAILABLE INDUSTRIES</span>
+                      <span class="ac-industry-count" id="ac-industry-count">16 options</span>
+                    </div>
+                    <div class="ac-industry-list" id="ac-industry-list" tabindex="-1"></div>
+                  </div>
                 </div>
                 <span class="ac-error" id="err-ac-industry"></span>
               </div>
@@ -614,6 +616,16 @@ function showAddCompanyModal(container, onSuccess) {
                   <span class="ac-input-icon">${icon('map-pin', 14)}</span>
                   <input class="ac-input" id="ac-location" type="text" placeholder="e.g. Bacolod City, Negros Occidental" />
                 </div>
+              </div>
+
+              <!-- Dedicated "Other" Industry field revealed when Other is selected -->
+              <div class="ac-field ac-field--full ac-field--other-industry" id="field-ac-other-industry" style="display: none;">
+                <label class="ac-label" for="ac-other-industry">Specify Industry Name <span class="ac-req">*</span></label>
+                <div class="ac-input-wrap" id="wrap-ac-other-industry">
+                  <span class="ac-input-icon">${icon('sparkles', 14)}</span>
+                  <input class="ac-input" id="ac-other-industry" type="text" placeholder="e.g. Renewable Energy, Aerospace, Logistics & Supply Chain..." maxlength="255" autocomplete="off" />
+                </div>
+                <span class="ac-error" id="err-ac-other-industry"></span>
               </div>
             </div>
           </div>
@@ -728,7 +740,175 @@ function showAddCompanyModal(container, onSuccess) {
   container.appendChild(backdrop);
   renderIcons();
 
-  const close = () => backdrop.remove();
+  const escapeHtml = (s) => String(s || '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m]);
+
+  const INDUSTRY_OPTIONS = [
+    { value: 'Software Development', label: 'Software Development', icon: 'cpu' },
+    { value: 'IT Consulting & Services', label: 'IT Consulting & Services', icon: 'briefcase' },
+    { value: 'Cloud Computing & DevOps', label: 'Cloud Computing & DevOps', icon: 'server' },
+    { value: 'Data Analytics & AI', label: 'Data Analytics & AI', icon: 'bar-chart-2' },
+    { value: 'Cybersecurity', label: 'Cybersecurity', icon: 'shield' },
+    { value: 'Digital Design & UX', label: 'Digital Design & UX', icon: 'palette' },
+    { value: 'IT Outsourcing & BPO', label: 'IT Outsourcing & BPO', icon: 'users' },
+    { value: 'Telecommunications', label: 'Telecommunications', icon: 'activity' },
+    { value: 'Engineering & Hardware', label: 'Engineering & Hardware', icon: 'sliders' },
+    { value: 'Agriculture & Food Tech', label: 'Agriculture & Food Tech', icon: 'sun' },
+    { value: 'Financial Services & FinTech', label: 'Financial Services & FinTech', icon: 'trending-up' },
+    { value: 'Healthcare & BioTech', label: 'Healthcare & BioTech', icon: 'activity' },
+    { value: 'Education & EdTech', label: 'Education & EdTech', icon: 'graduation-cap' },
+    { value: 'Government & Public Sector', label: 'Government & Public Sector', icon: 'building' },
+    { value: 'Retail & E-Commerce', label: 'Retail & E-Commerce', icon: 'target' },
+    { value: 'Other', label: 'Other (Specify Custom Industry)', icon: 'sparkles', isOther: true },
+  ];
+
+  const pickerWrap     = backdrop.querySelector('#wrap-ac-industry');
+  const industryInput  = backdrop.querySelector('#ac-industry');
+  const triggerBtn     = backdrop.querySelector('#ac-industry-trigger');
+  const triggerLabel   = backdrop.querySelector('#ac-industry-label');
+  const triggerIcon    = backdrop.querySelector('#ac-industry-trigger-icon');
+  const searchInput    = backdrop.querySelector('#ac-industry-search');
+  const searchClear    = backdrop.querySelector('#ac-industry-search-clear');
+  const countBadge     = backdrop.querySelector('#ac-industry-count');
+  const listContainer  = backdrop.querySelector('#ac-industry-list');
+  const errIndustry    = backdrop.querySelector('#err-ac-industry');
+  const fieldOther     = backdrop.querySelector('#field-ac-other-industry');
+  const inputOther     = backdrop.querySelector('#ac-other-industry');
+  const errOther       = backdrop.querySelector('#err-ac-other-industry');
+  const wrapOther      = backdrop.querySelector('#wrap-ac-other-industry');
+
+  function openDropdown() {
+    pickerWrap.classList.add('is-open');
+    triggerBtn.setAttribute('aria-expanded', 'true');
+    searchInput.value = '';
+    searchClear.style.display = 'none';
+    renderIndustryList('');
+    setTimeout(() => searchInput.focus(), 60);
+  }
+
+  function closeDropdown() {
+    pickerWrap.classList.remove('is-open');
+    triggerBtn.setAttribute('aria-expanded', 'false');
+  }
+
+  function selectIndustry(val) {
+    const item = INDUSTRY_OPTIONS.find(o => o.value === val);
+    if (!item) return;
+
+    industryInput.value = item.value;
+    triggerLabel.textContent = item.value === 'Other' ? 'Other (Specify below)' : item.label;
+    triggerLabel.classList.remove('ac-industry-trigger__label--placeholder');
+    triggerIcon.innerHTML = icon(item.icon, 14);
+
+    if (errIndustry) errIndustry.textContent = '';
+    pickerWrap.classList.remove('ac-industry-picker--error');
+
+    closeDropdown();
+
+    if (item.value === 'Other') {
+      fieldOther.style.display = 'flex';
+      setTimeout(() => inputOther.focus(), 60);
+    } else {
+      fieldOther.style.display = 'none';
+      inputOther.value = '';
+      if (errOther) errOther.textContent = '';
+      if (wrapOther) wrapOther.classList.remove('ac-input-wrap--error');
+    }
+  }
+
+  function renderIndustryList(filterText = '') {
+    const query = filterText.toLowerCase().trim();
+    const filtered = INDUSTRY_OPTIONS.filter(o =>
+      o.label.toLowerCase().includes(query) || o.value.toLowerCase().includes(query)
+    );
+
+    if (countBadge) {
+      countBadge.textContent = `${filtered.length} option${filtered.length === 1 ? '' : 's'}`;
+    }
+
+    if (filtered.length === 0) {
+      listContainer.innerHTML = `
+        <div class="ac-industry-empty">
+          <span>No industries found matching "${escapeHtml(filterText)}"</span>
+          <button type="button" class="ac-industry-empty-btn" id="ac-industry-fallback-other">
+            ${icon('sparkles', 13)} Select "Other" to specify
+          </button>
+        </div>
+      `;
+      const fallbackBtn = listContainer.querySelector('#ac-industry-fallback-other');
+      if (fallbackBtn) {
+        fallbackBtn.addEventListener('click', () => {
+          selectIndustry('Other');
+          if (filterText && !inputOther.value) {
+            inputOther.value = filterText;
+          }
+        });
+      }
+      return;
+    }
+
+    listContainer.innerHTML = filtered.map(opt => {
+      const isSelected = industryInput.value === opt.value;
+      const otherClass = opt.isOther ? ' ac-industry-item--other' : '';
+      const selectedClass = isSelected ? ' ac-industry-item--selected' : '';
+      return `
+        <div class="ac-industry-item${otherClass}${selectedClass}" data-value="${opt.value}" role="option" aria-selected="${isSelected}">
+          <span class="ac-industry-item__avatar">${icon(opt.icon, 14)}</span>
+          <span class="ac-industry-item__name">${opt.label}</span>
+          <span class="ac-industry-item__check">${icon('check', 14)}</span>
+        </div>
+      `;
+    }).join('');
+
+    listContainer.querySelectorAll('.ac-industry-item').forEach(el => {
+      el.addEventListener('click', () => selectIndustry(el.dataset.value));
+    });
+  }
+
+  triggerBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (pickerWrap.classList.contains('is-open')) {
+      closeDropdown();
+    } else {
+      openDropdown();
+    }
+  });
+
+  searchInput.addEventListener('input', () => {
+    const val = searchInput.value;
+    searchClear.style.display = val ? 'flex' : 'none';
+    renderIndustryList(val);
+  });
+
+  searchClear.addEventListener('click', (e) => {
+    e.stopPropagation();
+    searchInput.value = '';
+    searchClear.style.display = 'none';
+    renderIndustryList('');
+    searchInput.focus();
+  });
+
+  inputOther.addEventListener('input', () => {
+    if (inputOther.value.trim()) {
+      if (errOther) errOther.textContent = '';
+      if (wrapOther) wrapOther.classList.remove('ac-input-wrap--error');
+    }
+  });
+
+  const onDocClick = (e) => {
+    if (!backdrop.isConnected) {
+      document.removeEventListener('click', onDocClick);
+      return;
+    }
+    if (!pickerWrap.contains(e.target)) {
+      closeDropdown();
+    }
+  };
+  document.addEventListener('click', onDocClick);
+
+  const close = () => {
+    document.removeEventListener('click', onDocClick);
+    backdrop.remove();
+  };
   backdrop.querySelector('#ac-close').addEventListener('click', close);
   backdrop.querySelector('#ac-cancel').addEventListener('click', close);
   backdrop.addEventListener('click', e => { if (e.target === backdrop) close(); });
@@ -850,7 +1030,6 @@ function showAddCompanyModal(container, onSuccess) {
     e.preventDefault();
 
     const nameEl = backdrop.querySelector('#ac-name');
-    const industryEl = backdrop.querySelector('#ac-industry');
     const contactEl = backdrop.querySelector('#ac-contact');
     const emailEl = backdrop.querySelector('#ac-email');
 
@@ -869,7 +1048,31 @@ function showAddCompanyModal(container, onSuccess) {
     };
 
     check(nameEl, 'ac-name', 'Company name is required');
-    check(industryEl, 'ac-industry', 'Please select an industry');
+
+    // Industry validation
+    const indVal = industryInput.value.trim();
+    if (!indVal) {
+      if (errIndustry) errIndustry.textContent = 'Please select an industry';
+      pickerWrap.classList.add('ac-industry-picker--error');
+      valid = false;
+    } else {
+      if (errIndustry) errIndustry.textContent = '';
+      pickerWrap.classList.remove('ac-industry-picker--error');
+
+      if (indVal === 'Other') {
+        const otherVal = inputOther?.value?.trim() || '';
+        if (!otherVal) {
+          if (errOther) errOther.textContent = 'Please specify the industry name';
+          if (wrapOther) wrapOther.classList.add('ac-input-wrap--error');
+          if (valid) inputOther?.focus();
+          valid = false;
+        } else {
+          if (errOther) errOther.textContent = '';
+          if (wrapOther) wrapOther.classList.remove('ac-input-wrap--error');
+        }
+      }
+    }
+
     check(contactEl, 'ac-contact', 'Contact person is required');
     check(emailEl, 'ac-email', 'Official email address is required');
 
@@ -885,7 +1088,10 @@ function showAddCompanyModal(container, onSuccess) {
 
     const fd = new FormData();
     fd.append('company_name', nameEl.value.trim());
-    fd.append('industry', industryEl.value.trim());
+
+    const finalIndustry = indVal === 'Other' ? inputOther.value.trim() : indVal;
+    fd.append('industry', finalIndustry);
+
     fd.append('contact_person', contactEl.value.trim());
     fd.append('email', emailEl.value.trim());
     fd.append('location', backdrop.querySelector('#ac-location').value.trim());
