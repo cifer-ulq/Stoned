@@ -92,8 +92,8 @@ class NaAhCompanyFirstDayOjtSeeder extends Seeder
                 'description'         => 'Na Ah Company is a premier software quality engineering and agile digital solutions provider in Western Visayas.',
                 'profile_completed'   => true,
                 'registration_source' => 'verified',
-                'moa_status'          => 'approved',
-                'status'              => 'active',
+                'moa_status'          => 'Active',
+                'status'              => 'Active',
                 'moa_start_date'      => $today->copy()->subMonths(3),
                 'moa_end_date'        => $today->copy()->addYears(2),
             ]

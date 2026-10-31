@@ -229,27 +229,42 @@ class AdminController extends Controller
             ->selectRaw('company_user_id, SUM(slots_remaining) as total')
             ->pluck('total', 'company_user_id');
 
-        $companies = $profiles->map(fn($p) => [
-            'id'                 => 'C-' . $p->user_id,
-            'name'               => $p->company_name ?? $p->user->name,
-            'industry'           => $p->company_type ?? 'Unknown',
-            'location'           => $p->company_location ?? '',
-            'status'             => $p->status ?? 'Pending',
-            'moaStatus'          => $p->moa_status ?? 'Pending',
-            'moaStartDate'       => $p->moa_start_date,
-            'moaExpiry'          => $p->moa_end_date,
-            'moaFileUrl'         => $p->moa_file_path ? url(Storage::url($p->moa_file_path)) : null,
-            'contactPerson'      => $p->contact_person ?? $p->user->name,
-            'email'              => $p->contact_email ?? $p->user->email,
-            'phone'              => $p->contact_phone ?? '',
-            'registrationSource' => $p->registration_source ?? 'admin',
-            'moaRequestedAt'     => $p->moa_requested_at?->toIso8601String(),
-            'moaRequestNotes'    => $p->moa_request_notes,
-            'profileCompleted'   => (bool) $p->profile_completed,
-            'ojtSlots'           => (int) ($ojtSlotTotals[$p->user_id] ?? 0),
-            'activePostings'     => (int) ($jobCounts[$p->user_id] ?? 0),
-            'rating'             => 0.0,
-        ]);
+        $companies = $profiles->map(function ($p) use ($jobCounts, $ojtSlotTotals) {
+            $rawStatus = trim($p->status ?? 'Pending');
+            $status = ucfirst(strtolower($rawStatus));
+            if (!in_array($status, ['Active', 'Pending', 'Suspended', 'Inactive'])) {
+                $status = 'Pending';
+            }
+
+            $rawMoa = trim($p->moa_status ?? 'Pending');
+            if (in_array(strtolower($rawMoa), ['approved', 'accepted', 'active'])) {
+                $moaStatus = 'Active';
+            } else {
+                $moaStatus = ucfirst(strtolower($rawMoa));
+            }
+
+            return [
+                'id'                 => 'C-' . $p->user_id,
+                'name'               => $p->company_name ?? $p->user->name,
+                'industry'           => $p->company_type ?? 'Unknown',
+                'location'           => $p->company_location ?? '',
+                'status'             => $status,
+                'moaStatus'          => $moaStatus,
+                'moaStartDate'       => $p->moa_start_date,
+                'moaExpiry'          => $p->moa_end_date,
+                'moaFileUrl'         => $p->moa_file_path ? url(Storage::url($p->moa_file_path)) : null,
+                'contactPerson'      => $p->contact_person ?? $p->user->name,
+                'email'              => $p->contact_email ?? $p->user->email,
+                'phone'              => $p->contact_phone ?? '',
+                'registrationSource' => $p->registration_source ?? 'admin',
+                'moaRequestedAt'     => $p->moa_requested_at?->toIso8601String(),
+                'moaRequestNotes'    => $p->moa_request_notes,
+                'profileCompleted'   => (bool) $p->profile_completed,
+                'ojtSlots'           => (int) ($ojtSlotTotals[$p->user_id] ?? 0),
+                'activePostings'     => (int) ($jobCounts[$p->user_id] ?? 0),
+                'rating'             => 0.0,
+            ];
+        });
 
         return response()->json($companies);
     }

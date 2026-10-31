@@ -14,20 +14,80 @@ import { icon, renderIcons } from '../components/icons.js';
 /* ── Status Theme Tokens ── */
 const STATUS_CONFIG = {
   Active:    { color: '#10B981', bg: 'rgba(16, 185, 129, 0.12)', border: 'rgba(16, 185, 129, 0.25)', label: 'Active' },
+  active:    { color: '#10B981', bg: 'rgba(16, 185, 129, 0.12)', border: 'rgba(16, 185, 129, 0.25)', label: 'Active' },
   Pending:   { color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.12)', border: 'rgba(245, 158, 11, 0.25)', label: 'Pending' },
+  pending:   { color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.12)', border: 'rgba(245, 158, 11, 0.25)', label: 'Pending' },
   Suspended: { color: '#EF4444', bg: 'rgba(239, 68, 68, 0.12)', border: 'rgba(239, 68, 68, 0.25)', label: 'Suspended' },
+  suspended: { color: '#EF4444', bg: 'rgba(239, 68, 68, 0.12)', border: 'rgba(239, 68, 68, 0.25)', label: 'Suspended' },
   Inactive:  { color: '#94A3B8', bg: 'rgba(148, 163, 184, 0.12)', border: 'rgba(148, 163, 184, 0.25)', label: 'Inactive' },
+  inactive:  { color: '#94A3B8', bg: 'rgba(148, 163, 184, 0.12)', border: 'rgba(148, 163, 184, 0.25)', label: 'Inactive' },
 };
 
 const MOA_CONFIG = {
   Active:          { color: '#10B981', bg: 'rgba(16, 185, 129, 0.12)', border: 'rgba(16, 185, 129, 0.25)', label: 'Active' },
+  active:          { color: '#10B981', bg: 'rgba(16, 185, 129, 0.12)', border: 'rgba(16, 185, 129, 0.25)', label: 'Active' },
   Accepted:        { color: '#10B981', bg: 'rgba(16, 185, 129, 0.12)', border: 'rgba(16, 185, 129, 0.25)', label: 'Accepted' },
+  accepted:        { color: '#10B981', bg: 'rgba(16, 185, 129, 0.12)', border: 'rgba(16, 185, 129, 0.25)', label: 'Accepted' },
+  Approved:        { color: '#10B981', bg: 'rgba(16, 185, 129, 0.12)', border: 'rgba(16, 185, 129, 0.25)', label: 'Active' },
+  approved:        { color: '#10B981', bg: 'rgba(16, 185, 129, 0.12)', border: 'rgba(16, 185, 129, 0.25)', label: 'Active' },
   Requested:       { color: '#D97706', bg: 'rgba(217, 119, 6, 0.14)', border: 'rgba(217, 119, 6, 0.35)', label: 'MOA Requested' },
+  requested:       { color: '#D97706', bg: 'rgba(217, 119, 6, 0.14)', border: 'rgba(217, 119, 6, 0.35)', label: 'MOA Requested' },
   'Expiring Soon': { color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.12)', border: 'rgba(245, 158, 11, 0.25)', label: 'Expiring Soon' },
+  'expiring soon': { color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.12)', border: 'rgba(245, 158, 11, 0.25)', label: 'Expiring Soon' },
   Pending:         { color: '#6366F1', bg: 'rgba(99, 102, 241, 0.12)', border: 'rgba(99, 102, 241, 0.25)', label: 'Under Review' },
+  pending:         { color: '#6366F1', bg: 'rgba(99, 102, 241, 0.12)', border: 'rgba(99, 102, 241, 0.25)', label: 'Under Review' },
   Expired:         { color: '#EF4444', bg: 'rgba(239, 68, 68, 0.12)', border: 'rgba(239, 68, 68, 0.25)', label: 'Expired' },
+  expired:         { color: '#EF4444', bg: 'rgba(239, 68, 68, 0.12)', border: 'rgba(239, 68, 68, 0.25)', label: 'Expired' },
   Rejected:        { color: '#EF4444', bg: 'rgba(239, 68, 68, 0.12)', border: 'rgba(239, 68, 68, 0.25)', label: 'Rejected' },
+  rejected:        { color: '#EF4444', bg: 'rgba(239, 68, 68, 0.12)', border: 'rgba(239, 68, 68, 0.25)', label: 'Rejected' },
 };
+
+function getStatusConfig(status) {
+  if (!status) return STATUS_CONFIG.Pending;
+  const s = String(status).trim();
+  const lower = s.toLowerCase();
+  if (lower === 'active') return STATUS_CONFIG.Active;
+  if (lower === 'pending') return STATUS_CONFIG.Pending;
+  if (lower === 'suspended') return STATUS_CONFIG.Suspended;
+  if (lower === 'inactive') return STATUS_CONFIG.Inactive;
+  const titleCase = s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+  return STATUS_CONFIG[titleCase] || STATUS_CONFIG[s] || STATUS_CONFIG.Pending;
+}
+
+function getMoaConfig(moaStatus) {
+  if (!moaStatus) return MOA_CONFIG.Pending;
+  const s = String(moaStatus).trim();
+  const lower = s.toLowerCase();
+  if (lower === 'approved' || lower === 'accepted' || lower === 'active') return MOA_CONFIG.Active;
+  if (lower === 'requested') return MOA_CONFIG.Requested;
+  if (lower === 'expiring soon') return MOA_CONFIG['Expiring Soon'];
+  if (lower === 'expired') return MOA_CONFIG.Expired;
+  if (lower === 'rejected') return MOA_CONFIG.Rejected;
+  if (lower === 'pending') return MOA_CONFIG.Pending;
+  const titleCase = s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+  return MOA_CONFIG[titleCase] || MOA_CONFIG[s] || MOA_CONFIG.Pending;
+}
+
+function normalizeCompanyData(c) {
+  if (!c || typeof c !== 'object') return c;
+  const rawStatus = String(c.status || 'Pending').trim().toLowerCase();
+  if (rawStatus === 'active') c.status = 'Active';
+  else if (rawStatus === 'pending') c.status = 'Pending';
+  else if (rawStatus === 'suspended') c.status = 'Suspended';
+  else if (rawStatus === 'inactive') c.status = 'Inactive';
+  else c.status = c.status ? (c.status.charAt(0).toUpperCase() + c.status.slice(1).toLowerCase()) : 'Pending';
+
+  const rawMoa = String(c.moaStatus || 'Pending').trim().toLowerCase();
+  if (rawMoa === 'active' || rawMoa === 'approved' || rawMoa === 'accepted') c.moaStatus = 'Active';
+  else if (rawMoa === 'requested') c.moaStatus = 'Requested';
+  else if (rawMoa === 'expiring soon') c.moaStatus = 'Expiring Soon';
+  else if (rawMoa === 'expired') c.moaStatus = 'Expired';
+  else if (rawMoa === 'rejected') c.moaStatus = 'Rejected';
+  else if (rawMoa === 'pending') c.moaStatus = 'Pending';
+  else c.moaStatus = c.moaStatus ? (c.moaStatus.charAt(0).toUpperCase() + c.moaStatus.slice(1).toLowerCase()) : 'Pending';
+
+  return c;
+}
 
 const AVATAR_PALETTES = [
   { bg: 'linear-gradient(135deg, #005930, #1A7A4A)', color: '#FFFFFF' },
@@ -113,8 +173,8 @@ function showModal(c, container, companies, onUpdateCallback) {
   if (existing) existing.remove();
 
   const statuses = ['Active', 'Pending', 'Suspended', 'Inactive'];
-  const sc = STATUS_CONFIG[c.status] || STATUS_CONFIG.Pending;
-  const mc = MOA_CONFIG[c.moaStatus] || MOA_CONFIG.Pending;
+  const sc = getStatusConfig(c.status);
+  const mc = getMoaConfig(c.moaStatus);
   const avatarStyle = getAvatarStyle(c.name);
 
   const backdrop = document.createElement('div');
@@ -215,7 +275,7 @@ function showModal(c, container, companies, onUpdateCallback) {
             <label style="font-size:var(--text-xs);color:var(--text-secondary);margin-bottom:4px;display:block;">Account Status</label>
             <div style="display:flex;gap:8px;align-items:center;">
               <select id="modal-status-select" class="cp-select" style="flex:1;">
-                ${statuses.map(s => `<option value="${s}" ${s === c.status ? 'selected' : ''}>${s}</option>`).join('')}
+                ${statuses.map(s => `<option value="${s}" ${s.toLowerCase() === (c.status || '').toLowerCase() ? 'selected' : ''}>${s}</option>`).join('')}
               </select>
               <div id="modal-status-saving" style="display:none;color:var(--text-tertiary);font-size:var(--text-xs);"><span class="spinner-sm"></span></div>
             </div>
@@ -923,7 +983,7 @@ export default async function CompaniesPage(container) {
   /* ── Add Company Click ── */
   btnAddCo.addEventListener('click', () => {
     showAddCompanyModal(container, (newCompany) => {
-      companies.unshift(newCompany);
+      companies.unshift(normalizeCompanyData(newCompany));
       updateIndustryOptions();
       refreshAll();
     });
@@ -973,11 +1033,14 @@ export default async function CompaniesPage(container) {
   /* ── Calculate KPIs & Render KPI Strip ── */
   function renderKPIs() {
     const total      = companies.length;
-    const active     = companies.filter(c => c.status === 'Active').length;
-    const pending    = companies.filter(c => c.status === 'Pending').length;
+    const active     = companies.filter(c => (c.status || '').toLowerCase() === 'active').length;
+    const pending    = companies.filter(c => (c.status || '').toLowerCase() === 'pending').length;
     const totalSlots = companies.reduce((a, c) => a + (c.ojtSlots || 0), 0);
     const totalJobs  = companies.reduce((a, c) => a + (c.activePostings || c.jobPostings || 0), 0);
-    const moaReview  = companies.filter(c => c.moaStatus === 'Expiring Soon' || c.moaStatus === 'Expired' || c.moaStatus === 'Pending' || c.moaStatus === 'Requested').length;
+    const moaReview  = companies.filter(c => {
+      const ms = (c.moaStatus || '').toLowerCase();
+      return ms === 'expiring soon' || ms === 'expired' || ms === 'pending' || ms === 'requested';
+    }).length;
 
     const cards = [
       {
@@ -1059,10 +1122,16 @@ export default async function CompaniesPage(container) {
   /* ── Render Segmented Tabs ── */
   function renderTabs() {
     const total       = companies.length;
-    const active      = companies.filter(c => c.status === 'Active').length;
-    const pending     = companies.filter(c => c.status === 'Pending').length;
-    const suspended   = companies.filter(c => c.status === 'Suspended' || c.status === 'Inactive').length;
-    const moaReview   = companies.filter(c => c.moaStatus === 'Expiring Soon' || c.moaStatus === 'Expired' || c.moaStatus === 'Pending' || c.moaStatus === 'Requested').length;
+    const active      = companies.filter(c => (c.status || '').toLowerCase() === 'active').length;
+    const pending     = companies.filter(c => (c.status || '').toLowerCase() === 'pending').length;
+    const suspended   = companies.filter(c => {
+      const s = (c.status || '').toLowerCase();
+      return s === 'suspended' || s === 'inactive';
+    }).length;
+    const moaReview   = companies.filter(c => {
+      const ms = (c.moaStatus || '').toLowerCase();
+      return ms === 'expiring soon' || ms === 'expired' || ms === 'pending' || ms === 'requested';
+    }).length;
 
     const tabs = [
       { key: 'All',           label: 'All Partners',        count: total },
@@ -1097,10 +1166,12 @@ export default async function CompaniesPage(container) {
 
     filtered = companies.filter(c => {
       // Tab filter
-      if (activeTab === 'Active' && c.status !== 'Active') return false;
-      if (activeTab === 'Pending' && c.status !== 'Pending') return false;
-      if (activeTab === 'Suspended' && c.status !== 'Suspended' && c.status !== 'Inactive') return false;
-      if (activeTab === 'MOA Attention' && !(c.moaStatus === 'Expiring Soon' || c.moaStatus === 'Expired' || c.moaStatus === 'Pending' || c.moaStatus === 'Requested')) return false;
+      const sLower = (c.status || '').toLowerCase();
+      const mLower = (c.moaStatus || '').toLowerCase();
+      if (activeTab === 'Active' && sLower !== 'active') return false;
+      if (activeTab === 'Pending' && sLower !== 'pending') return false;
+      if (activeTab === 'Suspended' && sLower !== 'suspended' && sLower !== 'inactive') return false;
+      if (activeTab === 'MOA Attention' && !(mLower === 'expiring soon' || mLower === 'expired' || mLower === 'pending' || mLower === 'requested')) return false;
 
       // Industry filter
       if (ind && c.industry !== ind) return false;
@@ -1183,8 +1254,8 @@ export default async function CompaniesPage(container) {
             </thead>
             <tbody id="cp-table-tbody">
               ${filtered.map(c => {
-                const sc = STATUS_CONFIG[c.status] || STATUS_CONFIG.Pending;
-                const mc = MOA_CONFIG[c.moaStatus] || MOA_CONFIG.Pending;
+                const sc = getStatusConfig(c.status);
+                const mc = getMoaConfig(c.moaStatus);
                 const avatarStyle = getAvatarStyle(c.name);
 
                 return `
@@ -1256,7 +1327,7 @@ export default async function CompaniesPage(container) {
                         <button class="cp-action-btn cp-action-btn--primary btn-view" data-id="${c.id}" title="View Company Profile">
                           ${icon('eye', 13)} <span>View</span>
                         </button>
-                        ${c.status === 'Pending' ? `
+                        ${(c.status || '').toLowerCase() === 'pending' ? `
                           <button class="cp-action-btn cp-action-btn--danger btn-del" data-id="${c.id}" data-name="${c.name}" title="Delete Pending Company">
                             ${icon('trash-2', 13)}
                           </button>
@@ -1281,8 +1352,8 @@ export default async function CompaniesPage(container) {
     contentArea.innerHTML = `
       <div class="cp-grid">
         ${filtered.map(c => {
-          const sc = STATUS_CONFIG[c.status] || STATUS_CONFIG.Pending;
-          const mc = MOA_CONFIG[c.moaStatus] || MOA_CONFIG.Pending;
+          const sc = getStatusConfig(c.status);
+          const mc = getMoaConfig(c.moaStatus);
           const avatarStyle = getAvatarStyle(c.name);
 
           return `
@@ -1354,7 +1425,7 @@ export default async function CompaniesPage(container) {
                 <button class="cp-action-btn cp-action-btn--primary btn-view" data-id="${c.id}" style="flex:1;">
                   ${icon('eye', 13)} View Details
                 </button>
-                ${c.status === 'Pending' ? `
+                ${(c.status || '').toLowerCase() === 'pending' ? `
                   <button class="cp-action-btn cp-action-btn--danger btn-del" data-id="${c.id}" data-name="${c.name}" title="Delete Pending" style="flex-shrink:0;">
                     ${icon('trash-2', 13)}
                   </button>
@@ -1440,7 +1511,8 @@ export default async function CompaniesPage(container) {
   const cached = getCached('/admin/companies');
 
   if (cached?.data) {
-    companies = Array.isArray(cached.data) ? cached.data : (cached.data?.companies ?? []);
+    const raw = Array.isArray(cached.data) ? cached.data : (cached.data?.companies ?? []);
+    companies = raw.map(normalizeCompanyData);
     updateIndustryOptions();
     refreshAll();
   } else {
@@ -1453,13 +1525,15 @@ export default async function CompaniesPage(container) {
 
   apiGetCached('/admin/companies', {
     onUpdate: (fresh) => {
-      companies = Array.isArray(fresh) ? fresh : (fresh?.companies ?? []);
+      const raw = Array.isArray(fresh) ? fresh : (fresh?.companies ?? []);
+      companies = raw.map(normalizeCompanyData);
       updateIndustryOptions();
       refreshAll();
     },
   }).then(res => {
     if (!cached && res) {
-      companies = Array.isArray(res) ? res : (res?.companies ?? []);
+      const raw = Array.isArray(res) ? res : (res?.companies ?? []);
+      companies = raw.map(normalizeCompanyData);
       updateIndustryOptions();
       refreshAll();
     }
