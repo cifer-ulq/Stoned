@@ -726,7 +726,7 @@ function showAddCompanyModal(container, onSuccess) {
             <div class="ac-modal__footer-actions">
               <button type="button" class="btn btn--outline" id="ac-cancel">Cancel</button>
               <button type="submit" class="btn btn--primary" id="ac-submit">
-                <span class="btn-text">${icon('user-plus', 14)} Register Partner</span>
+                <span class="btn-text">${icon('user-plus', 15)} Register Partner</span>
                 <span class="btn-loading" style="display:none;"><span class="spinner-sm"></span> Registering…</span>
               </button>
             </div>
