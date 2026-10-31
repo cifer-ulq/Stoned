@@ -472,193 +472,350 @@ function showModal(s, container, onRefresh) {
   const pct = s.ojt_required > 0
     ? Math.min(100, Math.round((s.ojt_hours / s.ojt_required) * 100))
     : 0;
+  const barColor = pct >= 100 ? '#10B981' : pct >= 40 ? '#005930' : '#F59E0B';
+  const isGate1Passed = (s.ojt_hours >= (s.ojt_required || 600) && (s.ojt_required || 600) > 0);
+  const isGate2Passed = (s.evaluation_status === 'submitted');
+  const isDualGateQualified = Boolean(s.is_eligible_for_promotion);
 
-  const statusKey = s.status === 'Active OJT' ? 'ojt' : 'other';
+  // Distinct Section pill formatting (Section A / Section B)
+  const secRaw = s.section ? String(s.section).trim() : '';
+  const isSecA = secRaw === 'A' || secRaw === 'BSIT 4-A' || secRaw === '4-A' || secRaw === '4A';
+  const isSecB = secRaw === 'B' || secRaw === 'BSIT 4-B' || secRaw === '4-B' || secRaw === '4B';
+  const sectionBadge = isSecA
+    ? `<span class="st-section-pill st-section-pill--A">Section A</span>`
+    : isSecB
+      ? `<span class="st-section-pill st-section-pill--B">Section B</span>`
+      : secRaw
+        ? `<span class="st-section-pill st-section-pill--neutral">${escapeHtml(secRaw)}</span>`
+        : '';
+
+  const programTitle = s.program || 'Bachelor of Science in Information Technology';
+  const statusKey = s.approval_status === 'pending'
+    ? 'pending'
+    : (s.status === 'Active OJT' ? 'ojt' : s.status === 'Completed 600hrs' ? 'active' : 'other');
 
   const backdrop = document.createElement('div');
   backdrop.className = 'modal-backdrop';
   backdrop.innerHTML = `
     <div class="modal spm-modal">
-      <!-- Hero -->
+      <!-- Executive Hero Header -->
       <div class="spm-hero">
         <div class="spm-hero__inner">
           <div class="spm-hero__avatar">
             ${s.avatar_url
-              ? `<img src="${storageUrl(s.avatar_url)}" alt="${s.name}" />`
+              ? `<img src="${storageUrl(s.avatar_url)}" alt="${escapeHtml(s.name)}" />`
               : initials(s.name)}
           </div>
           <div class="spm-hero__info">
-            <h3 class="spm-hero__name">${s.name}</h3>
-            <p class="spm-hero__program">${s.program || 'No Program'}${s.year_level ? ' &middot; ' + s.year_level : ''}</p>
+            <div class="spm-hero__top-row">
+              <h3 class="spm-hero__name" title="${escapeHtml(s.name)}">${escapeHtml(s.name)}</h3>
+            </div>
+            <p class="spm-hero__program">
+              <span>${escapeHtml(programTitle)}</span>
+              ${s.year_level ? `<span>&bull;</span><span>${escapeHtml(s.year_level)}</span>` : ''}
+            </p>
+            ${s.headline ? `<p class="spm-hero__headline">“${escapeHtml(s.headline)}”</p>` : ''}
             <div class="spm-hero__badges">
-              <span class="spm-badge spm-badge--${statusKey}">
-                <span class="spm-badge__dot"></span>${s.status}
+              <span class="spm-badge spm-badge--id" id="spm-copy-id" title="Click to copy Student ID">
+                ${icon('hash', 12)}
+                <span class="font-mono">${escapeHtml(s.student_id || 'No ID')}</span>
+                <span class="spm-badge__copy-hint">${icon('copy', 11)}</span>
               </span>
-              <span class="spm-badge">${icon('mail', 11)} ${s.email}</span>
+              <span class="spm-badge spm-badge--${statusKey}">
+                <span class="spm-badge__dot"></span>
+                <span>${escapeHtml(s.status || 'Active')}</span>
+              </span>
+              ${s.campus ? `
+                <span class="spm-badge">
+                  ${icon('map-pin', 12)}
+                  <span>${escapeHtml(s.campus)}</span>
+                </span>
+              ` : ''}
             </div>
           </div>
         </div>
-        <button class="spm-hero__close" id="modal-close" aria-label="Close">${icon('x', 16)}</button>
+        <button class="spm-hero__close" id="modal-close" aria-label="Close modal">${icon('x', 18)}</button>
       </div>
 
-      <!-- Body -->
+      <!-- Modal Body -->
       <div class="spm-body">
         ${s.approval_status === 'pending' ? `
-          <div class="sp-pending-banner">
-            <div class="sp-pending-banner__left">
-              <div class="sp-pending-banner__icon">
-                ${icon('clock', 18)}
-              </div>
+          <div class="spm-alert spm-alert--warning">
+            <div class="spm-alert__left">
+              <div class="spm-alert__icon">${icon('clock', 18)}</div>
               <div>
-                <h4 class="sp-pending-banner__title">Awaiting Admin Verification & Approval</h4>
-                <p class="sp-pending-banner__desc">This student self-registered and requires authorization before they can log in, access placements, and track OJT hours.</p>
+                <div class="spm-alert__title">Awaiting Admin Verification &amp; Approval</div>
+                <div class="spm-alert__desc">This student self-registered. Authorize their account to activate student privileges, directory search, and attendance logging.</div>
               </div>
             </div>
-            <div class="sp-pending-banner__actions">
-              <button type="button" class="btn btn--sm spm-approve-btn" style="background:#005930;color:#ffffff;border:1px solid #005930;gap:5px;font-weight:600;">
+            <div class="spm-alert__actions">
+              <button type="button" class="btn btn--primary btn--sm spm-approve-btn" style="background:#005930;border-color:#005930;gap:5px;">
                 ${icon('check', 13)} Approve Student
               </button>
-              <button type="button" class="btn btn--sm spm-reject-btn" style="background:#FFF1F2;color:#E11D48;border:1px solid #FECDD3;gap:4px;font-weight:600;">
+              <button type="button" class="btn btn--outline btn--sm spm-reject-btn" style="color:#DC2626;border-color:#FCA5A5;gap:4px;">
                 ${icon('x', 13)} Reject
               </button>
             </div>
           </div>
         ` : ''}
 
-        <!-- Quick stat tiles -->
-        <div class="spm-tiles">
-          <div class="spm-tile">
-            <div class="spm-tile__icon">${icon('map-pin', 14)}</div>
-            <span class="spm-tile__val">${s.campus || '—'}</span>
-            <div class="spm-tile__lbl">Campus</div>
+        <!-- Academic & Cohort Placement KPI Grid -->
+        <div class="spm-kpi-grid">
+          <div class="spm-kpi-card">
+            <div class="spm-kpi-card__header">
+              <span>Section Placement</span>
+              <span class="spm-kpi-card__icon">${icon('users', 14)}</span>
+            </div>
+            <div class="spm-kpi-card__value">
+              ${sectionBadge || `<span style="font-size:0.84rem;color:var(--text-secondary);">${escapeHtml(secRaw || 'Unassigned')}</span>`}
+            </div>
+            <div class="spm-kpi-card__sub">${escapeHtml(s.year_level || '4th Year')} &bull; Class Group</div>
           </div>
-          <div class="spm-tile">
-            <div class="spm-tile__icon">${icon('users', 14)}</div>
-            <span class="spm-tile__val">${s.section || '—'}</span>
-            <div class="spm-tile__lbl">Section</div>
+
+          <div class="spm-kpi-card">
+            <div class="spm-kpi-card__header">
+              <span>Academic Cohort</span>
+              <span class="spm-kpi-card__icon">${icon('calendar', 14)}</span>
+            </div>
+            <div class="spm-kpi-card__value font-mono">
+              ${s.batch ? `S.Y. ${escapeHtml(s.batch)}` : 'Current Cohort'}
+            </div>
+            <div class="spm-kpi-card__sub">Graduating Class</div>
           </div>
-          <div class="spm-tile">
-            <div class="spm-tile__icon">${icon('calendar', 14)}</div>
-            <span class="spm-tile__val">${s.batch || '—'}</span>
-            <div class="spm-tile__lbl">Batch</div>
+
+          <div class="spm-kpi-card">
+            <div class="spm-kpi-card__header">
+              <span>College / Faculty</span>
+              <span class="spm-kpi-card__icon">${icon('award', 14)}</span>
+            </div>
+            <div class="spm-kpi-card__value" title="${escapeHtml(s.school || 'College of Computer Studies')}">
+              ${escapeHtml(s.school || 'College of Computer Studies')}
+            </div>
+            <div class="spm-kpi-card__sub">${escapeHtml(s.campus || 'CHMSU Campus')}</div>
           </div>
-          <div class="spm-tile">
-            <div class="spm-tile__icon">${icon('award', 14)}</div>
-            <span class="spm-tile__val">${s.year_level || '—'}</span>
-            <div class="spm-tile__lbl">Year</div>
+
+          <div class="spm-kpi-card">
+            <div class="spm-kpi-card__header">
+              <span>Required Hours</span>
+              <span class="spm-kpi-card__icon">${icon('clock', 14)}</span>
+            </div>
+            <div class="spm-kpi-card__value">
+              ${s.ojt_required || 600} <span class="spm-kpi-card__unit">hrs</span>
+            </div>
+            <div class="spm-kpi-card__sub">Curriculum Standard</div>
           </div>
         </div>
 
-        <!-- OJT Progress -->
+        <!-- Workplace Training & Dual-Gate Milestone Dashboard -->
         <div>
-          <div class="spm-sec-head">${icon('briefcase', 12)} OJT Progress</div>
-          <div class="spm-ojt">
-            <div class="spm-ojt__top">
-              <span class="spm-ojt__company${!s.ojt_company ? ' spm-ojt__company--none' : ''}">
-                ${s.ojt_company || 'Not yet assigned'}
-              </span>
-              <span class="spm-ojt__pct">${pct}%</span>
-            </div>
-            <div class="spm-ojt__track">
-              <div class="spm-ojt__fill" data-pct="${pct}"></div>
-            </div>
-            <div class="spm-ojt__meta">
-              <span>${s.ojt_hours || 0} / ${s.ojt_required || 0} hours logged</span>
-              <span>${s.ojt_status || 'No record'}</span>
-            </div>
+          <div class="spm-sec-title">
+            ${icon('briefcase', 15)}
+            <span>Workplace Training &amp; Dual-Gate Verification</span>
           </div>
-        </div>
 
-        <!-- Host Company Evaluation Assessment -->
-        <div>
-          <div class="spm-sec-head">${icon('award', 12)} Host Company Performance Assessment</div>
-          <div style="background:var(--bg-secondary);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:12px 14px;">
-            ${s.evaluation_status === 'submitted' ? `
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-                <div style="display:flex;align-items:center;gap:8px;">
-                  <span class="badge badge--success" style="display:inline-flex;align-items:center;gap:4px;font-weight:700;">
-                    ${icon('check-circle', 12)} Evaluation Verified
+          <div class="spm-dual-gate-grid">
+            <!-- Gate 1 Card -->
+            <div class="spm-gate-card ${isGate1Passed ? 'is-passed' : ''}">
+              <div class="spm-gate-card__top">
+                <div class="spm-gate-badge ${isGate1Passed ? 'spm-gate-badge--success' : 'spm-gate-badge--progress'}">
+                  ${isGate1Passed ? icon('check-circle', 14) : icon('clock', 14)}
+                  <span>Gate 1: OJT Hours Rendered</span>
+                </div>
+                ${isGate1Passed ? `<span class="badge badge--success" style="font-size:0.72rem;padding:2px 7px;">Satisfied</span>` : ''}
+              </div>
+
+              <div class="spm-company-block">
+                <span class="spm-company-label">Host Company Placement</span>
+                <strong class="spm-company-name" title="${escapeHtml(s.ojt_company || 'Undeployed')}">
+                  ${icon('briefcase', 14)}
+                  <span>${escapeHtml(s.ojt_company || 'Undeployed (No host company)')}</span>
+                </strong>
+              </div>
+
+              <div class="spm-progress-wrap">
+                <div class="spm-progress-header">
+                  <span class="spm-progress-hours">${s.ojt_hours || 0} / ${s.ojt_required || 600} hrs logged</span>
+                  <span class="spm-progress-pct">${pct}%</span>
+                </div>
+                <div class="spm-progress-track">
+                  <div class="spm-progress-fill spm-ojt__fill" data-pct="${pct}" style="background:${barColor};"></div>
+                </div>
+                <div style="font-size:0.72rem;color:var(--text-tertiary);margin-top:2px;">
+                  ${isGate1Passed
+                    ? `✓ Required ${s.ojt_required || 600}h threshold achieved`
+                    : `${Math.max(0, (s.ojt_required || 600) - (s.ojt_hours || 0))} hours remaining to complete OJT`}
+                </div>
+              </div>
+            </div>
+
+            <!-- Gate 2 Card -->
+            <div class="spm-gate-card ${isGate2Passed ? 'is-passed' : ''}">
+              <div class="spm-gate-card__top">
+                <div class="spm-gate-badge ${isGate2Passed ? 'spm-gate-badge--success' : (s.evaluation_status === 'pending' ? 'spm-gate-badge--warning' : 'spm-gate-badge--neutral')}">
+                  ${isGate2Passed ? icon('check-circle', 14) : icon('award', 14)}
+                  <span>Gate 2: Performance Evaluation</span>
+                </div>
+                ${isGate2Passed ? `<span class="badge badge--success" style="font-size:0.72rem;padding:2px 7px;">Verified</span>` : ''}
+              </div>
+
+              ${s.evaluation_status === 'submitted' ? `
+                <div class="spm-eval-score-card">
+                  <div class="spm-eval-score">
+                    <span class="spm-star">★</span>
+                    <span>${Number(s.evaluation_score || 5).toFixed(1)}</span>
+                    <span class="spm-score-max">/ 5.0</span>
+                  </div>
+                  <span class="spm-eval-rating-label">
+                    ${Number(s.evaluation_score || 5) >= 4.5 ? 'Outstanding Performance' : Number(s.evaluation_score || 5) >= 3.5 ? 'Very Satisfactory' : 'Satisfactory'}
                   </span>
-                  ${s.evaluation_date ? `<span style="font-size:var(--text-xs);color:var(--text-tertiary);">${s.evaluation_date}</span>` : ''}
                 </div>
-                <div style="font-size:var(--text-sm);font-weight:700;color:var(--text-primary);display:flex;align-items:center;gap:4px;">
-                  <span style="color:#F59E0B;">★</span> ${Number(s.evaluation_score || 5).toFixed(1)} <span style="font-size:var(--text-xs);color:var(--text-tertiary);font-weight:var(--weight-normal);">/ 5.0</span>
+                <div class="spm-eval-meta">
+                  <div class="spm-eval-meta-row" title="Evaluated by ${escapeHtml(s.evaluator_name || 'Host Company Supervisor')}">
+                    ${icon('user-check', 13)}
+                    <span>Evaluated by: <strong>${escapeHtml(s.evaluator_name || 'Host Supervisor')}</strong> ${s.evaluator_position ? `(${escapeHtml(s.evaluator_position)})` : ''}</span>
+                  </div>
+                  ${s.evaluation_date ? `
+                    <div class="spm-eval-meta-row">
+                      ${icon('calendar', 13)}
+                      <span>Verified: <strong>${escapeHtml(s.evaluation_date)}</strong></span>
+                    </div>
+                  ` : ''}
                 </div>
-              </div>
-              <div style="font-size:var(--text-xs);color:var(--text-secondary);display:flex;align-items:center;gap:6px;">
-                ${icon('user-check', 13)} Evaluated by: <strong>${s.evaluator_name || 'Host Company Supervisor'}</strong> ${s.evaluator_position ? `(${s.evaluator_position})` : ''}
-              </div>
-            ` : s.evaluation_status === 'pending' ? `
-              <div style="display:flex;align-items:center;gap:8px;">
-                <span class="badge badge--warning" style="display:inline-flex;align-items:center;gap:4px;font-weight:600;">
-                  ${icon('clock', 12)} Evaluation Pending
-                </span>
-                <span style="font-size:var(--text-xs);color:var(--text-secondary);">
-                  Requested from ${s.ojt_company || 'Host Company'}. Required before graduation promotion.
-                </span>
-              </div>
-            ` : `
-              <div style="display:flex;align-items:center;gap:8px;">
-                <span class="badge badge--neutral" style="display:inline-flex;align-items:center;gap:4px;font-size:var(--text-xs);color:var(--text-tertiary);">
-                  ${icon('alert-circle', 12)} Not Evaluated
-                </span>
-                <span style="font-size:var(--text-xs);color:var(--text-secondary);">
-                  Host company has not submitted an evaluation yet. Required before graduation promotion.
-                </span>
-              </div>
-            `}
+              ` : s.evaluation_status === 'pending' ? `
+                <div class="spm-eval-pending-box">
+                  <div class="spm-eval-pending-icon">${icon('clock', 20)}</div>
+                  <div style="min-width:0;flex:1;">
+                    <strong style="display:block;font-size:0.8rem;margin-bottom:2px;">Evaluation Pending from Host Company</strong>
+                    <p style="margin:0;font-size:0.73rem;line-height:1.35;opacity:0.9;">Evaluation request sent to ${escapeHtml(s.ojt_company || 'Host Company')}. Required before graduation promotion.</p>
+                  </div>
+                </div>
+              ` : `
+                <div class="spm-eval-none-box">
+                  <div class="spm-eval-none-icon">${icon('alert-circle', 20)}</div>
+                  <div style="min-width:0;flex:1;">
+                    <strong style="display:block;font-size:0.8rem;margin-bottom:2px;">No Evaluation on Record</strong>
+                    <p style="margin:0;font-size:0.73rem;line-height:1.35;opacity:0.85;">Host company must submit performance rating before graduation promotion.</p>
+                  </div>
+                </div>
+              `}
+            </div>
           </div>
         </div>
 
-        <!-- Skills -->
-        <div>
-          <div class="spm-sec-head">${icon('layers', 12)} Skills</div>
-          <div class="spm-skills">
-            ${s.skills && s.skills.length
-              ? s.skills.map(sk => `<span class="spm-skill">${sk}</span>`).join('')
-              : `<span class="spm-skill spm-skill--empty">No skills listed yet</span>`}
+        <!-- Graduation Dual-Gate Readiness Banner -->
+        ${isDualGateQualified ? `
+          <div class="spm-readiness-banner spm-readiness-banner--qualified">
+            <div class="spm-readiness-banner__icon">
+              ${icon('award', 22)}
+            </div>
+            <div class="spm-readiness-banner__content">
+              <h4 class="spm-readiness-banner__title">Dual-Gate Qualified for Graduation Promotion</h4>
+              <p class="spm-readiness-banner__desc">Both required 600 OJT hours and official company performance evaluation are verified. This student is eligible to be promoted to Graduate/Alumni status.</p>
+            </div>
+            <button type="button" class="btn btn--primary btn--sm" id="modal-banner-promote-btn" style="flex-shrink:0;gap:6px;background:#005930;border-color:#005930;">
+              ${icon('graduation-cap', 15)} Promote to Graduate
+            </button>
+          </div>
+        ` : `
+          <div class="spm-readiness-banner spm-readiness-banner--locked">
+            <div class="spm-readiness-banner__icon">
+              ${icon('lock', 20)}
+            </div>
+            <div class="spm-readiness-banner__content">
+              <h4 class="spm-readiness-banner__title" style="color:var(--text-primary);">Promotion Readiness: Ineligible</h4>
+              <p class="spm-readiness-banner__desc">${escapeHtml(s.ineligible_reason || 'Dual-gate requirements not fully met. Both 600 hours and host company evaluation are required.')}</p>
+            </div>
+          </div>
+        `}
+
+        <!-- Competencies & Direct Contact (2 Column Grid) -->
+        <div class="spm-grid-2col">
+          <!-- Left: Skills -->
+          <div class="spm-card">
+            <div class="spm-card__title">
+              ${icon('layers', 14)}
+              <span>Technical Skills &amp; Competencies</span>
+            </div>
+            <div class="spm-skills-wrap">
+              ${s.skills && s.skills.length
+                ? s.skills.map(sk => `<span class="spm-skill-pill">${escapeHtml(sk)}</span>`).join('')
+                : `<span class="spm-empty-skills">No specific skills listed on student profile yet</span>`}
+            </div>
+          </div>
+
+          <!-- Right: Communication & Portfolio -->
+          <div class="spm-card">
+            <div class="spm-card__title">
+              ${icon('phone', 14)}
+              <span>Direct Communication &amp; Links</span>
+            </div>
+            <div class="spm-contact-list">
+              <a href="mailto:${escapeHtml(s.email)}" class="spm-contact-item" title="Send email to student">
+                <div class="spm-contact-item__icon">${icon('mail', 14)}</div>
+                <div class="spm-contact-item__text">
+                  <span class="spm-contact-item__label">Official Student Email</span>
+                  <strong class="spm-contact-item__val">${escapeHtml(s.email)}</strong>
+                </div>
+                <span class="spm-contact-item__arrow">${icon('external-link', 12)}</span>
+              </a>
+
+              ${s.phone ? `
+                <a href="tel:${escapeHtml(s.phone)}" class="spm-contact-item" title="Call student">
+                  <div class="spm-contact-item__icon">${icon('phone', 14)}</div>
+                  <div class="spm-contact-item__text">
+                    <span class="spm-contact-item__label">Contact Number</span>
+                    <strong class="spm-contact-item__val">${escapeHtml(s.phone)}</strong>
+                  </div>
+                </a>
+              ` : ''}
+
+              ${s.portfolio_url ? `
+                <a href="${escapeHtml(s.portfolio_url)}" target="_blank" rel="noopener noreferrer" class="spm-contact-item" title="Open student portfolio">
+                  <div class="spm-contact-item__icon">${icon('globe', 14)}</div>
+                  <div class="spm-contact-item__text">
+                    <span class="spm-contact-item__label">Online Portfolio / Resume</span>
+                    <strong class="spm-contact-item__val">${escapeHtml(s.portfolio_url)}</strong>
+                  </div>
+                  <span class="spm-contact-item__arrow">${icon('external-link', 12)}</span>
+                </a>
+              ` : ''}
+            </div>
           </div>
         </div>
-
-        ${(s.portfolio_url || s.phone) ? `
-        <!-- Links -->
-        <div class="spm-links">
-          ${s.portfolio_url
-            ? `<a href="${s.portfolio_url}" target="_blank" rel="noopener noreferrer" class="spm-link-btn spm-link-btn--portfolio">${icon('link', 12)} Portfolio</a>`
-            : ''}
-          ${s.phone
-            ? `<span class="spm-link-btn spm-link-btn--phone">${icon('phone', 12)} ${s.phone}</span>`
-            : ''}
-        </div>` : ''}
       </div>
 
-      <!-- Footer -->
+      <!-- Refined Footer -->
       <div class="spm-footer">
-        <div class="spm-footer__id">
-          ${icon('user', 12)}
-          <span class="spm-footer__id-val">${s.student_id || 'No ID'}</span>
+        <div class="spm-footer__id-chip">
+          ${icon('user', 13)}
+          <span>Student ID:</span>
+          <strong class="font-mono">${escapeHtml(s.student_id || 'Unassigned')}</strong>
         </div>
+
         <div class="spm-footer__actions">
           <button class="btn btn--outline btn--sm" id="modal-cancel">Close</button>
+          <a href="mailto:${escapeHtml(s.email)}" class="btn btn--outline btn--sm">
+            ${icon('mail', 13)} Email Student
+          </a>
+
           ${s.approval_status === 'pending' ? `
-            <button type="button" class="btn btn--sm spm-footer-reject-btn" style="background:#FFF1F2;color:#E11D48;border:1px solid #FECDD3;gap:4px;font-weight:600;">
-              ${icon('x', 13)} Reject Registration
+            <button type="button" class="btn btn--outline btn--sm spm-footer-reject-btn" style="color:#DC2626;border-color:#FCA5A5;gap:4px;">
+              ${icon('x', 13)} Reject
             </button>
-            <button type="button" class="btn btn--primary btn--sm spm-footer-approve-btn" style="gap:5px;font-weight:600;background:#005930;border-color:#005930;">
+            <button type="button" class="btn btn--primary btn--sm spm-footer-approve-btn" style="background:#005930;border-color:#005930;gap:6px;">
               ${icon('check', 13)} Approve Student
             </button>
           ` : `
-            ${s.is_eligible_for_promotion ? `
-              <button class="btn btn--primary btn--sm" id="modal-promote-btn" style="display:inline-flex;align-items:center;gap:6px;">
+            ${isDualGateQualified ? `
+              <button class="btn btn--primary btn--sm" id="modal-promote-btn" style="display:inline-flex;align-items:center;gap:6px;background:#005930;border-color:#005930;">
                 ${icon('graduation-cap', 14)} Promote to Graduate
               </button>
             ` : `
-              <span class="badge badge--neutral" title="${s.ineligible_reason || 'Dual-gate requirements not met'}" style="font-size:0.75rem;padding:6px 10px;cursor:help;display:inline-flex;align-items:center;gap:5px;background:var(--bg-secondary);border:1px solid var(--border-default);color:var(--text-secondary);">
+              <span class="badge badge--neutral" title="${escapeHtml(s.ineligible_reason || 'Dual-gate requirements not met')}" style="font-size:0.75rem;padding:6px 12px;cursor:help;display:inline-flex;align-items:center;gap:5px;background:var(--bg-primary);border:1px solid var(--border-default);color:var(--text-secondary);">
                 ${icon('lock', 12)} Promotion Locked: ${s.evaluation_status !== 'submitted' ? 'Evaluation Required' : 'Hours Incomplete'}
               </span>
             `}
           `}
-          <a href="mailto:${s.email}" class="btn btn--outline btn--sm">${icon('mail', 13)} Contact</a>
         </div>
       </div>
     </div>
@@ -667,11 +824,21 @@ function showModal(s, container, onRefresh) {
   container.appendChild(backdrop);
   renderIcons();
 
-  // Animate OJT bar after paint
+  // Animate OJT progress bar
   requestAnimationFrame(() => {
     const fill = backdrop.querySelector('.spm-ojt__fill');
     if (fill) fill.style.width = (fill.dataset.pct || 0) + '%';
   });
+
+  // Copy ID click interaction
+  const copyBtn = backdrop.querySelector('#spm-copy-id');
+  if (copyBtn && s.student_id) {
+    copyBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      navigator.clipboard.writeText(s.student_id);
+      showToast(`Copied Student ID: ${s.student_id}`, 'info');
+    });
+  }
 
   const close = () => backdrop.remove();
   backdrop.querySelector('#modal-close').addEventListener('click', close);
@@ -707,20 +874,21 @@ function showModal(s, container, onRefresh) {
   backdrop.querySelector('.spm-reject-btn')?.addEventListener('click', triggerReject);
   backdrop.querySelector('.spm-footer-reject-btn')?.addEventListener('click', triggerReject);
 
-  const promoteBtn = backdrop.querySelector('#modal-promote-btn');
-  if (promoteBtn) {
-    promoteBtn.addEventListener('click', () => {
-      openPromoteModal({
-        students: [s],
-        onPromote: () => {
-          close();
-          if (typeof onRefresh === 'function') onRefresh();
-        },
-        container,
-      });
+  const handlePromote = () => {
+    openPromoteModal({
+      students: [s],
+      onPromote: () => {
+        close();
+        if (typeof onRefresh === 'function') onRefresh();
+      },
+      container,
     });
-  }
+  };
+
+  backdrop.querySelector('#modal-promote-btn')?.addEventListener('click', handlePromote);
+  backdrop.querySelector('#modal-banner-promote-btn')?.addEventListener('click', handlePromote);
 }
+
 
 /* ─── Table rows renderer ───────────────────────────────────────── */
 function renderTable(tbody, list, container, selectedStudents, updateSelectionUI, onRefresh) {
