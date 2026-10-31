@@ -32,6 +32,8 @@ const MOA_CONFIG = {
   approved:        { color: '#10B981', bg: 'rgba(16, 185, 129, 0.12)', border: 'rgba(16, 185, 129, 0.25)', label: 'Active' },
   Requested:       { color: '#D97706', bg: 'rgba(217, 119, 6, 0.14)', border: 'rgba(217, 119, 6, 0.35)', label: 'MOA Requested' },
   requested:       { color: '#D97706', bg: 'rgba(217, 119, 6, 0.14)', border: 'rgba(217, 119, 6, 0.35)', label: 'MOA Requested' },
+  'Grace Period':  { color: '#D97706', bg: 'rgba(217, 119, 6, 0.14)', border: 'rgba(217, 119, 6, 0.35)', label: 'Grace Period (Active Trainees)' },
+  'grace period':  { color: '#D97706', bg: 'rgba(217, 119, 6, 0.14)', border: 'rgba(217, 119, 6, 0.35)', label: 'Grace Period (Active Trainees)' },
   'Expiring Soon': { color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.12)', border: 'rgba(245, 158, 11, 0.25)', label: 'Expiring Soon' },
   'expiring soon': { color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.12)', border: 'rgba(245, 158, 11, 0.25)', label: 'Expiring Soon' },
   Pending:         { color: '#6366F1', bg: 'rgba(99, 102, 241, 0.12)', border: 'rgba(99, 102, 241, 0.25)', label: 'Under Review' },
@@ -60,6 +62,7 @@ function getMoaConfig(moaStatus) {
   const lower = s.toLowerCase();
   if (lower === 'approved' || lower === 'accepted' || lower === 'active') return MOA_CONFIG.Active;
   if (lower === 'requested') return MOA_CONFIG.Requested;
+  if (lower === 'grace period') return MOA_CONFIG['Grace Period'];
   if (lower === 'expiring soon') return MOA_CONFIG['Expiring Soon'];
   if (lower === 'expired') return MOA_CONFIG.Expired;
   if (lower === 'rejected') return MOA_CONFIG.Rejected;
@@ -685,15 +688,15 @@ function showAddCompanyModal(container, onSuccess) {
                 <label class="ac-label">Validity Duration</label>
                 <div class="ac-duration-wrap">
                   <div class="ac-duration-pills" id="ac-duration-pills">
-                    <button type="button" class="ac-duration-btn" data-val="1">1 Year</button>
-                    <button type="button" class="ac-duration-btn" data-val="2">2 Years</button>
-                    <button type="button" class="ac-duration-btn is-active" data-val="3">3 Years (Std)</button>
-                    <button type="button" class="ac-duration-btn" data-val="5">5 Years</button>
+                    <button type="button" class="ac-duration-btn" data-val="1">1 AY</button>
+                    <button type="button" class="ac-duration-btn" data-val="2">2 AY</button>
+                    <button type="button" class="ac-duration-btn is-active" data-val="3">3 AY (Std)</button>
+                    <button type="button" class="ac-duration-btn" data-val="5">5 AY</button>
                     <button type="button" class="ac-duration-btn" data-val="custom">Custom</button>
                   </div>
                   <div class="ac-custom-duration-wrap" id="ac-custom-duration-wrap">
                     <input type="number" id="ac-custom-duration" class="ac-custom-duration-input" min="1" max="50" value="4" />
-                    <span class="ac-custom-duration-label">Years of validity</span>
+                    <span class="ac-custom-duration-label">Academic Years (Ends June 30)</span>
                   </div>
                 </div>
               </div>
@@ -931,9 +934,19 @@ function showAddCompanyModal(container, onSuccess) {
     let startDate = startVal ? new Date(startVal + 'T00:00:00') : new Date();
     if (isNaN(startDate.getTime())) startDate = new Date();
 
-    const endDate = new Date(startDate);
-    endDate.setFullYear(endDate.getFullYear() + duration);
-    return { duration, startDate, endDate };
+    const startMonth = startDate.getMonth() + 1; // 1-12
+    const startYear = startDate.getFullYear();
+    const targetYear = startMonth <= 6
+      ? (startYear + duration - 1)
+      : (startYear + duration);
+
+    const endDate = new Date(targetYear, 5, 30); // June 30
+    const yyyy = endDate.getFullYear();
+    const mm = String(endDate.getMonth() + 1).padStart(2, '0');
+    const dd = String(endDate.getDate()).padStart(2, '0');
+    const endDateStr = `${yyyy}-${mm}-${dd}`;
+
+    return { duration, startDate, endDate, endDateStr };
   }
 
   function updateMoaExpiryPreview() {
@@ -942,7 +955,7 @@ function showAddCompanyModal(container, onSuccess) {
     const expiryEl = backdrop.querySelector('#ac-moa-expiry-text');
     const durEl = backdrop.querySelector('#ac-moa-duration-text');
     if (expiryEl) expiryEl.textContent = formatted;
-    if (durEl) durEl.textContent = `${duration} ${duration === 1 ? 'year active' : 'years active'}`;
+    if (durEl) durEl.textContent = `${duration} ${duration === 1 ? 'Academic Year' : 'Academic Years'} (Ends June 30)`;
   }
 
   // Duration pill clicks
@@ -1083,7 +1096,7 @@ function showAddCompanyModal(container, onSuccess) {
     btnSubmit.querySelector('.btn-text').style.display = 'none';
     btnSubmit.querySelector('.btn-loading').style.display = 'inline-flex';
 
-    const { duration, endDate } = getCalculatedEndDate();
+    const { duration, endDate, endDateStr } = getCalculatedEndDate();
     const startVal = backdrop.querySelector('#ac-moa-start').value;
 
     const fd = new FormData();
@@ -1099,7 +1112,7 @@ function showAddCompanyModal(container, onSuccess) {
 
     if (startVal) fd.append('moa_start_date', startVal);
     fd.append('moa_duration', duration);
-    fd.append('moa_end_date', endDate.toISOString().split('T')[0]);
+    fd.append('moa_end_date', endDateStr);
 
     if (fileInput.files[0]) {
       fd.append('moa_file', fileInput.files[0]);
@@ -1550,7 +1563,7 @@ export default async function CompaniesPage(container) {
                       <div class="cp-moa-cell">
                         <span class="cp-moa-badge" style="background:${mc.bg};color:${mc.color};border:1px solid ${mc.border};">
                           <span class="cp-moa-dot" style="background:${mc.color};"></span>
-                          ${c.moaStatus || 'Pending'}
+                          ${(c.moaStatus || '').toLowerCase() === 'grace period' ? `Grace Period ${c.activeTrainees ? `(${c.activeTrainees} Active)` : ''}` : (c.moaStatus || 'Pending')}
                         </span>
                         ${c.moaExpiry ? `<span class="cp-moa-date">Expires: ${c.moaExpiry}</span>` : ''}
                       </div>
@@ -1670,7 +1683,7 @@ export default async function CompaniesPage(container) {
                 <div class="cp-card__moa-strip" style="margin-top:12px;">
                   <div style="display:flex;align-items:center;gap:6px;">
                     <span class="cp-moa-dot" style="background:${mc.color};"></span>
-                    <span style="font-weight:var(--weight-semibold);color:var(--text-primary);font-size:var(--text-xs);">MOA: ${c.moaStatus || 'Pending'}</span>
+                    <span style="font-weight:var(--weight-semibold);color:var(--text-primary);font-size:var(--text-xs);">MOA: ${(c.moaStatus || '').toLowerCase() === 'grace period' ? `Grace Period ${c.activeTrainees ? `(${c.activeTrainees} Trainees)` : ''}` : (c.moaStatus || 'Pending')}</span>
                   </div>
                   <span style="font-size:0.68rem;color:var(--text-tertiary);">${c.moaExpiry ? `Expires: ${c.moaExpiry}` : 'No Expiry Set'}</span>
                 </div>

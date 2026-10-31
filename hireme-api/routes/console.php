@@ -9,3 +9,4 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('dtr:auto-close-afternoon')->hourly();
+Schedule::command('moa:check-expirations')->daily();

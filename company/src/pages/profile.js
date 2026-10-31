@@ -94,7 +94,7 @@ function render(container) {
 
   // Status pill helpers
   const statusColors = { Active: 'success', Pending: 'warning', Suspended: 'danger', Inactive: 'neutral' };
-  const moaColors    = { Active: 'success', Accepted: 'success', Requested: 'warning', Pending: 'warning', Expired: 'danger', Rejected: 'danger' };
+  const moaColors    = { Active: 'success', Accepted: 'success', Requested: 'warning', Pending: 'warning', 'Expiring Soon': 'warning', 'Grace Period': 'warning', Expired: 'danger', Rejected: 'danger' };
   const statusPill = (label, map) => {
     const color = map[label] || 'neutral';
     return `<span class="profile-pill profile-pill--${color}"><span class="profile-pill__dot"></span>${escapeHtml(label || '—')}</span>`;
@@ -380,13 +380,21 @@ function renderAboutTab() {
           <h3 class="profile-section__title">${icon('fileText', 20)} Memorandum of Agreement (MOA)</h3>
           ${(C.moaStatus || '').toLowerCase() === 'active' ? `
             <span class="badge badge--success" style="font-weight:700;">✓ Active Partnership</span>
+          ` : ((C.moaStatus || '').toLowerCase() === 'grace period' ? `
+            <button type="button" class="btn btn--primary btn--sm" id="btn-about-request-moa" style="background:#c2410c;border-color:#c2410c;gap:6px;font-weight:600;">
+              ${icon('send', 13)} Request Renewal (Grace Period)
+            </button>
           ` : (C.moaStatus === 'Requested' ? `
             <span class="badge badge--warning" style="font-weight:700;background:#fef3c7;color:#b45309;">⏳ Under CIER Review</span>
+          ` : ((C.moaStatus || '').toLowerCase() === 'expired' ? `
+            <button type="button" class="btn btn--primary btn--sm" id="btn-about-request-moa" style="background:#b91c1c;border-color:#b91c1c;gap:6px;font-weight:600;">
+              ${icon('send', 13)} Request Renewal
+            </button>
           ` : `
             <button type="button" class="btn btn--primary btn--sm" id="btn-about-request-moa" style="background:#005930;border-color:#005930;gap:6px;font-weight:600;">
               ${icon('send', 13)} Request MOA
             </button>
-          `)}
+          `)))}
         </div>
 
         <div style="background:var(--bg-secondary);padding:18px;border-radius:12px;display:flex;flex-direction:column;gap:12px;">
@@ -412,15 +420,23 @@ function renderAboutTab() {
             <p style="margin:0;font-size:0.84rem;color:var(--color-success);line-height:1.5;">
               ✓ Your company holds a verified Memorandum of Agreement with CHMSU CIER. OJT trainee slot and job vacancy postings are enabled.
             </p>
+          ` : ((C.moaStatus || '').toLowerCase() === 'grace period' ? `
+            <p style="margin:0;font-size:0.84rem;color:#c2410c;line-height:1.5;">
+              ⏳ <strong>Active Trainees Grace Period:</strong> Your contract expired on June 30, but active trainees currently deployed at your company are protected to finish their hours. Please submit a renewal request to unlock postings for the upcoming academic year.
+            </p>
           ` : (C.moaStatus === 'Requested' ? `
             <p style="margin:0;font-size:0.84rem;color:#b45309;line-height:1.5;">
               ⏳ Your MOA partnership request is currently being reviewed by the CHMSU CIER administrative office. You will be notified once the agreement document is approved and uploaded.
+            </p>
+          ` : ((C.moaStatus || '').toLowerCase() === 'expired' ? `
+            <p style="margin:0;font-size:0.84rem;color:#b91c1c;line-height:1.5;">
+              ⚠ Your MOA agreement with CHMSU CIER has expired. Posting new opportunities is paused. Please request an agreement renewal with the administration.
             </p>
           ` : `
             <p style="margin:0;font-size:0.84rem;color:var(--text-secondary);line-height:1.5;">
               As a self-registered industry partner, an official Memorandum of Agreement (MOA) between your organization and CHMSU is required to unlock job and OJT opportunity postings.
             </p>
-          `)}
+          `)))}
         </div>
       </div>
     </div>

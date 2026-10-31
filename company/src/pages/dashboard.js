@@ -100,6 +100,59 @@ function renderMoaBanner(company) {
     `;
   }
 
+  const lowerMoa = moaStatus.toLowerCase();
+  if (lowerMoa === 'grace period') {
+    return `
+      <div class="moa-dash-banner" style="background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;box-shadow:0 2px 6px rgba(0,0,0,0.03);">
+        <div style="display:flex;align-items:center;gap:14px;max-width:720px;">
+          <div style="width:40px;height:40px;border-radius:10px;background:#ffedd5;color:#c2410c;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            ${icon('clock', 20)}
+          </div>
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <h4 style="margin:0;font-size:0.95rem;font-weight:700;color:#9a3412;">Active Trainees Grace Period — MOA Renewal Required</h4>
+              <span style="background:#ffedd5;color:#c2410c;font-size:0.7rem;font-weight:700;padding:2px 8px;border-radius:99px;border:1px solid #fdba74;">Grace Period Active</span>
+            </div>
+            <p style="margin:4px 0 0;font-size:0.82rem;color:#c2410c;line-height:1.4;">
+              Your MOA validity has ended, but active student trainees currently deployed at your company are protected and can complete their required training hours. Publishing new postings is paused until agreement renewal.
+            </p>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <button type="button" class="btn btn--sm btn--primary" id="btn-request-moa-dash" style="background:#c2410c;border-color:#c2410c;gap:6px;font-weight:600;white-space:nowrap;">
+            ${icon('send', 14)} Request MOA Renewal
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  if (lowerMoa === 'expired') {
+    return `
+      <div class="moa-dash-banner" style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;box-shadow:0 2px 6px rgba(0,0,0,0.03);">
+        <div style="display:flex;align-items:center;gap:14px;max-width:720px;">
+          <div style="width:40px;height:40px;border-radius:10px;background:#fee2e2;color:#dc2626;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            ${icon('alertCircle', 20)}
+          </div>
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <h4 style="margin:0;font-size:0.95rem;font-weight:700;color:#991b1b;">MOA Partnership Expired</h4>
+              <span style="background:#fee2e2;color:#dc2626;font-size:0.7rem;font-weight:700;padding:2px 8px;border-radius:99px;border:1px solid #fca5a5;">Expired</span>
+            </div>
+            <p style="margin:4px 0 0;font-size:0.82rem;color:#b91c1c;line-height:1.4;">
+              Your Memorandum of Agreement (MOA) with CHMSU CIER has expired. Please submit an MOA renewal request to restore your opportunity postings for the upcoming academic year.
+            </p>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <button type="button" class="btn btn--sm btn--primary" id="btn-request-moa-dash" style="background:#b91c1c;border-color:#b91c1c;gap:6px;font-weight:600;white-space:nowrap;">
+            ${icon('send', 14)} Request MOA Renewal
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
   return `
     <div class="moa-dash-banner" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;box-shadow:0 2px 6px rgba(0,0,0,0.03);">
       <div style="display:flex;align-items:center;gap:14px;max-width:720px;">

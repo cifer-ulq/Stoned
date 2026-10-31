@@ -423,6 +423,23 @@ class SupervisorController extends Controller
             return response()->json(['success' => false, 'message' => 'This student is not awaiting an endorsement letter.'], 422);
         }
 
+        // Pre-flight MOA guard: Prevent deploying new students to companies with expired MOAs
+        $companyUserId = $interest->posting?->company_user_id;
+        if ($companyUserId) {
+            $companyProfile = \App\Models\CompanyProfile::where('user_id', $companyUserId)->first();
+            if ($companyProfile) {
+                $effectiveMoa = strtolower($companyProfile->getEffectiveMoaStatus());
+                if (in_array($effectiveMoa, ['expired', 'rejected'], true)) {
+                    $companyName = $interest->posting->company_name ?? 'this partner company';
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Cannot endorse student. {$companyName}'s MOA agreement with CHMSU has expired. Please coordinate with CIER Admin for agreement renewal before deploying new trainee cohorts.",
+                        'reason'  => 'moa_expired',
+                    ], 422);
+                }
+            }
+        }
+
         $validated = $request->validate([
             'endorsement_letter' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
         ]);

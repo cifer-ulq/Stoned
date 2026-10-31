@@ -107,21 +107,24 @@ class AdminController extends Controller
             'onboarding_completed' => true,
         ]);
 
-        // Compute MOA end date from explicit end date or start + duration (years)
-        $moaStartDate = isset($data['moa_start_date']) ? Carbon::parse($data['moa_start_date']) : null;
+        // Compute MOA end date aligned with Academic Year (June 30) or explicit end date
+        $moaStartDate = isset($data['moa_start_date']) ? Carbon::parse($data['moa_start_date']) : Carbon::now();
         $moaEndDate   = null;
         if (!empty($data['moa_end_date'])) {
             $moaEndDate = Carbon::parse($data['moa_end_date']);
-        } elseif ($moaStartDate && isset($data['moa_duration'])) {
-            $moaEndDate = $moaStartDate->copy()->addYears((int) $data['moa_duration']);
+        } elseif (isset($data['moa_duration'])) {
+            $moaEndDate = CompanyProfile::calculateAcademicYearEndDate($moaStartDate, (int) $data['moa_duration']);
+        } else {
+            $moaEndDate = CompanyProfile::calculateAcademicYearEndDate($moaStartDate, 3);
         }
 
         $moaStatus = 'Active';
         if ($moaStartDate && $moaEndDate) {
-            $now = Carbon::now();
-            if ($now->between($moaStartDate, $moaEndDate)) {
-                $moaStatus = $now->diffInDays($moaEndDate) <= 60 ? 'Expiring Soon' : 'Active';
-            } elseif ($now->gt($moaEndDate)) {
+            $now = Carbon::now(config('app.timezone', 'Asia/Manila'));
+            $end = $moaEndDate->copy()->endOfDay();
+            if ($now->lte($end)) {
+                $moaStatus = $now->diffInDays($end, false) <= 60 ? 'Expiring Soon' : 'Active';
+            } else {
                 $moaStatus = 'Expired';
             }
         }
@@ -229,19 +232,24 @@ class AdminController extends Controller
             ->selectRaw('company_user_id, SUM(slots_remaining) as total')
             ->pluck('total', 'company_user_id');
 
-        $companies = $profiles->map(function ($p) use ($jobCounts, $ojtSlotTotals) {
+        // Active student trainees currently deployed per company (Option A Grace Period tracking)
+        $activeTraineesCounts = DB::table('student_ojt_interests')
+            ->whereIn('company_user_id', $userIds)
+            ->whereIn('status', ['ojt_started', 'accepted'])
+            ->groupBy('company_user_id')
+            ->selectRaw('company_user_id, COUNT(*) as total')
+            ->pluck('total', 'company_user_id');
+
+        $companies = $profiles->map(function ($p) use ($jobCounts, $ojtSlotTotals, $activeTraineesCounts) {
             $rawStatus = trim($p->status ?? 'Pending');
             $status = ucfirst(strtolower($rawStatus));
             if (!in_array($status, ['Active', 'Pending', 'Suspended', 'Inactive'])) {
                 $status = 'Pending';
             }
 
-            $rawMoa = trim($p->moa_status ?? 'Pending');
-            if (in_array(strtolower($rawMoa), ['approved', 'accepted', 'active'])) {
-                $moaStatus = 'Active';
-            } else {
-                $moaStatus = ucfirst(strtolower($rawMoa));
-            }
+            // Real-time dynamic MOA resolution incorporating June 30 academic calendar & Option A
+            $moaStatus = $p->getEffectiveMoaStatus();
+            $activeTrainees = (int) ($activeTraineesCounts[$p->user_id] ?? 0);
 
             return [
                 'id'                 => 'C-' . $p->user_id,
@@ -262,6 +270,7 @@ class AdminController extends Controller
                 'profileCompleted'   => (bool) $p->profile_completed,
                 'ojtSlots'           => (int) ($ojtSlotTotals[$p->user_id] ?? 0),
                 'activePostings'     => (int) ($jobCounts[$p->user_id] ?? 0),
+                'activeTrainees'     => $activeTrainees,
                 'rating'             => 0.0,
             ];
         });
@@ -360,6 +369,7 @@ class AdminController extends Controller
             'moa_file'       => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:10240'],
             'moa_start_date' => ['nullable', 'date'],
             'moa_end_date'   => ['nullable', 'date'],
+            'moa_duration'   => ['nullable', 'integer', 'min:1', 'max:50'],
             'moa_status'     => ['nullable', 'string', 'in:Active,Pending,Expired,Requested,Terminated'],
         ]);
 
@@ -378,6 +388,9 @@ class AdminController extends Controller
         }
         if ($request->filled('moa_end_date')) {
             $updateData['moa_end_date'] = $data['moa_end_date'];
+        } elseif ($request->filled('moa_duration')) {
+            $startDate = $request->filled('moa_start_date') ? $data['moa_start_date'] : ($profile->moa_start_date ?: now());
+            $updateData['moa_end_date'] = CompanyProfile::calculateAcademicYearEndDate($startDate, (int) $data['moa_duration'])->toDateString();
         }
 
         $newStatus = $data['moa_status'] ?? 'Active';
@@ -426,11 +439,13 @@ class AdminController extends Controller
             'success' => true,
             'message' => $message,
             'data'    => [
-                'id'         => 'C-' . $user->id,
-                'moaStatus'  => $profile->moa_status,
-                'moaExpiry'  => $profile->moa_end_date,
-                'moaFileUrl' => $profile->moa_file_path ? url(Storage::url($profile->moa_file_path)) : null,
-                'status'     => $profile->status,
+                'id'             => 'C-' . $user->id,
+                'moaStatus'      => $profile->effective_moa_status,
+                'moaExpiry'      => $profile->moa_end_date,
+                'moaStartDate'   => $profile->moa_start_date,
+                'moaFileUrl'     => $profile->moa_file_path ? url(Storage::url($profile->moa_file_path)) : null,
+                'status'         => $profile->status,
+                'activeTrainees' => $profile->getActiveTraineeCount(),
             ],
         ]);
     }
