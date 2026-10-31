@@ -494,6 +494,19 @@ function showModal(s, container, onRefresh) {
     ? 'pending'
     : (s.status === 'Active OJT' ? 'ojt' : s.status === 'Completed 600hrs' ? 'active' : 'other');
 
+  // Standardized CHMSU Campus display
+  const formatCampus = (raw) => {
+    if (!raw) return 'Talisay Campus';
+    const str = String(raw).trim();
+    const l = str.toLowerCase();
+    if (l.includes('alijis')) return 'Alijis Campus';
+    if (l.includes('binalbagan')) return 'Binalbagan Campus';
+    if (l.includes('fortune') || l.includes('towne')) return 'Fortune Towne Campus';
+    if (l.includes('talisay') || l.includes('main')) return 'Talisay Campus';
+    return str.endsWith('Campus') ? str : `${str} Campus`;
+  };
+  const campusDisplay = formatCampus(s.campus);
+
   const backdrop = document.createElement('div');
   backdrop.className = 'modal-backdrop';
   backdrop.innerHTML = `
@@ -514,7 +527,12 @@ function showModal(s, container, onRefresh) {
               <span>${escapeHtml(programTitle)}</span>
               ${s.year_level ? `<span>&bull;</span><span>${escapeHtml(s.year_level)}</span>` : ''}
             </p>
-            ${s.headline ? `<p class="spm-hero__headline">“${escapeHtml(s.headline)}”</p>` : ''}
+            ${s.headline ? `
+              <div class="spm-hero__headline-pill" title="${escapeHtml(s.headline)}">
+                ${icon('briefcase', 12)}
+                <span>${escapeHtml(s.headline)}</span>
+              </div>
+            ` : ''}
             <div class="spm-hero__badges">
               <span class="spm-badge spm-badge--id" id="spm-copy-id" title="Click to copy Student ID">
                 ${icon('hash', 12)}
@@ -525,12 +543,10 @@ function showModal(s, container, onRefresh) {
                 <span class="spm-badge__dot"></span>
                 <span>${escapeHtml(s.status || 'Active')}</span>
               </span>
-              ${s.campus ? `
-                <span class="spm-badge">
-                  ${icon('map-pin', 12)}
-                  <span>${escapeHtml(s.campus)}</span>
-                </span>
-              ` : ''}
+              <span class="spm-badge" title="CHMSU Campus Location">
+                ${icon('map-pin', 12)}
+                <span>${escapeHtml(campusDisplay)}</span>
+              </span>
             </div>
           </div>
         </div>
@@ -585,13 +601,13 @@ function showModal(s, container, onRefresh) {
 
           <div class="spm-kpi-card">
             <div class="spm-kpi-card__header">
-              <span>College / Faculty</span>
-              <span class="spm-kpi-card__icon">${icon('award', 14)}</span>
+              <span>Campus</span>
+              <span class="spm-kpi-card__icon">${icon('map-pin', 14)}</span>
             </div>
-            <div class="spm-kpi-card__value" title="${escapeHtml(s.school || 'College of Computer Studies')}">
-              ${escapeHtml(s.school || 'College of Computer Studies')}
+            <div class="spm-kpi-card__value" title="${escapeHtml(campusDisplay)}">
+              ${escapeHtml(campusDisplay)}
             </div>
-            <div class="spm-kpi-card__sub">${escapeHtml(s.campus || 'CHMSU Campus')}</div>
+            <div class="spm-kpi-card__sub">CHMSU Campus Location</div>
           </div>
 
           <div class="spm-kpi-card">

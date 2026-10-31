@@ -200,9 +200,9 @@
   background: var(--text-tertiary);
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 992px) {
   .st-table-responsive {
-    overflow-x: hidden; /* Fits 100% desktop screens without sideways scroll */
+    overflow-x: hidden; /* Fits desktop and laptop screens cleanly without sideways scroll */
   }
 }
 
@@ -287,9 +287,9 @@
 
 /* Student Profile Cell */
 .st-student-cell {
-  width: 220px;
-  min-width: 190px;
-  max-width: 260px;
+  width: 200px;
+  min-width: 165px;
+  max-width: 250px;
 }
 
 .st-student-profile {
@@ -353,9 +353,9 @@
 
 /* Program & Section Cell */
 .st-program-cell {
-  width: 220px;
-  min-width: 190px;
-  max-width: 270px;
+  width: 200px;
+  min-width: 165px;
+  max-width: 250px;
 }
 
 .st-program-name {
@@ -412,9 +412,9 @@
 
 /* Host Company & Evaluation */
 .st-company-cell {
-  width: 150px;
-  min-width: 135px;
-  max-width: 175px;
+  width: 140px;
+  min-width: 115px;
+  max-width: 165px;
 }
 
 .st-company-name {
@@ -475,9 +475,9 @@
 
 /* OJT Progress Cell */
 .st-progress-cell {
-  width: 120px;
-  min-width: 105px;
-  max-width: 135px;
+  width: 110px;
+  min-width: 95px;
+  max-width: 130px;
   white-space: nowrap;
 }
 
@@ -528,9 +528,9 @@
 
 /* Status Cell */
 .st-status-cell {
-  width: 120px;
-  min-width: 110px;
-  max-width: 135px;
+  width: 110px;
+  min-width: 95px;
+  max-width: 130px;
   white-space: nowrap;
 }
 
@@ -603,9 +603,9 @@
 
 /* Action Cell */
 .st-action-cell {
-  width: 80px;
-  min-width: 75px;
-  max-width: 95px;
+  width: 75px;
+  min-width: 70px;
+  max-width: 90px;
   text-align: right;
   white-space: nowrap;
 }
