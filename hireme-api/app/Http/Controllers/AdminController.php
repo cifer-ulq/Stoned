@@ -363,6 +363,9 @@ class AdminController extends Controller
             'moa_status'     => ['nullable', 'string', 'in:Active,Pending,Expired,Requested,Terminated'],
         ]);
 
+        $previousMoaStatus = strtolower(trim((string)($profile->moa_status ?? 'Pending')));
+        $isFirstTimeActivation = ($previousMoaStatus !== 'active');
+
         $updateData = [];
 
         if ($request->hasFile('moa_file')) {
@@ -386,24 +389,42 @@ class AdminController extends Controller
 
         $profile->update($updateData);
 
-        // Notify the company user when MOA is approved/activated
+        // Notify the company user when MOA is approved or updated
         if ($newStatus === 'Active') {
-            AppNotification::send(
-                $user->id,
-                'moa_approved',
-                'MOA Approved & Active',
-                'Your Memorandum of Agreement (MOA) with CHMSU CIER has been approved and activated! You can now post OJT slots and job opportunities.',
-                [
-                    'moa_start_date' => $profile->moa_start_date,
-                    'moa_end_date'   => $profile->moa_end_date,
-                    'moa_file_url'   => $profile->moa_file_path ? url(Storage::url($profile->moa_file_path)) : null,
-                ]
-            );
+            if ($isFirstTimeActivation) {
+                AppNotification::send(
+                    $user->id,
+                    'moa_approved',
+                    'MOA Approved & Active',
+                    'Your Memorandum of Agreement (MOA) with CHMSU CIER has been approved and activated! You can now post OJT slots and job opportunities.',
+                    [
+                        'moa_start_date' => $profile->moa_start_date,
+                        'moa_end_date'   => $profile->moa_end_date,
+                        'moa_file_url'   => $profile->moa_file_path ? url(Storage::url($profile->moa_file_path)) : null,
+                    ]
+                );
+            } else {
+                AppNotification::send(
+                    $user->id,
+                    'moa_renewed',
+                    'MOA Terms Updated / Renewed',
+                    'Your Memorandum of Agreement (MOA) validity terms have been updated by CIER Administration.',
+                    [
+                        'moa_start_date' => $profile->moa_start_date,
+                        'moa_end_date'   => $profile->moa_end_date,
+                        'moa_file_url'   => $profile->moa_file_path ? url(Storage::url($profile->moa_file_path)) : null,
+                    ]
+                );
+            }
         }
+
+        $message = $isFirstTimeActivation
+            ? 'MOA partnership approved and activated successfully.'
+            : 'MOA agreement terms updated successfully.';
 
         return response()->json([
             'success' => true,
-            'message' => 'MOA updated successfully.',
+            'message' => $message,
             'data'    => [
                 'id'         => 'C-' . $user->id,
                 'moaStatus'  => $profile->moa_status,

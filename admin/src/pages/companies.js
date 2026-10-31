@@ -177,6 +177,23 @@ function showModal(c, container, companies, onUpdateCallback) {
   const mc = getMoaConfig(c.moaStatus);
   const avatarStyle = getAvatarStyle(c.name);
 
+  const isActiveMoa = (c.moaStatus || '').toLowerCase() === 'active';
+  const isRequested = (c.moaStatus || '').toLowerCase() === 'requested';
+
+  let formTitle = 'Upload & Approve MOA Partnership';
+  let submitButtonText = 'Approve & Activate MOA';
+  let submitButtonIcon = 'check-circle';
+
+  if (isRequested) {
+    formTitle = 'Upload & Send MOA Agreement';
+    submitButtonText = 'Send & Activate MOA';
+    submitButtonIcon = 'send';
+  } else if (isActiveMoa) {
+    formTitle = c.moaFileUrl ? 'Update / Renew MOA Agreement' : 'Upload Agreement & Renew Partnership';
+    submitButtonText = 'Save Contract Changes';
+    submitButtonIcon = 'save';
+  }
+
   const backdrop = document.createElement('div');
   backdrop.className = 'modal-backdrop';
   backdrop.innerHTML = `
@@ -291,12 +308,21 @@ function showModal(c, container, companies, onUpdateCallback) {
 
         <!-- MOA Agreement Document & Management -->
         <div class="cp-info-card" style="padding:16px;">
-          <div class="cp-modal__section-title" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-            <span>${icon('file-text', 14)} Memorandum of Agreement (MOA)</span>
-            <span class="cp-moa-badge" style="background:${mc.bg};color:${mc.color};border:1px solid ${mc.border};">
-              <span class="cp-moa-dot" style="background:${mc.color};"></span>
-              ${c.moaStatus || 'Pending'}
-            </span>
+          <div class="cp-modal__section-title" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span>${icon('file-text', 14)} Memorandum of Agreement (MOA)</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span class="cp-moa-badge" style="background:${mc.bg};color:${mc.color};border:1px solid ${mc.border};">
+                <span class="cp-moa-dot" style="background:${mc.color};"></span>
+                ${c.moaStatus || 'Pending'}
+              </span>
+              ${isActiveMoa ? `
+                <button type="button" class="btn btn--outline btn--sm" id="btn-toggle-moa-form" style="gap:5px;padding:3px 10px;font-size:0.75rem;">
+                  ${icon('edit-3', 12)} <span id="toggle-moa-label">Update / Renew</span>
+                </button>
+              ` : ''}
+            </div>
           </div>
 
           ${c.moaFileUrl ? `
@@ -322,9 +348,9 @@ function showModal(c, container, companies, onUpdateCallback) {
           `}
 
           <!-- Upload / Update MOA Form -->
-          <form id="form-upload-moa" style="background:var(--bg-primary);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:14px;">
+          <form id="form-upload-moa" style="${isActiveMoa ? 'display:none;' : ''}background:var(--bg-primary);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:14px;">
             <div style="font-size:var(--text-xs);font-weight:700;color:var(--text-primary);margin-bottom:10px;display:flex;align-items:center;gap:6px;">
-              ${icon('upload-cloud', 14)} ${c.moaStatus === 'Requested' ? 'Upload & Send MOA Agreement' : (c.moaFileUrl ? 'Update / Renew MOA Agreement' : 'Upload & Approve MOA Partnership')}
+              ${icon('upload-cloud', 14)} <span>${formTitle}</span>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
               <div>
@@ -337,12 +363,20 @@ function showModal(c, container, companies, onUpdateCallback) {
               </div>
             </div>
             <div style="margin-bottom:12px;">
-              <label style="font-size:0.75rem;color:var(--text-secondary);display:block;margin-bottom:4px;font-weight:600;">MOA Document File (PDF, DOCX)</label>
+              <label style="font-size:0.75rem;color:var(--text-secondary);display:block;margin-bottom:4px;font-weight:600;">
+                ${isActiveMoa ? 'Replace MOA Document File (Optional - PDF, DOCX)' : 'MOA Document File (PDF, DOCX)'}
+              </label>
               <input type="file" id="moa-file-input" accept=".pdf,.doc,.docx" class="cp-select" style="width:100%;padding:6px 8px;" />
+              ${isActiveMoa && c.moaFileUrl ? `<span style="font-size:0.7rem;color:var(--text-tertiary);display:block;margin-top:3px;">Leave blank if you only want to extend validity dates without replacing the file.</span>` : ''}
             </div>
             <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;">
+              ${isActiveMoa ? `
+                <button type="button" class="btn btn--secondary btn--sm" id="btn-cancel-moa-edit">
+                  Cancel
+                </button>
+              ` : ''}
               <button type="submit" class="btn btn--primary btn--sm" id="btn-submit-moa" style="background:#005930;border-color:#005930;gap:6px;font-weight:600;">
-                ${icon('send', 14)} <span>${c.moaStatus === 'Requested' ? 'Send & Activate MOA' : 'Approve & Activate MOA'}</span>
+                ${icon(submitButtonIcon, 14)} <span>${submitButtonText}</span>
               </button>
             </div>
           </form>
@@ -415,6 +449,30 @@ function showModal(c, container, companies, onUpdateCallback) {
 
   /* Upload & Approve MOA form listener */
   const moaForm = backdrop.querySelector('#form-upload-moa');
+  const toggleBtn = backdrop.querySelector('#btn-toggle-moa-form');
+  const cancelEditBtn = backdrop.querySelector('#btn-cancel-moa-edit');
+  const toggleLabel = backdrop.querySelector('#toggle-moa-label');
+
+  if (toggleBtn && moaForm) {
+    toggleBtn.addEventListener('click', () => {
+      const isHidden = moaForm.style.display === 'none' || moaForm.style.display === '';
+      moaForm.style.display = isHidden ? 'block' : 'none';
+      if (toggleLabel) {
+        toggleLabel.textContent = isHidden ? 'Hide Form' : 'Update / Renew';
+      }
+      renderIcons(moaForm);
+    });
+  }
+
+  if (cancelEditBtn && moaForm) {
+    cancelEditBtn.addEventListener('click', () => {
+      moaForm.style.display = 'none';
+      if (toggleLabel) {
+        toggleLabel.textContent = 'Update / Renew';
+      }
+    });
+  }
+
   if (moaForm) {
     moaForm.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -433,7 +491,7 @@ function showModal(c, container, companies, onUpdateCallback) {
 
       submitBtn.disabled = true;
       const originalHtml = submitBtn.innerHTML;
-      submitBtn.innerHTML = `${icon('clock', 14)} <span>Activating MOA…</span>`;
+      submitBtn.innerHTML = `${icon('clock', 14)} <span>${isActiveMoa ? 'Saving Changes…' : 'Activating MOA…'}</span>`;
 
       try {
         const res = await apiPostForm(`/admin/companies/${c.id}/moa`, fd);
@@ -453,7 +511,10 @@ function showModal(c, container, companies, onUpdateCallback) {
             companies[idx].status = c.status;
           }
 
-          showToast('MOA approved & activated! The company can now post slots and jobs.', 'success');
+          const toastMsg = res?.message || (isActiveMoa
+            ? 'MOA agreement terms updated successfully.'
+            : 'MOA approved & activated! The company can now post slots and jobs.');
+          showToast(toastMsg, 'success');
           backdrop.remove();
           if (typeof onUpdateCallback === 'function') onUpdateCallback();
         } else {
