@@ -408,7 +408,7 @@
     gap: 12px !important;
   }
   .ojts-header__title {
-    font-size: 1.35rem !important;
+    font-size: 1.4rem !important;
     line-height: 1.25 !important;
   }
   .ojts-stats-grid {
@@ -1039,10 +1039,10 @@
     gap: 10px !important;
   }
   .ojts-header__title {
-    font-size: 1.25rem !important;
+    font-size: 1.3rem !important;
   }
   .ojts-header__sub {
-    font-size: 0.76rem !important;
+    font-size: 0.79rem !important;
   }
   .ojts-stats-grid {
     grid-template-columns: repeat(2, 1fr) !important;
@@ -1054,17 +1054,17 @@
     border-radius: var(--radius-lg) !important;
   }
   .ojts-stat-card__val {
-    font-size: 1.45rem !important;
+    font-size: 1.5rem !important;
   }
   .ojts-stat-card__label {
-    font-size: 0.68rem !important;
+    font-size: 0.71rem !important;
   }
   .ojts-stat-card__icon {
     width: 28px !important;
     height: 28px !important;
   }
   .ojts-stat-card__trend {
-    font-size: 0.62rem !important;
+    font-size: 0.645rem !important;
   }
   .ojts-card {
     padding: 14px 14px !important;
@@ -1074,19 +1074,19 @@
   .ojts-card__avatar {
     width: 36px !important;
     height: 36px !important;
-    font-size: 0.95rem !important;
+    font-size: 0.985rem !important;
   }
   .ojts-card__title {
-    font-size: 0.84rem !important;
+    font-size: 0.87rem !important;
   }
   .ojts-card__company {
-    font-size: 0.72rem !important;
+    font-size: 0.75rem !important;
   }
   .ojts-card__alert-banner {
     flex-wrap: wrap !important;
     gap: 6px !important;
     padding: 6px 8px !important;
-    font-size: 0.7rem !important;
+    font-size: 0.73rem !important;
   }
   .ojts-card__footer {
     flex-wrap: wrap !important;
@@ -1108,13 +1108,13 @@
   .ojts-modal__avatar {
     width: 36px !important;
     height: 36px !important;
-    font-size: 1rem !important;
+    font-size: 1.035rem !important;
   }
   .ojts-modal__title {
-    font-size: 1.05rem !important;
+    font-size: 1.09rem !important;
   }
   .ojts-modal__company {
-    font-size: 0.75rem !important;
+    font-size: 0.78rem !important;
   }
   .ojts-modal__tabs {
     padding: 0 14px !important;
@@ -1123,7 +1123,7 @@
   }
   .ojts-modal__tab {
     padding: 10px 12px !important;
-    font-size: 0.72rem !important;
+    font-size: 0.75rem !important;
     white-space: nowrap !important;
     flex-shrink: 0 !important;
   }
@@ -1169,7 +1169,7 @@
     flex: 1 !important;
     justify-content: center !important;
     text-align: center !important;
-    font-size: 0.72rem !important;
+    font-size: 0.75rem !important;
     height: 30px !important;
   }
 
@@ -1747,7 +1747,7 @@
   }
   .ojts-filter-btn {
     padding: 5px 10px !important;
-    font-size: 0.72rem !important;
+    font-size: 0.75rem !important;
   }
 
   /* Monitoring Map */
@@ -1865,22 +1865,22 @@
 
   /* OJT Management */
   .ojts-header__title {
-    font-size: 1.15rem !important;
+    font-size: 1.19rem !important;
   }
   .ojts-stat-card__val {
-    font-size: 1.25rem !important;
+    font-size: 1.3rem !important;
   }
   .ojts-stat-card__label {
-    font-size: 0.64rem !important;
+    font-size: 0.665rem !important;
   }
   .ojts-modal__spec-item {
     padding: 7px 10px !important;
   }
   .ojts-modal__spec-lbl {
-    font-size: 0.62rem !important;
+    font-size: 0.645rem !important;
   }
   .ojts-modal__spec-val {
-    font-size: 0.72rem !important;
+    font-size: 0.75rem !important;
   }
 
   /* Monitoring Map */
@@ -2112,11 +2112,11 @@
 
   /* OJT Management */
   .ojts-header__title {
-    font-size: 1.05rem !important;
+    font-size: 1.09rem !important;
   }
   .ojts-btn-refresh {
     padding: 4px 8px !important;
-    font-size: 0.68rem !important;
+    font-size: 0.71rem !important;
   }
   .ojts-stats-grid {
     gap: 6px !important;
@@ -2126,10 +2126,10 @@
     border-radius: 8px !important;
   }
   .ojts-stat-card__val {
-    font-size: 1.15rem !important;
+    font-size: 1.19rem !important;
   }
   .ojts-stat-card__label {
-    font-size: 0.58rem !important;
+    font-size: 0.605rem !important;
   }
   .ojts-stat-card__footer {
     display: none !important;
@@ -2141,20 +2141,20 @@
   .ojts-card__avatar {
     width: 30px !important;
     height: 30px !important;
-    font-size: 0.85rem !important;
+    font-size: 0.88rem !important;
   }
   .ojts-card__title {
-    font-size: 0.78rem !important;
+    font-size: 0.81rem !important;
   }
   .ojts-card__status {
-    font-size: 0.58rem !important;
+    font-size: 0.605rem !important;
     padding: 1px 5px !important;
   }
   .ojts-card__company {
-    font-size: 0.68rem !important;
+    font-size: 0.71rem !important;
   }
   .ojts-card__tag {
-    font-size: 0.62rem !important;
+    font-size: 0.645rem !important;
     padding: 2px 6px !important;
   }
   .ojts-modal__head-main {

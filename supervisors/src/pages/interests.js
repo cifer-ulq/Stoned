@@ -197,7 +197,7 @@ function updateStats(container, slots, interests) {
     const isApprovalOnly = lettersCount === 0 && approvalsCount > 0;
     pendingFilterBtn.innerHTML = `
       ${icon('clock', 13)} Action Required
-      ${totalActions > 0 ? `<span class="ojts-card__urgent-badge${isApprovalOnly ? ' ojts-card__urgent-badge--approve' : ''}" style="padding:1px 7px;font-size:0.68rem;margin-left:4px;"><span class="ojts-pulse-dot${isApprovalOnly ? ' ojts-pulse-dot--green' : ''}" style="width:5px;height:5px;"></span> ${totalActions}</span>` : ''}
+      ${totalActions > 0 ? `<span class="ojts-card__urgent-badge${isApprovalOnly ? ' ojts-card__urgent-badge--approve' : ''}" style="padding:1px 7px;font-size:0.71rem;margin-left:4px;"><span class="ojts-pulse-dot${isApprovalOnly ? ' ojts-pulse-dot--green' : ''}" style="width:5px;height:5px;"></span> ${totalActions}</span>` : ''}
     `;
   }
 }
@@ -380,7 +380,7 @@ function renderGrid(body, slots, interests, container) {
               ${icon('mail', 13)}
               <strong>${pending} ${pending === 1 ? 'student requires' : 'students require'} an endorsement letter</strong>
             </span>
-            <span style="color:#D97706;font-size:0.7rem;font-weight:700;">UPLOAD &rarr;</span>
+            <span style="color:#D97706;font-size:0.73rem;font-weight:700;">UPLOAD &rarr;</span>
           </div>
           ` : ''}
 
@@ -390,7 +390,7 @@ function renderGrid(body, slots, interests, container) {
               ${icon('checkCircle', 13)}
               <strong>${pendingAccept} ${pendingAccept === 1 ? 'student awaits' : 'students await'} final OJT approval</strong>
             </span>
-            <span style="color:#059669;font-size:0.7rem;font-weight:700;">APPROVE &rarr;</span>
+            <span style="color:#059669;font-size:0.73rem;font-weight:700;">APPROVE &rarr;</span>
           </div>
           ` : ''}
 
@@ -560,7 +560,7 @@ function showInterestedModal(slot, allInterests, onUpdate, options = {}) {
           </div>
           <div style="display:flex;align-items:center;gap:8px;">
             ${companyUserId ? `
-              <button type="button" class="btn btn--outline btn--sm" id="ojts-modal-chat-company-btn" style="gap:6px;color:#0284c7;border-color:rgba(2,132,199,0.35);font-size:0.75rem;" title="Message ${company}">
+              <button type="button" class="btn btn--outline btn--sm" id="ojts-modal-chat-company-btn" style="gap:6px;color:#0284c7;border-color:rgba(2,132,199,0.35);font-size:0.78rem;" title="Message ${company}">
                 ${icon('messageCircle', 13)} Message Company
               </button>
             ` : ''}
@@ -662,7 +662,7 @@ function showInterestedModal(slot, allInterests, onUpdate, options = {}) {
               </div>
             </div>
             ${companyUserId ? `
-              <button type="button" class="btn btn--outline btn--sm ojts-contact-chat-btn" style="gap:6px;color:#0284c7;border-color:rgba(2,132,199,0.35);font-size:0.75rem;">
+              <button type="button" class="btn btn--outline btn--sm ojts-contact-chat-btn" style="gap:6px;color:#0284c7;border-color:rgba(2,132,199,0.35);font-size:0.78rem;">
                 ${icon('messageCircle', 13)} Chat with Company
               </button>
             ` : ''}
@@ -1108,7 +1108,7 @@ function studentDetailCard(s, state) {
           };display:inline-flex;">
             ${icon(latestReq?.status === 'verified' ? 'checkCircle' : latestReq?.status === 'submitted' ? 'clock' : latestReq?.status === 'needs_revision' ? 'alertTriangle' : 'folder', 13)}
           </span>
-          <span style="font-weight:600;font-size:0.75rem;color:${
+          <span style="font-weight:600;font-size:0.78rem;color:${
             latestReq?.status === 'verified' ? '#15803d' :
             latestReq?.status === 'submitted' ? '#1d4ed8' :
             latestReq?.status === 'needs_revision' ? '#b45309' :
@@ -1120,11 +1120,11 @@ function studentDetailCard(s, state) {
                 : (driveUrl ? 'Requirements Folder Available (Unassigned Packet)' : 'Requirements: Not Assigned')
             }
           </span>
-          ${latestReq?.items?.length ? `<span style="font-size:0.72rem;color:var(--text-tertiary);">(${latestReq.items.length} items)</span>` : ''}
+          ${latestReq?.items?.length ? `<span style="font-size:0.75rem;color:var(--text-tertiary);">(${latestReq.items.length} items)</span>` : ''}
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
           ${driveUrl ? `
-            <a href="${driveUrl}" target="_blank" rel="noopener" style="font-size:0.74rem;color:#0284c7;text-decoration:underline;font-weight:600;display:inline-flex;align-items:center;gap:3px;">
+            <a href="${driveUrl}" target="_blank" rel="noopener" style="font-size:0.77rem;color:#0284c7;text-decoration:underline;font-weight:600;display:inline-flex;align-items:center;gap:3px;">
               ${icon('externalLink', 11)} Cloud Drive ↗
             </a>
           ` : ''}
@@ -1136,7 +1136,7 @@ function studentDetailCard(s, state) {
             data-posting-id="${s.posting_id || ''}"
             data-has-req="${latestReq ? '1' : '0'}"
             data-req-id="${latestReq?.id || ''}"
-            style="background:none;border:none;color:#005930;font-size:0.74rem;font-weight:700;cursor:pointer;padding:2px 6px;text-decoration:underline;">
+            style="background:none;border:none;color:#005930;font-size:0.77rem;font-weight:700;cursor:pointer;padding:2px 6px;text-decoration:underline;">
             ${latestReq ? (latestReq.status === 'submitted' ? 'Review Submission' : 'Manage / Review') : '+ Assign Requirements'}
           </button>
         </div>
@@ -1168,7 +1168,7 @@ function studentDetailCard(s, state) {
           ${s.estimated_end_date ? `<span style="margin-left:auto;color:#005930;font-weight:600;">Target End: ${s.estimated_end_date}</span>` : ''}
         </div>
         ${Array.isArray(s.schedule_days) && s.schedule_days.length ? `
-        <div style="font-size:0.73rem;color:var(--text-secondary);margin-top:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+        <div style="font-size:0.76rem;color:var(--text-secondary);margin-top:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
           <span style="font-weight:700;color:#005930;background:rgba(0,89,48,0.08);padding:1px 6px;border-radius:4px;">
             ${s.schedule_days.join(', ')}
           </span>
@@ -1199,8 +1199,8 @@ function showEndorsementUploadModal(interestId, slot, students, body, bd, allInt
         <div style="display:flex;align-items:center;gap:12px;min-width:0;">
           <div style="width:40px;height:40px;border-radius:10px;background:#00593014;color:#005930;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${icon('fileText', 20)}</div>
           <div style="min-width:0;">
-            <h3 class="modal__title" style="margin:0;font-size:1.1rem;font-weight:700;">Send Endorsement Letter</h3>
-            <p style="font-size:0.76rem;color:var(--text-secondary);margin:2px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${studentName}${program ? ' · ' + program : ''}</p>
+            <h3 class="modal__title" style="margin:0;font-size:1.14rem;font-weight:700;">Send Endorsement Letter</h3>
+            <p style="font-size:0.79rem;color:var(--text-secondary);margin:2px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${studentName}${program ? ' · ' + program : ''}</p>
           </div>
         </div>
         <button class="modal__close" id="el-modal-close">${icon('x', 20)}</button>
@@ -1209,26 +1209,26 @@ function showEndorsementUploadModal(interestId, slot, students, body, bd, allInt
       <div class="modal__body" style="padding:20px 24px;">
         <!-- Posting Context -->
         <div style="background:var(--bg-secondary);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:12px 14px;margin-bottom:18px;">
-          <p style="font-size:0.68rem;color:var(--text-tertiary);margin:0 0 2px;text-transform:uppercase;letter-spacing:0.05em;">Placement For</p>
-          <p style="font-weight:700;font-size:0.88rem;margin:0;color:var(--text-primary);">${posting}</p>
-          ${company ? `<p style="font-size:0.76rem;color:var(--text-secondary);margin:2px 0 0;">${icon('building', 11)} ${company}</p>` : ''}
+          <p style="font-size:0.71rem;color:var(--text-tertiary);margin:0 0 2px;text-transform:uppercase;letter-spacing:0.05em;">Placement For</p>
+          <p style="font-weight:700;font-size:0.915rem;margin:0;color:var(--text-primary);">${posting}</p>
+          ${company ? `<p style="font-size:0.79rem;color:var(--text-secondary);margin:2px 0 0;">${icon('building', 11)} ${company}</p>` : ''}
         </div>
 
         ${record?.endorsement_letter_url ? `
-          <div style="margin-bottom:14px;padding:8px 12px;background:#ecfdf5;border:1px solid rgba(16,185,129,0.25);border-radius:6px;display:flex;align-items:center;justify-content:space-between;font-size:0.75rem;">
+          <div style="margin-bottom:14px;padding:8px 12px;background:#ecfdf5;border:1px solid rgba(16,185,129,0.25);border-radius:6px;display:flex;align-items:center;justify-content:space-between;font-size:0.78rem;">
             <span style="color:#065f46;font-weight:600;display:inline-flex;align-items:center;gap:6px;">${icon('fileCheck', 13)} Current letter on file</span>
             <a href="${record.endorsement_letter_url.startsWith('http') ? record.endorsement_letter_url : 'http://localhost:8000' + (record.endorsement_letter_url.startsWith('/') ? '' : '/') + record.endorsement_letter_url}" target="_blank" rel="noopener" style="color:#005930;font-weight:700;text-decoration:underline;display:inline-flex;align-items:center;gap:4px;">${icon('externalLink', 11)} View Current PDF</a>
           </div>` : ''}
 
         <!-- File Upload Area -->
         <div class="form-group" style="margin-bottom:12px;">
-          <label class="form-label" style="font-size:0.78rem;font-weight:600;margin-bottom:6px;display:block;">
-            Endorsement Letter Document ${hasExisting ? '<span style="color:#D97706;font-size:0.7rem;">(replace existing)</span>' : ''}
+          <label class="form-label" style="font-size:0.81rem;font-weight:600;margin-bottom:6px;display:block;">
+            Endorsement Letter Document ${hasExisting ? '<span style="color:#D97706;font-size:0.73rem;">(replace existing)</span>' : ''}
           </label>
           <label id="el-drop-zone" class="ojts-dropzone">
             <span style="color:var(--text-tertiary)">${icon('upload', 24)}</span>
-            <span style="font-size:0.82rem;font-weight:600;color:var(--text-primary)">Click to select file or drag &amp; drop</span>
-            <span style="font-size:0.72rem;color:var(--text-tertiary)">PDF, DOCX, JPG or PNG (up to 5MB)</span>
+            <span style="font-size:0.85rem;font-weight:600;color:var(--text-primary)">Click to select file or drag &amp; drop</span>
+            <span style="font-size:0.75rem;color:var(--text-tertiary)">PDF, DOCX, JPG or PNG (up to 5MB)</span>
             <input type="file" id="el-file-input" accept=".pdf,.docx,.jpg,.jpeg,.png" style="display:none;" />
           </label>
         </div>
@@ -1237,13 +1237,13 @@ function showEndorsementUploadModal(interestId, slot, students, body, bd, allInt
         <div id="el-file-preview" style="display:none;padding:10px 14px;background:#05966910;border:1px solid #05966925;border-radius:var(--radius-md);align-items:center;gap:10px;margin-bottom:12px;">
           <span style="color:#059669;flex-shrink:0;">${icon('fileText', 18)}</span>
           <div style="flex:1;min-width:0;">
-            <p id="el-file-name" style="font-weight:600;font-size:0.82rem;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-primary);"></p>
-            <p id="el-file-size" style="font-size:0.72rem;color:var(--text-tertiary);margin:2px 0 0;"></p>
+            <p id="el-file-name" style="font-weight:600;font-size:0.85rem;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-primary);"></p>
+            <p id="el-file-size" style="font-size:0.75rem;color:var(--text-tertiary);margin:2px 0 0;"></p>
           </div>
           <button id="el-file-clear" style="background:none;border:none;cursor:pointer;color:var(--text-tertiary);padding:2px;">${icon('x', 14)}</button>
         </div>
 
-        <p id="el-error" style="color:#EF4444;font-size:0.78rem;margin:0;display:none;padding:8px 12px;background:#EF444412;border-radius:var(--radius-sm);"></p>
+        <p id="el-error" style="color:#EF4444;font-size:0.81rem;margin:0;display:none;padding:8px 12px;background:#EF444412;border-radius:var(--radius-sm);"></p>
       </div>
 
       <div class="modal__footer" style="border-top:1px solid var(--border-default);padding:14px 24px;display:flex;justify-content:flex-end;gap:8px;">
@@ -1380,23 +1380,23 @@ function showFinalAcceptModal(interestId, studentName, slot, students, body, bd,
         <div style="display:flex;align-items:center;gap:12px;">
           <div style="width:40px;height:40px;border-radius:10px;background:#05966914;color:#059669;display:flex;align-items:center;justify-content:center;">${icon('checkCircle', 20)}</div>
           <div>
-            <h3 class="modal__title" style="margin:0;font-size:1.1rem;font-weight:700;">Final OJT Approval</h3>
-            <p style="font-size:0.76rem;color:var(--text-secondary);margin:2px 0 0;">${studentName}</p>
+            <h3 class="modal__title" style="margin:0;font-size:1.14rem;font-weight:700;">Final OJT Approval</h3>
+            <p style="font-size:0.79rem;color:var(--text-secondary);margin:2px 0 0;">${studentName}</p>
           </div>
         </div>
         <button class="modal__close" id="fa-close">${icon('x', 20)}</button>
       </div>
       <div class="modal__body" style="padding:20px 24px;">
-        <div style="background:#05966910;border:1px solid #05966925;border-radius:var(--radius-md);padding:12px 14px;margin-bottom:16px;font-size:0.78rem;color:#059669;display:flex;gap:8px;line-height:1.4;">
+        <div style="background:#05966910;border:1px solid #05966925;border-radius:var(--radius-md);padding:12px 14px;margin-bottom:16px;font-size:0.81rem;color:#059669;display:flex;gap:8px;line-height:1.4;">
           ${icon('checkCircle', 14)} Giving final approval confirms that this student will officially render OJT hours at this host company.
         </div>
         <div class="form-group">
-          <label class="form-label" style="font-size:0.78rem;font-weight:600;margin-bottom:6px;display:block;">
+          <label class="form-label" style="font-size:0.81rem;font-weight:600;margin-bottom:6px;display:block;">
             Coordinator Recommendation / Note <span style="color:var(--text-tertiary);font-weight:400;">(optional)</span>
           </label>
           <textarea id="fa-note" class="form-textarea" rows="3" placeholder="e.g. Approved. Please ensure time logs are submitted daily." style="resize:vertical;"></textarea>
         </div>
-        <p id="fa-error" style="color:#EF4444;font-size:0.78rem;margin:8px 0 0;display:none;"></p>
+        <p id="fa-error" style="color:#EF4444;font-size:0.81rem;margin:8px 0 0;display:none;"></p>
       </div>
       <div class="modal__footer" style="border-top:1px solid var(--border-default);padding:14px 24px;display:flex;justify-content:flex-end;gap:8px;">
         <button class="btn btn--outline" id="fa-cancel">Cancel</button>
