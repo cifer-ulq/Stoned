@@ -1,6 +1,7 @@
 /* ==========================================================================
    OJT Analysis & Insights — Supervisor Portal
    Executive Analytical Suite & Reporting Center
+   Clean, Neat, Polished UI/UX
    ========================================================================== */
 
 import { icon } from '../components/icons.js';
@@ -9,11 +10,30 @@ import { getState } from '../store.js';
 
 const PALETTE = ['#005930', '#059669', '#0284C7', '#D97706', '#7C3AED', '#0D9488', '#E11D48', '#4F46E5'];
 
+const PROGRAM_ACRONYMS = {
+  'Bachelor of Science in Information Technology': 'BSIT',
+  'Bachelor of Science in Computer Science': 'BSCS',
+  'Bachelor of Science in Information Systems': 'BSIS',
+  'Bachelor of Science in Entertainment and Multimedia Computing': 'BSEMC',
+  'Bachelor of Science in Industrial Technology': 'BSIndTech',
+  'Bachelor of Science in Hospitality Management': 'BSHM',
+  'Bachelor of Science in Tourism Management': 'BSTM',
+  'Bachelor of Science in Business Administration': 'BSBA',
+  'Bachelor of Science in Accountancy': 'BSA',
+  'Bachelor of Secondary Education': 'BSED',
+  'Bachelor of Elementary Education': 'BEED',
+};
+
+function shortenProgram(str = '') {
+  if (!str) return '—';
+  return PROGRAM_ACRONYMS[str] || str;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Primitives & Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-function donutSvg(pct, color = '#059669', size = 110, stroke = 10) {
+function donutSvg(pct, color = '#059669', size = 114, stroke = 10) {
   const r    = (size - stroke) / 2;
   const circ = 2 * Math.PI * r;
   const fill = circ * (Math.min(100, Math.max(0, pct)) / 100);
@@ -88,8 +108,10 @@ function renderSkeleton() {
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px">
         ${sk(115)}${sk(115)}${sk(115)}${sk(115)}
       </div>
-      <div style="margin-top:16px">${sk(80)}</div>
-      <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:20px;margin-top:20px">
+      <div style="margin-top:16px;display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
+        ${sk(90)}${sk(90)}${sk(90)}
+      </div>
+      <div style="display:grid;grid-template-columns:1.55fr 1fr;gap:24px;margin-top:24px">
         ${sk(320)}${sk(320)}
       </div>
     </div>`;
@@ -149,6 +171,21 @@ export default function analyticsPage(container) {
           </button>
           <button class="an-btn-refresh" id="an-refresh-btn" title="Refresh metrics from server">
             ${icon('refreshCw', 14)}
+          </button>
+        </div>
+      </div>
+
+      <!-- Segmented Tab Navigation -->
+      <div class="an-nav-bar">
+        <div class="an-segmented" role="tablist">
+          <button class="an-seg-btn an-seg-btn--active" data-tab="overview" role="tab" aria-selected="true">
+            ${icon('layout', 15)} <span>Overview &amp; Trends</span>
+          </button>
+          <button class="an-seg-btn" data-tab="attendance" role="tab" aria-selected="false">
+            ${icon('clipboardCheck', 15)} <span>Attendance Ledger</span>
+          </button>
+          <button class="an-seg-btn" data-tab="demographics" role="tab" aria-selected="false">
+            ${icon('pieChart', 15)} <span>Cohort Demographics</span>
           </button>
         </div>
       </div>
@@ -287,38 +324,69 @@ async function loadAnalytics(container) {
     </div>
   `;
 
-  // ── 2. Three Modular Executive Insight Cards (Matching Reference) ─────────
+  // ── 2. Three Modular Executive Metric Insight Cards (Balanced & Polished) ──
   const insightCardsHtml = `
     <div class="an-insights-grid">
+      <!-- Card 1: Cohort Pacing -->
       <div class="an-insight-card">
-        <div class="an-insight-card__icon">
-          ${icon('bell', 20)}
+        <div class="an-insight-card__top">
+          <div class="an-insight-card__header-left">
+            <div class="an-insight-card__icon an-insight-card__icon--blue">
+              ${icon('trendingUp', 18)}
+            </div>
+            <span class="an-insight-card__title">Cohort Pacing Health</span>
+          </div>
+          <span class="an-insight-pill an-insight-pill--blue">${onTrackPct}% on-schedule</span>
         </div>
-        <div class="an-insight-card__content">
-          <div class="an-insight-card__title">Cohort Pacing Health</div>
-          <div class="an-insight-card__desc"><strong>${onTrackPct}% on-schedule</strong> · ${onTrackCount} of ${totalTrainees} trainees meeting benchmark hours</div>
+        <div class="an-insight-card__body">
+          <div class="an-insight-card__track">
+            <div class="an-insight-card__fill an-insight-card__fill--blue" style="width:${onTrackPct}%"></div>
+          </div>
+          <span class="an-insight-card__desc"><strong>${onTrackCount} of ${totalTrainees}</strong> trainees meeting benchmark hours</span>
         </div>
       </div>
 
+      <!-- Card 2: Geofence Integrity -->
       <div class="an-insight-card">
-        <div class="an-insight-card__icon">
-          ${icon('shieldCheck', 20)}
+        <div class="an-insight-card__top">
+          <div class="an-insight-card__header-left">
+            <div class="an-insight-card__icon an-insight-card__icon--green">
+              ${icon('shieldCheck', 18)}
+            </div>
+            <span class="an-insight-card__title">Geofence Integrity</span>
+          </div>
+          <span class="an-insight-pill an-insight-pill--green">${inSitePct}% verified in-site</span>
         </div>
-        <div class="an-insight-card__content">
-          <div class="an-insight-card__title">Geofence Integrity</div>
-          <div class="an-insight-card__desc"><strong>${inSitePct}% verified in-site</strong> · ${locationStats.inSite.toLocaleString()} verified check-ins at host worksite</div>
+        <div class="an-insight-card__body">
+          <div class="an-insight-card__track">
+            <div class="an-insight-card__fill an-insight-card__fill--green" style="width:${inSitePct}%"></div>
+          </div>
+          <span class="an-insight-card__desc"><strong>${locationStats.inSite.toLocaleString()}</strong> verified check-ins at host worksite</span>
         </div>
       </div>
 
+      <!-- Card 3: Supervisory Priority -->
       <div class="an-insight-card">
-        <div class="an-insight-card__icon">
-          ${icon('checkCircle', 20)}
+        <div class="an-insight-card__top">
+          <div class="an-insight-card__header-left">
+            <div class="an-insight-card__icon ${totalActionRequired > 0 ? 'an-insight-card__icon--warn' : 'an-insight-card__icon--forest'}">
+              ${icon(totalActionRequired > 0 ? 'alertTriangle' : 'checkCircle2', 18)}
+            </div>
+            <span class="an-insight-card__title">Supervisory Priority</span>
+          </div>
+          <span class="an-insight-pill ${totalActionRequired > 0 ? 'an-insight-pill--warn' : 'an-insight-pill--forest'}">
+            ${totalActionRequired > 0 ? `${totalActionRequired} Action Items` : 'All compliant'}
+          </span>
         </div>
-        <div class="an-insight-card__content">
-          <div class="an-insight-card__title">Supervisory Priority</div>
-          <div class="an-insight-card__desc">${totalActionRequired > 0 
-            ? `<strong style="color:#D97706">${totalActionRequired} items require action</strong> · ${k.pendingLetters} letters, ${k.flaggedCount} flagged trainees`
-            : '<strong>All trainees compliant</strong> · No attendance flags or unverified logs'}</div>
+        <div class="an-insight-card__body">
+          <div class="an-insight-card__track">
+            <div class="an-insight-card__fill ${totalActionRequired > 0 ? 'an-insight-card__fill--warn' : 'an-insight-card__fill--forest'}" style="width:100%"></div>
+          </div>
+          <span class="an-insight-card__desc">
+            ${totalActionRequired > 0
+              ? `<strong>${k.pendingLetters}</strong> pending letters · <strong>${k.flaggedCount}</strong> flagged trainees`
+              : 'No attendance flags or unverified logs requiring review'}
+          </span>
         </div>
       </div>
     </div>
@@ -373,7 +441,7 @@ async function loadAnalytics(container) {
     `;
   }
 
-  // ── 4. Interactive SVG Daily Attendance Velocity Chart ─────────────────────
+  // ── 4. Interactive Attendance Velocity Chart ──────────────────────────────
   const sparkMax = Math.max(...last14Days.map(d => d.count), 1);
   const totalLogs = last14Days.reduce((s, d) => s + d.count, 0);
   const activeDaysCount = last14Days.filter(d => d.count > 0).length || 1;
@@ -401,47 +469,43 @@ async function loadAnalytics(container) {
       `)}
 
       <div class="an-chart-container">
-        <!-- Average Guideline -->
-        <div class="an-chart-avg-line" style="bottom:${Math.min(92, Math.max(15, (Number(avgLogs) / sparkMax) * 82))}%">
-          <span class="an-chart-avg-label">Avg: ${avgLogs} logs/day</span>
-        </div>
+        <!-- Average Guideline across chart -->
+        <div class="an-chart-avg-line" style="bottom:${Math.min(90, Math.max(15, (Number(avgLogs) / sparkMax) * 82))}%"></div>
 
         <div class="an-chart-columns">
           ${last14Days.map((d, idx) => {
             const h = sparkMax > 0 ? Math.max(6, Math.round((d.count / sparkMax) * 88)) : 6;
             const isToday = idx === last14Days.length - 1;
-            // Check if day name is Sat/Sun
             const isWeekend = d.date.startsWith('Sat') || d.date.startsWith('Sun');
 
             return `
-              <div class="an-col-wrap${isWeekend ? ' an-col-wrap--weekend' : ''}${isToday ? ' an-col-wrap--today' : ''}" title="${d.date}: ${d.count} logs (${d.hours} hrs)">
+              <div class="an-col-wrap${isWeekend ? ' an-col-wrap--weekend' : ''}${isToday ? ' an-col-wrap--today' : ''}">
                 <div class="an-col-track">
                   <div class="an-col-fill" style="height:${h}%;">
                     <div class="an-col-tooltip">
                       <strong>${d.count} logs</strong>
                       <span>${d.hours} hrs rendered</span>
-                      <small>${d.date}</small>
+                      <small>${d.date}${isWeekend ? ' (Weekend)' : ''}</small>
                     </div>
                   </div>
                 </div>
                 <div class="an-col-label">${d.date.replace(/\s+\d{4}/, '')}</div>
-                ${isWeekend ? '<span class="an-col-weekend-dot" title="Weekend">W</span>' : ''}
               </div>
             `;
           }).join('')}
         </div>
       </div>
       <div class="an-chart-footer">
-        <span class="an-chart-note">${icon('info', 13)} Note: Low log frequencies during weekends and official holidays reflect standard university rest cycles.</span>
+        <span class="an-chart-note">${icon('info', 13)} Lighter columns indicate non-working weekend cycles; active weekday attendance averages ${avgLogs} logs/day.</span>
       </div>
     </div>
   `;
 
-  // ── 5. Endorsement Pipeline Funnel ─────────────────────────────────────────
+  // ── 5. Endorsement Pipeline Flow ───────────────────────────────────────────
   const funnelSteps = [
-    { label: 'Pending Review',    val: funnel.pending,     color: '#D97706', step: 1, sub: 'Needs supervisor signature' },
-    { label: 'Letters Endorsed',  val: funnel.endorsed,    color: '#0284C7', step: 2, sub: 'Approved for interview/matching' },
-    { label: 'OJT Started',       val: funnel.ojt_started, color: '#005930', step: 3, sub: 'Actively clocking hours' },
+    { label: 'Pending Review',    val: funnel.pending,     color: '#D97706', step: 1, sub: 'Awaiting supervisor endorsement' },
+    { label: 'Letters Endorsed',  val: funnel.endorsed,    color: '#0284C7', step: 2, sub: 'Endorsement issued to company' },
+    { label: 'OJT Started',       val: funnel.ojt_started, color: '#005930', step: 3, sub: 'Accepted and rendering hours' },
     { label: 'Rejected / Paused', val: funnel.rejected,    color: '#E11D48', step: 4, sub: 'Application closed or withdrawn' },
   ];
   const funnelMax = Math.max(...funnelSteps.map(s => s.val), 1);
@@ -451,7 +515,7 @@ async function loadAnalytics(container) {
       ${cardHead('gitCommit', 'Endorsement Pipeline', 'Cohort progression from placement application to active internship')}
       <div class="an-funnel-stack">
         ${funnelSteps.map((s, i) => {
-          const w = Math.max(5, Math.round((s.val / funnelMax) * 100));
+          const w = Math.max(3, Math.round((s.val / funnelMax) * 100));
           let convLabel = null;
           if (i === 1) {
             convLabel = funnel.pending === 0 ? '100% processed' : `${funnel.endorsed} endorsed`;
@@ -498,10 +562,10 @@ async function loadAnalytics(container) {
       <div class="an-loc-content">
         <div class="an-loc-donut-area">
           <div class="an-donut-container">
-            ${donutSvg(inSitePct, '#059669', 115, 11)}
+            ${donutSvg(inSitePct, '#059669', 114, 10)}
             <div class="an-donut-inner">
               <span class="an-donut-pct" style="color:#059669">${inSitePct}%</span>
-              <span class="an-donut-sub">Verified On-Site</span>
+              <span class="an-donut-sub">On-Site</span>
             </div>
           </div>
         </div>
@@ -544,29 +608,30 @@ async function loadAnalytics(container) {
   // ── 7. Top Performers Leaderboard ─────────────────────────────────────────
   const topPerformersCard = `
     <div class="an-card">
-      ${cardHead('award', 'Top Performing Trainees', 'Leading students by cumulative hours completed towards their requirement')}
+      ${cardHead('award', 'Top Performing Trainees', 'Leading students by cumulative hours completed towards requirement')}
       ${topPerformers && topPerformers.length ? `
         <div class="an-top-stack">
           ${topPerformers.map((t, idx) => {
             const medals = ['🥇', '🥈', '🥉'];
             const ini = (t.name || 'Student').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
             const barColor = t.pct >= 80 ? '#059669' : t.pct >= 40 ? '#005930' : '#0284C7';
+            const programCode = shortenProgram(t.course);
 
             return `
               <div class="an-top-row">
                 <div class="an-top-rank">${medals[idx] || `<span class="an-top-number">#${idx + 1}</span>`}</div>
                 <div class="an-top-avatar"><span>${ini}</span></div>
                 <div class="an-top-details">
-                  <span class="an-top-name">${t.name}</span>
-                  <span class="an-top-sub">${t.course} · ${t.company}</span>
+                  <span class="an-top-name" title="${t.name}">${t.name}</span>
+                  <span class="an-top-sub" title="${t.course} · ${t.company}">${programCode} · ${t.company}</span>
                 </div>
                 <div class="an-top-meter">
-                  <div class="an-top-track">
-                    <div class="an-top-fill" style="width:${t.pct}%;background:${barColor}"></div>
-                  </div>
                   <div class="an-top-stats">
                     <strong style="color:${barColor}">${t.pct}%</strong>
                     <span>${t.completedHours} / ${t.requiredHours} hrs</span>
+                  </div>
+                  <div class="an-top-track">
+                    <div class="an-top-fill" style="width:${t.pct}%;background:${barColor}"></div>
                   </div>
                 </div>
               </div>
@@ -601,7 +666,6 @@ async function loadAnalytics(container) {
     </div>
   `;
 
-  // Program and Company Breakdown
   const courseEntries  = Object.entries(courseDist || {});
   const companyEntries = Object.entries(companyDist || {});
   const maxCourse  = courseEntries.length  ? Math.max(...courseEntries.map(e => e[1]), 1)  : 1;
@@ -618,7 +682,7 @@ async function loadAnalytics(container) {
               const pctVal = Math.round((count / max) * 100);
               return `
                 <div class="an-dist-row">
-                  <span class="an-dist-label" title="${name}">${name}</span>
+                  <span class="an-dist-label" title="${name}">${shortenProgram(name)}</span>
                   <div class="an-dist-track">
                     <div class="an-dist-fill" style="width:${pctVal}%;background:${color}"></div>
                   </div>
@@ -692,39 +756,75 @@ async function loadAnalytics(container) {
     </div>
   `;
 
-  // ── Assemble Final Executive Layout ────────────────────────────────────────
+  // ── Assemble Final Executive Layout with Tab Views ─────────────────────────
   root.innerHTML = `
-    <!-- Top Hero KPIs -->
+    <!-- Top Hero KPIs (Permanent Executive Overview) -->
     ${heroGridHtml}
 
-    <!-- Three Executive Insight Cards -->
+    <!-- Three Modular Executive Insight Cards -->
     ${insightCardsHtml}
 
     <!-- Priority Alerts (If any action needed) -->
     ${priorityAlertHtml}
 
-    <!-- Main Analytics Grid: Attendance Velocity & Location Compliance -->
-    <div class="an-layout-row an-layout-row--velocity">
-      ${attendanceVelocityCard}
-      ${locCard}
+    <!-- Tab View 1: Overview & Trends -->
+    <div class="an-tab-pane an-tab-pane--active" id="pane-overview">
+      <div class="an-layout-row an-layout-row--velocity">
+        ${attendanceVelocityCard}
+        ${locCard}
+      </div>
+
+      <div class="an-layout-row">
+        ${funnelCard}
+        ${topPerformersCard}
+      </div>
     </div>
 
-    <!-- Secondary Row: Pipeline Funnel & Top Performers -->
-    <div class="an-layout-row">
-      ${funnelCard}
-      ${topPerformersCard}
+    <!-- Tab View 2: Attendance Ledger -->
+    <div class="an-tab-pane" id="pane-attendance" style="display:none">
+      ${recentLogsCard}
     </div>
 
-    <!-- Progress Brackets & Distributions -->
-    <div class="an-layout-row an-layout-row--3col">
-      ${hoursBracketCard}
-      ${renderDistCard('Academic Programs', 'bookOpen', courseEntries, maxCourse)}
-      ${renderDistCard('Host Partner Companies', 'building', companyEntries, maxCompany)}
+    <!-- Tab View 3: Cohort Demographics -->
+    <div class="an-tab-pane" id="pane-demographics" style="display:none">
+      <div class="an-layout-row an-layout-row--3col">
+        ${hoursBracketCard}
+        ${renderDistCard('Academic Programs', 'bookOpen', courseEntries, maxCourse)}
+        ${renderDistCard('Host Partner Companies', 'building', companyEntries, maxCompany)}
+      </div>
     </div>
-
-    <!-- Full Width Attendance Ledger -->
-    ${recentLogsCard}
   `;
+
+  // Segmented tab navigation listener
+  const segBtns = container.querySelectorAll('.an-seg-btn');
+  const panes = {
+    overview: container.querySelector('#pane-overview'),
+    attendance: container.querySelector('#pane-attendance'),
+    demographics: container.querySelector('#pane-demographics')
+  };
+
+  segBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      segBtns.forEach(b => {
+        b.classList.remove('an-seg-btn--active');
+        b.setAttribute('aria-selected', 'false');
+      });
+      btn.classList.add('an-seg-btn--active');
+      btn.setAttribute('aria-selected', 'true');
+
+      const targetTab = btn.dataset.tab;
+      Object.entries(panes).forEach(([key, pane]) => {
+        if (!pane) return;
+        if (key === targetTab) {
+          pane.style.display = 'flex';
+          pane.classList.add('an-fade-enter');
+          setTimeout(() => pane.classList.remove('an-fade-enter'), 250);
+        } else {
+          pane.style.display = 'none';
+        }
+      });
+    });
+  });
 
   // Table status filter interactions
   const filterBtns = container.querySelectorAll('.an-table-filter');
@@ -759,7 +859,7 @@ function injectStyles() {
   .an-page {
     display: flex;
     flex-direction: column;
-    gap: 28px;
+    gap: 24px;
     padding-bottom: var(--space-12);
   }
 
@@ -807,7 +907,7 @@ function injectStyles() {
     justify-content: space-between;
     gap: var(--space-4);
     flex-wrap: wrap;
-    padding: var(--space-2) 0 var(--space-1);
+    padding: var(--space-2) 0 0;
   }
   .an-header__left {
     display: flex;
@@ -931,6 +1031,62 @@ function injectStyles() {
     to   { transform: rotate(360deg); }
   }
 
+  /* ── Segmented Tab Navigation Bar ── */
+  .an-nav-bar {
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid var(--border-default);
+    padding-bottom: 12px;
+    margin-top: 2px;
+  }
+  .an-segmented {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--bg-secondary);
+    padding: 4px;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-default);
+  }
+  .an-seg-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 18px;
+    border: none;
+    background: transparent;
+    border-radius: calc(var(--radius-lg) - 3px);
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all var(--duration-fast);
+    white-space: nowrap;
+  }
+  .an-seg-btn svg { opacity: 0.7; }
+  .an-seg-btn:hover { color: var(--text-primary); }
+  .an-seg-btn--active {
+    background: var(--bg-elevated);
+    color: #005930;
+    font-weight: 600;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .an-seg-btn--active svg { opacity: 1; color: #005930; }
+
+  /* ── Tab Panes ── */
+  .an-tab-pane {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+  .an-fade-enter {
+    animation: an-fade-in 0.22s cubic-bezier(0.4, 0, 0.2, 1) both;
+  }
+  @keyframes an-fade-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: none; }
+  }
+
   /* ── 4-Column Hero KPI Grid ── */
   .an-hero-grid {
     display: grid;
@@ -985,7 +1141,7 @@ function injectStyles() {
   .an-hero-card__footer {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 5px;
   }
   .an-hero-badge {
     display: inline-flex;
@@ -1001,11 +1157,11 @@ function injectStyles() {
   .an-hero-badge--warn   { background: #D9770614; color: #D97706; }
   .an-hero-badge--urgent { background: #EF444414; color: #EF4444; }
   .an-hero-card__sub {
-    font-size: 0.75rem;
+    font-size: 0.76rem;
     color: var(--text-tertiary);
   }
 
-  /* ── 3-Column Executive Insights Cards (Modular & Spacious) ── */
+  /* ── 3-Column Executive Metric Insight Cards (High Polish & Visual Balance) ── */
   .an-insights-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -1017,8 +1173,9 @@ function injectStyles() {
     border-radius: var(--radius-xl);
     padding: 18px 22px;
     display: flex;
-    align-items: center;
-    gap: 16px;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 12px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
     transition: transform var(--duration-fast), box-shadow var(--duration-fast), border-color var(--duration-fast);
   }
@@ -1027,33 +1184,80 @@ function injectStyles() {
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
     border-color: var(--border-strong);
   }
+  .an-insight-card__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .an-insight-card__header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+  }
   .an-insight-card__icon {
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    background: rgba(5, 150, 105, 0.12);
-    color: #059669;
+    width: 38px;
+    height: 38px;
+    border-radius: var(--radius-md);
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
   }
-  .an-insight-card__content {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    min-width: 0;
-  }
+  .an-insight-card__icon--blue   { background: #0284C714; color: #0284C7; }
+  .an-insight-card__icon--green  { background: #05966914; color: #059669; }
+  .an-insight-card__icon--forest { background: #00593014; color: #005930; }
+  .an-insight-card__icon--warn   { background: #D9770614; color: #D97706; }
   .an-insight-card__title {
     font-size: 0.92rem;
     font-weight: 700;
     color: var(--text-primary);
-    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
+  .an-insight-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: var(--radius-full);
+    font-size: 0.74rem;
+    font-weight: 700;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .an-insight-pill--blue   { background: #0284C714; color: #0284C7; border: 1px solid #0284C728; }
+  .an-insight-pill--green  { background: #05966914; color: #059669; border: 1px solid #05966928; }
+  .an-insight-pill--forest { background: #00593014; color: #005930; border: 1px solid #00593028; }
+  .an-insight-pill--warn   { background: #D9770614; color: #D97706; border: 1px solid #D9770628; }
+  .an-insight-card__body {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .an-insight-card__track {
+    height: 5px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+  }
+  .an-insight-card__fill {
+    height: 100%;
+    border-radius: var(--radius-full);
+    transition: width 0.8s ease;
+  }
+  .an-insight-card__fill--blue   { background: #0284C7; }
+  .an-insight-card__fill--green  { background: #059669; }
+  .an-insight-card__fill--forest { background: #005930; }
+  .an-insight-card__fill--warn   { background: #D97706; }
   .an-insight-card__desc {
-    font-size: 0.8rem;
+    font-size: 0.77rem;
     color: var(--text-secondary);
-    line-height: 1.4;
+    line-height: 1.35;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .an-insight-card__desc strong {
     color: var(--text-primary);
@@ -1102,14 +1306,14 @@ function injectStyles() {
   .an-flag-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: var(--space-3);
+    gap: 16px;
     margin-top: var(--space-3);
   }
   .an-flag-card {
     display: flex;
     align-items: center;
     gap: var(--space-3);
-    padding: var(--space-3) var(--space-4);
+    padding: 14px 18px;
     border-radius: var(--radius-lg);
     background: var(--bg-secondary);
     border: 1px solid var(--border-default);
@@ -1132,10 +1336,10 @@ function injectStyles() {
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 1px;
+    gap: 2px;
   }
   .an-flag-card__name {
-    font-size: 0.82rem;
+    font-size: 0.84rem;
     font-weight: 600;
     color: var(--text-primary);
     white-space: nowrap;
@@ -1143,11 +1347,11 @@ function injectStyles() {
     text-overflow: ellipsis;
   }
   .an-flag-card__company {
-    font-size: 0.74rem;
+    font-size: 0.75rem;
     color: var(--text-secondary);
   }
   .an-flag-card__reason {
-    font-size: 0.72rem;
+    font-size: 0.74rem;
     color: #D97706;
     font-weight: 500;
   }
@@ -1155,11 +1359,11 @@ function injectStyles() {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    gap: 4px;
+    gap: 5px;
     flex-shrink: 0;
   }
   .an-flag-card__pct {
-    font-size: 0.74rem;
+    font-size: 0.76rem;
     font-weight: 700;
     color: #EF4444;
   }
@@ -1196,6 +1400,10 @@ function injectStyles() {
     overflow: hidden;
   }
   .an-card--flush .an-card__head {
+    padding: 18px 26px;
+    border-bottom: 1px solid var(--border-default);
+  }
+  .an-card__head {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -1209,8 +1417,8 @@ function injectStyles() {
     min-width: 0;
   }
   .an-card__head-icon {
-    width: 36px;
-    height: 36px;
+    width: 38px;
+    height: 38px;
     border-radius: var(--radius-md);
     background: #00593014;
     color: #005930;
@@ -1225,19 +1433,19 @@ function injectStyles() {
     min-width: 0;
   }
   .an-card__title {
-    font-size: 0.95rem;
+    font-size: 0.96rem;
     font-weight: 700;
     color: var(--text-primary);
   }
   .an-card__sub {
-    font-size: 0.75rem;
+    font-size: 0.76rem;
     color: var(--text-tertiary);
     line-height: 1.3;
   }
   .an-card__head-extra {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     flex-shrink: 0;
   }
 
@@ -1285,14 +1493,6 @@ function injectStyles() {
     z-index: 1;
     display: flex;
     justify-content: flex-end;
-  }
-  .an-chart-avg-label {
-    font-size: 0.65rem;
-    font-weight: 600;
-    color: var(--text-tertiary);
-    background: var(--bg-elevated);
-    padding: 0 4px;
-    transform: translateY(-50%);
   }
   .an-chart-columns {
     display: flex;
@@ -1345,14 +1545,6 @@ function injectStyles() {
   .an-col-wrap--today .an-col-label {
     font-weight: 700;
     color: #059669;
-  }
-  .an-col-weekend-dot {
-    font-size: 0.62rem;
-    color: var(--text-tertiary);
-    background: var(--bg-secondary);
-    padding: 1px 4px;
-    border-radius: 3px;
-    margin-top: -3px;
   }
   .an-col-tooltip {
     position: absolute;
@@ -1408,8 +1600,8 @@ function injectStyles() {
   }
   .an-donut-container {
     position: relative;
-    width: 115px;
-    height: 115px;
+    width: 114px;
+    height: 114px;
   }
   .an-donut-inner {
     position: absolute;
@@ -1420,7 +1612,7 @@ function injectStyles() {
     justify-content: center;
   }
   .an-donut-pct {
-    font-size: 1.4rem;
+    font-size: 1.45rem;
     font-weight: 700;
     line-height: 1;
   }
@@ -1518,9 +1710,7 @@ function injectStyles() {
   .an-funnel-sub {
     font-size: 0.7rem;
     color: var(--text-tertiary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    line-height: 1.25;
   }
   .an-funnel-bar-track {
     height: 22px;
@@ -1610,6 +1800,7 @@ function injectStyles() {
     min-width: 0;
     display: flex;
     flex-direction: column;
+    gap: 1px;
   }
   .an-top-name {
     font-size: 0.82rem;
@@ -1629,7 +1820,17 @@ function injectStyles() {
   .an-top-meter {
     display: flex;
     flex-direction: column;
-    gap: 3px;
+    gap: 4px;
+    min-width: 0;
+  }
+  .an-top-stats {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.72rem;
+    color: var(--text-tertiary);
+  }
+  .an-top-stats strong {
+    font-weight: 700;
   }
   .an-top-track {
     height: 7px;
@@ -1642,12 +1843,6 @@ function injectStyles() {
     border-radius: var(--radius-full);
     transition: width 0.8s ease;
   }
-  .an-top-stats {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.72rem;
-    color: var(--text-tertiary);
-  }
 
   /* ── Hours Brackets & Distributions ── */
   .an-bracket-stack, .an-dist-stack {
@@ -1657,12 +1852,9 @@ function injectStyles() {
   }
   .an-bracket-row, .an-dist-row {
     display: grid;
-    grid-template-columns: 120px 1fr 65px;
+    grid-template-columns: 100px 1fr 90px;
     align-items: center;
     gap: var(--space-3);
-  }
-  .an-bracket-row {
-    grid-template-columns: 100px 1fr 90px;
   }
   .an-bracket-label, .an-dist-label {
     font-size: 0.78rem;
@@ -1826,10 +2018,10 @@ function injectStyles() {
   /* ── Responsive Adaptations ── */
   @media (max-width: 1200px) {
     .an-hero-grid { grid-template-columns: repeat(2, 1fr); }
+    .an-insights-grid { grid-template-columns: 1fr; }
     .an-layout-row { grid-template-columns: 1fr; }
     .an-layout-row--velocity { grid-template-columns: 1fr; }
     .an-layout-row--3col { grid-template-columns: 1fr; }
-    .an-insights-grid { grid-template-columns: 1fr; }
   }
   @media (max-width: 768px) {
     .an-hero-grid { grid-template-columns: 1fr; }
@@ -1838,13 +2030,12 @@ function injectStyles() {
     .an-loc-content { flex-direction: column; align-items: flex-start; }
     .an-velocity-legend { display: none; }
     .an-funnel-row { grid-template-columns: 120px 1fr 60px; }
-    .an-funnel-connector { padding-left: 130px; }
   }
 
   /* ── Print Stylesheet ── */
   @media print {
-    /* Hide navigation, sidebars, header buttons */
-    .sidebar-left, .navbar, .mobile-bottom-nav, .an-header__actions, .an-table-filter-group {
+    /* Hide navigation, sidebars, header buttons, tab bar */
+    .sidebar-left, .navbar, .mobile-bottom-nav, .an-header__actions, .an-nav-bar, .an-table-filter-group {
       display: none !important;
     }
     body, .an-page {
@@ -1855,6 +2046,9 @@ function injectStyles() {
     }
     .an-print-header {
       display: block !important;
+    }
+    .an-tab-pane {
+      display: flex !important;
     }
     .an-hero-grid {
       grid-template-columns: repeat(4, 1fr) !important;
