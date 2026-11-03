@@ -1,6 +1,6 @@
 /* ===========================
    My Trainees Page — Supervisor Portal
-   Professional Table View & Client-Side Pagination
+   Senior UI/UX Redesign — Modern Enterprise Data Table
    =========================== */
 
 import { icon } from '../components/icons.js';
@@ -15,7 +15,7 @@ const REAL = v => v && v !== '—' && v !== '';
 const PER_PAGE = 10;
 
 const STATUS_BADGES = {
-  'Pending Approval': { cls: 'badge--warning', text: 'Pending Approval' },
+  'Pending Approval': { cls: 'tr2-badge--warning', text: 'Pending Approval' },
   'Active OJT': { cls: 'tr2-badge--active', text: 'Active OJT' },
   'Undeployed': { cls: 'tr2-badge--undeployed', text: 'Undeployed' },
   'Emergency Pending': { cls: 'tr2-badge--warning', text: 'Emergency Pending' },
@@ -27,6 +27,7 @@ const STATUS_BADGES = {
 };
 
 const BAR_COLOR = pct => pct >= 75 ? '#005930' : pct >= 40 ? '#10B981' : '#F59E0B';
+
 function escapeHtml(str = '') {
   if (!str) return '';
   return String(str)
@@ -49,8 +50,8 @@ function showToast(msg, type = 'success') {
   const toast = document.createElement('div');
   toast.id = 'tr2-toast-msg';
   const bg = type === 'error' ? '#DC2626' : type === 'warning' ? '#D97706' : type === 'info' ? '#2563EB' : '#005930';
-  toast.style.cssText = `position:fixed;bottom:24px;right:24px;background:${bg};color:#ffffff;padding:12px 20px;border-radius:10px;font-size:0.84rem;font-weight:600;box-shadow:0 10px 25px rgba(0,0,0,0.2);z-index:999999;display:flex;align-items:center;gap:10px;animation:modalIn 0.2s ease;max-width:420px;line-height:1.4;`;
-  toast.innerHTML = `<span>${type === 'error' ? icon('alertTriangle', 18) : icon('check', 18)}</span><span>${escapeHtml(msg)}</span>`;
+  toast.style.cssText = `position:fixed;bottom:24px;right:24px;background:${bg};color:#ffffff;padding:14px 22px;border-radius:12px;font-size:0.9rem;font-weight:600;box-shadow:0 12px 30px rgba(0,0,0,0.22);z-index:999999;display:flex;align-items:center;gap:12px;animation:modalIn 0.2s ease;max-width:440px;line-height:1.4;`;
+  toast.innerHTML = `<span>${type === 'error' ? icon('alertTriangle', 20) : icon('check', 20)}</span><span>${escapeHtml(msg)}</span>`;
   document.body.appendChild(toast);
   setTimeout(() => {
     toast.style.opacity = '0';
@@ -134,13 +135,13 @@ function openStudentApprovalModal({ student, onApproved, apiEndpoint = `/supervi
           </div>
         </div>
 
-        <div id="sp-approve-error" style="display:none;background:#FEE2E2;border:1px solid #FCA5A5;color:#991B1B;padding:8px 12px;border-radius:6px;font-size:0.75rem;"></div>
+        <div id="sp-approve-error" style="display:none;background:#FEE2E2;border:1px solid #FCA5A5;color:#991B1B;padding:10px 14px;border-radius:8px;font-size:0.82rem;"></div>
       </div>
 
       <div class="sp-action-modal__footer">
         <button class="btn btn--outline btn--sm" id="sp-approve-cancel" type="button">Cancel</button>
-        <button class="btn btn--primary btn--sm" id="sp-approve-confirm" type="button" style="background:#005930;border-color:#005930;gap:6px;">
-          ${icon('check', 14)} Confirm &amp; Approve Student
+        <button class="btn btn--primary btn--sm" id="sp-approve-confirm" type="button" style="background:#005930;border-color:#005930;gap:7px;font-weight:600;">
+          ${icon('check', 15)} Confirm &amp; Approve Student
         </button>
       </div>
     </div>
@@ -169,7 +170,7 @@ function openStudentApprovalModal({ student, onApproved, apiEndpoint = `/supervi
       errBox.textContent = err?.message || 'Failed to approve student. Please try again.';
       errBox.style.display = 'block';
       confirmBtn.disabled = false;
-      confirmBtn.innerHTML = `${icon('check', 14)} Confirm &amp; Approve Student`;
+      confirmBtn.innerHTML = `${icon('check', 15)} Confirm &amp; Approve Student`;
     }
   });
 }
@@ -207,19 +208,19 @@ function openStudentRejectionModal({ student, onRejected, apiEndpoint = `/superv
 
       <div class="sp-action-modal__body">
         <!-- Target Student Pill -->
-        <div style="background:var(--bg-surface,#f8fafc);border:1px solid var(--border-default,#e2e8f0);border-radius:10px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <div style="background:var(--bg-surface,#f8fafc);border:1px solid var(--border-default,#e2e8f0);border-radius:12px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
           <div style="min-width:0;">
-            <strong style="display:block;font-size:0.86rem;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(student.name)}</strong>
-            <span style="font-size:0.75rem;color:var(--text-tertiary);">${escapeHtml(student.studentId || student.student_id || 'No ID')} &bull; ${escapeHtml(student.course || student.program || 'CHMSU Program')}</span>
+            <strong style="display:block;font-size:0.92rem;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(student.name)}</strong>
+            <span style="font-size:0.8rem;color:var(--text-tertiary);">${escapeHtml(student.studentId || student.student_id || 'No ID')} &bull; ${escapeHtml(student.course || student.program || 'CHMSU Program')}</span>
           </div>
-          <span class="badge badge--warning" style="font-size:0.68rem;flex-shrink:0;">Pending Review</span>
+          <span class="badge badge--warning" style="font-size:0.75rem;padding:3px 8px;flex-shrink:0;">Pending Review</span>
         </div>
 
         <!-- Reason Selection & Textarea -->
         <div class="sp-reason-section">
           <div class="sp-reason-label">
-            <span>Reason for Rejection <span style="color:#EF4444;">*</span></span>
-            <span style="font-size:0.7rem;color:var(--text-tertiary);">Visible to student on login</span>
+            <span style="font-weight:600;font-size:0.88rem;">Reason for Rejection <span style="color:#EF4444;">*</span></span>
+            <span style="font-size:0.75rem;color:var(--text-tertiary);">Visible to student on login</span>
           </div>
 
           <div class="sp-reason-chips">
@@ -228,22 +229,22 @@ function openStudentRejectionModal({ student, onRejected, apiEndpoint = `/superv
             `).join('')}
           </div>
 
-          <textarea class="sp-reason-textarea" id="sp-rejection-reason" placeholder="Enter reason for declining this student registration...">${escapeHtml(REASON_PRESETS[0])}</textarea>
+          <textarea class="sp-reason-textarea" id="sp-rejection-reason" placeholder="Enter reason for declining this student registration..." style="font-size:0.88rem;">${escapeHtml(REASON_PRESETS[0])}</textarea>
         </div>
 
         <div class="sp-warning-box">
-          ${icon('alertTriangle', 15)}
-          <div>
+          ${icon('alertTriangle', 16)}
+          <div style="font-size:0.82rem;">
             <strong>Student Access Restricted:</strong> This student will not be permitted to access the system and will see this reason when attempting to sign in.
           </div>
         </div>
 
-        <div id="sp-reject-error" style="display:none;background:#FEE2E2;border:1px solid #FCA5A5;color:#991B1B;padding:8px 12px;border-radius:6px;font-size:0.75rem;"></div>
+        <div id="sp-reject-error" style="display:none;background:#FEE2E2;border:1px solid #FCA5A5;color:#991B1B;padding:10px 14px;border-radius:8px;font-size:0.82rem;"></div>
       </div>
 
       <div class="sp-action-modal__footer">
         <button class="btn btn--outline btn--sm" id="sp-reject-cancel" type="button">Cancel</button>
-        <button class="btn btn--sm" id="sp-reject-confirm" type="button" style="background:#DC2626;color:#ffffff;border:1px solid #DC2626;gap:6px;">
+        <button class="btn btn--sm" id="sp-reject-confirm" type="button" style="background:#DC2626;color:#ffffff;border:1px solid #DC2626;gap:6px;font-weight:600;">
           ${icon('x', 14)} Confirm Rejection
         </button>
       </div>
@@ -309,74 +310,110 @@ function openStudentRejectionModal({ student, onRejected, apiEndpoint = `/superv
 }
 
 export default function traineesPage(container) {
-  const user = getState('user');
-  const courseBadge = user?.course
-    ? `<span class="badge badge--info" style="font-size:0.75rem;font-weight:600;padding:3px 10px;vertical-align:middle;margin-left:6px;">${user.course}</span>`
-    : '';
+  const user = getState('user') || {};
+  const programName = user.course || 'OJT';
 
   container.innerHTML = `
     <!-- ═══ Page Header ═══ -->
     <div class="tr2-page-head anim-fade-in-up">
       <div class="tr2-page-head__left">
-        <h2 class="tr2-page-head__title" style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;">
-          ${icon('users', 22)} <span>My Trainees</span> ${courseBadge}
-        </h2>
-        <p class="tr2-page-head__sub">Monitor student deployment, host companies, and OJT training progress for your program</p>
+        <div class="tr2-page-head__badge-row">
+          <span class="tr2-program-pill">${escapeHtml(programName)} Program Coordinator</span>
+          <span class="tr2-cohort-pill" id="tr2-cohort-count">Loading trainees…</span>
+        </div>
+        <h1 class="tr2-page-head__title">
+          <span>My Trainees</span>
+        </h1>
+        <p class="tr2-page-head__sub">Monitor student deployment, verify host company assignments, and track real-time OJT training hours.</p>
       </div>
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-        <button class="btn btn--primary btn--sm" id="batch-register-btn" style="gap:6px;">
-          ${icon('upload', 14)} Batch Register Students
+      <div class="tr2-page-head__actions">
+        <button class="tr2-refresh-btn" id="trainee-refresh-btn" title="Refresh Trainee List">
+          ${icon('refreshCw', 15)} <span>Refresh Data</span>
         </button>
-        <button class="btn btn--outline btn--sm" onclick="location.hash='/map'" style="gap:6px;">
-          ${icon('map', 14)} View Trainee Map
+        <button class="btn btn--outline btn--sm" onclick="location.hash='/map'" style="gap:7px;font-size:0.85rem;font-weight:600;padding:8px 14px;">
+          ${icon('map', 15)} <span>Trainee Map</span>
+        </button>
+        <button class="btn btn--primary btn--sm" id="batch-register-btn" style="gap:7px;font-size:0.85rem;font-weight:600;padding:8px 16px;">
+          ${icon('upload', 15)} <span>Batch Register</span>
         </button>
       </div>
     </div>
 
-    <!-- ═══ KPI Summary Row ═══ -->
+    <!-- ═══ Interactive KPI Metric Strip ═══ -->
     <div class="tr2-kpi-row anim-stagger" id="tr2-kpis">
-      ${[1, 2, 3, 4].map(() => '<div class="skeleton skeleton--card" style="height:84px;border-radius:var(--radius-lg)"></div>').join('')}
+      ${[1, 2, 3, 4].map(() => '<div class="skeleton skeleton--card" style="height:96px;border-radius:16px;"></div>').join('')}
     </div>
 
-    <!-- ═══ Filter & Search Toolbar ═══ -->
-    <div class="tr2-toolbar anim-fade-in-up">
-      <div class="tr2-search-wrap">
-        ${icon('search', 15)}
-        <input class="tr2-search-input" id="trainee-search" placeholder="Search by name, email, company, or student ID…" />
-      </div>
-      <div class="tr2-filter-row">
-        <select class="tr2-select" id="trainee-status-filter" title="Filter by Status">
-          <option value="">All Status</option>
-          <option value="Pending Approval">⏳ Pending Approval</option>
-          <option value="Active OJT">Active OJT</option>
-          <option value="Emergency Pending">Emergency Pending</option>
-          <option value="On Medical Leave">On Medical Leave</option>
-          <option value="Withdrawn (Emergency)">Withdrawn (Emergency)</option>
-          <option value="Undeployed">Undeployed</option>
-        </select>
-        <select class="tr2-select" id="trainee-section-filter" title="Filter by Section">
-          <option value="">All Sections</option>
-        </select>
-        <button class="btn btn--ghost btn--sm" id="trainee-reset-filters" style="display:none;padding:8px 12px;font-size:var(--text-xs);color:var(--text-tertiary);" title="Reset filters">
-          ${icon('x', 14)} Reset
+    <!-- ═══ Filter & Search Control Card ═══ -->
+    <div class="tr2-control-card anim-fade-in-up">
+      <!-- Status Tabs -->
+      <div class="tr2-status-tabs" id="tr2-status-tabs">
+        <button class="tr2-tab-btn is-active" data-status="">
+          All Trainees <span class="tr2-tab-count" id="count-all">0</span>
+        </button>
+        <button class="tr2-tab-btn" data-status="Active OJT">
+          Active OJT <span class="tr2-tab-count" id="count-active">0</span>
+        </button>
+        <button class="tr2-tab-btn" data-status="Pending Approval">
+          Pending Approval <span class="tr2-tab-count tr2-tab-count--amber" id="count-pending">0</span>
+        </button>
+        <button class="tr2-tab-btn" data-status="Undeployed">
+          Undeployed <span class="tr2-tab-count" id="count-undeployed">0</span>
+        </button>
+        <button class="tr2-tab-btn" data-status="Emergency">
+          Leave &amp; Notice <span class="tr2-tab-count" id="count-emergency">0</span>
         </button>
       </div>
+
+      <!-- Filter & Search Toolbar -->
+      <div class="tr2-filter-toolbar">
+        <div class="tr2-search-wrap">
+          ${icon('search', 16)}
+          <input class="tr2-search-input" id="trainee-search" placeholder="Search by student name, email, company, section, or student ID…" autocomplete="off" />
+          <button class="tr2-search-clear" id="trainee-search-clear" aria-label="Clear search" style="display:none;" type="button">
+            ${icon('x', 14)}
+          </button>
+        </div>
+
+        <div class="tr2-filter-tools">
+          <div class="tr2-select-wrap">
+            ${icon('filter', 14)}
+            <select class="tr2-select" id="trainee-section-filter" title="Filter by Section">
+              <option value="">All Sections</option>
+            </select>
+          </div>
+
+          <div class="tr2-select-wrap">
+            ${icon('barChart2', 14)}
+            <select class="tr2-select" id="trainee-sort-filter" title="Sort Trainees">
+              <option value="name_asc">Sort: Name (A–Z)</option>
+              <option value="name_desc">Sort: Name (Z–A)</option>
+              <option value="progress_desc">Sort: Progress (High to Low)</option>
+              <option value="progress_asc">Sort: Progress (Low to High)</option>
+              <option value="hours_desc">Sort: Hours Rendered</option>
+            </select>
+          </div>
+
+          <button class="btn btn--ghost btn--sm" id="trainee-reset-filters" style="display:none;padding:9px 12px;font-size:0.82rem;gap:5px;" title="Reset all filters" type="button">
+            ${icon('x', 14)} Reset
+          </button>
+        </div>
+      </div>
     </div>
 
-    <!-- ═══ Table Card ═══ -->
+    <!-- ═══ Redesigned Table Card (7 Neat Columns, No Student ID Column) ═══ -->
     <div class="tr2-table-card anim-fade-in-up">
       <div class="tr2-table-wrap">
         <table class="tr2-table" id="trainee-table">
           <thead>
             <tr>
-              <th style="min-width:220px;">Student</th>
-              <th style="width:130px;">Student ID</th>
-              <th style="width:100px;">Year Level</th>
-              <th style="width:90px;">Section</th>
-              <th style="min-width:180px;">Host Company</th>
-              <th style="min-width:170px;">OJT Progress</th>
-              <th style="width:120px;">Status</th>
-              <th style="width:110px;text-align:right;">Actions</th>
+              <th style="min-width:260px;">Student Trainee</th>
+              <th style="width:125px;">Year Level</th>
+              <th style="width:115px;">Section</th>
+              <th style="min-width:200px;">Host Company</th>
+              <th style="min-width:200px;">OJT Progress</th>
+              <th style="width:155px;">Status</th>
+              <th style="width:175px;text-align:right;">Actions</th>
             </tr>
           </thead>
           <tbody id="trainee-tbody"></tbody>
@@ -397,34 +434,66 @@ export default function traineesPage(container) {
   let allTrainees = [];
   let filteredTrainees = [];
   let currentPage = 1;
+  let activeStatusTab = '';
+  let activeKpiKey = 'all';
 
   loadTrainees();
 
-  async function loadTrainees() {
+  async function loadTrainees(isManualRefresh = false) {
     const tbody = container.querySelector('#trainee-tbody');
-    showSkeleton(tbody, 6);
+    const refreshBtn = container.querySelector('#trainee-refresh-btn');
+
+    if (isManualRefresh && refreshBtn) {
+      refreshBtn.classList.add('is-spinning');
+      refreshBtn.disabled = true;
+    }
+
+    if (!isManualRefresh) {
+      showSkeleton(tbody, 6);
+    }
+
     try {
       const res = await apiGet('/supervisor/trainees', { forceRefresh: true });
       if (!res || !res.success) throw new Error('Failed to load trainees');
       allTrainees = Array.isArray(res.data) ? res.data : [];
-      filteredTrainees = [...allTrainees];
+
+      // Update cohort badge
+      const cohortBadge = container.querySelector('#tr2-cohort-count');
+      if (cohortBadge) {
+        cohortBadge.textContent = `${allTrainees.length} Enrolled Students`;
+      }
 
       if (Array.isArray(res.sections)) {
         populateSectionFilter(res.sections);
       }
+
       renderKpis(allTrainees);
-      renderTable();
+      updateTabCounts(allTrainees);
+      applyFilters();
       handleDeepLink();
+
+      if (isManualRefresh) {
+        showToast('Trainee records updated successfully!', 'success');
+      }
     } catch (err) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="8">
+          <td colspan="7">
             <div class="tr2-empty">
-              <h3 style="margin:0 0 4px;font-size:var(--text-base);color:var(--text-primary);">Could not load trainees</h3>
-              <p class="text-tertiary text-sm">${err.message}</p>
+              <div class="tr2-empty__icon" style="background:#FEE2E2;color:#DC2626;">${icon('alertTriangle', 30)}</div>
+              <h3 style="margin:4px 0 2px;font-size:1.15rem;font-weight:700;color:var(--text-primary);">Could not load trainees</h3>
+              <p class="text-tertiary" style="margin:0 0 14px;font-size:0.9rem;">${escapeHtml(err.message)}</p>
+              <button class="btn btn--outline btn--sm" id="tr2-retry-btn" style="font-weight:600;">Try Again</button>
             </div>
           </td>
         </tr>`;
+      const retryBtn = tbody.querySelector('#tr2-retry-btn');
+      if (retryBtn) retryBtn.addEventListener('click', () => loadTrainees(true));
+    } finally {
+      if (refreshBtn) {
+        refreshBtn.classList.remove('is-spinning');
+        refreshBtn.disabled = false;
+      }
     }
   }
 
@@ -448,51 +517,109 @@ export default function traineesPage(container) {
     }
   }
 
-  /* ── Skeleton loader ── */
+  /* ── Skeleton loader (7 Columns) ── */
   function showSkeleton(tbody, count = 6) {
     tbody.innerHTML = Array.from({ length: count }, () => `
-      <tr style="opacity:0.4;">
+      <tr style="opacity:0.45;">
         <td>
-          <div style="display:flex;align-items:center;gap:12px;">
-            <div style="width:34px;height:34px;border-radius:var(--radius-full);background:var(--bg-tertiary);flex-shrink:0;"></div>
-            <div>
-              <div style="height:12px;width:120px;background:var(--bg-tertiary);border-radius:4px;margin-bottom:6px;"></div>
-              <div style="height:10px;width:150px;background:var(--bg-tertiary);border-radius:4px;"></div>
+          <div class="tr2-trainee-cell">
+            <div style="width:44px;height:44px;border-radius:50%;background:var(--bg-tertiary);flex-shrink:0;"></div>
+            <div style="flex:1;">
+              <div style="height:14px;width:140px;background:var(--bg-tertiary);border-radius:4px;margin-bottom:6px;"></div>
+              <div style="height:11px;width:190px;background:var(--bg-tertiary);border-radius:4px;"></div>
             </div>
           </div>
         </td>
-        <td><div style="height:12px;width:80px;background:var(--bg-tertiary);border-radius:4px;"></div></td>
-        <td><div style="height:12px;width:60px;background:var(--bg-tertiary);border-radius:4px;"></div></td>
-        <td><div style="height:20px;width:42px;background:var(--bg-tertiary);border-radius:4px;"></div></td>
-        <td><div style="height:12px;width:130px;background:var(--bg-tertiary);border-radius:4px;"></div></td>
-        <td><div style="height:12px;width:110px;background:var(--bg-tertiary);border-radius:4px;"></div></td>
-        <td><div style="height:20px;width:75px;background:var(--bg-tertiary);border-radius:12px;"></div></td>
-        <td style="text-align:right;"><div style="height:28px;width:70px;background:var(--bg-tertiary);border-radius:6px;display:inline-block;"></div></td>
+        <td><div style="height:13px;width:75px;background:var(--bg-tertiary);border-radius:4px;"></div></td>
+        <td><div style="height:24px;width:70px;background:var(--bg-tertiary);border-radius:6px;"></div></td>
+        <td><div style="height:14px;width:140px;background:var(--bg-tertiary);border-radius:4px;"></div></td>
+        <td><div style="height:14px;width:120px;background:var(--bg-tertiary);border-radius:4px;"></div></td>
+        <td><div style="height:26px;width:95px;background:var(--bg-tertiary);border-radius:999px;"></div></td>
+        <td style="text-align:right;"><div style="height:32px;width:80px;background:var(--bg-tertiary);border-radius:8px;display:inline-block;"></div></td>
       </tr>`).join('');
   }
 
-  /* ── KPI summary metrics ── */
+  /* ── Interactive KPI Summary Metrics ── */
   function renderKpis(list) {
     const total      = list.length;
     const activeOjt  = list.filter(t => t.status === 'Active OJT').length;
-    const undeployed = list.filter(t => t.status === 'Undeployed').length;
     const placed     = list.filter(t => t.hasPlacement).length;
+    const pending    = list.filter(t => t.approval_status === 'pending' || t.emergency_status !== 'none' || t.pull_out_status === 'pending_supervisor').length;
 
-    container.querySelector('#tr2-kpis').innerHTML = [
-      { label: 'Total Trainees', value: total,      ic: 'users',          bg: 'rgba(0, 89, 48, 0.08)', color: 'var(--color-primary)' },
-      { label: 'Active OJT',     value: activeOjt,  ic: 'checkCircle',    bg: 'rgba(52, 199, 89, 0.12)', color: '#005930' },
-      { label: 'With Placement', value: placed,     ic: 'briefcase',      bg: 'rgba(59, 130, 246, 0.12)', color: '#2563EB' },
-      { label: 'Undeployed',     value: undeployed, ic: 'clock',          bg: 'rgba(245, 158, 11, 0.12)', color: '#B45309' },
-    ].map(k => `
-      <div class="tr2-kpi">
-        <div class="tr2-kpi__icon" style="background:${k.bg};color:${k.color}">
-          ${icon(k.ic, 20)}
+    const kpiData = [
+      { key: 'all',     label: 'Total Trainees',    val: total,     sub: 'Enrolled cohort',       ic: 'users',       bg: 'rgba(0, 89, 48, 0.08)', color: '#005930' },
+      { key: 'active',  label: 'Active OJT',        val: activeOjt, sub: 'Rendering hours',        ic: 'checkCircle', bg: 'rgba(16, 185, 129, 0.12)', color: '#059669' },
+      { key: 'placed',  label: 'Company Placed',    val: placed,    sub: 'Host assignments',       ic: 'briefcase',   bg: 'rgba(37, 99, 235, 0.12)', color: '#2563EB' },
+      { key: 'pending', label: 'Action Needed',     val: pending,   sub: 'Approvals & leaves',    ic: 'clock',       bg: 'rgba(245, 158, 11, 0.12)', color: '#D97706' },
+    ];
+
+    const kpiRow = container.querySelector('#tr2-kpis');
+    kpiRow.innerHTML = kpiData.map(k => `
+      <div class="tr2-kpi ${activeKpiKey === k.key ? 'is-selected' : ''}" data-kpi="${k.key}">
+        <div class="tr2-kpi__icon" style="background:${k.bg};color:${k.color};">
+          ${icon(k.ic, 24)}
         </div>
-        <div>
-          <div class="tr2-kpi__val">${k.value}</div>
+        <div class="tr2-kpi__content">
+          <div class="tr2-kpi__val">${k.val}</div>
           <div class="tr2-kpi__lbl">${k.label}</div>
+          <div class="tr2-kpi__sub">${k.sub}</div>
         </div>
       </div>`).join('');
+
+    // Wire up click-to-filter on KPI cards
+    kpiRow.querySelectorAll('.tr2-kpi').forEach(card => {
+      card.addEventListener('click', () => {
+        const key = card.dataset.kpi;
+        activeKpiKey = key;
+        kpiRow.querySelectorAll('.tr2-kpi').forEach(c => c.classList.remove('is-selected'));
+        card.classList.add('is-selected');
+
+        // Sync with status tabs
+        if (key === 'all') {
+          activeStatusTab = '';
+        } else if (key === 'active') {
+          activeStatusTab = 'Active OJT';
+        } else if (key === 'pending') {
+          activeStatusTab = 'Pending Approval';
+        } else if (key === 'placed') {
+          activeStatusTab = 'Placed';
+        }
+
+        syncStatusTabUi();
+        currentPage = 1;
+        applyFilters();
+      });
+    });
+  }
+
+  function updateTabCounts(list) {
+    const total      = list.length;
+    const active     = list.filter(t => t.status === 'Active OJT').length;
+    const pending    = list.filter(t => t.approval_status === 'pending').length;
+    const undeployed = list.filter(t => t.status === 'Undeployed').length;
+    const emergency  = list.filter(t => t.emergency_status !== 'none' || t.status.includes('Leave') || t.status.includes('Emergency')).length;
+
+    const setEl = (id, val) => {
+      const el = container.querySelector(id);
+      if (el) el.textContent = val;
+    };
+
+    setEl('#count-all', total);
+    setEl('#count-active', active);
+    setEl('#count-pending', pending);
+    setEl('#count-undeployed', undeployed);
+    setEl('#count-emergency', emergency);
+  }
+
+  function syncStatusTabUi() {
+    container.querySelectorAll('.tr2-tab-btn').forEach(btn => {
+      const btnStatus = btn.dataset.status;
+      if (btnStatus === activeStatusTab) {
+        btn.classList.add('is-active');
+      } else {
+        btn.classList.remove('is-active');
+      }
+    });
   }
 
   /* ── Populate dynamic sections ── */
@@ -501,27 +628,64 @@ export default function traineesPage(container) {
     if (!sel) return;
     const current = sel.value;
     sel.innerHTML = '<option value="">All Sections</option>' +
-      sections.map(s => `<option value="${s}"${s === current ? ' selected' : ''}>Section ${s}</option>`).join('');
+      sections.map(s => `<option value="${escapeHtml(s)}"${s === current ? ' selected' : ''}>Section ${escapeHtml(s)}</option>`).join('');
   }
 
   /* ── Event listeners for filtering ── */
-  const searchInput  = container.querySelector('#trainee-search');
-  const statusSelect = container.querySelector('#trainee-status-filter');
-  const sectionSelect= container.querySelector('#trainee-section-filter');
-  const resetBtn     = container.querySelector('#trainee-reset-filters');
+  const searchInput    = container.querySelector('#trainee-search');
+  const searchClear    = container.querySelector('#trainee-search-clear');
+  const sectionSelect  = container.querySelector('#trainee-section-filter');
+  const sortSelect     = container.querySelector('#trainee-sort-filter');
+  const resetBtn       = container.querySelector('#trainee-reset-filters');
+  const statusTabsWrap = container.querySelector('#tr2-status-tabs');
+  const refreshBtn     = container.querySelector('#trainee-refresh-btn');
+
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', () => loadTrainees(true));
+  }
+
+  // Status Tab Clicks
+  if (statusTabsWrap) {
+    statusTabsWrap.querySelectorAll('.tr2-tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        statusTabsWrap.querySelectorAll('.tr2-tab-btn').forEach(b => b.classList.remove('is-active'));
+        btn.classList.add('is-active');
+        activeStatusTab = btn.dataset.status || '';
+
+        // Update active KPI key sync
+        if (activeStatusTab === '') activeKpiKey = 'all';
+        else if (activeStatusTab === 'Active OJT') activeKpiKey = 'active';
+        else if (activeStatusTab === 'Pending Approval') activeKpiKey = 'pending';
+        else activeKpiKey = '';
+
+        container.querySelectorAll('#tr2-kpis .tr2-kpi').forEach(c => {
+          c.classList.toggle('is-selected', c.dataset.kpi === activeKpiKey);
+        });
+
+        currentPage = 1;
+        applyFilters();
+      });
+    });
+  }
 
   let debounceTimer = null;
   searchInput.addEventListener('input', () => {
+    const hasVal = Boolean(searchInput.value.trim());
+    searchClear.style.display = hasVal ? 'flex' : 'none';
+
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
       currentPage = 1;
       applyFilters();
-    }, 250);
+    }, 200);
   });
 
-  statusSelect.addEventListener('change', () => {
+  searchClear.addEventListener('click', () => {
+    searchInput.value = '';
+    searchClear.style.display = 'none';
     currentPage = 1;
     applyFilters();
+    searchInput.focus();
   });
 
   sectionSelect.addEventListener('change', () => {
@@ -529,10 +693,22 @@ export default function traineesPage(container) {
     applyFilters();
   });
 
+  sortSelect.addEventListener('change', () => {
+    currentPage = 1;
+    applyFilters();
+  });
+
   resetBtn.addEventListener('click', () => {
     searchInput.value = '';
-    statusSelect.value = '';
+    searchClear.style.display = 'none';
     sectionSelect.value = '';
+    sortSelect.value = 'name_asc';
+    activeStatusTab = '';
+    activeKpiKey = 'all';
+    syncStatusTabUi();
+    container.querySelectorAll('#tr2-kpis .tr2-kpi').forEach(c => {
+      c.classList.toggle('is-selected', c.dataset.kpi === 'all');
+    });
     currentPage = 1;
     applyFilters();
   });
@@ -548,28 +724,69 @@ export default function traineesPage(container) {
 
   function applyFilters() {
     const q       = searchInput.value.toLowerCase().trim();
-    const status  = statusSelect.value;
     const section = sectionSelect.value;
+    const sortVal = sortSelect.value;
 
-    const hasActiveFilters = Boolean(q || status || section);
+    const hasActiveFilters = Boolean(q || activeStatusTab || section || sortVal !== 'name_asc');
     resetBtn.style.display = hasActiveFilters ? 'inline-flex' : 'none';
 
     filteredTrainees = allTrainees.filter(t => {
-      if (q && !t.name.toLowerCase().includes(q) &&
-          !t.email?.toLowerCase().includes(q) &&
-          !t.company?.toLowerCase().includes(q) &&
-          !t.studentId?.toLowerCase().includes(q)) {
-        return false;
+      // Search matching: name, email, company, section, studentId
+      if (q) {
+        const nameMatch    = t.name && t.name.toLowerCase().includes(q);
+        const emailMatch   = t.email && t.email.toLowerCase().includes(q);
+        const compMatch    = t.company && t.company.toLowerCase().includes(q);
+        const idMatch      = t.studentId && String(t.studentId).toLowerCase().includes(q);
+        const sectionMatch = t.section && String(t.section).toLowerCase().includes(q);
+
+        if (!nameMatch && !emailMatch && !compMatch && !idMatch && !sectionMatch) {
+          return false;
+        }
       }
-      if (status && t.status !== status) return false;
+
+      // Status matching
+      if (activeStatusTab) {
+        if (activeStatusTab === 'Pending Approval') {
+          if (t.approval_status !== 'pending' && t.status !== 'Pending Approval') return false;
+        } else if (activeStatusTab === 'Emergency') {
+          if (t.emergency_status === 'none' && !t.status.includes('Leave') && !t.status.includes('Emergency')) return false;
+        } else if (activeStatusTab === 'Placed') {
+          if (!t.hasPlacement) return false;
+        } else {
+          if (t.status !== activeStatusTab) return false;
+        }
+      }
+
+      // Section matching
       if (section && t.section !== section) return false;
+
       return true;
+    });
+
+    // Sorting
+    filteredTrainees.sort((a, b) => {
+      if (sortVal === 'name_asc') {
+        return (a.name || '').localeCompare(b.name || '');
+      } else if (sortVal === 'name_desc') {
+        return (b.name || '').localeCompare(a.name || '');
+      } else if (sortVal === 'progress_desc') {
+        const pctA = (a.requiredHours > 0 && a.completedHours > 0) ? (a.completedHours / a.requiredHours) : 0;
+        const pctB = (b.requiredHours > 0 && b.completedHours > 0) ? (b.completedHours / b.requiredHours) : 0;
+        return pctB - pctA;
+      } else if (sortVal === 'progress_asc') {
+        const pctA = (a.requiredHours > 0 && a.completedHours > 0) ? (a.completedHours / a.requiredHours) : 0;
+        const pctB = (b.requiredHours > 0 && b.completedHours > 0) ? (b.completedHours / b.requiredHours) : 0;
+        return pctA - pctB;
+      } else if (sortVal === 'hours_desc') {
+        return (b.completedHours || 0) - (a.completedHours || 0);
+      }
+      return 0;
     });
 
     renderTable();
   }
 
-  /* ── Render table with pagination ── */
+  /* ── Render table with pagination (7 Clean Columns) ── */
   function renderTable() {
     const tbody          = container.querySelector('#trainee-tbody');
     const paginationWrap = container.querySelector('#trainee-pagination-wrap');
@@ -578,17 +795,17 @@ export default function traineesPage(container) {
 
     const totalItems = filteredTrainees.length;
 
-    // Empty state
+    // Empty state (7 Columns)
     if (!totalItems) {
       paginationWrap.style.display = 'none';
       tbody.innerHTML = `
         <tr>
-          <td colspan="8">
+          <td colspan="7">
             <div class="tr2-empty">
-              <div class="tr2-empty__icon">${icon('users', 38)}</div>
-              <h3 style="margin:4px 0 2px;font-size:var(--text-base);font-weight:600;color:var(--text-primary);">No trainees found</h3>
-              <p class="text-tertiary text-sm" style="margin:0 0 10px;">Try adjusting your search query, status, or section filter.</p>
-              <button class="btn btn--outline btn--sm" id="empty-reset-btn" style="font-size:var(--text-xs);">Clear all filters</button>
+              <div class="tr2-empty__icon">${icon('users', 34)}</div>
+              <h3 style="margin:4px 0 2px;font-size:1.15rem;font-weight:700;color:var(--text-primary);">No trainees found</h3>
+              <p class="text-tertiary" style="margin:0 0 14px;font-size:0.9rem;">No students matched your active filters or search query.</p>
+              <button class="btn btn--outline btn--sm" id="empty-reset-btn" style="font-size:0.85rem;font-weight:600;">Clear all filters</button>
             </div>
           </td>
         </tr>`;
@@ -596,8 +813,15 @@ export default function traineesPage(container) {
       if (emptyReset) {
         emptyReset.addEventListener('click', () => {
           searchInput.value = '';
-          statusSelect.value = '';
+          searchClear.style.display = 'none';
           sectionSelect.value = '';
+          sortSelect.value = 'name_asc';
+          activeStatusTab = '';
+          activeKpiKey = 'all';
+          syncStatusTabUi();
+          container.querySelectorAll('#tr2-kpis .tr2-kpi').forEach(c => {
+            c.classList.toggle('is-selected', c.dataset.kpi === 'all');
+          });
           currentPage = 1;
           applyFilters();
         });
@@ -612,7 +836,7 @@ export default function traineesPage(container) {
     const endIndex   = Math.min(totalItems, startIndex + PER_PAGE);
     const pageData   = filteredTrainees.slice(startIndex, endIndex);
 
-    // Rows rendering
+    // Rows rendering (7 Columns)
     tbody.innerHTML = pageData.map(t => {
       const init = initials(t.name);
       const targetHours = (t.requiredHours && t.requiredHours > 0) ? t.requiredHours : 600;
@@ -624,112 +848,140 @@ export default function traineesPage(container) {
 
       return `
         <tr data-id="${t.id}">
+          <!-- 1. Student Trainee (with Avatar, Name, Email, & Neat Student ID micro-pill) -->
           <td>
-            <div style="display:flex;align-items:center;gap:10px;">
+            <div class="tr2-trainee-cell">
               ${t.avatar_url
-                ? `<img src="${storageUrl(t.avatar_url)}" alt="${t.name}" style="width:34px;height:34px;border-radius:var(--radius-full);object-fit:cover;flex-shrink:0;border:1px solid var(--border-default);" />`
-                : `<div style="width:34px;height:34px;border-radius:var(--radius-full);background:var(--color-primary-bg);color:var(--color-primary);display:flex;align-items:center;justify-content:center;font-weight:var(--weight-semibold);font-size:0.75rem;flex-shrink:0;border:1px solid rgba(0,89,48,0.15);">${init}</div>`}
-              <div style="min-width:0;">
-                <div style="font-weight:600;color:var(--text-primary);font-size:var(--text-sm);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.name}</div>
-                <div style="font-size:0.75rem;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.email}</div>
+                ? `<img src="${storageUrl(t.avatar_url)}" alt="${escapeHtml(t.name)}" class="tr2-trainee-avatar" onerror="this.onerror=null;this.parentElement.innerHTML='<div class=\\'tr2-trainee-avatar--fallback\\'>${init}</div>';" />`
+                : `<div class="tr2-trainee-avatar--fallback">${init}</div>`}
+              <div class="tr2-trainee-info">
+                <div class="tr2-trainee-name" title="${escapeHtml(t.name)}">${escapeHtml(t.name)}</div>
+                <div class="tr2-trainee-meta">
+                  <span class="tr2-trainee-email" title="${escapeHtml(t.email || '')}">${escapeHtml(t.email || 'No email')}</span>
+                  ${REAL(t.studentId) ? `<span class="tr2-id-pill" title="Student ID Number">ID: ${escapeHtml(t.studentId)}</span>` : ''}
+                </div>
               </div>
             </div>
           </td>
+
+          <!-- 2. Year Level -->
           <td>
-            <span style="font-family:monospace;font-size:0.75rem;color:var(--text-secondary);font-weight:600;">${t.studentId || '—'}</span>
+            <span style="font-size:0.925rem;font-weight:600;color:var(--text-primary);">${escapeHtml(t.year || '—')}</span>
           </td>
-          <td>
-            <span style="font-size:var(--text-sm);color:var(--text-primary);">${t.year || '—'}</span>
-          </td>
+
+          <!-- 3. Section -->
           <td>
             ${REAL(t.section)
-              ? `<span class="tr2-badge tr2-badge--section">${t.section}</span>`
-              : `<span style="color:var(--text-tertiary);font-size:var(--text-xs);">—</span>`}
+              ? `<span class="tr2-badge tr2-badge--section">Sec ${escapeHtml(t.section)}</span>`
+              : `<span style="color:var(--text-tertiary);font-size:0.85rem;">—</span>`}
           </td>
+
+          <!-- 4. Host Company -->
           <td>
             ${REAL(t.company)
-              ? `<div style="display:flex;align-items:center;gap:6px;font-size:var(--text-sm);font-weight:500;color:var(--text-primary);">${icon('building', 13)} <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;">${t.company}</span></div>`
+              ? `<div class="tr2-company-cell">
+                   <div class="tr2-company-name">
+                     ${icon('building', 15)}
+                     <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:210px;" title="${escapeHtml(t.company)}">${escapeHtml(t.company)}</span>
+                   </div>
+                   ${REAL(t.supervisor) ? `<div class="tr2-company-sub" title="Supervisor: ${escapeHtml(t.supervisor)}">${escapeHtml(t.supervisor)}</div>` : ''}
+                 </div>`
               : (t.is_pulled_out && t.previous_company
-                  ? `<div><span style="color:var(--text-tertiary);font-size:var(--text-xs);font-style:italic;display:block;">Undeployed</span><span style="font-size:0.7rem;color:var(--text-tertiary);">(Prev: ${t.previous_company})</span></div>`
-                  : `<span style="color:var(--text-tertiary);font-size:var(--text-xs);font-style:italic;">Undeployed</span>`)}
+                  ? `<div class="tr2-company-cell">
+                       <span class="tr2-undeployed-pill">${icon('clock', 13)} Undeployed</span>
+                       <span style="font-size:0.75rem;color:var(--text-tertiary);padding-left:18px;">(Prev: ${escapeHtml(t.previous_company)})</span>
+                     </div>`
+                  : `<span class="tr2-undeployed-pill">${icon('clock', 13)} Undeployed</span>`)}
           </td>
+
+          <!-- 5. OJT Training Progress -->
           <td>
             ${t.hasPlacement && t.requiredHours > 0 ? `
-              <div class="tr2-prog">
-                <div class="tr2-prog-bar">
+              <div class="tr2-prog-wrap">
+                <div class="tr2-prog-header">
+                  <span class="tr2-prog-hours">
+                    <strong>${t.completedHours}</strong> / ${t.requiredHours}h
+                    ${t.accreditedHours > 0 ? `<span style="font-size:0.72rem;color:#005930;font-weight:700;" title="${t.accreditedHours}h accredited from prior OJT">(+${t.accreditedHours}h)</span>` : ''}
+                  </span>
+                  <span class="tr2-prog-pct" style="color:${barColor};background:${pct >= 75 ? '#ECFDF5' : (pct >= 40 ? '#F0FDF4' : '#FEF3C7')};">${pct}%</span>
+                </div>
+                <div class="tr2-prog-track">
                   <div class="tr2-prog-fill" style="width:${pct}%;background:${barColor};"></div>
                 </div>
-                <span class="tr2-prog-val">${t.completedHours}/${t.requiredHours}h${t.accreditedHours > 0 ? ` <span style="font-size:0.65rem;color:#005930;font-weight:700;" title="${t.accreditedHours}h accredited from prior OJT">(+${t.accreditedHours}h)</span>` : ''}</span>
               </div>
             ` : `
-              <span style="font-size:var(--text-xs);color:var(--text-tertiary);">—</span>
+              <span style="font-size:0.85rem;color:var(--text-tertiary);font-style:italic;">—</span>
             `}
           </td>
+
+          <!-- 6. Status & Badges -->
           <td style="white-space:nowrap;">
             ${t.approval_status === 'pending'
-              ? `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 11px;font-size:0.74rem;font-weight:600;border-radius:20px;background:#FEF3C7;color:#92400E;border:1px solid #FCD34D;white-space:nowrap;box-shadow:0 1px 2px rgba(245,158,11,0.06);">
-                   <span style="width:6px;height:6px;border-radius:50%;background:#D97706;display:inline-block;"></span>
+              ? `<span class="tr2-badge tr2-badge--warning">
+                   <span class="tr2-badge-dot"></span>
                    <span>Pending Approval</span>
                  </span>`
-              : `<span class="tr2-badge ${badgeCfg.cls}">${badgeCfg.text}</span>`}
+              : `<span class="tr2-badge ${badgeCfg.cls}">
+                   <span class="tr2-badge-dot"></span>
+                   <span>${badgeCfg.text}</span>
+                 </span>`}
             ${t.is_pulled_out ? `
-              <div style="margin-top:3px;">
-                <span class="badge" style="background:#FEE2E2;color:#991B1B;font-size:0.65rem;padding:2px 6px;font-weight:700;">
+              <div style="margin-top:4px;">
+                <span class="badge" style="background:#FEE2E2;color:#991B1B;font-size:0.72rem;padding:3px 8px;font-weight:700;border-radius:4px;">
                   Pulled Out
                 </span>
               </div>
             ` : ''}
             ${t.requirements ? `
-              <div style="margin-top:3px;">
+              <div style="margin-top:4px;">
                 <span class="badge ${
                   t.requirements.status === 'verified' ? 'badge--success' :
                   t.requirements.status === 'submitted' ? 'badge--info' :
                   t.requirements.status === 'needs_revision' ? 'badge--warning' : 'badge--neutral'
-                }" style="font-size:0.65rem;padding:2px 6px;text-transform:capitalize;font-weight:600;">
+                }" style="font-size:0.72rem;padding:2px 8px;text-transform:capitalize;font-weight:700;border-radius:4px;">
                   Reqs: ${t.requirements.status.replace('_', ' ')}
                 </span>
               </div>
             ` : ''}
-            ${t.flag ? `<div style="margin-top:2px;"><span class="badge badge--error" style="font-size:0.65rem;padding:2px 6px;">${icon('alertTriangle', 10)} Flagged</span></div>` : ''}
+            ${t.flag ? `<div style="margin-top:4px;"><span class="badge badge--error" style="font-size:0.72rem;padding:2px 8px;border-radius:4px;">${icon('alertTriangle', 12)} Flagged</span></div>` : ''}
           </td>
+
+          <!-- 7. Actions Column -->
           <td style="text-align:right;white-space:nowrap;">
-            <div style="display:inline-flex;align-items:center;justify-content:flex-end;gap:6px;">
+            <div class="tr2-actions-group">
               ${t.approval_status === 'pending' ? `
-                <button class="tr2-approve-btn" data-id="${t.id}" data-name="${escapeHtml(t.name)}" style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;font-size:0.75rem;font-weight:600;background:#005930;color:#ffffff;border:1px solid #005930;border-radius:6px;cursor:pointer;box-shadow:0 1px 2px rgba(0,89,48,0.15);transition:all 0.15s ease;" title="Approve student registration">
-                  ${icon('check', 13)} Approve
+                <button class="tr2-btn-action tr2-approve-btn" data-id="${t.id}" data-name="${escapeHtml(t.name)}" style="background:#005930;color:#ffffff;border:1px solid #005930;box-shadow:0 1px 3px rgba(0,89,48,0.2);" title="Approve student registration">
+                  ${icon('check', 14)} Approve
                 </button>
-                <button class="tr2-reject-btn" data-id="${t.id}" data-name="${escapeHtml(t.name)}" style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;font-size:0.75rem;font-weight:600;background:#FFF1F2;color:#E11D48;border:1px solid #FECDD3;border-radius:6px;cursor:pointer;transition:all 0.15s ease;" title="Reject student registration">
-                  ${icon('x', 13)} Reject
+                <button class="tr2-btn-action tr2-reject-btn" data-id="${t.id}" data-name="${escapeHtml(t.name)}" style="background:#FFF1F2;color:#E11D48;border:1px solid #FECDD3;" title="Reject student registration">
+                  ${icon('x', 14)} Reject
                 </button>
-                <button class="btn btn--outline btn--sm tr2-view-btn" data-id="${t.id}" style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;font-size:0.75rem;font-weight:500;border-radius:6px;" title="View Student Profile">
-                  ${icon('eye', 13)} View
+                <button class="btn btn--outline btn--sm tr2-view-btn" data-id="${t.id}" style="padding:7px 11px;font-size:0.83rem;font-weight:600;" title="View Student Profile">
+                  ${icon('eye', 14)}
                 </button>
               ` : `
                 ${t.emergency_status && t.emergency_status !== 'none' ? `
-                <button class="btn btn--outline btn--sm tr2-emer-btn" data-id="${t.id}" style="padding:4px 8px;font-size:0.72rem;gap:4px;color:${t.emergency_status === 'pending' ? '#b45309' : (t.emergency_status === 'on_leave' ? (t.emergency_request?.has_fit_to_work ? '#059669' : '#0284c7') : '#dc2626')};border-color:${t.emergency_status === 'pending' ? 'rgba(245,158,11,0.45)' : (t.emergency_status === 'on_leave' ? (t.emergency_request?.has_fit_to_work ? 'rgba(16,185,129,0.5)' : 'rgba(2,132,199,0.4)') : 'rgba(239,68,68,0.4)')};font-weight:600;background:${t.emergency_status === 'pending' ? 'rgba(245,158,11,0.06)' : (t.emergency_request?.has_fit_to_work ? 'rgba(16,185,129,0.08)' : 'transparent')};" title="${t.emergency_request?.has_fit_to_work ? 'Fit-to-Work Clearance Uploaded — Click to Inspect' : 'Review Emergency / Leave Notice'}">
-                  ${icon(t.emergency_request?.has_fit_to_work ? 'shieldCheck' : 'alertTriangle', 13)} ${t.emergency_status === 'pending' ? 'Review Notice' : (t.emergency_status === 'on_leave' ? (t.emergency_request?.has_fit_to_work ? 'Clearance Uploaded' : 'On Leave') : 'Withdrawn')}
+                  <button class="btn btn--outline btn--sm tr2-emer-btn" data-id="${t.id}" style="padding:6px 10px;font-size:0.78rem;gap:5px;font-weight:700;color:${t.emergency_status === 'pending' ? '#b45309' : (t.emergency_status === 'on_leave' ? (t.emergency_request?.has_fit_to_work ? '#059669' : '#0284c7') : '#dc2626')};border-color:${t.emergency_status === 'pending' ? 'rgba(245,158,11,0.5)' : (t.emergency_status === 'on_leave' ? (t.emergency_request?.has_fit_to_work ? 'rgba(16,185,129,0.5)' : 'rgba(2,132,199,0.5)') : 'rgba(239,68,68,0.5)')};background:${t.emergency_status === 'pending' ? 'rgba(245,158,11,0.08)' : (t.emergency_request?.has_fit_to_work ? 'rgba(16,185,129,0.1)' : 'transparent')};" title="${t.emergency_request?.has_fit_to_work ? 'Fit-to-Work Clearance Uploaded' : 'Review Emergency / Leave Notice'}">
+                    ${icon(t.emergency_request?.has_fit_to_work ? 'shieldCheck' : 'alertTriangle', 14)} ${t.emergency_status === 'pending' ? 'Notice' : (t.emergency_status === 'on_leave' ? (t.emergency_request?.has_fit_to_work ? 'Clearance' : 'On Leave') : 'Withdrawn')}
+                  </button>
+                ` : ''}
+                ${t.pull_out_status && t.pull_out_status !== 'none' ? `
+                  <button class="btn btn--outline btn--sm tr2-pullout-btn" data-id="${t.id}" style="padding:6px 10px;font-size:0.78rem;gap:5px;color:#b91c1c;border-color:rgba(185,28,28,0.45);font-weight:700;background:rgba(185,28,28,0.06);" title="Review OJT Pull-Out Request">
+                    ${icon('fileText', 14)} ${t.pull_out_status === 'pending_supervisor' ? 'Pull-Out' : (t.pull_out_status === 'approved' ? 'Pulled Out' : 'Pull-Out Rec.')}
+                  </button>
+                ` : ''}
+                ${t.company_user_id ? `
+                  <button class="btn btn--outline btn--sm tr2-chat-co-btn" data-company-id="${t.company_user_id}" style="padding:6px 10px;font-size:0.8rem;gap:5px;color:#0284c7;border-color:rgba(2,132,199,0.35);font-weight:600;" title="Message Host Company (${escapeHtml(t.company || 'Company')})">
+                    ${icon('building', 14)} Company
+                  </button>
+                ` : ''}
+                <button class="btn btn--outline btn--sm tr2-chat-btn" data-id="${t.id}" style="padding:6px 11px;font-size:0.8rem;gap:5px;color:var(--color-primary);font-weight:600;" title="Message student">
+                  ${icon('messageCircle', 14)} Message
                 </button>
-              ` : ''}
-              ${t.pull_out_status && t.pull_out_status !== 'none' ? `
-                <button class="btn btn--outline btn--sm tr2-pullout-btn" data-id="${t.id}" style="padding:4px 8px;font-size:0.72rem;gap:4px;color:#b91c1c;border-color:rgba(185,28,28,0.45);font-weight:600;background:rgba(185,28,28,0.06);" title="Review OJT Pull-Out Request">
-                  ${icon('fileText', 13)} ${t.pull_out_status === 'pending_supervisor' ? 'Review Pull-Out' : (t.pull_out_status === 'approved' ? 'Pulled Out' : 'Pull-Out Rec.')}
+                <button class="btn btn--primary btn--sm tr2-view-btn" data-id="${t.id}" style="padding:6px 13px;font-size:0.82rem;gap:5px;font-weight:600;" title="View Trainee Profile">
+                  ${icon('eye', 14)} View
                 </button>
-              ` : ''}
-              ${t.company_user_id ? `
-                <button class="btn btn--outline btn--sm tr2-chat-co-btn" data-company-id="${t.company_user_id}" style="padding:4px 8px;font-size:0.72rem;gap:4px;color:#0284c7;border-color:rgba(2,132,199,0.35);" title="Message Host Company (${t.company || 'Company'})">
-                  ${icon('building', 13)} Company
-                </button>
-              ` : ''}
-              <button class="btn btn--outline btn--sm tr2-chat-btn" data-id="${t.id}" style="padding:4px 8px;font-size:0.72rem;gap:4px;color:var(--color-primary);" title="Message student">
-                ${icon('messageCircle', 13)} Message
-              </button>
-              <button class="btn btn--outline btn--sm tr2-view-btn" data-id="${t.id}" style="padding:4px 9px;font-size:0.72rem;gap:4px;">
-                ${icon('eye', 13)} View
-              </button>
-              <button class="btn btn--ghost btn--sm" style="padding:4px 6px;" onclick="location.hash='/map'" title="Locate on Map">
-                ${icon('mapPin', 13)}
-              </button>
-            `}
+              `}
             </div>
           </td>
         </tr>
@@ -854,7 +1106,7 @@ export default function traineesPage(container) {
 
     // Previous Button
     html += `<button class="tr2-pg-btn" data-action="prev" ${currentPage === 1 ? 'disabled' : ''} aria-label="Previous page">
-      ${icon('chevronLeft', 13)}
+      ${icon('chevronLeft', 15)}
     </button>`;
 
     // Page Number Buttons
@@ -870,7 +1122,7 @@ export default function traineesPage(container) {
 
     // Next Button
     html += `<button class="tr2-pg-btn" data-action="next" ${currentPage === totalPages ? 'disabled' : ''} aria-label="Next page">
-      ${icon('chevronRight', 13)}
+      ${icon('chevronRight', 15)}
     </button>`;
 
     containerEl.innerHTML = html;
@@ -890,7 +1142,7 @@ export default function traineesPage(container) {
     });
   }
 
-  /* ── Profile Modal ── */
+  /* ── Redesigned Profile Modal (Enlarged & Neat) ── */
   function openModal(t) {
     const root     = container.querySelector('#trainee-modal-root');
     const init     = initials(t.name);
@@ -900,7 +1152,7 @@ export default function traineesPage(container) {
       : 0;
     const badgeCfg = STATUS_BADGES[t.status] || { cls: 'tr2-badge--undeployed', text: t.status };
     const barColor = BAR_COLOR(pct);
-    const info     = [t.course, t.year, t.section ? `Section ${t.section}` : null, t.studentId].filter(REAL).join(' · ');
+    const info     = [t.course, t.year, t.section ? `Section ${t.section}` : null, t.studentId ? `ID: ${t.studentId}` : null].filter(REAL).join(' · ');
 
     const schedDays = Array.isArray(t.schedule_days) && t.schedule_days.length ? t.schedule_days.join(', ') : null;
     const shiftStr = t.shift_start && t.shift_end ? `${t.shift_start} – ${t.shift_end} (${t.daily_hours || 8}h/day)` : null;
@@ -924,54 +1176,60 @@ export default function traineesPage(container) {
           <div class="tr2-log-row">
             <span class="tr2-log-date">${l.date}</span>
             <span class="tr2-log-hrs">${l.hours}h</span>
-            <span class="tr2-log-task">${REAL(l.task) ? l.task : '—'}</span>
-            <span class="badge ${l.status === 'approved' ? 'badge--success' : 'badge--warning'}" style="font-size:0.65rem;">${l.status}</span>
+            <span class="tr2-log-task">${REAL(l.task) ? escapeHtml(l.task) : '—'}</span>
+            <span class="badge ${l.status === 'approved' ? 'badge--success' : 'badge--warning'}" style="font-size:0.75rem;padding:2px 8px;font-weight:600;">${escapeHtml(l.status)}</span>
           </div>`).join('')
-      : `<p class="text-sm text-tertiary" style="padding:var(--space-3) 0;">No time logs recorded yet.</p>`;
+      : `<p class="text-sm text-tertiary" style="padding:var(--space-3) 0;margin:0;">No daily time logs recorded yet.</p>`;
 
     root.innerHTML = `
       <div class="modal-backdrop" id="tr2-modal-bd">
-        <div class="modal modal--scrollable" style="width:95vw;max-width:680px;border-radius:var(--radius-xl);box-shadow:var(--shadow-2xl);">
-          <div class="modal__header" style="border-bottom:1px solid var(--border-default);padding:var(--space-4) var(--space-6);flex-shrink:0;">
-            <span class="modal__title" style="font-size:var(--text-base);font-weight:700;">Trainee Academic Profile</span>
+        <div class="modal modal--scrollable" style="width:95vw;max-width:720px;border-radius:18px;box-shadow:var(--shadow-2xl);">
+          <div class="modal__header" style="border-bottom:1px solid var(--border-default);padding:18px 24px;flex-shrink:0;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span class="modal__title" style="font-size:1.15rem;font-weight:700;">Trainee Academic Profile</span>
+              <span class="tr2-id-pill">${escapeHtml(t.studentId || 'No ID')}</span>
+            </div>
             <button class="modal__close" id="tr2-cls" style="cursor:pointer;" aria-label="Close modal">${icon('x', 18)}</button>
           </div>
-          <div class="modal__body" style="padding:var(--space-6);flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;">
+          <div class="modal__body" style="padding:24px;flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;">
 
             <!-- Identity Header -->
             <div class="tr2-modal-id">
               ${t.avatar_url
-                ? `<img src="${storageUrl(t.avatar_url)}" alt="${t.name}" style="width:50px;height:50px;border-radius:var(--radius-full);object-fit:cover;flex-shrink:0;border:1px solid var(--border-default);" />`
+                ? `<img src="${storageUrl(t.avatar_url)}" alt="${escapeHtml(t.name)}" class="tr2-modal-avatar" style="object-fit:cover;border:2px solid var(--border-default);" onerror="this.onerror=null;this.parentElement.innerHTML='<div class=\\'tr2-modal-avatar\\' style=\\'background:var(--color-primary-bg);color:var(--color-primary);border:1px solid rgba(0,89,48,0.2);\\'>${init}</div>';" />`
                 : `<div class="tr2-modal-avatar" style="background:var(--color-primary-bg);color:var(--color-primary);border:1px solid rgba(0,89,48,0.2);">${init}</div>`}
               <div class="tr2-modal-id__info">
-                <h3 style="font-size:var(--text-lg);font-weight:700;margin:0 0 4px;">${t.name}</h3>
-                ${info ? `<p class="text-sm text-secondary" style="margin:0 0 4px;">${info}</p>` : ''}
-                <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:2px;">
-                  ${t.email ? `<span style="font-size:0.75rem;color:var(--text-secondary);display:inline-flex;align-items:center;gap:4px;">${icon('mail', 12)} ${t.email}</span>` : ''}
-                  ${REAL(t.phone) ? `<span style="font-size:0.75rem;color:var(--text-secondary);display:inline-flex;align-items:center;gap:4px;">${icon('phone', 12)} ${t.phone}</span>` : ''}
+                <h3>${escapeHtml(t.name)}</h3>
+                ${info ? `<p style="font-size:0.9rem;color:var(--text-secondary);margin:0 0 6px;">${escapeHtml(info)}</p>` : ''}
+                <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:4px;">
+                  ${t.email ? `<span style="font-size:0.84rem;color:var(--text-secondary);display:inline-flex;align-items:center;gap:6px;">${icon('mail', 14)} ${escapeHtml(t.email)}</span>` : ''}
+                  ${REAL(t.phone) ? `<span style="font-size:0.84rem;color:var(--text-secondary);display:inline-flex;align-items:center;gap:6px;">${icon('phone', 14)} ${escapeHtml(t.phone)}</span>` : ''}
                 </div>
               </div>
-              <span class="tr2-badge ${badgeCfg.cls}" style="align-self:flex-start;">${badgeCfg.text}</span>
+              <span class="tr2-badge ${badgeCfg.cls}" style="align-self:flex-start;">
+                <span class="tr2-badge-dot"></span>
+                <span>${badgeCfg.text}</span>
+              </span>
             </div>
 
             <!-- Pending Student Approval Banner -->
             ${t.approval_status === 'pending' ? `
-              <div class="sp-pending-banner">
+              <div class="sp-pending-banner" style="margin-bottom:20px;">
                 <div class="sp-pending-banner__left">
                   <div class="sp-pending-banner__icon">
-                    ${icon('clock', 18)}
+                    ${icon('clock', 20)}
                   </div>
                   <div>
-                    <h4 class="sp-pending-banner__title">Awaiting Supervisor Verification & Approval</h4>
+                    <h4 class="sp-pending-banner__title">Awaiting Supervisor Verification &amp; Approval</h4>
                     <p class="sp-pending-banner__desc">This student self-registered and is waiting for your authorization before they can log in, access assignments, and submit daily time records.</p>
                   </div>
                 </div>
                 <div class="sp-pending-banner__actions">
-                  <button type="button" class="btn btn--sm tr2-modal-approve-btn" style="background:#005930;color:#ffffff;border:1px solid #005930;gap:5px;font-weight:600;">
-                    ${icon('check', 13)} Approve Trainee
+                  <button type="button" class="btn btn--sm tr2-modal-approve-btn" style="background:#005930;color:#ffffff;border:1px solid #005930;gap:6px;font-weight:600;padding:8px 14px;">
+                    ${icon('check', 14)} Approve Trainee
                   </button>
-                  <button type="button" class="btn btn--sm tr2-modal-reject-btn" style="background:#FFF1F2;color:#E11D48;border:1px solid #FECDD3;gap:4px;font-weight:600;">
-                    ${icon('x', 13)} Reject
+                  <button type="button" class="btn btn--sm tr2-modal-reject-btn" style="background:#FFF1F2;color:#E11D48;border:1px solid #FECDD3;gap:5px;font-weight:600;padding:8px 12px;">
+                    ${icon('x', 14)} Reject
                   </button>
                 </div>
               </div>
@@ -979,36 +1237,36 @@ export default function traineesPage(container) {
 
             <!-- Emergency & Leave Banner if applicable -->
             ${t.emergency_status && t.emergency_status !== 'none' ? `
-              <div style="background:rgba(239,68,68,0.05);border:1.5px solid rgba(239,68,68,0.25);border-left:4px solid #dc2626;border-radius:var(--radius-lg);padding:14px 16px;margin-bottom:var(--space-4);">
-                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-                  <div style="display:flex;align-items:flex-start;gap:10px;">
-                    <div style="width:34px;height:34px;border-radius:8px;background:rgba(239,68,68,0.12);color:#dc2626;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                      ${icon('alertTriangle', 18)}
+              <div style="background:rgba(239,68,68,0.05);border:1.5px solid rgba(239,68,68,0.25);border-left:4px solid #dc2626;border-radius:14px;padding:16px 18px;margin-bottom:20px;">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;">
+                  <div style="display:flex;align-items:flex-start;gap:12px;">
+                    <div style="width:38px;height:38px;border-radius:10px;background:rgba(239,68,68,0.12);color:#dc2626;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                      ${icon('alertTriangle', 20)}
                     </div>
                     <div>
-                      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                        <strong style="font-size:0.86rem;color:#b91c1c;">Emergency Notice / Medical Leave Active</strong>
-                        <span class="badge ${STATUS_BADGES[t.status]?.cls || 'badge--warning'}" style="font-size:0.68rem;padding:2px 6px;">
+                      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                        <strong style="font-size:0.92rem;color:#b91c1c;">Emergency Notice / Medical Leave Active</strong>
+                        <span class="badge ${STATUS_BADGES[t.status]?.cls || 'badge--warning'}" style="font-size:0.75rem;padding:3px 8px;">
                           ${t.status}
                         </span>
                       </div>
-                      <p style="margin:4px 0 0;font-size:0.78rem;color:var(--text-secondary);line-height:1.4;">
+                      <p style="margin:6px 0 0;font-size:0.84rem;color:var(--text-secondary);line-height:1.4;">
                         ${t.emergency_request?.type === 'permanent_withdrawal' ? 'Permanent OJT Stoppage Notice' : 'Temporary Leave of Absence'} &bull; Category: <strong>${(t.emergency_request?.category || '').replace(/_/g, ' ').toUpperCase()}</strong>
                       </p>
                       ${t.emergency_request?.has_fit_to_work ? `
-                        <div style="margin-top:6px;display:inline-flex;align-items:center;gap:6px;background:rgba(16,185,129,0.12);color:#065f46;border:1px solid rgba(16,185,129,0.3);padding:4px 8px;border-radius:6px;font-size:0.75rem;font-weight:600;">
-                          ${icon('shieldCheck', 14)} Fit-to-Work Clearance certificate submitted and awaiting review
+                        <div style="margin-top:8px;display:inline-flex;align-items:center;gap:6px;background:rgba(16,185,129,0.12);color:#065f46;border:1px solid rgba(16,185,129,0.3);padding:5px 10px;border-radius:6px;font-size:0.8rem;font-weight:600;">
+                          ${icon('shieldCheck', 15)} Fit-to-Work Clearance certificate submitted and awaiting review
                         </div>
                       ` : ''}
                       ${t.emergency_request?.reason ? `
-                        <div style="margin-top:6px;font-size:0.76rem;color:var(--text-primary);background:var(--bg-card);padding:6px 10px;border-radius:6px;border:1px solid var(--border-default);">
-                          <em>&ldquo;${t.emergency_request.reason}&rdquo;</em>
+                        <div style="margin-top:8px;font-size:0.82rem;color:var(--text-primary);background:var(--bg-card);padding:8px 12px;border-radius:8px;border:1px solid var(--border-default);">
+                          <em>&ldquo;${escapeHtml(t.emergency_request.reason)}&rdquo;</em>
                         </div>
                       ` : ''}
                     </div>
                   </div>
-                  <button class="btn btn--primary btn--sm tr2-modal-rev-emer-btn" style="gap:6px;background:${t.emergency_request?.has_fit_to_work ? '#059669' : '#dc2626'};border-color:${t.emergency_request?.has_fit_to_work ? '#059669' : '#dc2626'};font-size:0.74rem;">
-                    ${icon(t.emergency_request?.has_fit_to_work ? 'shieldCheck' : 'alertTriangle', 13)} ${t.emergency_request?.has_fit_to_work ? 'Inspect Fit-to-Work Clearance' : 'Review Emergency Decision'}
+                  <button class="btn btn--primary btn--sm tr2-modal-rev-emer-btn" style="gap:6px;background:${t.emergency_request?.has_fit_to_work ? '#059669' : '#dc2626'};border-color:${t.emergency_request?.has_fit_to_work ? '#059669' : '#dc2626'};font-size:0.82rem;font-weight:600;">
+                    ${icon(t.emergency_request?.has_fit_to_work ? 'shieldCheck' : 'alertTriangle', 14)} ${t.emergency_request?.has_fit_to_work ? 'Inspect Fit-to-Work Clearance' : 'Review Emergency Decision'}
                   </button>
                 </div>
               </div>
@@ -1016,41 +1274,41 @@ export default function traineesPage(container) {
 
             <!-- Pull-Out Status Banner if applicable -->
             ${t.pull_out_status && t.pull_out_status !== 'none' ? `
-              <div style="background:${t.pull_out_status === 'approved' ? 'rgba(16,185,129,0.06)' : 'rgba(245,158,11,0.06)'};border:1.5px solid ${t.pull_out_status === 'approved' ? 'rgba(16,185,129,0.3)' : 'rgba(245,158,11,0.3)'};border-left:4px solid ${t.pull_out_status === 'approved' ? '#059669' : '#d97706'};border-radius:var(--radius-lg);padding:14px 16px;margin-bottom:var(--space-4);">
-                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-                  <div style="display:flex;align-items:flex-start;gap:10px;">
-                    <div style="width:34px;height:34px;border-radius:8px;background:${t.pull_out_status === 'approved' ? 'rgba(16,185,129,0.12)' : 'rgba(245,158,11,0.12)'};color:${t.pull_out_status === 'approved' ? '#059669' : '#d97706'};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                      ${icon('fileText', 18)}
+              <div style="background:${t.pull_out_status === 'approved' ? 'rgba(16,185,129,0.06)' : 'rgba(245,158,11,0.06)'};border:1.5px solid ${t.pull_out_status === 'approved' ? 'rgba(16,185,129,0.3)' : 'rgba(245,158,11,0.3)'};border-left:4px solid ${t.pull_out_status === 'approved' ? '#059669' : '#d97706'};border-radius:14px;padding:16px 18px;margin-bottom:20px;">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;">
+                  <div style="display:flex;align-items:flex-start;gap:12px;">
+                    <div style="width:38px;height:38px;border-radius:10px;background:${t.pull_out_status === 'approved' ? 'rgba(16,185,129,0.12)' : 'rgba(245,158,11,0.12)'};color:${t.pull_out_status === 'approved' ? '#059669' : '#d97706'};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                      ${icon('fileText', 20)}
                     </div>
                     <div>
-                      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                        <strong style="font-size:0.86rem;color:${t.pull_out_status === 'approved' ? '#065F46' : '#92400e'};">
+                      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                        <strong style="font-size:0.92rem;color:${t.pull_out_status === 'approved' ? '#065F46' : '#92400e'};">
                           ${t.pull_out_status === 'approved' ? 'OJT Pull-Out Approved &middot; Cleared for Re-deployment' : (t.pull_out_status === 'pending_supervisor' ? 'Pull-Out Request Awaiting Your Review' : 'Pull-Out Under Dean Review')}
                         </strong>
-                        <span class="badge" style="font-size:0.68rem;padding:2px 6px;background:${t.pull_out_status === 'approved' ? '#D1FAE5' : '#FEF3C7'};color:${t.pull_out_status === 'approved' ? '#065F46' : '#92400e'};">
+                        <span class="badge" style="font-size:0.75rem;padding:3px 8px;background:${t.pull_out_status === 'approved' ? '#D1FAE5' : '#FEF3C7'};color:${t.pull_out_status === 'approved' ? '#065F46' : '#92400e'};">
                           ${t.pull_out_status.replace(/_/g, ' ').toUpperCase()}
                         </span>
                       </div>
-                      <p style="margin:4px 0 0;font-size:0.78rem;color:var(--text-secondary);line-height:1.4;">
-                        ${t.previous_company ? `Previous Host: <strong>${t.previous_company}</strong> &bull; ` : ''}Category: <strong>${(t.pull_out_request?.reason_category || '').replace(/_/g, ' ').toUpperCase()}</strong>
+                      <p style="margin:6px 0 0;font-size:0.84rem;color:var(--text-secondary);line-height:1.4;">
+                        ${t.previous_company ? `Previous Host: <strong>${escapeHtml(t.previous_company)}</strong> &bull; ` : ''}Category: <strong>${(t.pull_out_request?.reason_category || '').replace(/_/g, ' ').toUpperCase()}</strong>
                         ${t.pull_out_request?.credited_hours !== null && t.pull_out_request?.credited_hours !== undefined ? ` &bull; Credited: <strong>${t.pull_out_request.credited_hours} hrs</strong>` : ''}
                       </p>
                     </div>
                   </div>
-                  <button class="btn btn--outline btn--sm tr2-modal-rev-pullout-btn" style="gap:6px;color:#b91c1c;border-color:rgba(185,28,28,0.4);font-size:0.74rem;">
-                    ${icon('fileText', 13)} ${t.pull_out_status === 'pending_supervisor' ? 'Review & Recommend' : 'View Pull-Out Details'}
+                  <button class="btn btn--outline btn--sm tr2-modal-rev-pullout-btn" style="gap:6px;color:#b91c1c;border-color:rgba(185,28,28,0.4);font-size:0.82rem;font-weight:600;">
+                    ${icon('fileText', 14)} ${t.pull_out_status === 'pending_supervisor' ? 'Review & Recommend' : 'View Pull-Out Details'}
                   </button>
                 </div>
               </div>
             ` : ''}
 
             <!-- Hours Progress -->
-            <div class="tr2-modal-prog" style="background:var(--bg-secondary);padding:var(--space-4);border-radius:var(--radius-lg);margin-bottom:var(--space-4);">
-              <div class="tr2-modal-prog__labels" style="margin-bottom:6px;">
-                <span style="font-size:var(--text-xs);font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.04em;">OJT Logged Hours</span>
-                <strong style="color:${barColor};font-size:var(--text-sm);">${t.completedHours} / ${targetHours} hrs · ${pct}%${!t.hasPlacement ? ' <span style="font-size:0.75rem;font-weight:500;color:var(--text-tertiary);">(Target)</span>' : ''}</strong>
+            <div class="tr2-modal-prog" style="background:var(--bg-secondary);padding:18px 20px;border-radius:14px;margin-bottom:20px;">
+              <div class="tr2-modal-prog__labels" style="margin-bottom:8px;">
+                <span style="font-size:0.84rem;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.04em;">OJT Logged Hours</span>
+                <strong style="color:${barColor};font-size:0.95rem;font-weight:700;">${t.completedHours} / ${targetHours} hrs · ${pct}%${!t.hasPlacement ? ' <span style="font-size:0.8rem;font-weight:500;color:var(--text-tertiary);">(Target)</span>' : ''}</strong>
               </div>
-              <div class="tr2-prog-track tr2-prog-track--lg" style="height:8px;background:var(--border-default);">
+              <div class="tr2-prog-track" style="height:10px;background:var(--border-default);">
                 <div class="tr2-prog-fill" style="width:${pct}%;background:${barColor};"></div>
               </div>
             </div>
@@ -1066,11 +1324,11 @@ export default function traineesPage(container) {
               t.requirements?.status === 'verified'  ? 'rgba(22,163,74,0.22)' :
               t.requirements?.status === 'needs_revision' ? 'rgba(217,119,6,0.25)' :
               'rgba(2,132,199,0.22)'
-            };border-radius:var(--radius-lg);padding:14px 16px;margin-bottom:var(--space-5);">
+            };border-radius:14px;padding:18px 20px;margin-bottom:20px;">
               
-              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px;">
-                <div style="display:flex;align-items:center;gap:10px;min-width:0;">
-                  <div style="width:34px;height:34px;border-radius:8px;background:${
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px;">
+                <div style="display:flex;align-items:center;gap:12px;min-width:0;">
+                  <div style="width:40px;height:40px;border-radius:10px;background:${
                     t.requirements?.status === 'verified' ? 'rgba(22,163,74,0.12)' :
                     t.requirements?.status === 'submitted' ? 'rgba(37,99,235,0.12)' :
                     'rgba(2,132,199,0.12)'
@@ -1079,26 +1337,26 @@ export default function traineesPage(container) {
                     t.requirements?.status === 'submitted' ? '#2563eb' :
                     '#0284c7'
                   };display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                    ${icon(t.requirements?.status === 'verified' ? 'checkCircle' : 'folder', 18)}
+                    ${icon(t.requirements?.status === 'verified' ? 'checkCircle' : 'folder', 20)}
                   </div>
                   <div>
-                    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                      <span style="font-size:var(--text-xs);font-weight:700;color:var(--text-primary);text-transform:uppercase;letter-spacing:0.04em;">
-                        ${t.requirements?.title || 'OJT Requirements Packet'}
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                      <span style="font-size:0.88rem;font-weight:700;color:var(--text-primary);text-transform:uppercase;letter-spacing:0.04em;">
+                        ${escapeHtml(t.requirements?.title || 'OJT Requirements Packet')}
                       </span>
                       ${t.requirements ? `
                         <span class="badge ${
                           t.requirements.status === 'verified' ? 'badge--success' :
                           t.requirements.status === 'submitted' ? 'badge--info' :
                           t.requirements.status === 'needs_revision' ? 'badge--warning' : 'badge--neutral'
-                        }" style="font-size:0.65rem;text-transform:capitalize;font-weight:700;padding:1px 6px;">
+                        }" style="font-size:0.74rem;text-transform:capitalize;font-weight:700;padding:2px 8px;">
                           ${t.requirements.status.replace('_', ' ')}
                         </span>
                       ` : `
-                        <span class="badge badge--neutral" style="font-size:0.65rem;font-weight:600;">Not Assigned</span>
+                        <span class="badge badge--neutral" style="font-size:0.74rem;font-weight:600;padding:2px 8px;">Not Assigned</span>
                       `}
                     </div>
-                    <div style="font-size:0.75rem;color:var(--text-secondary);margin-top:2px;">
+                    <div style="font-size:0.84rem;color:var(--text-secondary);margin-top:3px;">
                       ${t.requirements?.due_date ? `Due Date: <strong>${t.requirements.due_date}</strong> &middot; ` : ''}
                       ${Array.isArray(t.requirements?.items) ? `${t.requirements.items.length} required documents` : 'No checklist items assigned yet'}
                     </div>
@@ -1107,31 +1365,31 @@ export default function traineesPage(container) {
 
                 <!-- Action Button in card -->
                 <div>
-                  <button type="button" class="btn btn--sm ${t.requirements?.status === 'submitted' ? 'btn--primary' : 'btn--outline'}" id="tr2-open-req-btn" style="gap:5px;font-size:0.75rem;">
+                  <button type="button" class="btn btn--sm ${t.requirements?.status === 'submitted' ? 'btn--primary' : 'btn--outline'}" id="tr2-open-req-btn" style="gap:6px;font-size:0.84rem;font-weight:600;padding:7px 14px;">
                     ${t.requirements
-                      ? (t.requirements.status === 'submitted' ? `${icon('checkSquare', 12)} Review Submission` : `${icon('list', 12)} Manage Packet`)
-                      : `${icon('plus', 12)} Assign Requirements`
+                      ? (t.requirements.status === 'submitted' ? `${icon('checkSquare', 14)} Review Submission` : `${icon('list', 14)} Manage Packet`)
+                      : `${icon('plus', 14)} Assign Requirements`
                     }
                   </button>
                 </div>
               </div>
 
               <!-- Drive link sub-box -->
-              <div style="background:var(--bg-card);border:1px solid var(--border-default);border-radius:8px;padding:8px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
-                <div style="display:flex;align-items:center;gap:6px;min-width:0;flex:1;">
-                  <span style="color:#0284c7;display:inline-flex;">${icon('externalLink', 12)}</span>
+              <div style="background:var(--bg-card);border:1px solid var(--border-default);border-radius:10px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+                <div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1;">
+                  <span style="color:#0284c7;display:inline-flex;">${icon('externalLink', 15)}</span>
                   <div style="min-width:0;">
                     ${(t.requirements?.drive_url || t.requirements_drive_url) ? `
-                      <a href="${t.requirements?.drive_url || t.requirements_drive_url}" target="_blank" rel="noopener" style="font-size:0.78rem;color:var(--text-primary);font-weight:600;text-decoration:underline;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${t.requirements?.drive_url || t.requirements_drive_url}">
-                        ${t.requirements?.drive_url || t.requirements_drive_url}
+                      <a href="${t.requirements?.drive_url || t.requirements_drive_url}" target="_blank" rel="noopener" style="font-size:0.86rem;color:var(--text-primary);font-weight:600;text-decoration:underline;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${t.requirements?.drive_url || t.requirements_drive_url}">
+                        ${escapeHtml(t.requirements?.drive_url || t.requirements_drive_url)}
                       </a>
                     ` : `
-                      <span style="font-size:0.76rem;color:var(--text-tertiary);">No Google Drive link submitted by student yet</span>
+                      <span style="font-size:0.84rem;color:var(--text-tertiary);">No Google Drive link submitted by student yet</span>
                     `}
                   </div>
                 </div>
                 ${(t.requirements?.drive_url || t.requirements_drive_url) ? `
-                  <a href="${t.requirements?.drive_url || t.requirements_drive_url}" target="_blank" rel="noopener" class="btn btn--ghost btn--xs" style="color:#0284c7;font-weight:600;font-size:0.72rem;gap:4px;white-space:nowrap;">
+                  <a href="${t.requirements?.drive_url || t.requirements_drive_url}" target="_blank" rel="noopener" class="btn btn--ghost btn--xs" style="color:#0284c7;font-weight:700;font-size:0.8rem;gap:5px;white-space:nowrap;">
                     Open Folder ↗
                   </a>
                 ` : ''}
@@ -1139,60 +1397,60 @@ export default function traineesPage(container) {
 
               <!-- Instructions / remarks snippet -->
               ${t.requirements?.supervisor_remarks ? `
-                <div style="margin-top:8px;font-size:0.73rem;color:#b45309;background:rgba(245,158,11,0.08);padding:6px 10px;border-radius:6px;border:1px solid rgba(245,158,11,0.2);">
-                  <strong>Last Revision Note:</strong> ${t.requirements.supervisor_remarks}
+                <div style="margin-top:10px;font-size:0.82rem;color:#b45309;background:rgba(245,158,11,0.08);padding:8px 12px;border-radius:8px;border:1px solid rgba(245,158,11,0.2);">
+                  <strong>Last Revision Note:</strong> ${escapeHtml(t.requirements.supervisor_remarks)}
                 </div>
               ` : ''}
             </div>
 
             <!-- Placement Details -->
             <div class="tr2-modal-section">
-              <h4 class="tr2-modal-sec-title">${icon('building', 14)} Placement Information</h4>
+              <h4 class="tr2-modal-sec-title">${icon('building', 16)} Placement Information</h4>
               ${placement.length ? `
                 <div class="tr2-detail-grid">
                   ${placement.map(([k, v]) => `
                     <div class="tr2-detail-row">
-                      <span style="color:var(--text-secondary);font-size:var(--text-xs);font-weight:500;">${k}</span>
-                      <strong style="color:var(--text-primary);font-size:var(--text-sm);font-weight:600;">${v}</strong>
+                      <span>${escapeHtml(k)}</span>
+                      <strong>${escapeHtml(v)}</strong>
                     </div>`).join('')}
                 </div>` : `
-                <div class="tr2-modal-empty" style="padding:var(--space-4);border:1px dashed var(--border-default);border-radius:var(--radius-lg);text-align:center;">
-                  <p class="text-tertiary text-sm" style="margin:0;">No OJT host company placement recorded yet.</p>
+                <div class="tr2-modal-empty" style="padding:18px;border:1px dashed var(--border-default);border-radius:12px;text-align:center;">
+                  <p class="text-tertiary" style="margin:0;font-size:0.88rem;">No OJT host company placement recorded yet.</p>
                 </div>`}
             </div>
 
             <!-- Flag alert -->
             ${t.flag ? `
-              <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);border-radius:var(--radius-md);padding:10px 14px;display:flex;align-items:center;gap:8px;color:#DC2626;font-size:var(--text-xs);margin-bottom:var(--space-4);">
-                ${icon('alertTriangle', 14)} <strong>Needs Review:</strong> Student time logs or progress require supervisor attention.
+              <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:10px;color:#DC2626;font-size:0.85rem;margin-bottom:20px;">
+                ${icon('alertTriangle', 16)} <strong>Needs Review:</strong> Student time logs or progress require supervisor attention.
               </div>` : ''}
 
             <!-- Daily Logs -->
             <div class="tr2-modal-section">
-              <h4 class="tr2-modal-sec-title">${icon('clock', 14)} Recent Time Logs</h4>
+              <h4 class="tr2-modal-sec-title">${icon('clock', 16)} Recent Daily Time Records</h4>
               <div class="tr2-logs">${logsHtml}</div>
             </div>
 
           </div><!-- /.modal__body -->
 
           <!-- Actions Footer (Pinned) -->
-          <div class="modal__footer" style="flex-shrink:0;border-top:1px solid var(--border-default);padding:var(--space-3) var(--space-6);display:flex;justify-content:flex-end;gap:8px;background:var(--bg-secondary);">
-            <button class="btn btn--outline btn--sm" id="modal-close-btn" type="button">Close</button>
+          <div class="modal__footer" style="flex-shrink:0;border-top:1px solid var(--border-default);padding:14px 24px;display:flex;justify-content:flex-end;gap:10px;background:var(--bg-secondary);">
+            <button class="btn btn--outline btn--sm" id="modal-close-btn" type="button" style="font-weight:600;font-size:0.86rem;">Close</button>
             ${t.approval_status === 'pending' ? `
-              <button type="button" class="btn btn--sm tr2-modal-footer-reject-btn" style="background:#FFF1F2;color:#E11D48;border:1px solid #FECDD3;gap:4px;font-weight:600;">
-                ${icon('x', 13)} Reject Registration
+              <button type="button" class="btn btn--sm tr2-modal-footer-reject-btn" style="background:#FFF1F2;color:#E11D48;border:1px solid #FECDD3;gap:5px;font-weight:600;font-size:0.86rem;">
+                ${icon('x', 14)} Reject Registration
               </button>
-              <button type="button" class="btn btn--primary btn--sm tr2-modal-footer-approve-btn" style="gap:5px;font-weight:600;background:#005930;border-color:#005930;">
-                ${icon('check', 13)} Approve Student
+              <button type="button" class="btn btn--primary btn--sm tr2-modal-footer-approve-btn" style="gap:6px;font-weight:600;background:#005930;border-color:#005930;font-size:0.86rem;">
+                ${icon('check', 14)} Approve Student
               </button>
             ` : `
               ${(t.company_user_id || (t.company && t.company !== '—')) ? `
-                <button type="button" class="btn btn--outline btn--sm tr2-modal-chat-co-btn" data-company-id="${t.company_user_id || ''}" style="gap:6px;color:#0284c7;border-color:rgba(2,132,199,0.35);" title="Message Host Company (${t.company || 'Company'})">
-                  ${icon('building', 13)} Message Company
+                <button type="button" class="btn btn--outline btn--sm tr2-modal-chat-co-btn" data-company-id="${t.company_user_id || ''}" style="gap:6px;color:#0284c7;border-color:rgba(2,132,199,0.35);font-size:0.86rem;font-weight:600;" title="Message Host Company (${escapeHtml(t.company || 'Company')})">
+                  ${icon('building', 14)} Message Company
                 </button>
               ` : ''}
-              <button type="button" class="btn btn--primary btn--sm tr2-modal-chat-btn" data-id="${t.id}" style="gap:6px;" title="Message Student (${t.name})">
-                ${icon('messageCircle', 13)} Message Student
+              <button type="button" class="btn btn--primary btn--sm tr2-modal-chat-btn" data-id="${t.id}" style="gap:6px;font-size:0.86rem;font-weight:600;" title="Message Student (${escapeHtml(t.name)})">
+                ${icon('messageCircle', 14)} Message Student
               </button>
             `}
           </div>
@@ -1332,7 +1590,7 @@ export default function traineesPage(container) {
     }
   }
 
-  // ── Reactive Real-Time Event Listener (Zero Hard Refresh) ──
+  // ── Reactive Real-Time Event Listener ──
   const onTraineesRefresh = () => {
     if (document.body.contains(container)) {
       loadTrainees();
@@ -1344,4 +1602,3 @@ export default function traineesPage(container) {
   container._refreshHandler = onTraineesRefresh;
   window.addEventListener('hireme:trainees-refresh', onTraineesRefresh);
 }
-

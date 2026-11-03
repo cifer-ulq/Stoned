@@ -959,25 +959,25 @@
     height: 17px !important;
   }
   .tr2-kpi__val {
-    font-size: 1.45rem !important;
+    font-size: 1.65rem !important;
   }
   .tr2-kpi__lbl {
-    font-size: 0.68rem !important;
+    font-size: 0.8rem !important;
   }
   .tr2-table-card {
-    border-radius: var(--radius-lg) !important;
+    border-radius: 14px !important;
   }
   .tr2-table th {
-    padding: 9px 12px !important;
-    font-size: 0.64rem !important;
+    padding: 12px 14px !important;
+    font-size: 0.78rem !important;
   }
   .tr2-table td {
-    padding: 10px 12px !important;
-    font-size: 0.72rem !important;
+    padding: 14px 16px !important;
+    font-size: 0.88rem !important;
   }
   .tr2-badge {
-    font-size: 0.66rem !important;
-    padding: 2px 7px !important;
+    font-size: 0.76rem !important;
+    padding: 4px 10px !important;
   }
   .tr2-table-footer {
     flex-direction: column !important;
