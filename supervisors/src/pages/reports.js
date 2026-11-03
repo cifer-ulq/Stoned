@@ -1073,6 +1073,14 @@ function injectStyles() {
   }
   .an-seg-btn--active svg { opacity: 1; color: #005930; }
 
+  /* ── Content Root & Row Spacing ── */
+  #an-root {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    width: 100%;
+  }
+
   /* ── Tab Panes ── */
   .an-tab-pane {
     display: flex;
