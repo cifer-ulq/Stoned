@@ -1,7 +1,6 @@
 /* ==========================================================================
    OJT Analysis & Insights — Supervisor Portal
    Executive Analytical Suite & Reporting Center
-   Clean, Neat, Polished UI/UX
    ========================================================================== */
 
 import { icon } from '../components/icons.js';
@@ -10,30 +9,11 @@ import { getState } from '../store.js';
 
 const PALETTE = ['#005930', '#059669', '#0284C7', '#D97706', '#7C3AED', '#0D9488', '#E11D48', '#4F46E5'];
 
-const PROGRAM_ACRONYMS = {
-  'Bachelor of Science in Information Technology': 'BSIT',
-  'Bachelor of Science in Computer Science': 'BSCS',
-  'Bachelor of Science in Information Systems': 'BSIS',
-  'Bachelor of Science in Entertainment and Multimedia Computing': 'BSEMC',
-  'Bachelor of Science in Industrial Technology': 'BSIndTech',
-  'Bachelor of Science in Hospitality Management': 'BSHM',
-  'Bachelor of Science in Tourism Management': 'BSTM',
-  'Bachelor of Science in Business Administration': 'BSBA',
-  'Bachelor of Science in Accountancy': 'BSA',
-  'Bachelor of Secondary Education': 'BSED',
-  'Bachelor of Elementary Education': 'BEED',
-};
-
-function shortenProgram(str = '') {
-  if (!str) return '—';
-  return PROGRAM_ACRONYMS[str] || str;
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Primitives & Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-function donutSvg(pct, color = '#059669', size = 114, stroke = 10) {
+function donutSvg(pct, color = '#059669', size = 110, stroke = 10) {
   const r    = (size - stroke) / 2;
   const circ = 2 * Math.PI * r;
   const fill = circ * (Math.min(100, Math.max(0, pct)) / 100);
@@ -108,9 +88,9 @@ function renderSkeleton() {
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px">
         ${sk(115)}${sk(115)}${sk(115)}${sk(115)}
       </div>
-      <div style="margin-top:16px">${sk(65)}</div>
+      <div style="margin-top:16px">${sk(80)}</div>
       <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:20px;margin-top:20px">
-        ${sk(300)}${sk(300)}
+        ${sk(320)}${sk(320)}
       </div>
     </div>`;
 }
@@ -168,22 +148,7 @@ export default function analyticsPage(container) {
             <span>Print Report</span>
           </button>
           <button class="an-btn-refresh" id="an-refresh-btn" title="Refresh metrics from server">
-            ${icon('refreshCw', 15)}
-          </button>
-        </div>
-      </div>
-
-      <!-- Segmented Tab Navigation -->
-      <div class="an-nav-bar">
-        <div class="an-segmented" role="tablist">
-          <button class="an-seg-btn an-seg-btn--active" data-tab="overview" role="tab" aria-selected="true">
-            ${icon('layout', 15)} <span>Overview &amp; Trends</span>
-          </button>
-          <button class="an-seg-btn" data-tab="attendance" role="tab" aria-selected="false">
-            ${icon('clipboardCheck', 15)} <span>Attendance Ledger</span>
-          </button>
-          <button class="an-seg-btn" data-tab="demographics" role="tab" aria-selected="false">
-            ${icon('pieChart', 15)} <span>Cohort Demographics</span>
+            ${icon('refreshCw', 14)}
           </button>
         </div>
       </div>
@@ -268,7 +233,7 @@ async function loadAnalytics(container) {
       label: 'Active Trainees',
       val: k.activeTrainees,
       sub: `${k.totalEndorsed} total endorsed to date`,
-      trend: k.totalEndorsed > k.activeTrainees ? `${k.totalEndorsed - k.activeTrainees} completed cohort` : '100% active deployment',
+      trend: `${Math.max(0, k.totalEndorsed - k.activeTrainees)} completed cohort`,
       icon: 'users',
       color: '#005930',
       badgeClass: 'an-hero-badge--good'
@@ -322,38 +287,38 @@ async function loadAnalytics(container) {
     </div>
   `;
 
-  // ── 2. Automated Executive Diagnostic Summary ──────────────────────────────
-  const diagnosticBanner = `
-    <div class="an-diagnostic-grid">
-      <div class="an-diagnostic-card">
-        <div class="an-diagnostic-card__icon an-diagnostic-card__icon--good">${icon('checkCircle2', 18)}</div>
-        <div class="an-diagnostic-card__content">
-          <div class="an-diagnostic-card__title">Cohort Pacing Health</div>
-          <div class="an-diagnostic-card__sub">
-            <strong>${onTrackPct}% on-schedule</strong> · ${onTrackCount} of ${totalTrainees} trainees meeting benchmark hours
-          </div>
+  // ── 2. Three Modular Executive Insight Cards (Matching Reference) ─────────
+  const insightCardsHtml = `
+    <div class="an-insights-grid">
+      <div class="an-insight-card">
+        <div class="an-insight-card__icon">
+          ${icon('bell', 20)}
+        </div>
+        <div class="an-insight-card__content">
+          <div class="an-insight-card__title">Cohort Pacing Health</div>
+          <div class="an-insight-card__desc"><strong>${onTrackPct}% on-schedule</strong> · ${onTrackCount} of ${totalTrainees} trainees meeting benchmark hours</div>
         </div>
       </div>
 
-      <div class="an-diagnostic-card">
-        <div class="an-diagnostic-card__icon ${inSitePct >= 90 ? 'an-diagnostic-card__icon--good' : 'an-diagnostic-card__icon--warn'}">${icon('shieldCheck', 18)}</div>
-        <div class="an-diagnostic-card__content">
-          <div class="an-diagnostic-card__title">Geofence Integrity</div>
-          <div class="an-diagnostic-card__sub">
-            <strong>${inSitePct}% verified in-site</strong> · ${locationStats.inSite} verified check-ins at host worksite
-          </div>
+      <div class="an-insight-card">
+        <div class="an-insight-card__icon">
+          ${icon('shieldCheck', 20)}
+        </div>
+        <div class="an-insight-card__content">
+          <div class="an-insight-card__title">Geofence Integrity</div>
+          <div class="an-insight-card__desc"><strong>${inSitePct}% verified in-site</strong> · ${locationStats.inSite.toLocaleString()} verified check-ins at host worksite</div>
         </div>
       </div>
 
-      <div class="an-diagnostic-card">
-        <div class="an-diagnostic-card__icon ${totalActionRequired > 0 ? 'an-diagnostic-card__icon--urgent' : 'an-diagnostic-card__icon--good'}">${icon(totalActionRequired > 0 ? 'alertTriangle' : 'checkCircle', 18)}</div>
-        <div class="an-diagnostic-card__content">
-          <div class="an-diagnostic-card__title">Supervisory Priority</div>
-          <div class="an-diagnostic-card__sub">
-            ${totalActionRequired > 0
-              ? `<strong style="color:#EF4444">${totalActionRequired} items need action</strong> · ${k.pendingLetters} letters, ${k.flaggedCount} flagged`
-              : '<strong>All trainees compliant</strong> · No attendance flags or unverified logs'}
-          </div>
+      <div class="an-insight-card">
+        <div class="an-insight-card__icon">
+          ${icon('checkCircle', 20)}
+        </div>
+        <div class="an-insight-card__content">
+          <div class="an-insight-card__title">Supervisory Priority</div>
+          <div class="an-insight-card__desc">${totalActionRequired > 0 
+            ? `<strong style="color:#D97706">${totalActionRequired} items require action</strong> · ${k.pendingLetters} letters, ${k.flaggedCount} flagged trainees`
+            : '<strong>All trainees compliant</strong> · No attendance flags or unverified logs'}</div>
         </div>
       </div>
     </div>
@@ -408,7 +373,7 @@ async function loadAnalytics(container) {
     `;
   }
 
-  // ── 4. Interactive Daily Attendance Velocity Chart ─────────────────────────
+  // ── 4. Interactive SVG Daily Attendance Velocity Chart ─────────────────────
   const sparkMax = Math.max(...last14Days.map(d => d.count), 1);
   const totalLogs = last14Days.reduce((s, d) => s + d.count, 0);
   const activeDaysCount = last14Days.filter(d => d.count > 0).length || 1;
@@ -436,44 +401,47 @@ async function loadAnalytics(container) {
       `)}
 
       <div class="an-chart-container">
-        <!-- Average Guideline across chart -->
-        <div class="an-chart-avg-line" style="bottom:${Math.min(90, Math.max(15, (Number(avgLogs) / sparkMax) * 82))}%"></div>
+        <!-- Average Guideline -->
+        <div class="an-chart-avg-line" style="bottom:${Math.min(92, Math.max(15, (Number(avgLogs) / sparkMax) * 82))}%">
+          <span class="an-chart-avg-label">Avg: ${avgLogs} logs/day</span>
+        </div>
 
         <div class="an-chart-columns">
           ${last14Days.map((d, idx) => {
             const h = sparkMax > 0 ? Math.max(6, Math.round((d.count / sparkMax) * 88)) : 6;
             const isToday = idx === last14Days.length - 1;
+            // Check if day name is Sat/Sun
             const isWeekend = d.date.startsWith('Sat') || d.date.startsWith('Sun');
 
             return `
-              <div class="an-col-wrap${isWeekend ? ' an-col-wrap--weekend' : ''}${isToday ? ' an-col-wrap--today' : ''}">
+              <div class="an-col-wrap${isWeekend ? ' an-col-wrap--weekend' : ''}${isToday ? ' an-col-wrap--today' : ''}" title="${d.date}: ${d.count} logs (${d.hours} hrs)">
                 <div class="an-col-track">
                   <div class="an-col-fill" style="height:${h}%;">
                     <div class="an-col-tooltip">
                       <strong>${d.count} logs</strong>
                       <span>${d.hours} hrs rendered</span>
-                      <small>${d.date}${isWeekend ? ' (Weekend)' : ''}</small>
+                      <small>${d.date}</small>
                     </div>
                   </div>
                 </div>
                 <div class="an-col-label">${d.date.replace(/\s+\d{4}/, '')}</div>
+                ${isWeekend ? '<span class="an-col-weekend-dot" title="Weekend">W</span>' : ''}
               </div>
             `;
           }).join('')}
         </div>
       </div>
       <div class="an-chart-footer">
-        <span class="an-chart-note">${icon('info', 13)} Lighter columns indicate non-working weekend cycles; active weekday attendance averages ${avgLogs} logs/day.</span>
+        <span class="an-chart-note">${icon('info', 13)} Note: Low log frequencies during weekends and official holidays reflect standard university rest cycles.</span>
       </div>
     </div>
   `;
 
-  // ── 5. Endorsement Pipeline Flow ───────────────────────────────────────────
-  const totalInPipeline = (funnel.pending || 0) + (funnel.endorsed || 0) + (funnel.rejected || 0);
+  // ── 5. Endorsement Pipeline Funnel ─────────────────────────────────────────
   const funnelSteps = [
-    { label: 'Pending Review',    val: funnel.pending,     color: '#D97706', step: 1, sub: 'Awaiting supervisor endorsement' },
-    { label: 'Letters Endorsed',  val: funnel.endorsed,    color: '#0284C7', step: 2, sub: 'Endorsement issued to company' },
-    { label: 'OJT Started',       val: funnel.ojt_started, color: '#005930', step: 3, sub: 'Accepted and rendering hours' },
+    { label: 'Pending Review',    val: funnel.pending,     color: '#D97706', step: 1, sub: 'Needs supervisor signature' },
+    { label: 'Letters Endorsed',  val: funnel.endorsed,    color: '#0284C7', step: 2, sub: 'Approved for interview/matching' },
+    { label: 'OJT Started',       val: funnel.ojt_started, color: '#005930', step: 3, sub: 'Actively clocking hours' },
     { label: 'Rejected / Paused', val: funnel.rejected,    color: '#E11D48', step: 4, sub: 'Application closed or withdrawn' },
   ];
   const funnelMax = Math.max(...funnelSteps.map(s => s.val), 1);
@@ -482,9 +450,25 @@ async function loadAnalytics(container) {
     <div class="an-card">
       ${cardHead('gitCommit', 'Endorsement Pipeline', 'Cohort progression from placement application to active internship')}
       <div class="an-funnel-stack">
-        ${funnelSteps.map(s => {
-          const w = Math.max(3, Math.round((s.val / funnelMax) * 100));
+        ${funnelSteps.map((s, i) => {
+          const w = Math.max(5, Math.round((s.val / funnelMax) * 100));
+          let convLabel = null;
+          if (i === 1) {
+            convLabel = funnel.pending === 0 ? '100% processed' : `${funnel.endorsed} endorsed`;
+          } else if (i === 2) {
+            const rate = funnel.endorsed > 0 ? Math.round((funnel.ojt_started / funnel.endorsed) * 100) : 100;
+            convLabel = `${rate}% deployment`;
+          } else if (i === 3 && funnel.rejected > 0) {
+            convLabel = `${funnel.rejected} archived`;
+          }
+
           return `
+            ${convLabel ? `
+              <div class="an-funnel-connector">
+                <div class="an-funnel-stem"></div>
+                <span class="an-funnel-conversion">${convLabel}</span>
+              </div>
+            ` : ''}
             <div class="an-funnel-row">
               <div class="an-funnel-meta">
                 <span class="an-funnel-num" style="background:${s.color}18;color:${s.color}">${s.step}</span>
@@ -514,10 +498,10 @@ async function loadAnalytics(container) {
       <div class="an-loc-content">
         <div class="an-loc-donut-area">
           <div class="an-donut-container">
-            ${donutSvg(inSitePct, '#059669', 114, 10)}
+            ${donutSvg(inSitePct, '#059669', 115, 11)}
             <div class="an-donut-inner">
               <span class="an-donut-pct" style="color:#059669">${inSitePct}%</span>
-              <span class="an-donut-sub">On-Site</span>
+              <span class="an-donut-sub">Verified On-Site</span>
             </div>
           </div>
         </div>
@@ -560,30 +544,29 @@ async function loadAnalytics(container) {
   // ── 7. Top Performers Leaderboard ─────────────────────────────────────────
   const topPerformersCard = `
     <div class="an-card">
-      ${cardHead('award', 'Top Performing Trainees', 'Leading students by cumulative hours completed towards requirement')}
+      ${cardHead('award', 'Top Performing Trainees', 'Leading students by cumulative hours completed towards their requirement')}
       ${topPerformers && topPerformers.length ? `
         <div class="an-top-stack">
           ${topPerformers.map((t, idx) => {
             const medals = ['🥇', '🥈', '🥉'];
             const ini = (t.name || 'Student').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
             const barColor = t.pct >= 80 ? '#059669' : t.pct >= 40 ? '#005930' : '#0284C7';
-            const programCode = shortenProgram(t.course);
 
             return `
               <div class="an-top-row">
                 <div class="an-top-rank">${medals[idx] || `<span class="an-top-number">#${idx + 1}</span>`}</div>
                 <div class="an-top-avatar"><span>${ini}</span></div>
                 <div class="an-top-details">
-                  <span class="an-top-name" title="${t.name}">${t.name}</span>
-                  <span class="an-top-sub" title="${t.course} · ${t.company}">${programCode} · ${t.company}</span>
+                  <span class="an-top-name">${t.name}</span>
+                  <span class="an-top-sub">${t.course} · ${t.company}</span>
                 </div>
                 <div class="an-top-meter">
+                  <div class="an-top-track">
+                    <div class="an-top-fill" style="width:${t.pct}%;background:${barColor}"></div>
+                  </div>
                   <div class="an-top-stats">
                     <strong style="color:${barColor}">${t.pct}%</strong>
                     <span>${t.completedHours} / ${t.requiredHours} hrs</span>
-                  </div>
-                  <div class="an-top-track">
-                    <div class="an-top-fill" style="width:${t.pct}%;background:${barColor}"></div>
                   </div>
                 </div>
               </div>
@@ -635,7 +618,7 @@ async function loadAnalytics(container) {
               const pctVal = Math.round((count / max) * 100);
               return `
                 <div class="an-dist-row">
-                  <span class="an-dist-label" title="${name}">${shortenProgram(name)}</span>
+                  <span class="an-dist-label" title="${name}">${name}</span>
                   <div class="an-dist-track">
                     <div class="an-dist-fill" style="width:${pctVal}%;background:${color}"></div>
                   </div>
@@ -709,75 +692,39 @@ async function loadAnalytics(container) {
     </div>
   `;
 
-  // ── Assemble Final Executive Layout with Tab Views ─────────────────────────
+  // ── Assemble Final Executive Layout ────────────────────────────────────────
   root.innerHTML = `
     <!-- Top Hero KPIs -->
     ${heroGridHtml}
 
-    <!-- Executive Diagnostic Banner -->
-    ${diagnosticBanner}
+    <!-- Three Executive Insight Cards -->
+    ${insightCardsHtml}
 
     <!-- Priority Alerts (If any action needed) -->
     ${priorityAlertHtml}
 
-    <!-- Tab View 1: Overview & Trends -->
-    <div class="an-tab-pane an-tab-pane--active" id="pane-overview">
-      <div class="an-layout-row an-layout-row--velocity">
-        ${attendanceVelocityCard}
-        ${locCard}
-      </div>
-
-      <div class="an-layout-row">
-        ${funnelCard}
-        ${topPerformersCard}
-      </div>
+    <!-- Main Analytics Grid: Attendance Velocity & Location Compliance -->
+    <div class="an-layout-row an-layout-row--velocity">
+      ${attendanceVelocityCard}
+      ${locCard}
     </div>
 
-    <!-- Tab View 2: Attendance Ledger -->
-    <div class="an-tab-pane" id="pane-attendance" style="display:none">
-      ${recentLogsCard}
+    <!-- Secondary Row: Pipeline Funnel & Top Performers -->
+    <div class="an-layout-row">
+      ${funnelCard}
+      ${topPerformersCard}
     </div>
 
-    <!-- Tab View 3: Cohort Demographics -->
-    <div class="an-tab-pane" id="pane-demographics" style="display:none">
-      <div class="an-layout-row an-layout-row--3col">
-        ${hoursBracketCard}
-        ${renderDistCard('Academic Programs', 'bookOpen', courseEntries, maxCourse)}
-        ${renderDistCard('Host Partner Companies', 'building', companyEntries, maxCompany)}
-      </div>
+    <!-- Progress Brackets & Distributions -->
+    <div class="an-layout-row an-layout-row--3col">
+      ${hoursBracketCard}
+      ${renderDistCard('Academic Programs', 'bookOpen', courseEntries, maxCourse)}
+      ${renderDistCard('Host Partner Companies', 'building', companyEntries, maxCompany)}
     </div>
+
+    <!-- Full Width Attendance Ledger -->
+    ${recentLogsCard}
   `;
-
-  // Segmented tab navigation listener
-  const segBtns = container.querySelectorAll('.an-seg-btn');
-  const panes = {
-    overview: container.querySelector('#pane-overview'),
-    attendance: container.querySelector('#pane-attendance'),
-    demographics: container.querySelector('#pane-demographics')
-  };
-
-  segBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      segBtns.forEach(b => {
-        b.classList.remove('an-seg-btn--active');
-        b.setAttribute('aria-selected', 'false');
-      });
-      btn.classList.add('an-seg-btn--active');
-      btn.setAttribute('aria-selected', 'true');
-
-      const targetTab = btn.dataset.tab;
-      Object.entries(panes).forEach(([key, pane]) => {
-        if (!pane) return;
-        if (key === targetTab) {
-          pane.style.display = 'flex';
-          pane.classList.add('an-fade-enter');
-          setTimeout(() => pane.classList.remove('an-fade-enter'), 250);
-        } else {
-          pane.style.display = 'none';
-        }
-      });
-    });
-  });
 
   // Table status filter interactions
   const filterBtns = container.querySelectorAll('.an-table-filter');
@@ -808,11 +755,11 @@ function injectStyles() {
   const s = document.createElement('style');
   s.id = 'an-styles';
   s.textContent = `
-  /* ── Layout & Typography ── */
+  /* ── Page Layout ── */
   .an-page {
     display: flex;
     flex-direction: column;
-    gap: var(--space-4);
+    gap: 28px;
     padding-bottom: var(--space-12);
   }
 
@@ -860,7 +807,7 @@ function injectStyles() {
     justify-content: space-between;
     gap: var(--space-4);
     flex-wrap: wrap;
-    padding: var(--space-2) 0 0;
+    padding: var(--space-2) 0 var(--space-1);
   }
   .an-header__left {
     display: flex;
@@ -933,7 +880,7 @@ function injectStyles() {
     display: inline-flex;
     align-items: center;
     gap: 7px;
-    padding: 8px 15px;
+    padding: 8px 14px;
     font-size: 0.82rem;
     font-weight: 600;
     color: var(--text-primary);
@@ -959,8 +906,8 @@ function injectStyles() {
     color: #ffffff;
   }
   .an-btn-refresh {
-    width: 38px;
-    height: 38px;
+    width: 36px;
+    height: 36px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -984,73 +931,17 @@ function injectStyles() {
     to   { transform: rotate(360deg); }
   }
 
-  /* ── Segmented Tab Bar ── */
-  .an-nav-bar {
-    display: flex;
-    align-items: center;
-    border-bottom: 1px solid var(--border-default);
-    padding-bottom: var(--space-2);
-    margin-top: 2px;
-  }
-  .an-segmented {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    background: var(--bg-secondary);
-    padding: 4px;
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--border-default);
-  }
-  .an-seg-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    padding: 7px 16px;
-    border: none;
-    background: transparent;
-    border-radius: calc(var(--radius-lg) - 3px);
-    font-size: 0.82rem;
-    font-weight: 500;
-    color: var(--text-secondary);
-    cursor: pointer;
-    transition: all var(--duration-fast);
-    white-space: nowrap;
-  }
-  .an-seg-btn svg { opacity: 0.7; }
-  .an-seg-btn:hover { color: var(--text-primary); }
-  .an-seg-btn--active {
-    background: var(--bg-elevated);
-    color: #005930;
-    font-weight: 600;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-  }
-  .an-seg-btn--active svg { opacity: 1; color: #005930; }
-
-  /* ── Tab Panes ── */
-  .an-tab-pane {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-  }
-  .an-fade-enter {
-    animation: an-fade-in 0.22s cubic-bezier(0.4, 0, 0.2, 1) both;
-  }
-  @keyframes an-fade-in {
-    from { opacity: 0; transform: translateY(4px); }
-    to   { opacity: 1; transform: none; }
-  }
-
   /* ── 4-Column Hero KPI Grid ── */
   .an-hero-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: var(--space-3);
+    gap: 20px;
   }
   .an-hero-card {
     background: var(--bg-elevated);
     border: 1px solid var(--border-default);
     border-radius: var(--radius-xl);
-    padding: var(--space-4) var(--space-5);
+    padding: 22px 24px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -1067,16 +958,16 @@ function injectStyles() {
     align-items: center;
     justify-content: space-between;
     gap: var(--space-2);
-    margin-bottom: var(--space-2);
+    margin-bottom: 8px;
   }
   .an-hero-card__label {
-    font-size: 0.82rem;
+    font-size: 0.84rem;
     font-weight: 600;
     color: var(--text-secondary);
   }
   .an-hero-card__icon {
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
     border-radius: var(--radius-lg);
     display: flex;
     align-items: center;
@@ -1084,17 +975,17 @@ function injectStyles() {
     flex-shrink: 0;
   }
   .an-hero-card__value {
-    font-size: 1.85rem;
+    font-size: 1.95rem;
     font-weight: 700;
     letter-spacing: -0.025em;
     color: var(--text-primary);
     line-height: 1.15;
-    margin-bottom: var(--space-2);
+    margin-bottom: 12px;
   }
   .an-hero-card__footer {
     display: flex;
     flex-direction: column;
-    gap: 3px;
+    gap: 4px;
   }
   .an-hero-badge {
     display: inline-flex;
@@ -1110,53 +1001,62 @@ function injectStyles() {
   .an-hero-badge--warn   { background: #D9770614; color: #D97706; }
   .an-hero-badge--urgent { background: #EF444414; color: #EF4444; }
   .an-hero-card__sub {
-    font-size: 0.74rem;
+    font-size: 0.75rem;
     color: var(--text-tertiary);
   }
 
-  /* ── Automated Diagnostic Banner (Card Format) ── */
-  .an-diagnostic-grid {
+  /* ── 3-Column Executive Insights Cards (Modular & Spacious) ── */
+  .an-insights-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: var(--space-3);
+    gap: 20px;
   }
-  .an-diagnostic-card {
-    display: flex;
-    align-items: flex-start;
-    gap: var(--space-3);
+  .an-insight-card {
     background: var(--bg-elevated);
     border: 1px solid var(--border-default);
-    border-radius: var(--radius-lg);
-    padding: var(--space-3) var(--space-4);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+    border-radius: var(--radius-xl);
+    padding: 18px 22px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    transition: transform var(--duration-fast), box-shadow var(--duration-fast), border-color var(--duration-fast);
   }
-  .an-diagnostic-card__icon {
-    width: 32px;
-    height: 32px;
-    border-radius: var(--radius-md);
+  .an-insight-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
+    border-color: var(--border-strong);
+  }
+  .an-insight-card__icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(5, 150, 105, 0.12);
+    color: #059669;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
   }
-  .an-diagnostic-card__icon--good   { background: #05966914; color: #059669; }
-  .an-diagnostic-card__icon--warn   { background: #D9770614; color: #D97706; }
-  .an-diagnostic-card__icon--urgent { background: #EF444414; color: #EF4444; }
-  .an-diagnostic-card__content {
-    min-width: 0;
+  .an-insight-card__content {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 3px;
+    min-width: 0;
   }
-  .an-diagnostic-card__title {
-    font-size: 0.8rem;
+  .an-insight-card__title {
+    font-size: 0.92rem;
     font-weight: 700;
     color: var(--text-primary);
+    line-height: 1.2;
   }
-  .an-diagnostic-card__sub {
-    font-size: 0.75rem;
+  .an-insight-card__desc {
+    font-size: 0.8rem;
     color: var(--text-secondary);
-    line-height: 1.35;
+    line-height: 1.4;
+  }
+  .an-insight-card__desc strong {
+    color: var(--text-primary);
   }
 
   /* ── Priority Action Card ── */
@@ -1268,13 +1168,16 @@ function injectStyles() {
   .an-layout-row {
     display: grid;
     grid-template-columns: 1.4fr 1fr;
-    gap: var(--space-4);
+    gap: 24px;
   }
   .an-layout-row--velocity {
     grid-template-columns: 1.55fr 1fr;
+    gap: 24px;
   }
   .an-layout-row--3col {
+    display: grid;
     grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
   }
 
   /* ── Clean Card Shell ── */
@@ -1282,25 +1185,22 @@ function injectStyles() {
     background: var(--bg-elevated);
     border: 1px solid var(--border-default);
     border-radius: var(--radius-xl);
-    padding: var(--space-4) var(--space-5);
+    padding: 24px 26px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
     display: flex;
     flex-direction: column;
-    gap: var(--space-3);
+    gap: 22px;
   }
   .an-card--flush {
     padding: 0;
     overflow: hidden;
   }
   .an-card--flush .an-card__head {
-    padding: var(--space-4) var(--space-5);
-    border-bottom: 1px solid var(--border-default);
-  }
-  .an-card__head {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--space-3);
+    gap: 16px;
+    margin-bottom: 2px;
   }
   .an-card__head-left {
     display: flex;
@@ -1309,8 +1209,8 @@ function injectStyles() {
     min-width: 0;
   }
   .an-card__head-icon {
-    width: 34px;
-    height: 34px;
+    width: 36px;
+    height: 36px;
     border-radius: var(--radius-md);
     background: #00593014;
     color: #005930;
@@ -1370,8 +1270,8 @@ function injectStyles() {
   .an-chart-container {
     position: relative;
     width: 100%;
-    height: 175px;
-    padding-top: var(--space-2);
+    height: 205px;
+    padding-top: var(--space-4);
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
@@ -1383,12 +1283,21 @@ function injectStyles() {
     border-bottom: 1px dashed var(--border-strong);
     pointer-events: none;
     z-index: 1;
-    opacity: 0.6;
+    display: flex;
+    justify-content: flex-end;
+  }
+  .an-chart-avg-label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    background: var(--bg-elevated);
+    padding: 0 4px;
+    transform: translateY(-50%);
   }
   .an-chart-columns {
     display: flex;
     align-items: flex-end;
-    gap: 8px;
+    gap: 10px;
     height: 100%;
     position: relative;
     z-index: 2;
@@ -1410,10 +1319,10 @@ function injectStyles() {
     justify-content: center;
   }
   .an-col-fill {
-    width: 72%;
-    max-width: 26px;
+    width: 70%;
+    max-width: 28px;
     background: #005930;
-    border-radius: 4px 4px 1px 1px;
+    border-radius: 5px 5px 2px 2px;
     position: relative;
     transition: opacity var(--duration-fast), background var(--duration-fast);
   }
@@ -1422,7 +1331,7 @@ function injectStyles() {
   }
   .an-col-wrap--weekend .an-col-fill {
     background: var(--border-strong);
-    opacity: 0.35;
+    opacity: 0.45;
   }
   .an-col-wrap--today .an-col-fill {
     background: #059669;
@@ -1436,6 +1345,14 @@ function injectStyles() {
   .an-col-wrap--today .an-col-label {
     font-weight: 700;
     color: #059669;
+  }
+  .an-col-weekend-dot {
+    font-size: 0.62rem;
+    color: var(--text-tertiary);
+    background: var(--bg-secondary);
+    padding: 1px 4px;
+    border-radius: 3px;
+    margin-top: -3px;
   }
   .an-col-tooltip {
     position: absolute;
@@ -1466,7 +1383,8 @@ function injectStyles() {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding-top: var(--space-2);
+    padding-top: 14px;
+    margin-top: 6px;
     border-top: 1px solid var(--border-default);
   }
   .an-chart-note {
@@ -1481,7 +1399,7 @@ function injectStyles() {
   .an-loc-content {
     display: flex;
     align-items: center;
-    gap: var(--space-5);
+    gap: 36px;
   }
   .an-loc-donut-area {
     display: flex;
@@ -1490,8 +1408,8 @@ function injectStyles() {
   }
   .an-donut-container {
     position: relative;
-    width: 114px;
-    height: 114px;
+    width: 115px;
+    height: 115px;
   }
   .an-donut-inner {
     position: absolute;
@@ -1502,7 +1420,7 @@ function injectStyles() {
     justify-content: center;
   }
   .an-donut-pct {
-    font-size: 1.45rem;
+    font-size: 1.4rem;
     font-weight: 700;
     line-height: 1;
   }
@@ -1517,7 +1435,7 @@ function injectStyles() {
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 16px;
   }
   .an-loc-item {
     display: flex;
@@ -1546,7 +1464,7 @@ function injectStyles() {
     flex-shrink: 0;
   }
   .an-loc-progress {
-    height: 6px;
+    height: 7px;
     background: var(--bg-secondary);
     border-radius: var(--radius-full);
     overflow: hidden;
@@ -1561,14 +1479,14 @@ function injectStyles() {
   .an-funnel-stack {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 4px;
   }
   .an-funnel-row {
     display: grid;
-    grid-template-columns: 170px 1fr 80px;
+    grid-template-columns: 160px 1fr 85px;
     align-items: center;
-    gap: var(--space-3);
-    padding: 6px 0;
+    gap: 16px;
+    padding: 10px 0;
   }
   .an-funnel-meta {
     display: flex;
@@ -1600,10 +1518,12 @@ function injectStyles() {
   .an-funnel-sub {
     font-size: 0.7rem;
     color: var(--text-tertiary);
-    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .an-funnel-bar-track {
-    height: 18px;
+    height: 22px;
     background: var(--bg-secondary);
     border-radius: var(--radius-sm);
     overflow: hidden;
@@ -1628,19 +1548,37 @@ function injectStyles() {
     font-size: 0.72rem;
     color: var(--text-tertiary);
   }
+  .an-funnel-connector {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 2px 0 2px 172px;
+  }
+  .an-funnel-stem {
+    width: 1px;
+    height: 10px;
+    background: var(--border-default);
+  }
+  .an-funnel-conversion {
+    font-size: 0.7rem;
+    color: var(--text-tertiary);
+    padding: 1px 7px;
+    border-radius: var(--radius-sm);
+    background: var(--bg-secondary);
+  }
 
   /* ── Top Performers ── */
   .an-top-stack {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
   }
   .an-top-row {
     display: grid;
-    grid-template-columns: 24px 32px 1fr 150px;
+    grid-template-columns: 28px 36px 1fr 180px;
     align-items: center;
-    gap: 10px;
-    padding: 6px 0;
+    gap: 14px;
+    padding: 10px 0;
     border-bottom: 1px solid var(--border-default);
   }
   .an-top-row:last-child {
@@ -1656,15 +1594,15 @@ function injectStyles() {
     color: var(--text-tertiary);
   }
   .an-top-avatar {
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
     background: #005930;
     color: #ffffff;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.75rem;
+    font-size: 0.8rem;
     font-weight: 700;
     flex-shrink: 0;
   }
@@ -1672,7 +1610,6 @@ function injectStyles() {
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 1px;
   }
   .an-top-name {
     font-size: 0.82rem;
@@ -1692,20 +1629,10 @@ function injectStyles() {
   .an-top-meter {
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    min-width: 0;
-  }
-  .an-top-stats {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.72rem;
-    color: var(--text-tertiary);
-  }
-  .an-top-stats strong {
-    font-weight: 700;
+    gap: 3px;
   }
   .an-top-track {
-    height: 6px;
+    height: 7px;
     background: var(--bg-secondary);
     border-radius: var(--radius-full);
     overflow: hidden;
@@ -1714,6 +1641,12 @@ function injectStyles() {
     height: 100%;
     border-radius: var(--radius-full);
     transition: width 0.8s ease;
+  }
+  .an-top-stats {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.72rem;
+    color: var(--text-tertiary);
   }
 
   /* ── Hours Brackets & Distributions ── */
@@ -1896,7 +1829,7 @@ function injectStyles() {
     .an-layout-row { grid-template-columns: 1fr; }
     .an-layout-row--velocity { grid-template-columns: 1fr; }
     .an-layout-row--3col { grid-template-columns: 1fr; }
-    .an-diagnostic-grid { grid-template-columns: 1fr; }
+    .an-insights-grid { grid-template-columns: 1fr; }
   }
   @media (max-width: 768px) {
     .an-hero-grid { grid-template-columns: 1fr; }
@@ -1905,12 +1838,13 @@ function injectStyles() {
     .an-loc-content { flex-direction: column; align-items: flex-start; }
     .an-velocity-legend { display: none; }
     .an-funnel-row { grid-template-columns: 120px 1fr 60px; }
+    .an-funnel-connector { padding-left: 130px; }
   }
 
   /* ── Print Stylesheet ── */
   @media print {
-    /* Hide navigation, sidebars, header buttons, tab bar */
-    .sidebar-left, .navbar, .mobile-bottom-nav, .an-header__actions, .an-nav-bar, .an-table-filter-group {
+    /* Hide navigation, sidebars, header buttons */
+    .sidebar-left, .navbar, .mobile-bottom-nav, .an-header__actions, .an-table-filter-group {
       display: none !important;
     }
     body, .an-page {
@@ -1921,9 +1855,6 @@ function injectStyles() {
     }
     .an-print-header {
       display: block !important;
-    }
-    .an-tab-pane {
-      display: flex !important;
     }
     .an-hero-grid {
       grid-template-columns: repeat(4, 1fr) !important;
