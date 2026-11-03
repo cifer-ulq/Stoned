@@ -397,29 +397,29 @@ function siteCard(co) {
         <div class="mon-site-card__title-col">
           <h3 class="mon-site-card__company" title="${escapeHtml(co.company || '')}">${escapeHtml(co.company || 'Host Company')}</h3>
           <p class="mon-site-card__role">
-            <span class="mon-role-ic">${icon('briefcase', 12)}</span>
+            <span class="mon-role-ic">${icon('briefcase', 13)}</span>
             <span>${escapeHtml(co.postingTitle || 'OJT Placement')}</span>
           </p>
         </div>
         <div class="mon-status-pill ${statusClass}">
-          ${icon(statusIcon, 11)} ${statusText}
+          ${icon(statusIcon, 12)} ${statusText}
         </div>
       </div>
 
       <!-- Address / Location Row -->
       <div class="mon-site-card__location" title="${escapeHtml(co.companyAddress || 'No address specified')}">
-        <span class="mon-loc-ic">${icon('mapPin', 12)}</span>
+        <span class="mon-loc-ic">${icon('mapPin', 13)}</span>
         <span class="mon-loc-text">${escapeHtml(co.companyAddress || 'Location on file')}</span>
       </div>
 
       <!-- Compact Metrics Badges -->
       <div class="mon-site-card__chips">
         <span class="mon-chip">
-          ${icon('users', 11)} <strong>${co.activeCount || students.length}</strong> Trainee${(co.activeCount || students.length) !== 1 ? 's' : ''}
+          ${icon('users', 12)} <strong>${co.activeCount || students.length}</strong> Trainee${(co.activeCount || students.length) !== 1 ? 's' : ''}
         </span>
         ${reqHrs > 0 ? `
           <span class="mon-chip">
-            ${icon('clock', 11)} <strong>${totalHrs}</strong> / ${reqHrs} hrs
+            ${icon('clock', 12)} <strong>${totalHrs}</strong> / ${reqHrs} hrs
           </span>
         ` : ''}
       </div>

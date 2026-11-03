@@ -16,6 +16,9 @@
   .ojts-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
   }
+  .mon-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
 }
 
 /* ── Large Desktop & Compact Desktops (<= 1200px) ── */
@@ -30,6 +33,9 @@
     grid-template-columns: repeat(2, 1fr);
   }
   .ojts-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  .mon-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
   .an-kpi-grid {
