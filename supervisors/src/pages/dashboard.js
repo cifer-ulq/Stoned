@@ -294,7 +294,7 @@ export default async function dashboardPage(container) {
           <div class="db-header__nav-group">
             <a href="#/trainees" class="db-btn-link">${icon('users', 14)} <span>Trainees</span></a>
             <a href="#/map"      class="db-btn-link">${icon('map', 14)} <span>Map View</span></a>
-            <a href="#/reports"  class="db-btn-link">${icon('barChart', 14)} <span>Analytics</span></a>
+            <a href="#/reports"  class="db-btn-link">${icon('barChart', 14)} <span>Analysis &amp; Insights</span></a>
           </div>
           <button class="db-btn-refresh" id="db-refresh-btn" title="Refresh data">
             ${icon('refreshCw', 14)}

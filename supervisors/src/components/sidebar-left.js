@@ -54,7 +54,7 @@ export function createSidebarLeft() {
       </a>
       <a class="sidebar-nav__item" href="#/reports" data-route="/reports">
         <span class="sidebar-nav__icon" style="background: rgba(99,102,241,0.12); color: #6366F1;">${icon('barChart', 20)}</span>
-        <span class="sidebar-nav__label">Analytics</span>
+        <span class="sidebar-nav__label">Analysis &amp; Insights</span>
       </a>
     </nav>
 

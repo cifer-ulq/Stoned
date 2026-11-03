@@ -58,8 +58,8 @@ export function createNavbar() {
           ${icon('clipboardCheck', 22)}
           <span class="navbar__tab-indicator"></span>
         </a>
-        <a class="navbar__tab" href="#/reports" data-route="/reports" title="Reports">
-          ${icon('fileText', 22)}
+        <a class="navbar__tab" href="#/reports" data-route="/reports" title="Analysis &amp; Insights">
+          ${icon('barChart2', 22)}
           <span class="navbar__tab-indicator"></span>
         </a>
       </nav>
@@ -250,9 +250,9 @@ export function createMobileBottomNav() {
       ${icon('clipboardCheck', 20)}
       <span>Grades</span>
     </a>
-    <a class="mobile-bottom-nav__tab" href="#/reports" data-route="/reports" title="Reports">
-      ${icon('fileText', 20)}
-      <span>Reports</span>
+    <a class="mobile-bottom-nav__tab" href="#/reports" data-route="/reports" title="Analysis &amp; Insights">
+      ${icon('barChart2', 20)}
+      <span>Insights</span>
     </a>
   `;
 

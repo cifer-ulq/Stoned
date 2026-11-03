@@ -1,23 +1,24 @@
-/* ===========================
-   OJT Analytics & Insights — Supervisor Portal
-   Clean, Neat, Executive Redesign
-   =========================== */
+/* ==========================================================================
+   OJT Analysis & Insights — Supervisor Portal
+   Executive Analytical Suite & Reporting Center
+   ========================================================================== */
 
 import { icon } from '../components/icons.js';
 import { apiGet } from '../api/client.js';
+import { getState } from '../store.js';
 
-const PALETTE = ['#005930', '#059669', '#0284C7', '#D97706', '#7C3AED', '#0D9488', '#E11D48'];
+const PALETTE = ['#005930', '#059669', '#0284C7', '#D97706', '#7C3AED', '#0D9488', '#E11D48', '#4F46E5'];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Primitives & Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-function donut(pct, color, size = 96, stroke = 9) {
+function donutSvg(pct, color = '#059669', size = 110, stroke = 10) {
   const r    = (size - stroke) / 2;
   const circ = 2 * Math.PI * r;
   const fill = circ * (Math.min(100, Math.max(0, pct)) / 100);
   return `
-    <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="transform:rotate(-90deg);display:block;flex-shrink:0">
+    <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" class="an-donut-svg" style="transform:rotate(-90deg);display:block;flex-shrink:0">
       <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="var(--border-default)" stroke-width="${stroke}"/>
       <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${color}" stroke-width="${stroke}"
         stroke-dasharray="${fill.toFixed(1)} ${circ.toFixed(1)}" stroke-linecap="round"
@@ -25,15 +26,11 @@ function donut(pct, color, size = 96, stroke = 9) {
     </svg>`;
 }
 
-function pill(text, color, bg) {
-  return `<span class="an-status-chip" style="background:${bg};color:${color};border:1px solid ${color}25">${text}</span>`;
-}
-
 function cardHead(ic, title, sub = '', extra = '') {
   return `
     <div class="an-card__head">
       <div class="an-card__head-left">
-        <div class="an-card__head-icon">${icon(ic, 16)}</div>
+        <div class="an-card__head-icon">${icon(ic, 18)}</div>
         <div class="an-card__head-titles">
           <span class="an-card__title">${title}</span>
           ${sub ? `<span class="an-card__sub">${sub}</span>` : ''}
@@ -46,27 +43,54 @@ function cardHead(ic, title, sub = '', extra = '') {
 function emptyState(msg, iconName = 'inbox') {
   return `
     <div class="an-empty">
-      <div class="an-empty__icon">${icon(iconName, 24)}</div>
+      <div class="an-empty__icon">${icon(iconName, 26)}</div>
       <p class="an-empty__text">${msg}</p>
     </div>`;
+}
+
+function exportCsv(trainees) {
+  if (!trainees || !trainees.length) {
+    alert('No trainee cohort records to export.');
+    return;
+  }
+  const headers = ['Student ID', 'Student Name', 'Program / Course', 'Host Partner Company', 'Completed Hours', 'Required Hours', 'Completion Rate (%)', 'Current Status', 'Start Date', 'Target End Date'];
+  const rows = trainees.map(t => [
+    `"${(t.id ?? '').toString().replace(/"/g, '""')}"`,
+    `"${(t.name || '').replace(/"/g, '""')}"`,
+    `"${(t.course || '').replace(/"/g, '""')}"`,
+    `"${(t.company || '').replace(/"/g, '""')}"`,
+    t.completedHours ?? 0,
+    t.requiredHours ?? 600,
+    `${t.pct ?? 0}%`,
+    `"${(t.status || 'active').replace(/"/g, '""')}"`,
+    `"${(t.startDate || '—').replace(/"/g, '""')}"`,
+    `"${(t.endDate || '—').replace(/"/g, '""')}"`
+  ]);
+
+  const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(','), ...rows.map(e => e.join(','))].join('\r\n');
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement('a');
+  link.setAttribute('href', encodedUri);
+  link.setAttribute('download', `CHMSU_OJT_Cohort_Analysis_${new Date().toISOString().slice(0, 10)}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Skeleton Placeholder
 // ─────────────────────────────────────────────────────────────────────────────
 
-function skeleton() {
-  const sk = h => `<div class="skeleton skeleton--card" style="height:${h}px;border-radius:12px"></div>`;
+function renderSkeleton() {
+  const sk = h => `<div class="skeleton skeleton--card" style="height:${h}px;border-radius:14px"></div>`;
   return `
-    <div class="an-skeleton">
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
-        ${sk(100)}${sk(100)}${sk(100)}
+    <div class="an-skeleton-stack">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px">
+        ${sk(115)}${sk(115)}${sk(115)}${sk(115)}
       </div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:14px">
-        ${sk(100)}${sk(100)}${sk(100)}
-      </div>
-      <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:16px;margin-top:16px">
-        ${sk(260)}${sk(260)}
+      <div style="margin-top:16px">${sk(80)}</div>
+      <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:20px;margin-top:20px">
+        ${sk(320)}${sk(320)}
       </div>
     </div>`;
 }
@@ -76,61 +100,83 @@ function skeleton() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function analyticsPage(container) {
-  const now = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  const supervisorName = getState('user.name') || 'Prof. Maria Garcia';
+  const supervisorDept = getState('user.department') || 'College of Computer Studies';
+  const todayFormatted = new Date().toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric'
+  });
+
   container.innerHTML = `
     <div class="an-page fade-in">
-      <!-- Top Header -->
-      <div class="an-header">
-        <div class="an-header__left">
-          <div class="an-header__icon">${icon('barChart2', 22)}</div>
-          <div>
-            <div class="an-header__title-row">
-              <h1 class="an-header__title">OJT Analytics &amp; Insights</h1>
-              <span class="an-live-badge"><span class="an-live-dot"></span>Live Sync Active</span>
-            </div>
-            <p class="an-header__sub">Supervisory oversight of cohort milestones, attendance logs, and location compliance · ${now}</p>
-          </div>
+      <!-- Printable Official Header (Hidden on screen, visible on print) -->
+      <div class="an-print-header">
+        <div class="an-print-header__top">
+          <div class="an-print-header__school">CARLOS HILADO MEMORIAL STATE UNIVERSITY</div>
+          <div class="an-print-header__office">Office of Student Internship &amp; Supervisory Oversight</div>
+          <div class="an-print-header__doc">Executive OJT Analysis &amp; Cohort Performance Insights</div>
         </div>
-        <div class="an-header__actions">
-          <button class="an-btn-refresh" id="an-refresh-btn" title="Refresh metrics">
-            ${icon('refreshCw', 14)}
-            <span>Refresh</span>
-          </button>
+        <div class="an-print-header__meta">
+          <div><strong>Faculty Supervisor:</strong> ${supervisorName}</div>
+          <div><strong>Department:</strong> ${supervisorDept}</div>
+          <div><strong>Report Generated:</strong> ${todayFormatted}</div>
+          <div><strong>System:</strong> CHMSU HireMe OJT Suite 2.0</div>
         </div>
       </div>
 
-      <!-- Segmented Tab Bar -->
-      <div class="an-tabs-bar">
-        <div class="an-tabs" role="tablist">
-          <button class="an-tab an-tab--active" data-tab="overview" role="tab" aria-selected="true">
-            ${icon('layout', 14)} <span>Overview &amp; Pipeline</span>
+      <!-- Top Header -->
+      <div class="an-header">
+        <div class="an-header__left">
+          <div class="an-header__icon">${icon('barChart2', 24)}</div>
+          <div>
+            <div class="an-header__title-row">
+              <h1 class="an-header__title">Analysis &amp; Insights</h1>
+              <span class="an-live-badge"><span class="an-live-dot"></span>Live Sync Active</span>
+            </div>
+            <p class="an-header__sub">Cohort milestone analytics, attendance velocity, and geofence compliance oversight · ${todayFormatted}</p>
+          </div>
+        </div>
+        <div class="an-header__actions">
+          <button class="an-btn-action" id="an-csv-btn" title="Export full cohort data to CSV spreadsheet">
+            ${icon('download', 15)}
+            <span>Export CSV</span>
           </button>
-          <button class="an-tab" data-tab="attendance" role="tab" aria-selected="false">
-            ${icon('calendar', 14)} <span>Daily Attendance &amp; Logs</span>
+          <button class="an-btn-action an-btn-action--primary" id="an-print-btn" title="Print executive report or save as PDF">
+            ${icon('printer', 15)}
+            <span>Print Report</span>
           </button>
-          <button class="an-tab" data-tab="progress" role="tab" aria-selected="false">
-            ${icon('trendingUp', 14)} <span>Cohort Progress &amp; Demographics</span>
+          <button class="an-btn-refresh" id="an-refresh-btn" title="Refresh metrics from server">
+            ${icon('refreshCw', 14)}
           </button>
-          <div class="an-tabs__ink" id="an-tabs-ink"></div>
         </div>
       </div>
 
       <!-- Content Root -->
-      <div id="an-root">${skeleton()}</div>
+      <div id="an-root">${renderSkeleton()}</div>
     </div>
   `;
 
   injectStyles();
   loadAnalytics(container);
 
-  // Refresh button
+  // Top header button listeners
   container.querySelector('#an-refresh-btn')?.addEventListener('click', () => {
-    analyticsPage(container);
+    const btn = container.querySelector('#an-refresh-btn');
+    if (btn) btn.classList.add('an-rotating');
+    loadAnalytics(container).finally(() => {
+      btn?.classList.remove('an-rotating');
+    });
+  });
+
+  container.querySelector('#an-print-btn')?.addEventListener('click', () => {
+    window.print();
   });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Load & Render
+// Load & Render Analytics Data
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function loadAnalytics(container) {
@@ -138,419 +184,555 @@ async function loadAnalytics(container) {
   try {
     const res = await apiGet('/supervisor/analytics');
     data = res?.data ?? null;
-  } catch {}
+  } catch (err) {
+    console.error('[Analytics] Failed to fetch data:', err);
+  }
 
   const root = container.querySelector('#an-root');
+  if (!root) return;
+
   if (!data) {
     root.innerHTML = `
       <div class="an-empty an-empty--error">
-        <div class="an-empty__icon" style="color:#EF4444">${icon('alertCircle', 32)}</div>
-        <p class="an-empty__title">Unable to load analytics data</p>
-        <p class="an-empty__text">Please check your network connection and try reloading.</p>
-        <button class="btn btn-secondary" id="an-retry-btn" style="margin-top:12px">
-          ${icon('refreshCw', 14)} Retry
+        <div class="an-empty__icon" style="color:#EF4444">${icon('alertCircle', 36)}</div>
+        <p class="an-empty__title">Unable to synchronize cohort analytics</p>
+        <p class="an-empty__text">We could not load real-time analytics data. Please check your connection and retry.</p>
+        <button class="btn btn-secondary" id="an-retry-btn" style="margin-top:14px">
+          ${icon('refreshCw', 15)} Try Again
         </button>
       </div>`;
     root.querySelector('#an-retry-btn')?.addEventListener('click', () => analyticsPage(container));
     return;
   }
 
-  const { kpi: k, funnel, trainees, hoursBuckets, courseDist, companyDist,
-          topPerformers, flagged, last14Days, locationStats, recentLogs } = data;
+  const {
+    kpi: k, funnel, trainees, hoursBuckets, courseDist, companyDist,
+    topPerformers, flagged, last14Days, locationStats, recentLogs
+  } = data;
 
-  // ── 1. KPI Cards (6 Cards) ───────────────────────────────────────────────
-  const kpis = [
-    { label: 'Active Trainees',    value: k.activeTrainees,                   icon: 'users',        color: '#005930', sub: 'Currently deployed', trend: 'Active cohort',   isUp: true },
-    { label: 'Total Endorsed',     value: k.totalEndorsed,                    icon: 'send',         color: '#059669', sub: 'Approved students',  trend: `${k.totalEndorsed - k.activeTrainees} completed`, isUp: true },
-    { label: 'Pending Letters',    value: k.pendingLetters,                   icon: 'fileText',     color: '#D97706', sub: 'Awaiting signature', trend: k.pendingLetters > 0 ? 'Requires action' : 'All clear', isUp: k.pendingLetters > 0 ? false : true },
-    { label: 'Total Hours Rendered', value: k.totalHoursLogged.toLocaleString(), icon: 'clock',     color: '#0284C7', sub: 'Cumulative hours',   trend: `${k.logsMonth} logs this month`, isUp: true },
-    { label: 'Attendance Today',   value: k.logsToday,                        icon: 'checkCircle',  color: '#0D9488', sub: 'Active logs submitted', trend: `${k.logsWeek} this week`, isUp: true },
-    { label: 'Flagged Trainees',   value: k.flaggedCount,                     icon: 'alertTriangle', color: k.flaggedCount > 0 ? '#EF4444' : '#059669', sub: 'Location/missing logs', trend: k.flaggedCount > 0 ? 'Needs attention' : 'All clear', isUp: k.flaggedCount > 0 ? false : true },
+  // CSV export hook
+  container.querySelector('#an-csv-btn')?.addEventListener('click', () => {
+    exportCsv(trainees);
+  });
+
+  // Calculate advanced diagnostic metrics
+  const totalTrainees = trainees.length || k.activeTrainees || 1;
+  const onTrackCount  = trainees.filter(t => t.pct >= 40).length;
+  const onTrackPct    = Math.round((onTrackCount / totalTrainees) * 100);
+
+  const locTotal  = (locationStats.inSite + locationStats.tooFar + locationStats.noGps) || 1;
+  const inSitePct = Math.round((locationStats.inSite / locTotal) * 100);
+  const tooFarPct = Math.round((locationStats.tooFar / locTotal) * 100);
+  const noGpsPct  = Math.max(0, 100 - inSitePct - tooFarPct);
+
+  const totalActionRequired = (k.flaggedCount || 0) + (k.pendingLetters || 0);
+
+  // ── 1. Hero KPI Cards (4 High-Impact Grid) ──────────────────────────────────
+  const heroKpis = [
+    {
+      label: 'Active Trainees',
+      val: k.activeTrainees,
+      sub: `${k.totalEndorsed} total endorsed to date`,
+      trend: `${Math.max(0, k.totalEndorsed - k.activeTrainees)} completed cohort`,
+      icon: 'users',
+      color: '#005930',
+      badgeClass: 'an-hero-badge--good'
+    },
+    {
+      label: 'Total Hours Rendered',
+      val: `${Number(k.totalHoursLogged || 0).toLocaleString()} hrs`,
+      sub: `${k.logsMonth} logs recorded this month`,
+      trend: `${k.logsToday} check-ins logged today`,
+      icon: 'clock',
+      color: '#0284C7',
+      badgeClass: 'an-hero-badge--info'
+    },
+    {
+      label: 'On-Site Geofence Compliance',
+      val: `${inSitePct}%`,
+      sub: `${locationStats.inSite.toLocaleString()} verified in-site check-ins`,
+      trend: locationStats.tooFar > 0 ? `${locationStats.tooFar} out of bounds` : 'Zero location flags',
+      icon: 'mapPin',
+      color: '#059669',
+      badgeClass: locationStats.tooFar > 0 ? 'an-hero-badge--warn' : 'an-hero-badge--good'
+    },
+    {
+      label: 'Action Required & Risk',
+      val: totalActionRequired,
+      sub: `${k.pendingLetters} pending review · ${k.flaggedCount} flagged`,
+      trend: totalActionRequired > 0 ? 'Immediate action required' : 'All trainees compliant',
+      icon: totalActionRequired > 0 ? 'alertTriangle' : 'checkCircle',
+      color: totalActionRequired > 0 ? '#D97706' : '#059669',
+      badgeClass: totalActionRequired > 0 ? 'an-hero-badge--urgent' : 'an-hero-badge--good'
+    }
   ];
 
-  const kpiGridHtml = `
-    <div class="an-kpi-grid">
-      ${kpis.map(c => `
-        <div class="an-kpi-card">
-          <div class="an-kpi-card__top">
-            <span class="an-kpi-card__label">${c.label}</span>
-            <div class="an-kpi-card__icon" style="background:${c.color}14;color:${c.color}">
-              ${icon(c.icon, 16)}
+  const heroGridHtml = `
+    <div class="an-hero-grid">
+      ${heroKpis.map(c => `
+        <div class="an-hero-card">
+          <div class="an-hero-card__top">
+            <span class="an-hero-card__label">${c.label}</span>
+            <div class="an-hero-card__icon" style="background:${c.color}15;color:${c.color}">
+              ${icon(c.icon, 20)}
             </div>
           </div>
-          <div class="an-kpi-card__value">${c.value}</div>
-          <div class="an-kpi-card__footer">
-            <span class="an-kpi-card__trend ${c.isUp === true ? 'an-trend--good' : c.isUp === false ? 'an-trend--warn' : 'an-trend--neutral'}">
-              ${c.trend}
-            </span>
-            <span class="an-kpi-card__sub">${c.sub}</span>
+          <div class="an-hero-card__value">${c.val}</div>
+          <div class="an-hero-card__footer">
+            <span class="an-hero-badge ${c.badgeClass}">${c.trend}</span>
+            <span class="an-hero-card__sub">${c.sub}</span>
           </div>
-        </div>`).join('')}
-    </div>`;
+        </div>
+      `).join('')}
+    </div>
+  `;
 
-  // ── 2. Endorsement Funnel ────────────────────────────────────────────────
+  // ── 2. Automated Executive Diagnostic Summary ──────────────────────────────
+  const diagnosticBanner = `
+    <div class="an-diagnostic-banner">
+      <div class="an-diagnostic-item">
+        <div class="an-diagnostic-dot an-diagnostic-dot--good"></div>
+        <div class="an-diagnostic-text">
+          <strong>Cohort Pacing Health:</strong>
+          <span>${onTrackPct}% of active students are meeting target milestone hours (${onTrackCount}/${totalTrainees} on-schedule).</span>
+        </div>
+      </div>
+      <div class="an-diagnostic-sep"></div>
+      <div class="an-diagnostic-item">
+        <div class="an-diagnostic-dot ${inSitePct >= 85 ? 'an-diagnostic-dot--good' : 'an-diagnostic-dot--warn'}"></div>
+        <div class="an-diagnostic-text">
+          <strong>Geofence Integrity:</strong>
+          <span>${inSitePct}% of student time logs are strictly verified within company geofence coordinates.</span>
+        </div>
+      </div>
+      <div class="an-diagnostic-sep"></div>
+      <div class="an-diagnostic-item">
+        <div class="an-diagnostic-dot ${totalActionRequired > 0 ? 'an-diagnostic-dot--urgent' : 'an-diagnostic-dot--good'}"></div>
+        <div class="an-diagnostic-text">
+          <strong>Supervisory Priority:</strong>
+          <span>${totalActionRequired > 0 ? `${totalActionRequired} items require review (${k.pendingLetters} letters, ${k.flaggedCount} flagged trainees).` : 'All assigned student logs and compliance metrics are clear.'}</span>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // ── 3. Priority Action & Attention Card ──────────────────────────────────────
+  let priorityAlertHtml = '';
+  if (totalActionRequired > 0) {
+    priorityAlertHtml = `
+      <div class="an-card an-card--priority">
+        <div class="an-priority-header">
+          <div class="an-priority-header__left">
+            <div class="an-priority-icon">${icon('alertTriangle', 18)}</div>
+            <div>
+              <h3 class="an-priority-title">Supervisory Attention Required</h3>
+              <p class="an-priority-sub">The following students require prompt follow-up or administrative action</p>
+            </div>
+          </div>
+          <div class="an-priority-actions">
+            ${k.pendingLetters > 0 ? `
+              <a href="#/interests" class="btn btn-sm btn-primary">
+                ${icon('fileText', 14)} Review ${k.pendingLetters} Pending Letter${k.pendingLetters > 1 ? 's' : ''}
+              </a>
+            ` : ''}
+          </div>
+        </div>
+
+        ${flagged && flagged.length ? `
+          <div class="an-flag-grid">
+            ${flagged.map(f => {
+              const ini = (f.name || 'Student').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
+              return `
+                <div class="an-flag-card">
+                  <div class="an-flag-card__avatar"><span>${ini}</span></div>
+                  <div class="an-flag-card__info">
+                    <span class="an-flag-card__name">${f.name}</span>
+                    <span class="an-flag-card__company">${f.company || 'Assigned Host Partner'}</span>
+                    <span class="an-flag-card__reason">⚠️ Irregular time logs or missing entries</span>
+                  </div>
+                  <div class="an-flag-card__meta">
+                    <span class="an-flag-card__pct">${f.pct}% Complete</span>
+                    <a href="#/trainees" class="btn btn-sm btn-secondary" style="padding:4px 10px;font-size:0.75rem">
+                      View Logs
+                    </a>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }
+
+  // ── 4. Interactive SVG Daily Attendance Velocity Chart ─────────────────────
+  const sparkMax = Math.max(...last14Days.map(d => d.count), 1);
+  const totalLogs = last14Days.reduce((s, d) => s + d.count, 0);
+  const activeDaysCount = last14Days.filter(d => d.count > 0).length || 1;
+  const avgLogs = (totalLogs / activeDaysCount).toFixed(1);
+
+  const attendanceVelocityCard = `
+    <div class="an-card">
+      ${cardHead('trendingUp', 'Daily Attendance Velocity', 'Daily student check-ins and log submissions across the last 14 days', `
+        <div class="an-velocity-legend">
+          <div class="an-velocity-stat">
+            <span class="an-velocity-stat__num">${totalLogs}</span>
+            <span class="an-velocity-stat__label">Total Logs</span>
+          </div>
+          <div class="an-velocity-stat-sep"></div>
+          <div class="an-velocity-stat">
+            <span class="an-velocity-stat__num">${avgLogs}</span>
+            <span class="an-velocity-stat__label">Daily Avg</span>
+          </div>
+          <div class="an-velocity-stat-sep"></div>
+          <div class="an-velocity-stat">
+            <span class="an-velocity-stat__num" style="color:#059669">${k.logsToday}</span>
+            <span class="an-velocity-stat__label">Today</span>
+          </div>
+        </div>
+      `)}
+
+      <div class="an-chart-container">
+        <!-- Average Guideline -->
+        <div class="an-chart-avg-line" style="bottom:${Math.min(92, Math.max(15, (Number(avgLogs) / sparkMax) * 82))}%">
+          <span class="an-chart-avg-label">Avg: ${avgLogs} logs/day</span>
+        </div>
+
+        <div class="an-chart-columns">
+          ${last14Days.map((d, idx) => {
+            const h = sparkMax > 0 ? Math.max(6, Math.round((d.count / sparkMax) * 88)) : 6;
+            const isToday = idx === last14Days.length - 1;
+            // Check if day name is Sat/Sun
+            const isWeekend = d.date.startsWith('Sat') || d.date.startsWith('Sun');
+
+            return `
+              <div class="an-col-wrap${isWeekend ? ' an-col-wrap--weekend' : ''}${isToday ? ' an-col-wrap--today' : ''}" title="${d.date}: ${d.count} logs (${d.hours} hrs)">
+                <div class="an-col-track">
+                  <div class="an-col-fill" style="height:${h}%;">
+                    <div class="an-col-tooltip">
+                      <strong>${d.count} logs</strong>
+                      <span>${d.hours} hrs rendered</span>
+                      <small>${d.date}</small>
+                    </div>
+                  </div>
+                </div>
+                <div class="an-col-label">${d.date.replace(/\s+\d{4}/, '')}</div>
+                ${isWeekend ? '<span class="an-col-weekend-dot" title="Weekend">W</span>' : ''}
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+      <div class="an-chart-footer">
+        <span class="an-chart-note">${icon('info', 13)} Note: Low log frequencies during weekends and official holidays reflect standard university rest cycles.</span>
+      </div>
+    </div>
+  `;
+
+  // ── 5. Endorsement Pipeline Funnel ─────────────────────────────────────────
   const funnelSteps = [
-    { label: 'Pending Review',    val: funnel.pending,     color: '#D97706', step: 1 },
-    { label: 'Letters Endorsed',  val: funnel.endorsed,    color: '#0284C7', step: 2 },
-    { label: 'OJT Started',       val: funnel.ojt_started, color: '#005930', step: 3 },
-    { label: 'Rejected/Archived', val: funnel.rejected,    color: '#E11D48', step: 4 },
+    { label: 'Pending Review',    val: funnel.pending,     color: '#D97706', step: 1, sub: 'Needs supervisor signature' },
+    { label: 'Letters Endorsed',  val: funnel.endorsed,    color: '#0284C7', step: 2, sub: 'Approved for interview/matching' },
+    { label: 'OJT Started',       val: funnel.ojt_started, color: '#005930', step: 3, sub: 'Actively clocking hours' },
+    { label: 'Rejected / Paused', val: funnel.rejected,    color: '#E11D48', step: 4, sub: 'Application closed or withdrawn' },
   ];
   const funnelMax = Math.max(...funnelSteps.map(s => s.val), 1);
 
   const funnelCard = `
     <div class="an-card">
-      ${cardHead('route', 'Endorsement Pipeline', 'Progression from endorsement request to host deployment')}
-      <div class="an-funnel">
+      ${cardHead('gitCommit', 'Endorsement Pipeline', 'Cohort progression from placement application to active internship')}
+      <div class="an-funnel-stack">
         ${funnelSteps.map((s, i) => {
-          const w = Math.max(4, Math.round((s.val / funnelMax) * 100));
+          const w = Math.max(5, Math.round((s.val / funnelMax) * 100));
           const prev = i > 0 ? (funnelSteps[i - 1].val || 1) : null;
           const conv = prev !== null && s.step !== 4 ? Math.round((s.val / prev) * 100) : null;
+
           return `
             ${i > 0 ? `
-              <div class="an-funnel__transition">
-                <div class="an-funnel__stem"></div>
-                ${conv !== null ? `<span class="an-funnel__rate">${conv}% conversion</span>` : ''}
-              </div>` : ''}
-            <div class="an-funnel__row">
-              <div class="an-funnel__meta">
-                <span class="an-funnel__badge" style="background:${s.color}14;color:${s.color}">${s.step}</span>
-                <span class="an-funnel__label">${s.label}</span>
+              <div class="an-funnel-connector">
+                <div class="an-funnel-stem"></div>
+                ${conv !== null ? `<span class="an-funnel-conversion">${conv}% progression</span>` : ''}
               </div>
-              <div class="an-funnel__track">
-                <div class="an-funnel__fill" style="width:${w}%;background:${s.color}"></div>
+            ` : ''}
+            <div class="an-funnel-row">
+              <div class="an-funnel-meta">
+                <span class="an-funnel-num" style="background:${s.color}18;color:${s.color}">${s.step}</span>
+                <div class="an-funnel-titles">
+                  <span class="an-funnel-label">${s.label}</span>
+                  <span class="an-funnel-sub">${s.sub}</span>
+                </div>
               </div>
-              <div class="an-funnel__stats">
-                <span class="an-funnel__count">${s.val}</span>
-                <span class="an-funnel__pct">${w}%</span>
+              <div class="an-funnel-bar-track">
+                <div class="an-funnel-bar-fill" style="width:${w}%;background:${s.color}"></div>
               </div>
-            </div>`;
+              <div class="an-funnel-count">
+                <strong>${s.val}</strong>
+                <span>trainees</span>
+              </div>
+            </div>
+          `;
         }).join('')}
       </div>
-    </div>`;
+    </div>
+  `;
 
-  // ── 3. Location Compliance Gauge ─────────────────────────────────────────
-  const locTotal  = locationStats.inSite + locationStats.tooFar + locationStats.noGps || 1;
-  const inSitePct = Math.round((locationStats.inSite / locTotal) * 100);
-  const tooFarPct = Math.round((locationStats.tooFar / locTotal) * 100);
-  const noGpsPct  = Math.max(0, 100 - inSitePct - tooFarPct);
-
+  // ── 6. Location Compliance Donut & Breakdown ──────────────────────────────
   const locCard = `
     <div class="an-card">
-      ${cardHead('mapPin', 'Location Compliance', 'Geofence verification for student time logs')}
-      <div class="an-loc-box">
+      ${cardHead('navigation', 'Location & Geofence Compliance', 'GPS radius verification against registered partner facility coordinates')}
+      <div class="an-loc-content">
         <div class="an-loc-donut-area">
-          <div class="an-donut-wrap">
-            ${donut(inSitePct, '#059669', 100, 11)}
+          <div class="an-donut-container">
+            ${donutSvg(inSitePct, '#059669', 115, 11)}
             <div class="an-donut-inner">
               <span class="an-donut-pct" style="color:#059669">${inSitePct}%</span>
-              <span class="an-donut-lbl">On-Site</span>
+              <span class="an-donut-sub">Verified On-Site</span>
             </div>
           </div>
         </div>
-        <div class="an-loc-stats">
-          <div class="an-loc-stat">
-            <div class="an-loc-stat__meta">
-              <span class="an-loc-stat__title"><span class="an-dot" style="background:#059669"></span> Verified In-Site</span>
-              <strong>${locationStats.inSite} logs</strong>
+
+        <div class="an-loc-breakdown">
+          <div class="an-loc-item">
+            <div class="an-loc-item__header">
+              <span class="an-loc-item__title"><span class="an-status-dot" style="background:#059669"></span> Within Worksite Geofence</span>
+              <strong>${locationStats.inSite.toLocaleString()} logs (${inSitePct}%)</strong>
             </div>
-            <div class="an-loc-stat__bar">
-              <div style="width:${inSitePct}%;background:#059669"></div>
-            </div>
-          </div>
-          <div class="an-loc-stat">
-            <div class="an-loc-stat__meta">
-              <span class="an-loc-stat__title"><span class="an-dot" style="background:#E11D48"></span> Out of Bounds (Too Far)</span>
-              <strong>${locationStats.tooFar} logs</strong>
-            </div>
-            <div class="an-loc-stat__bar">
-              <div style="width:${tooFarPct}%;background:#E11D48"></div>
+            <div class="an-loc-progress">
+              <div class="an-loc-progress-bar" style="width:${inSitePct}%;background:#059669"></div>
             </div>
           </div>
-          <div class="an-loc-stat">
-            <div class="an-loc-stat__meta">
-              <span class="an-loc-stat__title"><span class="an-dot" style="background:var(--text-tertiary)"></span> Unrecorded / No GPS</span>
-              <strong>${locationStats.noGps} logs</strong>
+
+          <div class="an-loc-item">
+            <div class="an-loc-item__header">
+              <span class="an-loc-item__title"><span class="an-status-dot" style="background:#E11D48"></span> Out of Bounds (&gt;100m)</span>
+              <strong>${locationStats.tooFar.toLocaleString()} logs (${tooFarPct}%)</strong>
             </div>
-            <div class="an-loc-stat__bar">
-              <div style="width:${noGpsPct}%;background:var(--border-strong)"></div>
+            <div class="an-loc-progress">
+              <div class="an-loc-progress-bar" style="width:${tooFarPct}%;background:#E11D48"></div>
+            </div>
+          </div>
+
+          <div class="an-loc-item">
+            <div class="an-loc-item__header">
+              <span class="an-loc-item__title"><span class="an-status-dot" style="background:var(--text-tertiary)"></span> Unrecorded / Mobile GPS Off</span>
+              <strong>${locationStats.noGps.toLocaleString()} logs (${noGpsPct}%)</strong>
+            </div>
+            <div class="an-loc-progress">
+              <div class="an-loc-progress-bar" style="width:${noGpsPct}%;background:var(--text-tertiary)"></div>
             </div>
           </div>
         </div>
       </div>
-    </div>`;
+    </div>
+  `;
 
-  // ── 4. Daily Attendance Column Chart ─────────────────────────────────────
-  const sparkMax  = Math.max(...last14Days.map(d => d.count), 1);
-  const totalLogs = last14Days.reduce((s, d) => s + d.count, 0);
-  const activeDaysCount = last14Days.filter(d => d.count > 0).length || 1;
-  const avgLogs   = (totalLogs / activeDaysCount).toFixed(1);
-
-  const attendanceCard = `
+  // ── 7. Top Performers Leaderboard ─────────────────────────────────────────
+  const topPerformersCard = `
     <div class="an-card">
-      ${cardHead('trendingUp', 'Daily Attendance Velocity', 'Attendance logs submitted over the last 14 days', `
-        <div class="an-chart-stat-group">
-          <div class="an-chart-stat"><span class="an-chart-stat__val">${totalLogs}</span> <span class="an-chart-stat__lbl">total logs</span></div>
-          <div class="an-chart-stat-sep"></div>
-          <div class="an-chart-stat"><span class="an-chart-stat__val">${avgLogs}</span> <span class="an-chart-stat__lbl">daily avg</span></div>
-          <div class="an-chart-stat-sep"></div>
-          <div class="an-chart-stat"><span class="an-chart-stat__val" style="color:#059669">${k.logsToday}</span> <span class="an-chart-stat__lbl">today</span></div>
-        </div>
-      `)}
-      <div class="an-chart-wrap">
-        <div class="an-chart-guides">
-          <div class="an-guide-line"><span>${sparkMax}</span></div>
-          <div class="an-guide-line"><span>${Math.round(sparkMax / 2)}</span></div>
-          <div class="an-guide-line"><span>0</span></div>
-        </div>
-        <div class="an-chart">
-          ${last14Days.map(d => {
-            const h = sparkMax > 0 ? Math.max(5, Math.round((d.count / sparkMax) * 100)) : 5;
-            const isToday = d.date === new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      ${cardHead('award', 'Top Performing Trainees', 'Leading students by cumulative hours completed towards their requirement')}
+      ${topPerformers && topPerformers.length ? `
+        <div class="an-top-stack">
+          ${topPerformers.map((t, idx) => {
+            const medals = ['🥇', '🥈', '🥉'];
+            const ini = (t.name || 'Student').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
+            const barColor = t.pct >= 80 ? '#059669' : t.pct >= 40 ? '#005930' : '#0284C7';
+
             return `
-              <div class="an-chart__col">
-                <div class="an-chart__track">
-                  <div class="an-chart__bar${isToday ? ' an-chart__bar--today' : ''}" style="height:${h}%">
-                    <span class="an-chart__tooltip">${d.count} logs</span>
+              <div class="an-top-row">
+                <div class="an-top-rank">${medals[idx] || `<span class="an-top-number">#${idx + 1}</span>`}</div>
+                <div class="an-top-avatar"><span>${ini}</span></div>
+                <div class="an-top-details">
+                  <span class="an-top-name">${t.name}</span>
+                  <span class="an-top-sub">${t.course} · ${t.company}</span>
+                </div>
+                <div class="an-top-meter">
+                  <div class="an-top-track">
+                    <div class="an-top-fill" style="width:${t.pct}%;background:${barColor}"></div>
+                  </div>
+                  <div class="an-top-stats">
+                    <strong style="color:${barColor}">${t.pct}%</strong>
+                    <span>${t.completedHours} / ${t.requiredHours} hrs</span>
                   </div>
                 </div>
-                <span class="an-chart__date${isToday ? ' an-chart__date--today' : ''}">${d.date}</span>
-              </div>`;
+              </div>
+            `;
           }).join('')}
         </div>
-      </div>
-    </div>`;
+      ` : emptyState('No trainee progress recorded yet.')}
+    </div>
+  `;
 
-  // ── 5. Recent Attendance Logs Table ──────────────────────────────────────
-  const logsCard = `
+  // ── 8. Cohort Hours Brackets & Demographics ──────────────────────────────
+  const maxBucket = Math.max(...hoursBuckets.map(b => b.count), 1);
+  const hoursBracketCard = `
+    <div class="an-card">
+      ${cardHead('clock', 'Required Hours Completion', 'Cohort volume distribution by hours milestone brackets')}
+      <div class="an-bracket-stack">
+        ${hoursBuckets.map(b => {
+          const w = maxBucket > 0 ? Math.round((b.count / maxBucket) * 100) : 0;
+          return `
+            <div class="an-bracket-row">
+              <span class="an-bracket-label">${b.label} Target</span>
+              <div class="an-bracket-track">
+                <div class="an-bracket-fill" style="width:${w}%;background:${b.color}"></div>
+              </div>
+              <div class="an-bracket-badge" style="background:${b.color}15;color:${b.color}">
+                <strong>${b.count}</strong> trainees
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  `;
+
+  // Program and Company Breakdown
+  const courseEntries  = Object.entries(courseDist || {});
+  const companyEntries = Object.entries(companyDist || {});
+  const maxCourse  = courseEntries.length  ? Math.max(...courseEntries.map(e => e[1]), 1)  : 1;
+  const maxCompany = companyEntries.length ? Math.max(...companyEntries.map(e => e[1]), 1) : 1;
+
+  function renderDistCard(title, ic, entries, max) {
+    return `
+      <div class="an-card">
+        ${cardHead(ic, title, 'Cohort enrollment representation')}
+        ${entries.length ? `
+          <div class="an-dist-stack">
+            ${entries.map(([name, count], i) => {
+              const color = PALETTE[i % PALETTE.length];
+              const pctVal = Math.round((count / max) * 100);
+              return `
+                <div class="an-dist-row">
+                  <span class="an-dist-label" title="${name}">${name}</span>
+                  <div class="an-dist-track">
+                    <div class="an-dist-fill" style="width:${pctVal}%;background:${color}"></div>
+                  </div>
+                  <span class="an-dist-badge" style="background:${color}15;color:${color}">${count}</span>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        ` : emptyState('No distribution records available.')}
+      </div>
+    `;
+  }
+
+  // ── 9. Recent Attendance Ledger Table ─────────────────────────────────────
+  const recentLogsCard = `
     <div class="an-card an-card--flush">
-      ${cardHead('clipboardList', 'Recent Attendance Time Records', 'Latest verified check-in entries from assigned trainees')}
-      ${recentLogs.length ? `
+      ${cardHead('clipboardCheck', 'Recent Attendance Time Records', 'Latest verified supervisor check-ins and geofenced timestamp logs', `
+        <div class="an-table-filter-group">
+          <button class="an-table-filter an-table-filter--active" data-filter="all">All</button>
+          <button class="an-table-filter" data-filter="insite">Verified In-Site</button>
+          <button class="an-table-filter" data-filter="toofar">Out of Bounds</button>
+        </div>
+      `)}
+      ${recentLogs && recentLogs.length ? `
         <div class="an-table-wrap">
-          <table class="an-table">
+          <table class="an-table" id="an-logs-table">
             <thead>
               <tr>
                 <th>Student Trainee</th>
                 <th>Date</th>
                 <th>Time In</th>
                 <th>Time Out</th>
-                <th>Rendered</th>
+                <th>Hours Rendered</th>
                 <th>Location Compliance</th>
               </tr>
             </thead>
             <tbody>
               ${recentLogs.map(l => {
-                const locPill = (l.validity === 'In Site' || l.validity === 'valid')
-                  ? pill('Verified In-Site', '#059669', '#05966912')
-                  : (l.validity === 'Too Far' || l.validity === 'not_valid')
-                    ? pill('Out of Bounds', '#EF4444', '#EF444412')
-                    : pill('No GPS Log', 'var(--text-tertiary)', 'var(--bg-secondary)');
-                const ini = l.student.trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
+                const isInSite = l.validity === 'In Site' || l.validity === 'valid';
+                const isTooFar = l.validity === 'Too Far' || l.validity === 'not_valid';
+                const statusType = isInSite ? 'insite' : (isTooFar ? 'toofar' : 'nogps');
+
+                const pillHtml = isInSite
+                  ? `<span class="an-status-chip an-status-chip--good">${icon('checkCircle', 12)} Verified In-Site</span>`
+                  : (isTooFar
+                    ? `<span class="an-status-chip an-status-chip--warn">${icon('alertTriangle', 12)} Out of Bounds</span>`
+                    : `<span class="an-status-chip an-status-chip--neutral">${icon('helpCircle', 12)} No GPS Log</span>`);
+
+                const ini = (l.student || 'Student').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
+
                 return `
-                  <tr>
-                    <td class="an-td--user">
-                      <div class="an-avatar"><span>${ini}</span></div>
-                      <span class="an-user-name">${l.student}</span>
+                  <tr data-status="${statusType}">
+                    <td>
+                      <div class="an-user-cell">
+                        <div class="an-user-avatar"><span>${ini}</span></div>
+                        <span class="an-user-name">${l.student}</span>
+                      </div>
                     </td>
-                    <td class="an-td--muted">${l.date}</td>
-                    <td><span class="an-time-badge">${l.timeIn}</span></td>
-                    <td>${l.timeOut !== '—' ? `<span class="an-time-badge">${l.timeOut}</span>` : '<span class="an-td--muted">—</span>'}</td>
-                    <td>${l.hours > 0 ? `<strong>${l.hours} hrs</strong>` : '<span class="an-td--muted">—</span>'}</td>
-                    <td>${locPill}</td>
-                  </tr>`;
+                    <td class="an-cell-muted">${l.date}</td>
+                    <td><span class="an-time-tag">${l.timeIn}</span></td>
+                    <td>${l.timeOut !== '—' ? `<span class="an-time-tag">${l.timeOut}</span>` : '<span class="an-cell-muted">—</span>'}</td>
+                    <td><strong>${l.hours > 0 ? `${l.hours} hrs` : '—'}</strong></td>
+                    <td>${pillHtml}</td>
+                  </tr>
+                `;
               }).join('')}
             </tbody>
           </table>
-        </div>` : emptyState('No verified attendance logs recorded yet.')}
-    </div>`;
-
-  // ── 6. Hours Completion Brackets ─────────────────────────────────────────
-  const maxBucket = Math.max(...hoursBuckets.map(b => b.count), 1);
-  const hoursCard = `
-    <div class="an-card">
-      ${cardHead('clock', 'Required Hours Completion', 'Cohort volume breakdown by progress brackets')}
-      <div class="an-dist-list">
-        ${hoursBuckets.map(b => `
-          <div class="an-dist-row">
-            <span class="an-dist-label">${b.label}</span>
-            <div class="an-dist-track">
-              <div class="an-dist-fill" style="width:${maxBucket > 0 ? Math.round((b.count / maxBucket) * 100) : 0}%;background:${b.color}"></div>
-            </div>
-            <span class="an-dist-badge" style="background:${b.color}14;color:${b.color}">${b.count} trainees</span>
-          </div>`).join('')}
-      </div>
-    </div>`;
-
-  // ── 7. Top Performers Leaderboard ─────────────────────────────────────────
-  const topCard = `
-    <div class="an-card">
-      ${cardHead('award', 'Top Performing Trainees', 'Leading students by cumulative hours completed')}
-      ${topPerformers.length ? `
-        <div class="an-top-list">
-          ${topPerformers.map((t, i) => {
-            const medals = ['🥇', '🥈', '🥉'];
-            const barColor = t.pct >= 80 ? '#059669' : t.pct >= 40 ? '#005930' : '#0284C7';
-            const ini = t.name.trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
-            return `
-              <div class="an-top-row">
-                <div class="an-top-rank">${medals[i] || `<span class="an-top-num">#${i + 1}</span>`}</div>
-                <div class="an-avatar an-avatar--sm"><span>${ini}</span></div>
-                <div class="an-top-info">
-                  <span class="an-top-name">${t.name}</span>
-                  <span class="an-top-sub">${t.course}</span>
-                </div>
-                <div class="an-top-progress">
-                  <div class="an-top-bar">
-                    <div style="width:${t.pct}%;background:${barColor}"></div>
-                  </div>
-                  <span class="an-top-pct" style="color:${barColor}">${t.pct}%</span>
-                </div>
-              </div>`;
-          }).join('')}
-        </div>` : emptyState('No trainee progress data available yet.')}
-    </div>`;
-
-  // ── 8. Academic Course & Company Distribution ────────────────────────────
-  const courseEntries  = Object.entries(courseDist);
-  const companyEntries = Object.entries(companyDist);
-  const maxCourse  = courseEntries.length  ? Math.max(...courseEntries.map(e => e[1]), 1)  : 1;
-  const maxCompany = companyEntries.length ? Math.max(...companyEntries.map(e => e[1]), 1) : 1;
-
-  function distCard(title, ic, entries, max, color = '#005930') {
-    return `
-      <div class="an-card">
-        ${cardHead(ic, title, 'Cohort enrollment representation')}
-        ${entries.length ? `
-          <div class="an-dist-list">
-            ${entries.map(([n, c], i) => {
-              const barColor = PALETTE[i % PALETTE.length];
-              const pct = Math.round((c / max) * 100);
-              return `
-                <div class="an-dist-row">
-                  <span class="an-dist-label" title="${n}">${n}</span>
-                  <div class="an-dist-track">
-                    <div class="an-dist-fill" style="width:${pct}%;background:${barColor}"></div>
-                  </div>
-                  <span class="an-dist-badge" style="background:${barColor}14;color:${barColor}">${c}</span>
-                </div>`;
-            }).join('')}
-          </div>` : emptyState('No distribution records yet.')}
-      </div>`;
-  }
-
-  // ── 9. Flagged Trainees Attention List ────────────────────────────────────
-  const flagCard = `
-    <div class="an-card">
-      ${cardHead('alertTriangle', 'Flagged Trainees Attention', flagged.length > 0 ? `${flagged.length} require immediate follow-up` : 'All trainees meeting attendance standards')}
-      ${flagged.length ? `
-        <div class="an-flag-list">
-          ${flagged.map(t => {
-            const ini = t.name.trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
-            return `
-              <div class="an-flag-row">
-                <div class="an-flag-avatar"><span>${ini}</span></div>
-                <div class="an-flag-info">
-                  <span class="an-flag-name">${t.name}</span>
-                  <span class="an-flag-sub">${t.company}</span>
-                </div>
-                <div class="an-flag-status">
-                  <span class="an-status-chip an-status-chip--warn">Review Logs</span>
-                  <span class="an-flag-pct">${t.pct}% hours</span>
-                </div>
-              </div>`;
-          }).join('')}
-        </div>` : `
-        <div class="an-empty an-empty--success">
-          <div class="an-empty__icon" style="color:#059669">${icon('checkCircle', 28)}</div>
-          <p class="an-empty__title">All Trainees Compliant</p>
-          <p class="an-empty__text">No attendance flags or location anomalies detected.</p>
-        </div>`}
-    </div>`;
-
-  // ── Assemble Tab Panels ──────────────────────────────────────────────────
-  root.innerHTML = `
-    <!-- Panel 1: Overview & Pipeline -->
-    <div class="an-panel" id="tab-overview">
-      ${kpiGridHtml}
-
-      <div class="an-row an-row--3-2">
-        ${funnelCard}
-        ${locCard}
-      </div>
-    </div>
-
-    <!-- Panel 2: Daily Attendance & Logs -->
-    <div class="an-panel an-panel--hidden" id="tab-attendance">
-      ${attendanceCard}
-      ${logsCard}
-    </div>
-
-    <!-- Panel 3: Cohort Progress & Demographics -->
-    <div class="an-panel an-panel--hidden" id="tab-progress">
-      <div class="an-row">
-        ${hoursCard}
-        ${topCard}
-      </div>
-
-      <div class="an-row">
-        ${distCard('Enrolled Programs / Majors', 'bookOpen', courseEntries, maxCourse)}
-        ${distCard('Host Partner Companies', 'building', companyEntries, maxCompany)}
-      </div>
-
-      ${flagCard}
+        </div>
+      ` : emptyState('No verified attendance logs recorded yet.')}
     </div>
   `;
 
-  // ── Segmented Tab Logic ──────────────────────────────────────────────────
-  const tabs   = container.querySelectorAll('.an-tab');
-  const panels = container.querySelectorAll('.an-panel');
-  const ink    = container.querySelector('#an-tabs-ink');
+  // ── Assemble Final Executive Layout ────────────────────────────────────────
+  root.innerHTML = `
+    <!-- Top Hero KPIs -->
+    ${heroGridHtml}
 
-  function moveInk(btn) {
-    if (!ink || !btn) return;
-    ink.style.left  = btn.offsetLeft + 'px';
-    ink.style.width = btn.offsetWidth + 'px';
-  }
+    <!-- Executive Diagnostic Banner -->
+    ${diagnosticBanner}
 
-  requestAnimationFrame(() => {
-    const active = container.querySelector('.an-tab--active');
-    if (active) moveInk(active);
-  });
+    <!-- Priority Alerts (If any action needed) -->
+    ${priorityAlertHtml}
 
-  tabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-      tabs.forEach(t => {
-        t.classList.remove('an-tab--active');
-        t.setAttribute('aria-selected', 'false');
-      });
-      tab.classList.add('an-tab--active');
-      tab.setAttribute('aria-selected', 'true');
-      moveInk(tab);
+    <!-- Main Analytics Grid: Attendance Velocity & Location Compliance -->
+    <div class="an-layout-row an-layout-row--velocity">
+      ${attendanceVelocityCard}
+      ${locCard}
+    </div>
 
-      const target = tab.dataset.tab;
-      panels.forEach(p => {
-        const show = p.id === `tab-${target}`;
-        p.classList.toggle('an-panel--hidden', !show);
-        if (show) {
-          p.classList.add('an-panel--enter');
-          setTimeout(() => p.classList.remove('an-panel--enter'), 250);
+    <!-- Secondary Row: Pipeline Funnel & Top Performers -->
+    <div class="an-layout-row">
+      ${funnelCard}
+      ${topPerformersCard}
+    </div>
+
+    <!-- Progress Brackets & Distributions -->
+    <div class="an-layout-row an-layout-row--3col">
+      ${hoursBracketCard}
+      ${renderDistCard('Academic Programs', 'bookOpen', courseEntries, maxCourse)}
+      ${renderDistCard('Host Partner Companies', 'building', companyEntries, maxCompany)}
+    </div>
+
+    <!-- Full Width Attendance Ledger -->
+    ${recentLogsCard}
+  `;
+
+  // Table status filter interactions
+  const filterBtns = container.querySelectorAll('.an-table-filter');
+  const tableRows  = container.querySelectorAll('#an-logs-table tbody tr');
+  filterBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      filterBtns.forEach(b => b.classList.remove('an-table-filter--active'));
+      btn.classList.add('an-table-filter--active');
+      const filter = btn.dataset.filter;
+
+      tableRows.forEach(row => {
+        if (filter === 'all') {
+          row.style.display = '';
+        } else {
+          row.style.display = row.dataset.status === filter ? '' : 'none';
         }
       });
     });
   });
-
-  const onResize = () => {
-    const active = container.querySelector('.an-tab--active');
-    if (active) moveInk(active);
-  };
-  if (container._resizeHandler) {
-    window.removeEventListener('resize', container._resizeHandler);
-  }
-  container._resizeHandler = onResize;
-  window.addEventListener('resize', onResize, { passive: true });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Scoped Styles
+// Scoped Professional Stylesheet
 // ─────────────────────────────────────────────────────────────────────────────
 
 function injectStyles() {
@@ -558,7 +740,7 @@ function injectStyles() {
   const s = document.createElement('style');
   s.id = 'an-styles';
   s.textContent = `
-  /* ── Page Layout ── */
+  /* ── Layout & Typography ── */
   .an-page {
     display: flex;
     flex-direction: column;
@@ -566,14 +748,51 @@ function injectStyles() {
     padding-bottom: var(--space-12);
   }
 
+  /* ── Printable Header (Official Institutional Mode) ── */
+  .an-print-header {
+    display: none;
+    border-bottom: 2px solid #005930;
+    padding-bottom: 12px;
+    margin-bottom: 20px;
+  }
+  .an-print-header__school {
+    font-size: 16pt;
+    font-weight: 800;
+    color: #005930;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .an-print-header__office {
+    font-size: 11pt;
+    color: #374151;
+    font-weight: 600;
+    margin-top: 2px;
+  }
+  .an-print-header__doc {
+    font-size: 13pt;
+    font-weight: 700;
+    color: #111827;
+    margin-top: 6px;
+  }
+  .an-print-header__meta {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+    font-size: 9pt;
+    color: #4B5563;
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px dashed #D1D5DB;
+  }
+
   /* ── Top Header ── */
   .an-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: var(--space-2) 0 var(--space-1);
     gap: var(--space-4);
     flex-wrap: wrap;
+    padding: var(--space-2) 0 var(--space-1);
   }
   .an-header__left {
     display: flex;
@@ -581,10 +800,10 @@ function injectStyles() {
     gap: var(--space-3);
   }
   .an-header__icon {
-    width: 44px;
-    height: 44px;
-    border-radius: var(--radius-lg);
-    background: #00593014;
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-xl);
+    background: #00593015;
     color: #005930;
     border: 1px solid #00593025;
     display: flex;
@@ -596,30 +815,31 @@ function injectStyles() {
     display: flex;
     align-items: center;
     gap: var(--space-3);
-    margin-bottom: 2px;
+    margin-bottom: 3px;
   }
   .an-header__title {
-    font-size: 1.4rem;
+    font-size: 1.55rem;
     font-weight: 700;
-    letter-spacing: -0.015em;
+    letter-spacing: -0.02em;
     color: var(--text-primary);
     margin: 0;
     line-height: 1.2;
   }
   .an-header__sub {
-    font-size: var(--text-xs);
+    font-size: 0.85rem;
     color: var(--text-secondary);
     margin: 0;
+    line-height: 1.4;
   }
   .an-live-badge {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    font-size: 0.72rem;
+    font-size: 0.75rem;
     font-weight: 600;
     color: #059669;
-    background: #05966910;
-    border: 1px solid #05966928;
+    background: #05966914;
+    border: 1px solid #05966930;
     border-radius: var(--radius-full);
     padding: 3px 10px;
   }
@@ -635,22 +855,51 @@ function injectStyles() {
     50%       { opacity: 0.4; transform: scale(0.85); }
   }
 
+  /* ── Header Action Buttons ── */
   .an-header__actions {
     display: flex;
     align-items: center;
     gap: var(--space-2);
   }
-  .an-btn-refresh {
+  .an-btn-action {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 7px 14px;
-    font-size: var(--text-xs);
+    gap: 7px;
+    padding: 8px 14px;
+    font-size: 0.82rem;
     font-weight: 600;
-    color: var(--text-secondary);
+    color: var(--text-primary);
     background: var(--bg-elevated);
     border: 1px solid var(--border-default);
     border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--duration-fast);
+  }
+  .an-btn-action:hover {
+    background: var(--bg-secondary);
+    border-color: var(--border-strong);
+    transform: translateY(-1px);
+  }
+  .an-btn-action--primary {
+    background: #005930;
+    color: #ffffff;
+    border-color: #005930;
+  }
+  .an-btn-action--primary:hover {
+    background: #004525;
+    border-color: #004525;
+    color: #ffffff;
+  }
+  .an-btn-refresh {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-default);
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
     cursor: pointer;
     transition: all var(--duration-fast);
   }
@@ -659,158 +908,252 @@ function injectStyles() {
     color: var(--text-primary);
     border-color: var(--border-strong);
   }
+  .an-rotating {
+    animation: an-spin 0.8s linear infinite;
+  }
+  @keyframes an-spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
 
-  /* ── Segmented Tabs Bar ── */
-  .an-tabs-bar {
-    display: flex;
-    align-items: center;
-    border-bottom: 1px solid var(--border-default);
-    padding-bottom: var(--space-3);
+  /* ── 4-Column Hero KPI Grid ── */
+  .an-hero-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-4);
   }
-  .an-tabs {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-default);
-    border-radius: var(--radius-lg);
-    padding: 4px;
-    position: relative;
-  }
-  .an-tabs__ink {
-    position: absolute;
-    top: 4px;
-    bottom: 4px;
+  .an-hero-card {
     background: var(--bg-elevated);
     border: 1px solid var(--border-default);
-    border-radius: calc(var(--radius-lg) - 2px);
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-    transition: left 0.22s cubic-bezier(0.4, 0, 0.2, 1), width 0.22s cubic-bezier(0.4, 0, 0.2, 1);
-    z-index: 0;
-    pointer-events: none;
-  }
-  .an-tab {
-    position: relative;
-    z-index: 1;
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    padding: 7px 18px;
-    border: none;
-    background: transparent;
-    border-radius: calc(var(--radius-lg) - 3px);
-    font-size: var(--text-sm);
-    font-weight: 500;
-    color: var(--text-secondary);
-    cursor: pointer;
-    white-space: nowrap;
-    transition: color var(--duration-fast);
-  }
-  .an-tab svg { opacity: 0.7; transition: opacity var(--duration-fast); }
-  .an-tab--active { color: #005930; font-weight: 600; }
-  .an-tab--active svg { opacity: 1; color: #005930; }
-  .an-tab:hover:not(.an-tab--active) { color: var(--text-primary); }
-
-  /* ── Tab Panels ── */
-  .an-panel {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-5);
-    animation: an-panel-in 0.25s cubic-bezier(0.4, 0, 0.2, 1) both;
-  }
-  .an-panel--hidden { display: none !important; }
-  .an-panel--enter  { animation: an-panel-in 0.25s cubic-bezier(0.4, 0, 0.2, 1) both; }
-  @keyframes an-panel-in {
-    from { opacity: 0; transform: translateY(6px); }
-    to   { opacity: 1; transform: none; }
-  }
-
-  /* ── Layout Grid ── */
-  .an-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--space-5);
-  }
-  .an-row--3-2 {
-    grid-template-columns: 1.45fr 1fr;
-  }
-
-  /* ── KPI Grid ── */
-  .an-kpi-grid {
-    display: grid;
-    grid-template-columns: repeat(6, 1fr);
-    gap: var(--space-3);
-  }
-  .an-kpi-card {
-    background: var(--bg-elevated);
-    border: 1px solid var(--border-default);
-    border-radius: var(--radius-lg);
-    padding: var(--space-4);
+    border-radius: var(--radius-xl);
+    padding: var(--space-5);
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
     transition: transform var(--duration-fast), box-shadow var(--duration-fast), border-color var(--duration-fast);
   }
-  .an-kpi-card:hover {
+  .an-hero-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
     border-color: var(--border-strong);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-    transform: translateY(-1px);
   }
-  .an-kpi-card__top {
+  .an-hero-card__top {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: var(--space-2);
     margin-bottom: var(--space-2);
   }
-  .an-kpi-card__label {
-    font-size: 0.7rem;
+  .an-hero-card__label {
+    font-size: 0.82rem;
     font-weight: 600;
     color: var(--text-secondary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
-  .an-kpi-card__icon {
-    width: 26px;
-    height: 26px;
-    border-radius: var(--radius-sm);
+  .an-hero-card__icon {
+    width: 38px;
+    height: 38px;
+    border-radius: var(--radius-lg);
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
   }
-  .an-kpi-card__value {
-    font-size: 1.55rem;
+  .an-hero-card__value {
+    font-size: 1.85rem;
     font-weight: 700;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.025em;
     color: var(--text-primary);
     line-height: 1.15;
-    margin-bottom: var(--space-2);
+    margin-bottom: var(--space-3);
   }
-  .an-kpi-card__footer {
+  .an-hero-card__footer {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 4px;
   }
-  .an-kpi-card__trend {
-    font-size: 0.68rem;
+  .an-hero-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.74rem;
     font-weight: 600;
-    display: inline-block;
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    width: fit-content;
   }
-  .an-trend--good { color: #059669; }
-  .an-trend--warn { color: #E11D48; }
-  .an-trend--neutral { color: var(--text-tertiary); }
-  .an-kpi-card__sub {
-    font-size: 0.65rem;
+  .an-hero-badge--good   { background: #05966914; color: #059669; }
+  .an-hero-badge--info   { background: #0284C714; color: #0284C7; }
+  .an-hero-badge--warn   { background: #D9770614; color: #D97706; }
+  .an-hero-badge--urgent { background: #EF444414; color: #EF4444; }
+  .an-hero-card__sub {
+    font-size: 0.75rem;
     color: var(--text-tertiary);
+  }
+
+  /* ── Automated Diagnostic Banner ── */
+  .an-diagnostic-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-default);
+    border-left: 4px solid #005930;
+    border-radius: var(--radius-lg);
+    padding: var(--space-3) var(--space-5);
+    gap: var(--space-4);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  }
+  .an-diagnostic-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+  }
+  .an-diagnostic-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .an-diagnostic-dot--good   { background: #059669; }
+  .an-diagnostic-dot--warn   { background: #D97706; }
+  .an-diagnostic-dot--urgent { background: #EF4444; }
+  .an-diagnostic-text {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+  }
+  .an-diagnostic-text strong {
+    color: var(--text-primary);
+    margin-right: 4px;
+  }
+  .an-diagnostic-sep {
+    width: 1px;
+    height: 24px;
+    background: var(--border-default);
+    flex-shrink: 0;
+  }
+
+  /* ── Priority Action Card ── */
+  .an-card--priority {
+    border-left: 4px solid #D97706;
+    background: var(--bg-elevated);
+  }
+  .an-priority-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+    margin-bottom: var(--space-2);
+  }
+  .an-priority-header__left {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+  .an-priority-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-md);
+    background: #D9770615;
+    color: #D97706;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .an-priority-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+  }
+  .an-priority-sub {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    margin: 0;
+  }
+  .an-flag-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: var(--space-3);
+    margin-top: var(--space-3);
+  }
+  .an-flag-card {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-lg);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-default);
+  }
+  .an-flag-card__avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #EF444415;
+    color: #EF4444;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .an-flag-card__info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+  .an-flag-card__name {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-primary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
+  .an-flag-card__company {
+    font-size: 0.74rem;
+    color: var(--text-secondary);
+  }
+  .an-flag-card__reason {
+    font-size: 0.72rem;
+    color: #D97706;
+    font-weight: 500;
+  }
+  .an-flag-card__meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+  .an-flag-card__pct {
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: #EF4444;
+  }
 
-  /* ── Clean Card ── */
+  /* ── Layout Rows ── */
+  .an-layout-row {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: var(--space-5);
+  }
+  .an-layout-row--velocity {
+    grid-template-columns: 1.6fr 1fr;
+  }
+  .an-layout-row--3col {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  /* ── Clean Card Shell ── */
   .an-card {
     background: var(--bg-elevated);
     border: 1px solid var(--border-default);
@@ -842,10 +1185,10 @@ function injectStyles() {
     min-width: 0;
   }
   .an-card__head-icon {
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
     border-radius: var(--radius-md);
-    background: #00593012;
+    background: #00593014;
     color: #005930;
     display: flex;
     align-items: center;
@@ -858,16 +1201,14 @@ function injectStyles() {
     min-width: 0;
   }
   .an-card__title {
-    font-size: var(--text-sm);
-    font-weight: 600;
+    font-size: 0.95rem;
+    font-weight: 700;
     color: var(--text-primary);
   }
   .an-card__sub {
-    font-size: var(--text-xs);
+    font-size: 0.75rem;
     color: var(--text-tertiary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    line-height: 1.3;
   }
   .an-card__head-extra {
     display: flex;
@@ -876,88 +1217,161 @@ function injectStyles() {
     flex-shrink: 0;
   }
 
-  /* ── Funnel ── */
-  .an-funnel {
+  /* ── 14-Day Attendance Velocity Chart ── */
+  .an-velocity-legend {
     display: flex;
-    flex-direction: column;
-    padding: var(--space-1) 0;
-  }
-  .an-funnel__row {
-    display: grid;
-    grid-template-columns: 140px 1fr 75px;
     align-items: center;
     gap: var(--space-3);
-    padding: 6px 0;
   }
-  .an-funnel__meta {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .an-funnel__badge {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    font-size: 11px;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-  }
-  .an-funnel__label {
-    font-size: var(--text-xs);
-    font-weight: 600;
-    color: var(--text-secondary);
-  }
-  .an-funnel__track {
-    height: 18px;
-    background: var(--bg-secondary);
-    border-radius: var(--radius-sm);
-    overflow: hidden;
-    border: 1px solid var(--border-default);
-  }
-  .an-funnel__fill {
-    height: 100%;
-    border-radius: calc(var(--radius-sm) - 1px);
-    transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  .an-funnel__stats {
+  .an-velocity-stat {
     display: flex;
     align-items: baseline;
-    justify-content: flex-end;
-    gap: 6px;
+    gap: 5px;
   }
-  .an-funnel__count {
-    font-size: var(--text-sm);
+  .an-velocity-stat__num {
+    font-size: 1.15rem;
     font-weight: 700;
     color: var(--text-primary);
   }
-  .an-funnel__pct {
-    font-size: 0.68rem;
+  .an-velocity-stat__label {
+    font-size: 0.72rem;
     color: var(--text-tertiary);
   }
-  .an-funnel__transition {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 1px 0 1px 148px;
-  }
-  .an-funnel__stem {
+  .an-velocity-stat-sep {
     width: 1px;
-    height: 8px;
+    height: 14px;
     background: var(--border-default);
   }
-  .an-funnel__rate {
-    font-size: 0.68rem;
+
+  .an-chart-container {
+    position: relative;
+    width: 100%;
+    height: 185px;
+    padding-top: var(--space-3);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+  }
+  .an-chart-avg-line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    border-bottom: 1px dashed var(--border-strong);
+    pointer-events: none;
+    z-index: 1;
+    display: flex;
+    justify-content: flex-end;
+  }
+  .an-chart-avg-label {
+    font-size: 0.65rem;
+    font-weight: 600;
     color: var(--text-tertiary);
-    padding: 1px 6px;
-    border-radius: var(--radius-sm);
+    background: var(--bg-elevated);
+    padding: 0 4px;
+    transform: translateY(-50%);
+  }
+  .an-chart-columns {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    height: 100%;
+    position: relative;
+    z-index: 2;
+  }
+  .an-col-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100%;
+    gap: 6px;
+    cursor: pointer;
+  }
+  .an-col-track {
+    flex: 1;
+    width: 100%;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+  }
+  .an-col-fill {
+    width: 70%;
+    max-width: 28px;
+    background: #005930;
+    border-radius: 5px 5px 2px 2px;
+    position: relative;
+    transition: opacity var(--duration-fast), background var(--duration-fast);
+  }
+  .an-col-fill:hover {
+    background: #059669;
+  }
+  .an-col-wrap--weekend .an-col-fill {
+    background: var(--border-strong);
+    opacity: 0.45;
+  }
+  .an-col-wrap--today .an-col-fill {
+    background: #059669;
+    box-shadow: 0 0 8px #05966940;
+  }
+  .an-col-label {
+    font-size: 0.72rem;
+    color: var(--text-tertiary);
+    white-space: nowrap;
+  }
+  .an-col-wrap--today .an-col-label {
+    font-weight: 700;
+    color: #059669;
+  }
+  .an-col-weekend-dot {
+    font-size: 0.62rem;
+    color: var(--text-tertiary);
     background: var(--bg-secondary);
+    padding: 1px 4px;
+    border-radius: 3px;
+    margin-top: -3px;
+  }
+  .an-col-tooltip {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(-6px);
+    background: var(--text-primary);
+    color: var(--bg-primary);
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    font-size: 0.72rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--duration-fast);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    z-index: 10;
+  }
+  .an-col-tooltip strong { font-size: 0.76rem; }
+  .an-col-tooltip small  { color: var(--text-tertiary); margin-top: 1px; }
+  .an-col-fill:hover .an-col-tooltip {
+    opacity: 1;
+  }
+  .an-chart-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: var(--space-1);
+    border-top: 1px solid var(--border-default);
+  }
+  .an-chart-note {
+    font-size: 0.72rem;
+    color: var(--text-tertiary);
+    display: flex;
+    align-items: center;
+    gap: 5px;
   }
 
-  /* ── Location Compliance ── */
-  .an-loc-box {
+  /* ── Location Compliance Box ── */
+  .an-loc-content {
     display: flex;
     align-items: center;
     gap: var(--space-5);
@@ -967,10 +1381,10 @@ function injectStyles() {
     justify-content: center;
     flex-shrink: 0;
   }
-  .an-donut-wrap {
+  .an-donut-container {
     position: relative;
-    width: 100px;
-    height: 100px;
+    width: 115px;
+    height: 115px;
   }
   .an-donut-inner {
     position: absolute;
@@ -981,203 +1395,326 @@ function injectStyles() {
     justify-content: center;
   }
   .an-donut-pct {
-    font-size: 1.25rem;
+    font-size: 1.4rem;
     font-weight: 700;
     line-height: 1;
   }
-  .an-donut-lbl {
-    font-size: 0.62rem;
+  .an-donut-sub {
+    font-size: 0.68rem;
     color: var(--text-tertiary);
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    margin-top: 2px;
+    margin-top: 3px;
   }
-  .an-loc-stats {
+  .an-loc-breakdown {
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
   }
-  .an-loc-stat {
+  .an-loc-item {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 5px;
   }
-  .an-loc-stat__meta {
+  .an-loc-item__header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    font-size: var(--text-xs);
+    font-size: 0.78rem;
     color: var(--text-secondary);
   }
-  .an-loc-stat__meta strong {
+  .an-loc-item__header strong {
     color: var(--text-primary);
-    font-size: 0.72rem;
   }
-  .an-loc-stat__title {
+  .an-loc-item__title {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 7px;
   }
-  .an-dot {
-    width: 7px;
-    height: 7px;
+  .an-status-dot {
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
     flex-shrink: 0;
   }
-  .an-loc-stat__bar {
-    height: 5px;
+  .an-loc-progress {
+    height: 6px;
     background: var(--bg-secondary);
     border-radius: var(--radius-full);
     overflow: hidden;
   }
-  .an-loc-stat__bar div {
+  .an-loc-progress-bar {
     height: 100%;
     border-radius: var(--radius-full);
     transition: width 0.8s ease;
   }
 
-  /* ── 14-Day Attendance Chart ── */
-  .an-chart-stat-group {
+  /* ── Pipeline Funnel ── */
+  .an-funnel-stack {
     display: flex;
+    flex-direction: column;
+  }
+  .an-funnel-row {
+    display: grid;
+    grid-template-columns: 160px 1fr 85px;
+    align-items: center;
+    gap: var(--space-3);
+    padding: 6px 0;
+  }
+  .an-funnel-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+  .an-funnel-num {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    font-size: 0.75rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .an-funnel-titles {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .an-funnel-label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  .an-funnel-sub {
+    font-size: 0.7rem;
+    color: var(--text-tertiary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .an-funnel-bar-track {
+    height: 20px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    border: 1px solid var(--border-default);
+  }
+  .an-funnel-bar-fill {
+    height: 100%;
+    border-radius: calc(var(--radius-sm) - 1px);
+    transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .an-funnel-count {
+    display: flex;
+    align-items: baseline;
+    justify-content: flex-end;
+    gap: 4px;
+  }
+  .an-funnel-count strong {
+    font-size: 0.95rem;
+    color: var(--text-primary);
+  }
+  .an-funnel-count span {
+    font-size: 0.72rem;
+    color: var(--text-tertiary);
+  }
+  .an-funnel-connector {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 1px 0 1px 170px;
+  }
+  .an-funnel-stem {
+    width: 1px;
+    height: 10px;
+    background: var(--border-default);
+  }
+  .an-funnel-conversion {
+    font-size: 0.7rem;
+    color: var(--text-tertiary);
+    padding: 1px 7px;
+    border-radius: var(--radius-sm);
+    background: var(--bg-secondary);
+  }
+
+  /* ── Top Performers ── */
+  .an-top-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .an-top-row {
+    display: grid;
+    grid-template-columns: 28px 32px 1fr 140px;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border-default);
+  }
+  .an-top-row:last-child {
+    border-bottom: none;
+  }
+  .an-top-rank {
+    font-size: 1.1rem;
+    text-align: center;
+  }
+  .an-top-number {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-tertiary);
+  }
+  .an-top-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #005930;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .an-top-details {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .an-top-name {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .an-top-sub {
+    font-size: 0.72rem;
+    color: var(--text-tertiary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .an-top-meter {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .an-top-track {
+    height: 6px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+  }
+  .an-top-fill {
+    height: 100%;
+    border-radius: var(--radius-full);
+    transition: width 0.8s ease;
+  }
+  .an-top-stats {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.72rem;
+    color: var(--text-tertiary);
+  }
+
+  /* ── Hours Brackets & Distributions ── */
+  .an-bracket-stack, .an-dist-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 11px;
+  }
+  .an-bracket-row, .an-dist-row {
+    display: grid;
+    grid-template-columns: 120px 1fr 65px;
     align-items: center;
     gap: var(--space-3);
   }
-  .an-chart-stat {
-    display: flex;
-    align-items: baseline;
-    gap: 4px;
+  .an-bracket-row {
+    grid-template-columns: 100px 1fr 90px;
   }
-  .an-chart-stat__val {
-    font-size: 1rem;
-    font-weight: 700;
-    color: var(--text-primary);
+  .an-bracket-label, .an-dist-label {
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
-  .an-chart-stat__lbl {
-    font-size: 0.68rem;
-    color: var(--text-tertiary);
+  .an-bracket-track, .an-dist-track {
+    height: 7px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-full);
+    overflow: hidden;
   }
-  .an-chart-stat-sep {
-    width: 1px;
-    height: 14px;
-    background: var(--border-default);
-  }
-
-  .an-chart-wrap {
-    position: relative;
-    width: 100%;
-    padding-top: var(--space-2);
-  }
-  .an-chart-guides {
-    position: absolute;
-    inset: 10px 0 24px 0;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    pointer-events: none;
-    z-index: 0;
-  }
-  .an-guide-line {
-    display: flex;
-    align-items: center;
-    border-bottom: 1px dashed var(--border-default);
-    width: 100%;
-    opacity: 0.6;
-  }
-  .an-guide-line span {
-    font-size: 0.65rem;
-    color: var(--text-tertiary);
-    margin-right: 6px;
-    transform: translateY(-50%);
-  }
-  .an-chart {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    align-items: flex-end;
-    gap: 8px;
-    height: 175px;
-    padding: 0 var(--space-2);
-  }
-  .an-chart__col {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+  .an-bracket-fill, .an-dist-fill {
     height: 100%;
-    gap: 6px;
+    border-radius: var(--radius-full);
+    transition: width 0.8s ease;
   }
-  .an-chart__track {
-    flex: 1;
-    width: 100%;
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-  }
-  .an-chart__bar {
-    width: 55%;
-    max-width: 28px;
-    background: #005930;
-    border-radius: 4px 4px 1px 1px;
-    min-height: 4px;
-    position: relative;
-    cursor: default;
-    transition: opacity var(--duration-fast);
-  }
-  .an-chart__bar:hover { opacity: 0.85; }
-  .an-chart__bar--today { background: #059669; }
-  .an-chart__tooltip {
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%) translateY(-4px);
-    background: var(--text-primary);
-    color: var(--bg-primary);
-    font-size: 0.65rem;
+  .an-bracket-badge, .an-dist-badge {
+    font-size: 0.74rem;
     font-weight: 600;
-    padding: 2px 6px;
+    text-align: right;
+    padding: 2px 7px;
     border-radius: var(--radius-sm);
-    white-space: nowrap;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity var(--duration-fast);
-  }
-  .an-chart__bar:hover .an-chart__tooltip { opacity: 1; }
-  .an-chart__date {
-    font-size: 0.68rem;
-    color: var(--text-tertiary);
-    white-space: nowrap;
-  }
-  .an-chart__date--today {
-    font-weight: 700;
-    color: #059669;
   }
 
   /* ── Recent Attendance Table ── */
+  .an-table-filter-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--bg-secondary);
+    padding: 2px;
+    border-radius: var(--radius-md);
+  }
+  .an-table-filter {
+    border: none;
+    background: transparent;
+    font-size: 0.74rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    padding: 3px 9px;
+    border-radius: calc(var(--radius-md) - 2px);
+    cursor: pointer;
+    transition: all var(--duration-fast);
+  }
+  .an-table-filter--active {
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    font-weight: 600;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  }
   .an-table-wrap {
     overflow-x: auto;
   }
   .an-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: var(--text-xs);
+    font-size: 0.8rem;
   }
   .an-table thead tr {
     background: var(--bg-secondary);
   }
   .an-table th {
-    padding: 10px 16px;
-    font-size: 0.68rem;
+    padding: 12px 18px;
+    font-size: 0.74rem;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.04em;
     color: var(--text-tertiary);
     border-bottom: 1px solid var(--border-default);
     text-align: left;
     white-space: nowrap;
   }
   .an-table td {
-    padding: 11px 16px;
+    padding: 12px 18px;
     vertical-align: middle;
     border-bottom: 1px solid var(--border-default);
     color: var(--text-primary);
@@ -1185,157 +1722,65 @@ function injectStyles() {
   .an-table tbody tr:hover {
     background: var(--bg-secondary);
   }
-  .an-td--user {
+  .an-user-cell {
     display: flex;
     align-items: center;
     gap: 10px;
   }
-  .an-avatar {
-    width: 28px;
-    height: 28px;
+  .an-user-avatar {
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     background: #005930;
-    color: #fff;
+    color: #ffffff;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.68rem;
+    font-size: 0.75rem;
     font-weight: 700;
     flex-shrink: 0;
-  }
-  .an-avatar--sm {
-    width: 26px;
-    height: 26px;
-    font-size: 0.62rem;
   }
   .an-user-name {
     font-weight: 600;
     color: var(--text-primary);
   }
-  .an-td--muted {
+  .an-cell-muted {
     color: var(--text-secondary);
   }
-  .an-time-badge {
+  .an-time-tag {
     display: inline-block;
-    padding: 2px 7px;
+    padding: 3px 8px;
     border-radius: var(--radius-sm);
     background: var(--bg-secondary);
     font-weight: 600;
-    font-size: 0.72rem;
+    font-size: 0.76rem;
     color: var(--text-primary);
   }
   .an-status-chip {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    padding: 2px 8px;
+    gap: 5px;
+    padding: 3px 9px;
     border-radius: var(--radius-full);
-    font-size: 0.68rem;
+    font-size: 0.74rem;
     font-weight: 600;
     white-space: nowrap;
+  }
+  .an-status-chip--good {
+    background: #05966914;
+    color: #059669;
+    border: 1px solid #05966930;
   }
   .an-status-chip--warn {
-    background: #EF444412;
-    color: #EF4444;
-    border: 1px solid #EF444425;
-  }
-
-  /* ── Distribution Lists ── */
-  .an-dist-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  .an-dist-row {
-    display: grid;
-    grid-template-columns: 140px 1fr 65px;
-    align-items: center;
-    gap: var(--space-3);
-  }
-  .an-dist-label {
-    font-size: var(--text-xs);
-    font-weight: 500;
-    color: var(--text-secondary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .an-dist-track {
-    height: 6px;
-    background: var(--bg-secondary);
-    border-radius: var(--radius-full);
-    overflow: hidden;
-  }
-  .an-dist-fill {
-    height: 100%;
-    border-radius: var(--radius-full);
-    transition: width 0.8s ease;
-  }
-  .an-dist-badge {
-    font-size: 0.68rem;
-    font-weight: 600;
-    text-align: right;
-    padding: 1px 6px;
-    border-radius: var(--radius-sm);
-  }
-
-  /* ── Top Performers ── */
-  .an-top-list {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-  .an-top-row {
-    display: grid;
-    grid-template-columns: 24px 28px 1fr 110px;
-    align-items: center;
-    gap: 8px;
-    padding: 5px 0;
-    border-bottom: 1px solid var(--border-default);
-  }
-  .an-top-row:last-child { border-bottom: none; }
-  .an-top-rank { font-size: 14px; text-align: center; }
-  .an-top-num { font-size: 0.72rem; font-weight: 700; color: var(--text-tertiary); }
-  .an-top-info { min-width: 0; display: flex; flex-direction: column; }
-  .an-top-name { font-size: var(--text-xs); font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .an-top-sub { font-size: 0.65rem; color: var(--text-tertiary); }
-  .an-top-progress { display: flex; align-items: center; gap: 6px; }
-  .an-top-bar { flex: 1; height: 5px; background: var(--bg-secondary); border-radius: var(--radius-full); overflow: hidden; }
-  .an-top-bar div { height: 100%; border-radius: var(--radius-full); }
-  .an-top-pct { font-size: 0.68rem; font-weight: 700; min-width: 28px; text-align: right; }
-
-  /* ── Flagged Trainees ── */
-  .an-flag-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-  }
-  .an-flag-row {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    padding: 10px 0;
-    border-bottom: 1px solid var(--border-default);
-  }
-  .an-flag-row:last-child { border-bottom: none; }
-  .an-flag-avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
     background: #EF444414;
     color: #EF4444;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.72rem;
-    font-weight: 700;
-    flex-shrink: 0;
+    border: 1px solid #EF444430;
   }
-  .an-flag-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-  .an-flag-name { font-size: var(--text-xs); font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .an-flag-sub { font-size: 0.68rem; color: var(--text-tertiary); }
-  .an-flag-status { display: flex; align-items: center; gap: 8px; }
-  .an-flag-pct { font-size: 0.72rem; font-weight: 600; color: #EF4444; }
+  .an-status-chip--neutral {
+    background: var(--bg-secondary);
+    color: var(--text-tertiary);
+    border: 1px solid var(--border-default);
+  }
 
   /* ── Empty States ── */
   .an-empty {
@@ -1345,31 +1790,79 @@ function injectStyles() {
     justify-content: center;
     text-align: center;
     padding: var(--space-8) var(--space-4);
-    gap: 4px;
+    gap: 6px;
   }
-  .an-empty__icon { margin-bottom: var(--space-1); }
-  .an-empty__title { font-size: var(--text-xs); font-weight: 600; color: var(--text-primary); margin: 0; }
-  .an-empty__text { font-size: var(--text-xs); color: var(--text-tertiary); margin: 0; }
-  .an-empty--success { padding: var(--space-6) var(--space-4); }
+  .an-empty__icon { margin-bottom: var(--space-1); color: var(--text-tertiary); }
+  .an-empty__title { font-size: 0.9rem; font-weight: 600; color: var(--text-primary); margin: 0; }
+  .an-empty__text { font-size: 0.78rem; color: var(--text-tertiary); margin: 0; }
   .an-empty--error { padding: var(--space-12) var(--space-4); }
 
-  /* ── Responsive ── */
+  /* ── Responsive Adaptations ── */
   @media (max-width: 1200px) {
-    .an-kpi-grid { grid-template-columns: repeat(3, 1fr); }
-    .an-row--3-2 { grid-template-columns: 1fr; }
+    .an-hero-grid { grid-template-columns: repeat(2, 1fr); }
+    .an-layout-row { grid-template-columns: 1fr; }
+    .an-layout-row--velocity { grid-template-columns: 1fr; }
+    .an-layout-row--3col { grid-template-columns: 1fr; }
+    .an-diagnostic-banner { flex-direction: column; align-items: flex-start; }
+    .an-diagnostic-sep { display: none; }
   }
-  @media (max-width: 860px) {
-    .an-row { grid-template-columns: 1fr; }
-    .an-kpi-grid { grid-template-columns: repeat(2, 1fr); }
-    .an-loc-box { flex-direction: column; align-items: flex-start; }
-    .an-chart-stat-group { display: none; }
-  }
-  @media (max-width: 580px) {
+  @media (max-width: 768px) {
+    .an-hero-grid { grid-template-columns: 1fr; }
     .an-header { flex-direction: column; align-items: flex-start; }
-    .an-kpi-grid { grid-template-columns: repeat(2, 1fr); }
-    .an-tabs-bar { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    .an-tabs { display: flex; flex-wrap: nowrap; gap: 4px; width: max-content; }
-    .an-tab { white-space: nowrap; flex-shrink: 0; padding: 7px 14px; }
+    .an-header__actions { width: 100%; justify-content: flex-start; }
+    .an-loc-content { flex-direction: column; align-items: flex-start; }
+    .an-velocity-legend { display: none; }
+    .an-funnel-row { grid-template-columns: 120px 1fr 60px; }
+    .an-funnel-connector { padding-left: 130px; }
+  }
+
+  /* ── Print Stylesheet ── */
+  @media print {
+    /* Hide navigation, sidebars, header buttons */
+    .sidebar-left, .navbar, .mobile-bottom-nav, .an-header__actions, .an-table-filter-group {
+      display: none !important;
+    }
+    body, .an-page {
+      background: #ffffff !important;
+      color: #000000 !important;
+      padding: 0 !important;
+      font-size: 9pt !important;
+    }
+    .an-print-header {
+      display: block !important;
+    }
+    .an-hero-grid {
+      grid-template-columns: repeat(4, 1fr) !important;
+      gap: 8px !important;
+    }
+    .an-hero-card {
+      border: 1px solid #D1D5DB !important;
+      box-shadow: none !important;
+      padding: 10px !important;
+      break-inside: avoid;
+    }
+    .an-card {
+      border: 1px solid #D1D5DB !important;
+      box-shadow: none !important;
+      padding: 12px !important;
+      break-inside: avoid;
+    }
+    .an-layout-row {
+      grid-template-columns: 1fr 1fr !important;
+      gap: 12px !important;
+    }
+    .an-layout-row--velocity {
+      grid-template-columns: 1.5fr 1fr !important;
+    }
+    .an-layout-row--3col {
+      grid-template-columns: repeat(3, 1fr) !important;
+    }
+    .an-table {
+      font-size: 8pt !important;
+    }
+    .an-table th, .an-table td {
+      padding: 6px 10px !important;
+    }
   }
   `;
   document.head.appendChild(s);
