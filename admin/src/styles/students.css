@@ -202,7 +202,7 @@
 
 @media (min-width: 992px) {
   .st-table-responsive {
-    overflow-x: hidden; /* Fits desktop and laptop screens cleanly without sideways scroll */
+    overflow-x: auto; /* Allow smooth horizontal scroll when content or zoom requires it without clipping */
   }
 }
 
@@ -353,19 +353,22 @@
 
 /* Program & Section Cell */
 .st-program-cell {
-  width: 200px;
-  min-width: 165px;
-  max-width: 250px;
+  width: 210px;
+  min-width: 170px;
+  max-width: 260px;
 }
 
 .st-program-name {
   font-size: 0.84rem;
   font-weight: 600;
   color: var(--text-primary);
-  line-height: 1.3;
-  white-space: nowrap;
+  line-height: 1.35;
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
+  word-break: break-word;
 }
 
 .st-program-sub {
@@ -603,11 +606,11 @@
 
 /* Action Cell */
 .st-action-cell {
-  width: 75px;
-  min-width: 70px;
-  max-width: 90px;
+  width: 220px;
+  min-width: 210px;
   text-align: right;
   white-space: nowrap;
+  padding-right: 14px !important;
 }
 
 .st-action-group {
@@ -615,31 +618,90 @@
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
+  flex-wrap: nowrap;
 }
 
-.st-btn-view {
+/* Unified Action Button System */
+.st-btn-action {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
+  gap: 5px;
   height: 32px;
-  padding: 0 11px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-default);
+  padding: 0 10px;
   border-radius: 6px;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-weight: 600;
-  color: var(--text-primary);
+  line-height: 1;
+  letter-spacing: 0.01em;
   cursor: pointer;
-  transition: all 0.15s ease;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
   white-space: nowrap;
+  transition: all 0.15s ease;
+  user-select: none;
+  border: 1px solid transparent;
 }
 
+.st-btn-action svg {
+  flex-shrink: 0;
+}
+
+/* Approve Button */
+.st-btn-action--approve {
+  background: #005930;
+  border-color: #005930;
+  color: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 89, 48, 0.2);
+}
+
+.st-btn-action--approve:hover {
+  background: #004425;
+  border-color: #004425;
+  box-shadow: 0 2px 6px rgba(0, 89, 48, 0.3);
+  transform: translateY(-1px);
+}
+
+/* Reject Button */
+.st-btn-action--reject {
+  background: #FEF2F2;
+  border-color: #FCA5A5;
+  color: #DC2626;
+}
+
+.st-btn-action--reject:hover {
+  background: #FEE2E2;
+  border-color: #EF4444;
+  color: #B91C1C;
+  transform: translateY(-1px);
+}
+
+/* View Button */
+.st-btn-action--view,
+.st-btn-view {
+  background: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-default, #e2e8f0);
+  border-radius: 6px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--text-primary, #1e293b);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  height: 32px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.st-btn-action--view:hover,
 .st-btn-view:hover {
-  background: var(--color-primary-bg);
-  border-color: var(--color-primary);
-  color: var(--color-primary);
+  background: var(--color-primary-bg, rgba(0, 89, 48, 0.06));
+  border-color: var(--color-primary, #005930);
+  color: var(--color-primary, #005930);
   box-shadow: 0 2px 5px rgba(0, 89, 48, 0.15);
+  transform: translateY(-1px);
 }
 
 /* ── Mobile Responsive Card View (Stacked Layout for < 768px) ── */

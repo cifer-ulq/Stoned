@@ -1050,17 +1050,17 @@ function renderTable(tbody, list, container, selectedStudents, updateSelectionUI
         <td class="st-action-cell">
           <div class="st-action-group">
             ${s.approval_status === 'pending' ? `
-              <button class="approve-btn btn btn--primary btn--sm" data-id="${s.id}" data-name="${escapeHtml(s.name)}" style="height:36px;padding:0 12px;font-size:0.775rem;gap:4px;" title="Approve student registration">
+              <button class="approve-btn st-btn-action st-btn-action--approve" data-id="${s.id}" data-name="${escapeHtml(s.name)}" title="Approve student registration">
                 ${icon('check', 13)} Approve
               </button>
-              <button class="reject-btn btn btn--outline btn--sm" data-id="${s.id}" data-name="${escapeHtml(s.name)}" style="height:36px;padding:0 10px;font-size:0.775rem;color:#DC2626;border-color:#FCA5A5;gap:3px;" title="Reject student registration">
+              <button class="reject-btn st-btn-action st-btn-action--reject" data-id="${s.id}" data-name="${escapeHtml(s.name)}" title="Reject student registration">
                 ${icon('x', 13)} Reject
               </button>
-              <button class="view-btn st-btn-view" data-id="${s.id}" title="View Student Details">
-                ${icon('eye', 14)} View
+              <button class="view-btn st-btn-action st-btn-action--view" data-id="${s.id}" title="View Student Details">
+                ${icon('eye', 13)} View
               </button>
             ` : `
-              <button class="view-btn st-btn-view" data-id="${s.id}">
+              <button class="view-btn st-btn-action st-btn-action--view" data-id="${s.id}" title="View Student Details">
                 ${icon('eye', 14)} View
               </button>
             `}
@@ -1271,7 +1271,7 @@ function showSkeleton(tbody, count = 9, container = null) {
         <div style="height:8px;width:100%;background:var(--bg-tertiary);border-radius:9999px;"></div>
       </td>
       <td class="st-status-cell"><div style="height:26px;width:95px;background:var(--bg-tertiary);border-radius:9999px;"></div></td>
-      <td class="st-action-cell"><div style="height:36px;width:75px;background:var(--bg-tertiary);border-radius:8px;display:inline-block;"></div></td>
+      <td class="st-action-cell"><div style="height:32px;width:120px;background:var(--bg-tertiary);border-radius:6px;display:inline-block;"></div></td>
     </tr>`).join('');
 
   const mobileContainer = container ? container.querySelector('#students-mobile-cards') : null;
