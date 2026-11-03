@@ -756,6 +756,9 @@ class SupervisorController extends Controller
             $rawSection = $sp?->section ?? null;
             $cleanSection = $rawSection ? trim(preg_replace('/^(?:Section|BSIT|BSCS|BSIS|BSCpE)\s*/i', '', $rawSection)) : null;
 
+            $latestReq = $student->ojtRequirements?->sortByDesc('id')->first();
+            $hasDrive = !empty($latestReq?->drive_url) || !empty($sp?->requirements_drive_url);
+
             return [
                 'id'             => $student->id,
                 'name'           => $student->name,
@@ -767,7 +770,22 @@ class SupervisorController extends Controller
                 'section'        => $cleanSection ?: '—',
                 'studentId'      => $sp?->student_id ?? '—',
                 'requirements_drive_url' => $sp?->requirements_drive_url,
-                'requirements'           => $student->ojtRequirements?->sortByDesc('id')->first(),
+                'requirements'           => $latestReq ? [
+                    'id'                 => $latestReq->id,
+                    'title'              => $latestReq->title,
+                    'status'             => $latestReq->status,
+                    'is_verified'        => ($latestReq->status === 'verified'),
+                    'is_submitted'       => in_array($latestReq->status, ['submitted', 'verified']),
+                    'is_pending'         => ($latestReq->status === 'pending'),
+                    'needs_revision'     => ($latestReq->status === 'needs_revision'),
+                    'has_drive_url'      => $hasDrive,
+                    'drive_url'          => $latestReq->drive_url ?: $sp?->requirements_drive_url,
+                    'supervisor_remarks' => $latestReq->supervisor_remarks,
+                    'due_date'           => $latestReq->due_date?->format('M d, Y'),
+                    'submitted_at'       => $latestReq->submitted_at?->format('M d, Y'),
+                    'verified_at'        => $latestReq->verified_at?->format('M d, Y'),
+                    'items'              => $latestReq->items,
+                ] : null,
                 'company'        => $companyName ?: '—',
                 'company_user_id'=> $companyUserId,
                 'startDate'      => $startDate ?: '—',

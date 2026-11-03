@@ -28,6 +28,51 @@ const STATUS_BADGES = {
 
 const BAR_COLOR = pct => pct >= 75 ? '#005930' : pct >= 40 ? '#10B981' : '#F59E0B';
 
+/* ── Requirements Indicator Helper ──
+   Only shows an indicator when requirements require action (not submitted, revision needed, or awaiting review).
+   When requirements are met and approved (verified), the indicator is completely gone. ── */
+function renderRequirementsIndicator(t) {
+  const req = t.requirements;
+  if (!req) return '';
+
+  // If requirements are verified and approved, the indicator is GONE
+  if (req.status === 'verified' || req.is_verified) {
+    return '';
+  }
+
+  // Revision requested by supervisor
+  if (req.status === 'needs_revision' || req.needs_revision) {
+    return `
+      <div style="margin-top:4px;">
+        <span class="badge" style="background:#FEE2E2;color:#991B1B;border:1px solid #FCA5A5;font-size:0.74rem;padding:2px 8px;font-weight:700;border-radius:4px;display:inline-flex;align-items:center;gap:4px;" title="Revision requested: ${escapeHtml(req.supervisor_remarks || 'Update required documents')}">
+          ${icon('alertTriangle', 11)} Reqs: Revision Needed
+        </span>
+      </div>`;
+  }
+
+  // Student submitted, waiting for supervisor review/verification
+  if (req.status === 'submitted') {
+    return `
+      <div style="margin-top:4px;">
+        <span class="badge" style="background:#EFF6FF;color:#1D4ED8;border:1px solid #93C5FD;font-size:0.74rem;padding:2px 8px;font-weight:700;border-radius:4px;display:inline-flex;align-items:center;gap:4px;" title="Student submitted Google Drive folder — click to review and verify">
+          ${icon('folder', 11)} Reqs: Ready for Review
+        </span>
+      </div>`;
+  }
+
+  // Assigned but student has not submitted yet
+  if (req.status === 'pending' || req.is_pending) {
+    return `
+      <div style="margin-top:4px;">
+        <span class="badge" style="background:#FFFBEB;color:#B45309;border:1px solid #FCD34D;font-size:0.74rem;padding:2px 8px;font-weight:700;border-radius:4px;display:inline-flex;align-items:center;gap:4px;" title="Document packet assigned but student has not submitted files yet">
+          ${icon('clock', 11)} Reqs: Not Submitted
+        </span>
+      </div>`;
+  }
+
+  return '';
+}
+
 function escapeHtml(str = '') {
   if (!str) return '';
   return String(str)
@@ -932,17 +977,7 @@ export default function traineesPage(container) {
                 </span>
               </div>
             ` : ''}
-            ${t.requirements ? `
-              <div style="margin-top:4px;">
-                <span class="badge ${
-                  t.requirements.status === 'verified' ? 'badge--success' :
-                  t.requirements.status === 'submitted' ? 'badge--info' :
-                  t.requirements.status === 'needs_revision' ? 'badge--warning' : 'badge--neutral'
-                }" style="font-size:0.72rem;padding:2px 8px;text-transform:capitalize;font-weight:700;border-radius:4px;">
-                  Reqs: ${t.requirements.status.replace('_', ' ')}
-                </span>
-              </div>
-            ` : ''}
+            ${renderRequirementsIndicator(t)}
             ${t.flag ? `<div style="margin-top:4px;"><span class="badge badge--error" style="font-size:0.72rem;padding:2px 8px;border-radius:4px;">${icon('alertTriangle', 12)} Flagged</span></div>` : ''}
           </td>
 
@@ -1344,20 +1379,27 @@ export default function traineesPage(container) {
                       <span style="font-size:0.88rem;font-weight:700;color:var(--text-primary);text-transform:uppercase;letter-spacing:0.04em;">
                         ${escapeHtml(t.requirements?.title || 'OJT Requirements Packet')}
                       </span>
-                      ${t.requirements ? `
-                        <span class="badge ${
-                          t.requirements.status === 'verified' ? 'badge--success' :
-                          t.requirements.status === 'submitted' ? 'badge--info' :
-                          t.requirements.status === 'needs_revision' ? 'badge--warning' : 'badge--neutral'
-                        }" style="font-size:0.74rem;text-transform:capitalize;font-weight:700;padding:2px 8px;">
-                          ${t.requirements.status.replace('_', ' ')}
-                        </span>
-                      ` : `
+                      ${t.requirements ? (
+                        t.requirements.status === 'verified' ? `
+                          <span class="badge badge--success" style="font-size:0.75rem;font-weight:700;padding:2px 8px;display:inline-flex;align-items:center;gap:4px;">
+                            ${icon('checkCircle', 12)} All Documents Approved
+                          </span>
+                        ` : `
+                          <span class="badge ${
+                            t.requirements.status === 'submitted' ? 'badge--info' :
+                            t.requirements.status === 'needs_revision' ? 'badge--warning' : 'badge--neutral'
+                          }" style="font-size:0.74rem;text-transform:capitalize;font-weight:700;padding:2px 8px;">
+                            ${t.requirements.status === 'submitted' ? 'Ready for Review' : (t.requirements.status === 'needs_revision' ? 'Revision Needed' : 'Not Submitted')}
+                          </span>
+                        `
+                      ) : `
                         <span class="badge badge--neutral" style="font-size:0.74rem;font-weight:600;padding:2px 8px;">Not Assigned</span>
                       `}
                     </div>
                     <div style="font-size:0.84rem;color:var(--text-secondary);margin-top:3px;">
-                      ${t.requirements?.due_date ? `Due Date: <strong>${t.requirements.due_date}</strong> &middot; ` : ''}
+                      ${t.requirements?.status === 'verified'
+                        ? `<span style="color:#16a34a;font-weight:600;">Verified &amp; Approved &middot; </span>`
+                        : (t.requirements?.due_date ? `Due Date: <strong>${t.requirements.due_date}</strong> &middot; ` : '')}
                       ${Array.isArray(t.requirements?.items) ? `${t.requirements.items.length} required documents` : 'No checklist items assigned yet'}
                     </div>
                   </div>
@@ -1367,7 +1409,7 @@ export default function traineesPage(container) {
                 <div>
                   <button type="button" class="btn btn--sm ${t.requirements?.status === 'submitted' ? 'btn--primary' : 'btn--outline'}" id="tr2-open-req-btn" style="gap:6px;font-size:0.84rem;font-weight:600;padding:7px 14px;">
                     ${t.requirements
-                      ? (t.requirements.status === 'submitted' ? `${icon('checkSquare', 14)} Review Submission` : `${icon('list', 14)} Manage Packet`)
+                      ? (t.requirements.status === 'submitted' ? `${icon('checkSquare', 14)} Review Submission` : (t.requirements.status === 'verified' ? `${icon('checkCircle', 14)} View Verified Packet` : `${icon('list', 14)} Manage Packet`))
                       : `${icon('plus', 14)} Assign Requirements`
                     }
                   </button>
