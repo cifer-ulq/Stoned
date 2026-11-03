@@ -26,6 +26,8 @@ export default function evaluationsPage(container) {
   let activeSortBy = 'progress_desc'; // 'progress_desc' | 'name_asc' | 'score_desc' | 'status'
   let selectedTraineeForDossier = null; // Trainee currently inspected in right drawer
   let activeCategoryFilter = 'all'; // In builder: filter questions by category
+  const PER_PAGE = 9;
+  let currentPage = 1;
 
   container.innerHTML = `
     <!-- ═══ Scoped Professional Styles ═══ -->
@@ -685,6 +687,75 @@ export default function evaluationsPage(container) {
         box-shadow: 0 2px 6px rgba(0,0,0,0.03);
       }
 
+
+      /* ── Pagination Footer (9 Trainees Per Page) ── */
+      .eval-table-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 20px;
+        border-top: 1px solid var(--border-default);
+        background: #FAFBFD;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+      .eval-table-footer__info {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        font-weight: 500;
+      }
+      .eval-table-footer__info strong {
+        color: var(--text-primary);
+        font-weight: 700;
+      }
+      .eval-pagination {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+      .eval-pg-btn {
+        min-width: 32px;
+        height: 32px;
+        padding: 0 8px;
+        border: 1px solid var(--border-default);
+        border-radius: 6px;
+        background: #ffffff;
+        color: var(--text-secondary);
+        font-size: 0.82rem;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all var(--duration-fast);
+        outline: none;
+        user-select: none;
+      }
+      .eval-pg-btn:hover:not(:disabled):not(.eval-pg-btn--active) {
+        background: var(--bg-secondary);
+        border-color: var(--border-strong);
+        color: var(--text-primary);
+      }
+      .eval-pg-btn--active {
+        background: var(--color-primary);
+        border-color: var(--color-primary);
+        color: #ffffff;
+        font-weight: 700;
+        cursor: default;
+      }
+      .eval-pg-btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+      .eval-pg-ellipsis {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        font-size: 0.8rem;
+        color: var(--text-tertiary);
+      }
+
       /* ── Print Styles for Official Appraisal Certification ── */
       @media print {
         body * {
@@ -820,7 +891,7 @@ export default function evaluationsPage(container) {
         <div class="eval-command-bar" style="margin-bottom:12px;">
           <div class="eval-command-search">
             <span class="eval-command-search__icon">${icon('search', 14)}</span>
-            <input id="eval-search-input" placeholder="Search trainee, student ID, or employer..." />
+            <input id="eval-search-input" placeholder="Search trainee or employer..." />
           </div>
 
           <div class="eval-command-filters">
@@ -881,24 +952,29 @@ export default function evaluationsPage(container) {
                     <th style="width:36px;text-align:center;">
                       <input type="checkbox" id="eval-check-all" title="Select all eligible trainees" style="cursor:pointer;" />
                     </th>
-                    <th style="min-width:190px;">Trainee Dossier</th>
-                    <th style="width:105px;">Student ID</th>
-                    <th style="min-width:160px;">Host Company</th>
-                    <th style="min-width:140px;">Training Hours</th>
-                    <th style="min-width:145px;">Midterm (50%)</th>
-                    <th style="min-width:145px;">Endterm (50%)</th>
-                    <th style="width:105px;">Composite</th>
-                    <th style="width:110px;text-align:right;">Actions</th>
+                    <th style="min-width:210px;">Trainee Dossier</th>
+                    <th style="min-width:180px;">Host Company</th>
+                    <th style="min-width:145px;">Training Hours</th>
+                    <th style="min-width:150px;">Midterm (50%)</th>
+                    <th style="min-width:150px;">Endterm (50%)</th>
+                    <th style="width:110px;">Composite</th>
+                    <th style="width:115px;text-align:right;">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="eval-trainee-tbody">
-                  ${[1, 2, 3, 4, 5].map(() => '<tr><td colspan="9"><div class="skeleton" style="height:38px;border-radius:6px;margin:4px 0;"></div></td></tr>').join('')}
+                  ${[1, 2, 3, 4, 5].map(() => '<tr><td colspan="8"><div class="skeleton" style="height:38px;border-radius:6px;margin:4px 0;"></div></td></tr>').join('')}
                 </tbody>
               </table>
             </div>
 
             <!-- Cards View Container -->
             <div id="eval-view-cards-wrap" class="eval-cards-grid" style="display:none;"></div>
+
+            <!-- Pagination Footer (9 Trainees Per Page) -->
+            <div class="eval-table-footer" id="eval-pagination-wrap" style="display:none;">
+              <div class="eval-table-footer__info" id="eval-page-info"></div>
+              <div class="eval-pagination" id="eval-page-controls"></div>
+            </div>
           </div>
 
           <!-- Dossier Detail Pane (Slide-in / Sticky Inspection Drawer) -->
@@ -1075,6 +1151,7 @@ export default function evaluationsPage(container) {
   });
 
   function setStageFilter(filterVal) {
+    currentPage = 1;
     activeFilter = filterVal;
     stageDropdown.value = filterVal;
 
@@ -1086,8 +1163,12 @@ export default function evaluationsPage(container) {
   }
 
   // Search & Sort Handlers
-  searchInput.addEventListener('input', () => renderTraineeList());
+  searchInput.addEventListener('input', () => {
+    currentPage = 1;
+    renderTraineeList();
+  });
   sortDropdown.addEventListener('change', (e) => {
+    currentPage = 1;
     activeSortBy = e.target.value;
     renderTraineeList();
   });
@@ -1171,6 +1252,11 @@ export default function evaluationsPage(container) {
     if (curIdx === -1) return;
     const nextIdx = curIdx + dir;
     if (nextIdx >= 0 && nextIdx < list.length) {
+      const targetPage = Math.floor(nextIdx / PER_PAGE) + 1;
+      if (targetPage !== currentPage) {
+        currentPage = targetPage;
+        renderTraineeList();
+      }
       inspectTraineeDossier(list[nextIdx]);
     }
   }
@@ -1327,8 +1413,14 @@ export default function evaluationsPage(container) {
 
   function renderTraineeList() {
     const filtered = getFilteredTrainees();
+    const totalItems = filtered.length;
 
-    if (!filtered.length) {
+    const paginationWrap = container.querySelector('#eval-pagination-wrap');
+    const pageInfo = container.querySelector('#eval-page-info');
+    const pageControls = container.querySelector('#eval-page-controls');
+
+    if (!totalItems) {
+      if (paginationWrap) paginationWrap.style.display = 'none';
       const emptyHtml = `
         <div style="padding:48px 24px;text-align:center;">
           <div style="width:48px;height:48px;border-radius:50%;background:rgba(0,89,48,0.06);color:var(--color-primary);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
@@ -1337,13 +1429,20 @@ export default function evaluationsPage(container) {
           <h4 style="margin:0 0 4px;font-size:0.95rem;font-weight:600;color:var(--text-primary);">No matching trainees</h4>
           <p class="text-tertiary text-xs" style="margin:0;">Try adjusting your search criteria or stage filter.</p>
         </div>`;
-      traineeTbody.innerHTML = `<tr><td colspan="9">${emptyHtml}</td></tr>`;
+      traineeTbody.innerHTML = `<tr><td colspan="8">${emptyHtml}</td></tr>`;
       viewCardsWrap.innerHTML = emptyHtml;
       return;
     }
 
-    // 1. Render Table Rows
-    traineeTbody.innerHTML = filtered.map(t => {
+    // Pagination calculations (9 trainees per page)
+    const totalPages = Math.max(1, Math.ceil(totalItems / PER_PAGE));
+    if (currentPage > totalPages) currentPage = totalPages;
+    const startIndex = (currentPage - 1) * PER_PAGE;
+    const endIndex = Math.min(totalItems, startIndex + PER_PAGE);
+    const pageData = filtered.slice(startIndex, endIndex);
+
+    // 1. Render Table Rows (8 Clean Columns)
+    traineeTbody.innerHTML = pageData.map(t => {
       const init = (t.name || '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
       const pct = t.progressPercent || 0;
       const barColor = pct >= 100 ? 'var(--color-primary)' : pct >= 50 ? '#10B981' : '#F59E0B';
@@ -1440,7 +1539,6 @@ export default function evaluationsPage(container) {
               </div>
             </div>
           </td>
-          <td><span style="font-family:monospace;font-size:0.75rem;color:var(--text-secondary);">${t.studentId || '—'}</span></td>
           <td>${companyHtml}</td>
           <td>
             <div class="eval-hours-meter">
@@ -1465,8 +1563,8 @@ export default function evaluationsPage(container) {
       `;
     }).join('');
 
-    // 2. Render Cards View
-    viewCardsWrap.innerHTML = filtered.map(t => {
+    // 2. Render Cards View (9 Cards Per Page)
+    viewCardsWrap.innerHTML = pageData.map(t => {
       const init = (t.name || '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
       const pct = t.progressPercent || 0;
       const barColor = pct >= 100 ? 'var(--color-primary)' : pct >= 50 ? '#10B981' : '#F59E0B';
@@ -1488,7 +1586,7 @@ export default function evaluationsPage(container) {
               </div>
               <div>
                 <div style="font-weight:700;font-size:0.88rem;color:var(--text-primary);">${t.name}</div>
-                <div style="font-size:0.72rem;color:var(--text-secondary);font-family:monospace;">${t.studentId || 'ID —'} • ${t.section || t.course}</div>
+                <div style="font-size:0.75rem;color:var(--text-secondary);">${t.section ? `${t.course || 'BSIT'} • ${t.section}` : (t.course || 'OJT Trainee')}</div>
               </div>
             </div>
             ${scoreBadge}
@@ -1605,10 +1703,63 @@ export default function evaluationsPage(container) {
             showToast(res?.message || 'Failed to send reminder.', 'error');
           }
         } catch (e) {
-          showToast(e.message || 'Error sending reminder.', 'error');
+                    showToast(e.message || 'Error sending reminder.', 'error');
         } finally {
           btn.disabled = false;
         }
+      });
+    });
+
+    // 3. Render Pagination Footer
+    if (paginationWrap && pageInfo && pageControls) {
+      paginationWrap.style.display = 'flex';
+      pageInfo.innerHTML = `Showing <strong>${startIndex + 1}</strong>–<strong>${endIndex}</strong> of <strong>${totalItems}</strong> trainees`;
+      renderPaginationControls(pageControls, totalPages);
+    }
+  }
+
+  /* ── Render pagination controls (9 items/page) ── */
+  function renderPaginationControls(containerEl, totalPages) {
+    if (totalPages <= 1) {
+      containerEl.innerHTML = '';
+      return;
+    }
+
+    let html = '';
+
+    // Previous Button
+    html += `<button class="eval-pg-btn" data-action="prev" ${currentPage === 1 ? 'disabled' : ''} aria-label="Previous page">
+      ${icon('chevronLeft', 14)}
+    </button>`;
+
+    // Page Number Buttons
+    for (let p = 1; p <= totalPages; p++) {
+      if (totalPages > 6 && Math.abs(p - currentPage) > 2 && p !== 1 && p !== totalPages) {
+        if (p === currentPage - 3 || p === currentPage + 3) {
+          html += `<span class="eval-pg-ellipsis">…</span>`;
+        }
+        continue;
+      }
+      html += `<button class="eval-pg-btn ${p === currentPage ? 'eval-pg-btn--active' : ''}" data-page="${p}">${p}</button>`;
+    }
+
+    // Next Button
+    html += `<button class="eval-pg-btn" data-action="next" ${currentPage === totalPages ? 'disabled' : ''} aria-label="Next page">
+      ${icon('chevronRight', 14)}
+    </button>`;
+
+    containerEl.innerHTML = html;
+
+    containerEl.querySelectorAll('button:not([disabled])').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (btn.dataset.action === 'prev') {
+          currentPage = Math.max(1, currentPage - 1);
+        } else if (btn.dataset.action === 'next') {
+          currentPage = Math.min(totalPages, currentPage + 1);
+        } else if (btn.dataset.page) {
+          currentPage = parseInt(btn.dataset.page, 10);
+        }
+        renderTraineeList();
       });
     });
   }
