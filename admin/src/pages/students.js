@@ -178,6 +178,9 @@ function openStudentApprovalModal({ student, onApproved, apiEndpoint = `/admin/s
 
     try {
       const res = await apiPost(apiEndpoint, {});
+      if (!res || res.success === false) {
+        throw new Error(res?.message || 'Failed to approve student. Please try again.');
+      }
       close();
       if (typeof onApproved === 'function') onApproved(res);
     } catch (err) {
@@ -313,6 +316,9 @@ function openStudentRejectionModal({ student, onRejected, apiEndpoint = `/admin/
 
     try {
       const res = await apiPost(apiEndpoint, { reason, wipe_data: true });
+      if (!res || res.success === false) {
+        throw new Error(res?.message || 'Failed to reject student registration.');
+      }
       close();
       if (typeof onRejected === 'function') onRejected(res);
     } catch (err) {
@@ -421,6 +427,9 @@ function openStudentDeleteModal({ student, onDeleted, apiEndpoint = `/admin/stud
 
     try {
       const res = await apiDelete(apiEndpoint);
+      if (!res || res.success === false) {
+        throw new Error(res?.message || 'Failed to delete student user.');
+      }
       close();
       if (typeof onDeleted === 'function') onDeleted(res);
     } catch (err) {

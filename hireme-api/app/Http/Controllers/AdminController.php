@@ -2843,7 +2843,7 @@ class AdminController extends Controller
             }
 
             // 2. Delete time logs
-            \App\Models\TimeLog::where('student_id', $userId)->delete();
+            \App\Models\TimeLog::where('user_id', $userId)->delete();
 
             // 3. Delete emergency & pull-out requests
             \App\Models\OjtEmergencyRequest::where('student_user_id', $userId)->delete();
@@ -2854,11 +2854,21 @@ class AdminController extends Controller
             \App\Models\StudentOjtInterest::where('student_user_id', $userId)->delete();
 
             // 5. Delete OJT records
-            \App\Models\OjtRecord::where('student_user_id', $userId)->delete();
+            \App\Models\OjtRecord::where('user_id', $userId)->delete();
 
             // 6. Delete job applications & interviews
-            \App\Models\JobApplication::where('student_user_id', $userId)->delete();
-            \App\Models\Interview::where('student_user_id', $userId)->delete();
+            $applicationIds = \App\Models\JobApplication::where('applicant_user_id', $userId)->pluck('id');
+            if ($applicationIds->isNotEmpty()) {
+                \App\Models\Interview::whereIn('job_application_id', $applicationIds)->delete();
+                \App\Models\JobApplication::whereIn('id', $applicationIds)->delete();
+            }
+
+            if (\Illuminate\Support\Facades\Schema::hasTable('student_interviews')) {
+                DB::table('student_interviews')->where('user_id', $userId)->delete();
+            }
+            if (\Illuminate\Support\Facades\Schema::hasTable('student_applications')) {
+                DB::table('student_applications')->where('user_id', $userId)->delete();
+            }
 
             // 7. Delete skills, educations, experiences, portfolio projects, achievements
             \App\Models\StudentSkill::where('user_id', $userId)->delete();
@@ -2869,7 +2879,7 @@ class AdminController extends Controller
 
             // 8. Delete alumni assessments (if any)
             if (\Illuminate\Support\Facades\Schema::hasTable('alumni_peo_assessments')) {
-                DB::table('alumni_peo_assessments')->where('student_id', $userId)->delete();
+                DB::table('alumni_peo_assessments')->where('user_id', $userId)->delete();
             }
 
             // 9. Delete notifications & chat messages

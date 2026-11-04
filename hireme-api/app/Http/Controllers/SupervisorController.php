@@ -2009,14 +2009,25 @@ class SupervisorController extends Controller
                 \App\Models\StudentEvaluation::whereIn('id', $evaluationIds)->delete();
             }
 
-            \App\Models\TimeLog::where('student_id', $userId)->delete();
+            \App\Models\TimeLog::where('user_id', $userId)->delete();
             \App\Models\OjtEmergencyRequest::where('student_user_id', $userId)->delete();
             \App\Models\OjtPullOutRequest::where('student_user_id', $userId)->delete();
             \App\Models\StudentOjtRequirement::where('student_user_id', $userId)->delete();
             \App\Models\StudentOjtInterest::where('student_user_id', $userId)->delete();
-            \App\Models\OjtRecord::where('student_user_id', $userId)->delete();
-            \App\Models\JobApplication::where('student_user_id', $userId)->delete();
-            \App\Models\Interview::where('student_user_id', $userId)->delete();
+            \App\Models\OjtRecord::where('user_id', $userId)->delete();
+
+            $applicationIds = \App\Models\JobApplication::where('applicant_user_id', $userId)->pluck('id');
+            if ($applicationIds->isNotEmpty()) {
+                \App\Models\Interview::whereIn('job_application_id', $applicationIds)->delete();
+                \App\Models\JobApplication::whereIn('id', $applicationIds)->delete();
+            }
+
+            if (\Illuminate\Support\Facades\Schema::hasTable('student_interviews')) {
+                \Illuminate\Support\Facades\DB::table('student_interviews')->where('user_id', $userId)->delete();
+            }
+            if (\Illuminate\Support\Facades\Schema::hasTable('student_applications')) {
+                \Illuminate\Support\Facades\DB::table('student_applications')->where('user_id', $userId)->delete();
+            }
 
             \App\Models\StudentSkill::where('user_id', $userId)->delete();
             \App\Models\StudentEducation::where('user_id', $userId)->delete();
@@ -2025,7 +2036,7 @@ class SupervisorController extends Controller
             \App\Models\StudentAchievement::where('user_id', $userId)->delete();
 
             if (\Illuminate\Support\Facades\Schema::hasTable('alumni_peo_assessments')) {
-                \Illuminate\Support\Facades\DB::table('alumni_peo_assessments')->where('student_id', $userId)->delete();
+                \Illuminate\Support\Facades\DB::table('alumni_peo_assessments')->where('user_id', $userId)->delete();
             }
 
             \App\Models\AppNotification::where('user_id', $userId)->delete();
