@@ -1997,6 +1997,54 @@ class SupervisorController extends Controller
         ]);
     }
 
+    /* ── Helper: Purge student data ── */
+    protected function purgeStudentData(User $student): void
+    {
+        \Illuminate\Support\Facades\DB::transaction(function () use ($student) {
+            $userId = $student->id;
+
+            $evaluationIds = \App\Models\StudentEvaluation::where('student_user_id', $userId)->pluck('id');
+            if ($evaluationIds->isNotEmpty()) {
+                \Illuminate\Support\Facades\DB::table('student_evaluation_answers')->whereIn('student_evaluation_id', $evaluationIds)->delete();
+                \App\Models\StudentEvaluation::whereIn('id', $evaluationIds)->delete();
+            }
+
+            \App\Models\TimeLog::where('student_id', $userId)->delete();
+            \App\Models\OjtEmergencyRequest::where('student_user_id', $userId)->delete();
+            \App\Models\OjtPullOutRequest::where('student_user_id', $userId)->delete();
+            \App\Models\StudentOjtRequirement::where('student_user_id', $userId)->delete();
+            \App\Models\StudentOjtInterest::where('student_user_id', $userId)->delete();
+            \App\Models\OjtRecord::where('student_user_id', $userId)->delete();
+            \App\Models\JobApplication::where('student_user_id', $userId)->delete();
+            \App\Models\Interview::where('student_user_id', $userId)->delete();
+
+            \App\Models\StudentSkill::where('user_id', $userId)->delete();
+            \App\Models\StudentEducation::where('user_id', $userId)->delete();
+            \App\Models\StudentExperience::where('user_id', $userId)->delete();
+            \App\Models\PortfolioProject::where('user_id', $userId)->delete();
+            \App\Models\StudentAchievement::where('user_id', $userId)->delete();
+
+            if (\Illuminate\Support\Facades\Schema::hasTable('alumni_peo_assessments')) {
+                \Illuminate\Support\Facades\DB::table('alumni_peo_assessments')->where('student_id', $userId)->delete();
+            }
+
+            \App\Models\AppNotification::where('user_id', $userId)->delete();
+            \App\Models\ChatMessage::where('sender_id', $userId)->orWhere('receiver_id', $userId)->delete();
+            $student->tokens()->delete();
+
+            \App\Models\StudentProfile::where('user_id', $userId)->delete();
+            \App\Models\GraduateProfile::where('user_id', $userId)->delete();
+
+            if ($student->avatar_url && !str_starts_with($student->avatar_url, 'http')) {
+                try {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($student->avatar_url);
+                } catch (\Throwable $e) {}
+            }
+
+            $student->delete();
+        });
+    }
+
     /* ── POST /api/supervisor/trainees/{id}/reject ── */
     public function rejectStudent(Request $request, $id)
     {
@@ -2013,6 +2061,21 @@ class SupervisorController extends Controller
         }
 
         $reason = trim($request->input('reason', 'Application rejected by supervisor.'));
+        $isSelfRegistered = ($profile->registration_source === 'self');
+        $wipeRequested = $request->boolean('wipe_data', true);
+
+        if ($isSelfRegistered || $wipeRequested) {
+            $studentName = $student->name;
+            $studentEmail = $student->email;
+            $this->purgeStudentData($student);
+
+            return response()->json([
+                'success' => true,
+                'wiped'   => true,
+                'message' => "Student {$studentName} registration was rejected and all submitted account data was wiped from the system.",
+            ]);
+        }
+
         $profile->update([
             'approval_status'  => 'rejected',
             'status'           => 'rejected',
@@ -2023,6 +2086,7 @@ class SupervisorController extends Controller
 
         return response()->json([
             'success' => true,
+            'wiped'   => false,
             'message' => "Student {$student->name} registration has been rejected.",
         ]);
     }

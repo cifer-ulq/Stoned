@@ -1,4 +1,4 @@
-import { apiGet, apiGetCached, getCached, apiPost, storageUrl } from '../api/client.js';
+import { apiGet, apiGetCached, getCached, apiPost, apiDelete, storageUrl } from '../api/client.js';
 import { icon, renderIcons } from '../components/icons.js';
 import { openStudentImportModal } from '../components/student-import-modal.js';
 import { openBroadcastModal } from '../components/broadcast-modal.js';
@@ -214,7 +214,7 @@ function openStudentRejectionModal({ student, onRejected, apiEndpoint = `/admin/
           </div>
           <div>
             <h3 class="sp-action-modal__title">Reject Student Registration</h3>
-            <p class="sp-action-modal__subtitle">Decline enrollment and provide feedback to the applicant</p>
+            <p class="sp-action-modal__subtitle">Decline enrollment and wipe submitted registration data</p>
           </div>
         </div>
         <button class="modal__close" id="sp-reject-close" aria-label="Close modal">${icon('x', 16)}</button>
@@ -234,7 +234,7 @@ function openStudentRejectionModal({ student, onRejected, apiEndpoint = `/admin/
         <div class="sp-reason-section">
           <div class="sp-reason-label">
             <span>Reason for Rejection <span style="color:#EF4444;">*</span></span>
-            <span style="font-size:0.7rem;color:var(--text-tertiary);">Visible to student on login</span>
+            <span style="font-size:0.7rem;color:var(--text-tertiary);">Visible in audit logs &amp; rejection feedback</span>
           </div>
 
           <div class="sp-reason-chips">
@@ -246,10 +246,11 @@ function openStudentRejectionModal({ student, onRejected, apiEndpoint = `/admin/
           <textarea class="sp-reason-textarea" id="sp-rejection-reason" placeholder="Enter reason for declining this student registration...">${escapeHtml(REASON_PRESETS[0])}</textarea>
         </div>
 
-        <div class="sp-warning-box">
-          ${icon('alert-triangle', 15)}
+        <div class="sp-warning-box" style="background:#FEF2F2;border:1px solid #FECDD3;color:#991B1B;padding:12px 14px;border-radius:8px;font-size:0.8rem;line-height:1.45;display:flex;align-items:flex-start;gap:10px;">
+          <span style="color:#DC2626;flex-shrink:0;margin-top:2px;">${icon('alert-triangle', 18)}</span>
           <div>
-            <strong>Student Access Restricted:</strong> This student will not be permitted to access the system and will see this reason when attempting to sign in.
+            <strong>Wipe Self-Registered Account Data:</strong>
+            Rejecting this self-registered student will immediately wipe all profile details, credentials, and submitted records from the database, freeing up the Student ID and email address.
           </div>
         </div>
 
@@ -259,7 +260,7 @@ function openStudentRejectionModal({ student, onRejected, apiEndpoint = `/admin/
       <div class="sp-action-modal__footer">
         <button class="btn btn--outline btn--sm" id="sp-reject-cancel" type="button">Cancel</button>
         <button class="btn btn--sm" id="sp-reject-confirm" type="button" style="background:#DC2626;color:#ffffff;border:1px solid #DC2626;gap:6px;">
-          ${icon('x', 14)} Confirm Rejection
+          ${icon('trash-2', 14)} Confirm Rejection &amp; Wipe Data
         </button>
       </div>
     </div>
@@ -307,18 +308,126 @@ function openStudentRejectionModal({ student, onRejected, apiEndpoint = `/admin/
     }
 
     confirmBtn.disabled = true;
-    confirmBtn.innerHTML = `<span class="spinner-sm"></span> Rejecting…`;
+    confirmBtn.innerHTML = `<span class="spinner-sm"></span> Rejecting &amp; Wiping…`;
     errBox.style.display = 'none';
 
     try {
-      const res = await apiPost(apiEndpoint, { reason });
+      const res = await apiPost(apiEndpoint, { reason, wipe_data: true });
       close();
       if (typeof onRejected === 'function') onRejected(res);
     } catch (err) {
       errBox.textContent = err?.message || 'Failed to reject student registration.';
       errBox.style.display = 'block';
       confirmBtn.disabled = false;
-      confirmBtn.innerHTML = `${icon('x', 14)} Confirm Rejection`;
+      confirmBtn.innerHTML = `${icon('trash-2', 14)} Confirm Rejection &amp; Wipe Data`;
+    }
+  });
+}
+
+/* ─── Student Permanent Deletion Modal ───────────────────────────── */
+function openStudentDeleteModal({ student, onDeleted, apiEndpoint = `/admin/students/${student.id}` }) {
+  const existing = document.querySelector('.modal-backdrop-sp-action');
+  if (existing) existing.remove();
+
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop modal-backdrop-sp-action';
+  backdrop.style.zIndex = '1200';
+
+  const init = initials(student.name);
+
+  backdrop.innerHTML = `
+    <div class="modal sp-action-modal anim-scale-in">
+      <div class="sp-action-modal__header" style="background:linear-gradient(135deg,rgba(220,38,38,0.1),rgba(244,63,94,0.05));">
+        <div class="sp-action-modal__header-left">
+          <div class="sp-action-modal__icon sp-action-modal__icon--reject" style="background:#FEE2E2;color:#DC2626;">
+            ${icon('trash-2', 20)}
+          </div>
+          <div>
+            <h3 class="sp-action-modal__title" style="color:#991B1B;">Permanently Delete Student User</h3>
+            <p class="sp-action-modal__subtitle">Completely purge student account and all linked records from the database</p>
+          </div>
+        </div>
+        <button class="modal__close" id="sp-delete-close" aria-label="Close modal">${icon('x', 16)}</button>
+      </div>
+
+      <div class="sp-action-modal__body">
+        <!-- Student Info Card -->
+        <div class="sp-student-card" style="border:1px solid #FECDD3;background:#FFF1F2;">
+          ${student.avatar_url
+            ? `<img src="${storageUrl(student.avatar_url)}" alt="${escapeHtml(student.name)}" class="sp-student-card__avatar" style="object-fit:cover;" />`
+            : `<div class="sp-student-card__avatar" style="background:#FCA5A5;color:#991B1B;">${init}</div>`}
+          <div class="sp-student-card__info">
+            <h4 class="sp-student-card__name">${escapeHtml(student.name)}</h4>
+            <div class="sp-student-card__id-row">
+              <span class="sp-student-card__id">${escapeHtml(student.student_id || student.studentId || 'No ID')}</span>
+              <span class="sp-student-card__course">${escapeHtml(student.program || student.course || 'CHMSU Program')}</span>
+            </div>
+            <div class="sp-student-card__meta-grid">
+              <div class="sp-student-card__meta-item">
+                <span>Email:</span>
+                <strong title="${escapeHtml(student.email)}">${escapeHtml(student.email || '—')}</strong>
+              </div>
+              <div class="sp-student-card__meta-item">
+                <span>Section:</span>
+                <strong>${escapeHtml(student.section || '—')}</strong>
+              </div>
+              <div class="sp-student-card__meta-item">
+                <span>Year:</span>
+                <strong>${escapeHtml(student.year_level || student.year || '—')}</strong>
+              </div>
+              <div class="sp-student-card__meta-item">
+                <span>Status:</span>
+                <strong style="text-transform:capitalize;">${escapeHtml(student.status || student.approval_status || '—')}</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Warning Alert -->
+        <div class="sp-warning-box" style="background:#FEF2F2;border:1px solid #FCA5A5;color:#991B1B;padding:12px 14px;border-radius:8px;font-size:0.8rem;line-height:1.45;display:flex;align-items:flex-start;gap:10px;">
+          <span style="color:#DC2626;flex-shrink:0;margin-top:2px;">${icon('alert-triangle', 18)}</span>
+          <div>
+            <strong>Irreversible Action:</strong>
+            This will permanently remove the student user account, profile details, logged OJT hours, company evaluations, submitted requirements, and uploaded documents. This action <strong>cannot be undone</strong>.
+          </div>
+        </div>
+
+        <div id="sp-delete-error" style="display:none;background:#FEE2E2;border:1px solid #FCA5A5;color:#991B1B;padding:8px 12px;border-radius:6px;font-size:0.75rem;"></div>
+      </div>
+
+      <div class="sp-action-modal__footer">
+        <button class="btn btn--outline btn--sm" id="sp-delete-cancel" type="button">Cancel</button>
+        <button class="btn btn--sm" id="sp-delete-confirm" type="button" style="background:#DC2626;color:#ffffff;border:1px solid #DC2626;gap:6px;">
+          ${icon('trash-2', 14)} Permanently Delete Student
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(backdrop);
+
+  const close = () => backdrop.remove();
+  backdrop.querySelector('#sp-delete-close').addEventListener('click', close);
+  backdrop.querySelector('#sp-delete-cancel').addEventListener('click', close);
+  backdrop.addEventListener('click', e => { if (e.target === backdrop) close(); });
+
+  const confirmBtn = backdrop.querySelector('#sp-delete-confirm');
+  const errBox = backdrop.querySelector('#sp-delete-error');
+
+  confirmBtn.addEventListener('click', async () => {
+    confirmBtn.disabled = true;
+    confirmBtn.innerHTML = `<span class="spinner-sm"></span> Deleting…`;
+    errBox.style.display = 'none';
+
+    try {
+      const res = await apiDelete(apiEndpoint);
+      close();
+      if (typeof onDeleted === 'function') onDeleted(res);
+    } catch (err) {
+      errBox.textContent = err?.message || 'Failed to delete student user.';
+      errBox.style.display = 'block';
+      confirmBtn.disabled = false;
+      confirmBtn.innerHTML = `${icon('trash-2', 14)} Permanently Delete Student`;
     }
   });
 }
@@ -832,6 +941,9 @@ function showModal(s, container, onRefresh) {
               </span>
             `}
           `}
+          <button type="button" class="btn btn--outline btn--sm spm-footer-delete-btn" style="color:#DC2626;border-color:#FECDD3;gap:4px;" title="Permanently delete this student user">
+            ${icon('trash-2', 13)} Delete Student
+          </button>
         </div>
       </div>
     </div>
@@ -885,10 +997,22 @@ function showModal(s, container, onRefresh) {
     });
   };
 
+  const triggerDelete = () => {
+    close();
+    openStudentDeleteModal({
+      student: s,
+      onDeleted: (res) => {
+        showToast(res?.message || `Student ${s.name} deleted successfully!`, 'success');
+        if (typeof onRefresh === 'function') onRefresh();
+      }
+    });
+  };
+
   backdrop.querySelector('.spm-approve-btn')?.addEventListener('click', triggerApprove);
   backdrop.querySelector('.spm-footer-approve-btn')?.addEventListener('click', triggerApprove);
   backdrop.querySelector('.spm-reject-btn')?.addEventListener('click', triggerReject);
   backdrop.querySelector('.spm-footer-reject-btn')?.addEventListener('click', triggerReject);
+  backdrop.querySelector('.spm-footer-delete-btn')?.addEventListener('click', triggerDelete);
 
   const handlePromote = () => {
     openPromoteModal({
@@ -1025,7 +1149,12 @@ function renderTable(tbody, list, container, selectedStudents, updateSelectionUI
                  <span class="st-status-dot"></span>
                  <span>Pending Approval</span>
                </span>`
-            : (s.status === 'Completed 600hrs' || s.is_eligible_for_promotion)
+            : s.approval_status === 'rejected'
+              ? `<span class="st-status-pill st-status-pill--rejected" style="background:#FEF2F2;border-color:#FECDD3;color:#DC2626;">
+                   <span class="st-status-dot" style="background:#DC2626;"></span>
+                   <span>Rejected</span>
+                 </span>`
+              : (s.status === 'Completed 600hrs' || s.is_eligible_for_promotion)
               ? `<span class="st-status-pill st-status-pill--completed">
                    <span class="st-status-dot"></span>
                    <span>Completed 600hrs</span>
@@ -1053,17 +1182,16 @@ function renderTable(tbody, list, container, selectedStudents, updateSelectionUI
               <button class="approve-btn st-btn-action st-btn-action--approve" data-id="${s.id}" data-name="${escapeHtml(s.name)}" title="Approve student registration">
                 ${icon('check', 13)} Approve
               </button>
-              <button class="reject-btn st-btn-action st-btn-action--reject" data-id="${s.id}" data-name="${escapeHtml(s.name)}" title="Reject student registration">
+              <button class="reject-btn st-btn-action st-btn-action--reject" data-id="${s.id}" data-name="${escapeHtml(s.name)}" title="Reject registration and wipe submitted data">
                 ${icon('x', 13)} Reject
               </button>
-              <button class="view-btn st-btn-action st-btn-action--view" data-id="${s.id}" title="View Student Details">
-                ${icon('eye', 13)} View
-              </button>
-            ` : `
-              <button class="view-btn st-btn-action st-btn-action--view" data-id="${s.id}" title="View Student Details">
-                ${icon('eye', 14)} View
-              </button>
-            `}
+            ` : ''}
+            <button class="view-btn st-btn-action st-btn-action--view" data-id="${s.id}" title="View Student Details">
+              ${icon('eye', 13)} View
+            </button>
+            <button class="delete-btn st-btn-action st-btn-action--delete" data-id="${s.id}" data-name="${escapeHtml(s.name)}" title="Permanently delete student user">
+              ${icon('trash-2', 13)} Delete
+            </button>
           </div>
         </td>
       </tr>
@@ -1109,7 +1237,9 @@ function renderTable(tbody, list, container, selectedStudents, updateSelectionUI
             <div>
               ${s.approval_status === 'pending'
                 ? `<span class="st-status-pill st-status-pill--pending"><span class="st-status-dot"></span> Pending Approval</span>`
-                : (s.status === 'Completed 600hrs' || s.is_eligible_for_promotion)
+                : s.approval_status === 'rejected'
+                  ? `<span class="st-status-pill st-status-pill--rejected" style="background:#FEF2F2;border-color:#FECDD3;color:#DC2626;"><span class="st-status-dot" style="background:#DC2626;"></span> Rejected</span>`
+                  : (s.status === 'Completed 600hrs' || s.is_eligible_for_promotion)
                   ? `<span class="st-status-pill st-status-pill--completed"><span class="st-status-dot"></span> Completed 600hrs</span>`
                   : (s.status === 'Pending Evaluation' || (s.ojt_hours >= (s.ojt_required || 600) && s.evaluation_status !== 'submitted'))
                     ? `<span class="st-status-pill st-status-pill--eval"><span class="st-status-dot"></span> Pending Evaluation</span>`
@@ -1158,12 +1288,15 @@ function renderTable(tbody, list, container, selectedStudents, updateSelectionUI
               <button class="approve-btn btn btn--primary btn--sm" data-id="${s.id}" data-name="${escapeHtml(s.name)}" style="flex:1;height:42px;">
                 ${icon('check', 14)} Approve
               </button>
-              <button class="reject-btn btn btn--outline btn--sm" data-id="${s.id}" data-name="${escapeHtml(s.name)}" style="flex:1;height:42px;color:#DC2626;">
+              <button class="reject-btn btn btn--outline btn--sm" data-id="${s.id}" data-name="${escapeHtml(s.name)}" style="flex:1;height:42px;color:#DC2626;border-color:rgba(220,38,38,0.25);">
                 ${icon('x', 14)} Reject
               </button>
             ` : ''}
-            <button class="view-btn st-btn-view" data-id="${s.id}">
-              ${icon('eye', 14)} View Student Details
+            <button class="view-btn st-btn-view" data-id="${s.id}" style="flex:1;height:42px;">
+              ${icon('eye', 14)} View Details
+            </button>
+            <button class="delete-btn btn btn--outline btn--sm" data-id="${s.id}" data-name="${escapeHtml(s.name)}" style="flex:1;height:42px;color:#DC2626;border-color:rgba(220,38,38,0.25);">
+              ${icon('trash-2', 14)} Delete
             </button>
           </div>
         </div>
@@ -1206,7 +1339,25 @@ function renderTable(tbody, list, container, selectedStudents, updateSelectionUI
           student,
           apiEndpoint: `/admin/students/${student.id}/reject`,
           onRejected: (res) => {
-            showToast(res?.message || `Student registration rejected.`, 'info');
+            showToast(res?.message || `Student registration rejected and data wiped.`, 'info');
+            if (typeof onRefresh === 'function') onRefresh();
+          }
+        });
+      }
+    });
+  });
+
+  // Delete student action
+  root.querySelectorAll('.delete-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = parseInt(btn.dataset.id, 10);
+      const student = list.find(s => s.id === id);
+      if (student) {
+        openStudentDeleteModal({
+          student,
+          onDeleted: (res) => {
+            showToast(res?.message || `Student ${student.name} deleted successfully!`, 'success');
             if (typeof onRefresh === 'function') onRefresh();
           }
         });

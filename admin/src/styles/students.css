@@ -674,6 +674,20 @@
   transform: translateY(-1px);
 }
 
+/* Delete Button */
+.st-btn-action--delete {
+  background: #FFF1F2;
+  border-color: #FECDD3;
+  color: #E11D48;
+}
+
+.st-btn-action--delete:hover {
+  background: #FFE4E6;
+  border-color: #F43F5E;
+  color: #BE123C;
+  transform: translateY(-1px);
+}
+
 /* View Button */
 .st-btn-action--view,
 .st-btn-view {

@@ -2829,6 +2829,74 @@ class AdminController extends Controller
         ]);
     }
 
+    /* ── Helper: Purge all student data ── */
+    protected function purgeStudentData(User $student): void
+    {
+        DB::transaction(function () use ($student) {
+            $userId = $student->id;
+
+            // 1. Delete evaluations and answers
+            $evaluationIds = \App\Models\StudentEvaluation::where('student_user_id', $userId)->pluck('id');
+            if ($evaluationIds->isNotEmpty()) {
+                DB::table('student_evaluation_answers')->whereIn('student_evaluation_id', $evaluationIds)->delete();
+                \App\Models\StudentEvaluation::whereIn('id', $evaluationIds)->delete();
+            }
+
+            // 2. Delete time logs
+            \App\Models\TimeLog::where('student_id', $userId)->delete();
+
+            // 3. Delete emergency & pull-out requests
+            \App\Models\OjtEmergencyRequest::where('student_user_id', $userId)->delete();
+            \App\Models\OjtPullOutRequest::where('student_user_id', $userId)->delete();
+
+            // 4. Delete OJT requirements & interests
+            \App\Models\StudentOjtRequirement::where('student_user_id', $userId)->delete();
+            \App\Models\StudentOjtInterest::where('student_user_id', $userId)->delete();
+
+            // 5. Delete OJT records
+            \App\Models\OjtRecord::where('student_user_id', $userId)->delete();
+
+            // 6. Delete job applications & interviews
+            \App\Models\JobApplication::where('student_user_id', $userId)->delete();
+            \App\Models\Interview::where('student_user_id', $userId)->delete();
+
+            // 7. Delete skills, educations, experiences, portfolio projects, achievements
+            \App\Models\StudentSkill::where('user_id', $userId)->delete();
+            \App\Models\StudentEducation::where('user_id', $userId)->delete();
+            \App\Models\StudentExperience::where('user_id', $userId)->delete();
+            \App\Models\PortfolioProject::where('user_id', $userId)->delete();
+            \App\Models\StudentAchievement::where('user_id', $userId)->delete();
+
+            // 8. Delete alumni assessments (if any)
+            if (\Illuminate\Support\Facades\Schema::hasTable('alumni_peo_assessments')) {
+                DB::table('alumni_peo_assessments')->where('student_id', $userId)->delete();
+            }
+
+            // 9. Delete notifications & chat messages
+            \App\Models\AppNotification::where('user_id', $userId)->delete();
+            \App\Models\ChatMessage::where('sender_id', $userId)->orWhere('receiver_id', $userId)->delete();
+
+            // 10. Delete Sanctum API tokens
+            $student->tokens()->delete();
+
+            // 11. Delete profiles
+            \App\Models\StudentProfile::where('user_id', $userId)->delete();
+            \App\Models\GraduateProfile::where('user_id', $userId)->delete();
+
+            // 12. Delete uploaded avatar if on public disk
+            if ($student->avatar_url && !str_starts_with($student->avatar_url, 'http')) {
+                try {
+                    Storage::disk('public')->delete($student->avatar_url);
+                } catch (\Throwable $e) {
+                    // Ignore storage delete errors
+                }
+            }
+
+            // 13. Finally delete user account
+            $student->delete();
+        });
+    }
+
     /* ── POST /api/admin/students/{id}/reject ── */
     public function rejectStudent(Request $request, $id)
     {
@@ -2840,6 +2908,25 @@ class AdminController extends Controller
         }
 
         $reason = trim($request->input('reason', 'Application rejected by administrator.'));
+        $isSelfRegistered = ($profile->registration_source === 'self');
+        $wipeRequested = $request->boolean('wipe_data', true);
+
+        // When rejecting a student from a self-registered account (or wipe requested),
+        // wipe all user-submitted data completely
+        if ($isSelfRegistered || $wipeRequested) {
+            $studentName = $student->name;
+            $studentEmail = $student->email;
+            $studentId = $profile->student_id;
+
+            $this->purgeStudentData($student);
+
+            return response()->json([
+                'success' => true,
+                'wiped'   => true,
+                'message' => "Student {$studentName} registration was rejected and all user-submitted data was wiped from the system.",
+            ]);
+        }
+
         $profile->update([
             'approval_status'  => 'rejected',
             'status'           => 'rejected',
@@ -2850,7 +2937,25 @@ class AdminController extends Controller
 
         return response()->json([
             'success' => true,
+            'wiped'   => false,
             'message' => "Student {$student->name} registration has been rejected.",
+        ]);
+    }
+
+    /* ── DELETE /api/admin/students/{id} ── */
+    public function deleteStudent(Request $request, $id)
+    {
+        $this->requireAdmin($request);
+
+        $student = User::where('role', 'student')->findOrFail($id);
+        $studentName = $student->name;
+        $studentId = $student->studentProfile?->student_id ?? 'Unassigned';
+
+        $this->purgeStudentData($student);
+
+        return response()->json([
+            'success' => true,
+            'message' => "Student {$studentName} ({$studentId}) has been permanently deleted from the system.",
         ]);
     }
 
