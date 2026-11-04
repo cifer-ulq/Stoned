@@ -182,12 +182,12 @@ class SocialAuthController extends Controller
                 }
                 $user->save();
             } else {
-                // Register new user via Social Auth
+                // Register new user via Social Auth (no password yet)
                 $isNewUser = true;
                 $user = User::create([
                     'name'                 => $name,
                     'email'                => $email,
-                    'password'             => Hash::make(Str::random(32)),
+                    'password'             => null,
                     'role'                 => 'student', // Default role
                     'avatar_url'           => $avatar,
                     'google_id'            => $normalizedProvider === 'google' ? $socialId : null,

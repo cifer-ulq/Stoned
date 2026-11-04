@@ -208,6 +208,7 @@ Route::prefix('auth')->group(function () {
         Route::post('accept-terms',               [LoginController::class,      'acceptTerms']);
         Route::post('onboarding',                [OnboardingController::class, 'store']);
         Route::post('change-temporary-password', [LoginController::class,      'changeTemporaryPassword']);
+        Route::post('set-backup-password',       [LoginController::class,      'setBackupPassword'])->middleware('throttle:6,1');
     });
 });
 

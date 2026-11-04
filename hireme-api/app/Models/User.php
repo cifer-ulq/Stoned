@@ -34,6 +34,15 @@ class User extends Authenticatable
         'remember_token',
     ];
 
+    protected $appends = [
+        'has_password',
+    ];
+
+    public function getHasPasswordAttribute(): bool
+    {
+        return !empty($this->password);
+    }
+
     protected function casts(): array
     {
         return [

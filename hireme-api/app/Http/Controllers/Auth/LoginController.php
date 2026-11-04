@@ -25,7 +25,21 @@ class LoginController extends Controller
 
             $user = User::where('email', $data['email'])->first();
 
-            if (! $user || ! Hash::check($data['password'], $user->password)) {
+            if (! $user) {
+                return response()->json(['message' => 'Invalid credentials'], 401);
+            }
+
+            if (empty($user->password)) {
+                $providerName = ucfirst($user->provider ?: 'Google');
+                return response()->json([
+                    'success'  => false,
+                    'code'     => 'AUTH_PROVIDER_NO_PASSWORD',
+                    'provider' => $user->provider ?: 'google',
+                    'message'  => "This account was registered using {$providerName}. Please sign in with {$providerName} or use 'Forgot Password' to set a password.",
+                ], 401);
+            }
+
+            if (! Hash::check($data['password'], $user->password)) {
                 return response()->json(['message' => 'Invalid credentials'], 401);
             }
 
@@ -74,6 +88,8 @@ class LoginController extends Controller
                     'status'               => $isActiveOjt ? 'active_ojt' : ($user->studentProfile?->status ?? 'regular'),
                     'is_active_ojt'        => $isActiveOjt,
                     'must_change_password' => (bool) $user->must_change_password,
+                    'has_password'         => !empty($user->password),
+                    'provider'             => $user->provider,
                     'onboarding_completed' => $user->onboarding_completed,
                     'terms_accepted_at'    => $user->terms_accepted_at?->toIso8601String(),
                     'has_accepted_terms'   => !empty($user->terms_accepted_at),
@@ -154,6 +170,8 @@ class LoginController extends Controller
                 'status'               => $isActiveOjt ? 'active_ojt' : ($user->studentProfile?->status ?? 'regular'),
                 'is_active_ojt'        => $isActiveOjt,
                 'must_change_password' => (bool) $user->must_change_password,
+                'has_password'         => !empty($user->password),
+                'provider'             => $user->provider,
                 'onboarding_completed' => $user->onboarding_completed,
                 'terms_accepted_at'    => $user->terms_accepted_at?->toIso8601String(),
                 'has_accepted_terms'   => !empty($user->terms_accepted_at),
@@ -320,6 +338,45 @@ class LoginController extends Controller
                 'email'                => $user->email,
                 'role'                 => $user->role,
                 'status'               => $user->studentProfile?->status ?? 'regular',
+                'must_change_password' => false,
+                'onboarding_completed' => $user->onboarding_completed,
+                'avatar_url'           => $user->avatar_url,
+                'company_profile'      => $user->companyProfile,
+                'student_profile'      => $user->studentProfile,
+                'supervisor_profile'   => $user->supervisorProfile,
+                'jobseeker_profile'    => $user->jobseekerProfile,
+                'graduate_profile'     => $user->graduateProfile,
+            ],
+        ]);
+    }
+
+    /* ── POST /api/auth/set-backup-password ── (authenticated via Sanctum token for OAuth/social users) */
+    public function setBackupPassword(Request $request)
+    {
+        $data = $request->validate([
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $user = $request->user();
+        $user->password = Hash::make($data['password']);
+        $user->must_change_password = false;
+        $user->save();
+
+        \Log::info("[SocialAuth] User #{$user->id} ({$user->email}) created a backup password after {$user->provider} authentication.");
+
+        $user->load(['companyProfile', 'studentProfile', 'supervisorProfile', 'jobseekerProfile', 'graduateProfile']);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Backup password created successfully. You can now log in using either social sign-in or your email and password.',
+            'user'    => [
+                'id'                   => $user->id,
+                'name'                 => $user->name,
+                'email'                => $user->email,
+                'role'                 => $user->role,
+                'status'               => $user->studentProfile?->status ?? 'regular',
+                'has_password'         => true,
+                'provider'             => $user->provider,
                 'must_change_password' => false,
                 'onboarding_completed' => $user->onboarding_completed,
                 'avatar_url'           => $user->avatar_url,

@@ -57,20 +57,56 @@ const formData = {
 
 /* ── Per-role step definitions ── */
 const ROLE_STEPS = {
-  student:  ['role', 'student-info', 'photo'],
-  graduate: ['role', 'graduate-info', 'photo'],
+  student:  ['role', 'security', 'student-info', 'photo'],
+  graduate: ['role', 'security', 'graduate-info', 'photo'],
 };
 
 const STEP_META = {
-  'role':         { label: 'Role',    name: 'Choose Role' },
-  'student-info': { label: 'Details', name: 'Academic Info' },
-  'graduate-info':{ label: 'Details', name: 'Graduate Profile' },
-  'photo':        { label: 'Photo',   name: 'Profile Photo' },
+  'role':         { label: 'Role',     name: 'Choose Role' },
+  'security':     { label: 'Security', name: 'Backup Password' },
+  'student-info': { label: 'Details',  name: 'Academic Info' },
+  'graduate-info':{ label: 'Details',  name: 'Graduate Profile' },
+  'photo':        { label: 'Photo',    name: 'Profile Photo' },
 };
+
+let oauthSecurityStepActive = null;
+
+function shouldShowSecurityStep() {
+  if (oauthSecurityStepActive !== null) {
+    return oauthSecurityStepActive;
+  }
+  const hasRegularSignup = Boolean(sessionStorage.getItem('hireme-signup'));
+  if (hasRegularSignup) {
+    oauthSecurityStepActive = false;
+    return false;
+  }
+
+  const cachedUserStr = localStorage.getItem('hireme_user');
+  if (!cachedUserStr) {
+    oauthSecurityStepActive = Boolean(localStorage.getItem('hireme_token'));
+    return oauthSecurityStepActive;
+  }
+  try {
+    const user = JSON.parse(cachedUserStr);
+    if (user.has_password) {
+      oauthSecurityStepActive = false;
+      return false;
+    }
+    oauthSecurityStepActive = Boolean(user.provider || localStorage.getItem('hireme_token'));
+    return oauthSecurityStepActive;
+  } catch (_) {
+    oauthSecurityStepActive = false;
+    return false;
+  }
+}
 
 function getSteps() {
   if (!formData.userType) return ['role'];
-  return ROLE_STEPS[formData.userType] || ['role'];
+  const baseSteps = ROLE_STEPS[formData.userType] || ['role'];
+  if (!shouldShowSecurityStep()) {
+    return baseSteps.filter(s => s !== 'security');
+  }
+  return baseSteps;
 }
 function getCurrentStepId() { return getSteps()[currentStep] || 'role'; }
 function getTotalSteps() { return getSteps().length; }
@@ -535,6 +571,12 @@ function render(animate = true) {
     cachedUser = cachedUserStr ? JSON.parse(cachedUserStr) : null;
   } catch (_) {}
 
+  if (cachedUser && cachedUser.role && !formData.userType) {
+    if (cachedUser.role === 'student' || cachedUser.role === 'graduate') {
+      formData.userType = cachedUser.role;
+    }
+  }
+
   if (oauthToken && !cachedUser) {
     fetch('http://localhost:8000/api/auth/me', {
       headers: { 'Authorization': `Bearer ${oauthToken}`, 'Accept': 'application/json' },
@@ -542,6 +584,10 @@ function render(animate = true) {
       const user = data.data || data.user;
       if (user) {
         localStorage.setItem('hireme_user', JSON.stringify(user));
+        if (user.role && !formData.userType && (user.role === 'student' || user.role === 'graduate')) {
+          formData.userType = user.role;
+        }
+        render(false);
       }
     }).catch(() => {});
   }
@@ -624,6 +670,7 @@ function renderStepContent() {
   const stepId = getCurrentStepId();
   switch (stepId) {
     case 'role':          return renderRoleSelect();
+    case 'security':      return renderSecurityStep();
     case 'student-info':  return renderStudentInfo();
     case 'graduate-info': return renderGraduateInfo();
     case 'photo':         return renderPhoto();
@@ -669,6 +716,88 @@ function renderRoleSelect() {
             </div>
           </button>
         `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+/* ── Security Backup Password Step ── */
+function renderSecurityStep() {
+  const cachedUserStr = localStorage.getItem('hireme_user');
+  let cachedUser = null;
+  try {
+    cachedUser = cachedUserStr ? JSON.parse(cachedUserStr) : null;
+  } catch (_) {}
+
+  const providerRaw = cachedUser?.provider || 'google';
+  const providerName = providerRaw === 'linkedin' ? 'LinkedIn' : 'Google';
+  const userEmail = cachedUser?.email || '';
+
+  return `
+    <div class="ob-step" data-step="security">
+      <div class="ob-step__header">
+        <div style="display: inline-flex; align-items: center; gap: 8px; color: var(--color-primary); font-weight: 700; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px;">
+          ${icon('lock', 16)} Optional Account Security
+        </div>
+        <h2 class="ob-step__title ob-reveal">Create a Backup Password</h2>
+        <p class="ob-step__subtitle ob-reveal" style="--delay:.06s">
+          You signed in via <strong>${escapeHtml(providerName)}</strong> (${escapeHtml(userEmail)}). Set a password now to allow direct email and password sign-in from any device.
+        </p>
+      </div>
+
+      <div style="max-width: 500px; margin-top: 10px;">
+        <form id="sec-pwd-form" onsubmit="return false;" style="display: flex; flex-direction: column; gap: 16px;">
+
+          <!-- Email (Read-only) -->
+          <div>
+            <label class="ob-field__label--static">Account Email</label>
+            <div class="ob-field__input-wrap" style="background: var(--bg-secondary); border-color: var(--border-light); cursor: not-allowed; opacity: 0.85;">
+              <span class="ob-field__icon">${icon('mail', 18)}</span>
+              <input type="text" class="ob-field__input" value="${escapeHtml(userEmail)}" disabled style="color: var(--text-secondary); cursor: not-allowed; padding-top: 14px; padding-bottom: 14px;" />
+            </div>
+          </div>
+
+          <!-- New Password -->
+          <div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <label class="ob-field__label--static" style="margin-bottom: 0;">Create Password</label>
+              <span id="sec-strength-badge" style="font-size: 0.72rem; font-weight: 600; color: var(--text-tertiary);"></span>
+            </div>
+            <div class="ob-field__input-wrap" id="wrap-sec-pwd" style="position: relative;">
+              <span class="ob-field__icon">${icon('lock', 18)}</span>
+              <input type="password" id="sec-password" class="ob-field__input" placeholder="Enter at least 8 characters" autocomplete="new-password" style="padding-top: 14px; padding-bottom: 14px; padding-right: 42px;" />
+              <button type="button" id="toggle-sec-pwd" aria-label="Toggle password visibility" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-tertiary); display: flex; align-items: center; padding: 4px;">
+                ${icon('eye', 18)}
+              </button>
+            </div>
+          </div>
+
+          <!-- Confirm Password -->
+          <div>
+            <label class="ob-field__label--static">Confirm Password</label>
+            <div class="ob-field__input-wrap" id="wrap-sec-confirm-pwd" style="position: relative;">
+              <span class="ob-field__icon">${icon('shield-check', 18)}</span>
+              <input type="password" id="sec-password-confirm" class="ob-field__input" placeholder="Repeat your password" autocomplete="new-password" style="padding-top: 14px; padding-bottom: 14px; padding-right: 42px;" />
+              <button type="button" id="toggle-sec-confirm-pwd" aria-label="Toggle password visibility" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-tertiary); display: flex; align-items: center; padding: 4px;">
+                ${icon('eye', 18)}
+              </button>
+            </div>
+            <div id="sec-match-hint" style="font-size: 0.72rem; color: var(--text-tertiary); margin-top: 4px; min-height: 16px;"></div>
+          </div>
+
+          <!-- Error Box -->
+          <div id="sec-pwd-error" style="display: none; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 10px; padding: 10px 14px; color: #DC2626; font-size: 0.8rem; align-items: center; gap: 8px;">
+            <span style="flex-shrink: 0;">${icon('alert-triangle', 16)}</span>
+            <span id="sec-pwd-error-text"></span>
+          </div>
+
+          <!-- Helpful note -->
+          <div style="display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; background: rgba(0, 89, 48, 0.06); border: 1px solid rgba(0, 89, 48, 0.15); border-radius: 10px; font-size: 0.82rem; color: var(--text-secondary); line-height: 1.45;">
+            <span style="color: var(--color-primary); flex-shrink: 0; margin-top: 2px;">${icon('info', 16)}</span>
+            <span>This step is optional. You can always sign in directly with your ${escapeHtml(providerName)} account, or skip this now and set a password later in your settings.</span>
+          </div>
+
+        </form>
       </div>
     </div>
   `;
@@ -879,15 +1008,22 @@ function renderPhoto() {
 function renderNavButtons(total) {
   const isFirst = currentStep === 0;
   const isLast  = currentStep === total - 1;
+  const isSecurity = getCurrentStepId() === 'security';
+
   return `
     <div class="ob-nav">
       ${!isFirst
         ? `<button class="ob-nav__btn ob-nav__btn--back" id="prev-btn" type="button">${svg.arrowLeft}<span>Back</span></button>`
         : `<div></div>`}
-      <button class="ob-nav__btn ob-nav__btn--next" id="next-btn" type="button">
-        <span>${isLast ? 'Complete Setup' : 'Continue'}</span>
-        ${isLast ? svg.check : svg.arrowRight}
-      </button>
+      <div style="display:flex; align-items:center; gap:12px;">
+        ${isSecurity
+          ? `<button class="ob-nav__btn ob-nav__btn--back" id="skip-pwd-btn" type="button" style="border:none;background:transparent;text-decoration:underline;cursor:pointer;font-size:0.86rem;padding:8px 12px;color:var(--text-tertiary);"><span>Skip for now</span></button>`
+          : ''}
+        <button class="ob-nav__btn ob-nav__btn--next" id="next-btn" type="button">
+          <span>${isSecurity ? 'Save Password & Continue' : (isLast ? 'Complete Setup' : 'Continue')}</span>
+          ${isLast ? svg.check : svg.arrowRight}
+        </button>
+      </div>
     </div>
   `;
 }
@@ -911,6 +1047,7 @@ function attachEvents() {
   const stepId = getCurrentStepId();
   switch (stepId) {
     case 'role':          attachRoleEvents(); break;
+    case 'security':      attachSecurityEvents(); break;
     case 'student-info':  attachPickerEvents(); break;
     case 'graduate-info': attachGraduateEvents(); break;
     case 'photo':         attachPhotoEvents(); break;
@@ -944,6 +1081,105 @@ async function handleNext() {
       wrap?.style.setProperty('border-color', '#ef4444');
       alert('Student ID is required. Please enter your valid CHMSU Student ID to proceed.');
       document.getElementById('student-id')?.focus();
+      return;
+    }
+  }
+
+  if (stepId === 'security') {
+    const pwdInput = document.getElementById('sec-password');
+    const confirmInput = document.getElementById('sec-password-confirm');
+    const p1 = (pwdInput?.value || '').trim();
+    const p2 = (confirmInput?.value || '').trim();
+    const errorBox = document.getElementById('sec-pwd-error');
+    const errorText = document.getElementById('sec-pwd-error-text');
+
+    if (!p1 && !p2) {
+      if (errorBox && errorText) {
+        errorText.textContent = 'Please enter a password (min 8 chars) or click "Skip for now" to continue.';
+        errorBox.style.display = 'flex';
+      }
+      pwdInput?.focus();
+      return;
+    }
+
+    if (p1.length < 8) {
+      if (errorBox && errorText) {
+        errorText.textContent = 'Password must be at least 8 characters long.';
+        errorBox.style.display = 'flex';
+      }
+      pwdInput?.focus();
+      return;
+    }
+
+    if (p1 !== p2) {
+      if (errorBox && errorText) {
+        errorText.textContent = 'Passwords do not match. Please verify both fields.';
+        errorBox.style.display = 'flex';
+      }
+      confirmInput?.focus();
+      return;
+    }
+
+    const nextBtn = document.getElementById('next-btn');
+    if (nextBtn) {
+      nextBtn.disabled = true;
+      nextBtn.querySelector('span').textContent = 'Saving password…';
+    }
+
+    try {
+      const token = localStorage.getItem('hireme_token');
+      const res = await fetch('http://localhost:8000/api/auth/set-backup-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          password: p1,
+          password_confirmation: p2,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        const msg = Object.values(data.errors || {})[0]?.[0] || data.message || 'Failed to save password.';
+        if (errorBox && errorText) {
+          errorText.textContent = msg;
+          errorBox.style.display = 'flex';
+        }
+        if (nextBtn) {
+          nextBtn.disabled = false;
+          nextBtn.querySelector('span').textContent = 'Save Password & Continue';
+        }
+        return;
+      }
+
+      if (data.user) {
+        localStorage.setItem('hireme_user', JSON.stringify(data.user));
+      } else {
+        const uStr = localStorage.getItem('hireme_user');
+        if (uStr) {
+          const u = JSON.parse(uStr);
+          u.has_password = true;
+          localStorage.setItem('hireme_user', JSON.stringify(u));
+        }
+      }
+
+      direction = 1;
+      currentStep++;
+      render();
+      return;
+    } catch (err) {
+      if (errorBox && errorText) {
+        errorText.textContent = 'Could not connect to server. You can retry or click "Skip for now".';
+        errorBox.style.display = 'flex';
+      }
+      if (nextBtn) {
+        nextBtn.disabled = false;
+        nextBtn.querySelector('span').textContent = 'Save Password & Continue';
+      }
       return;
     }
   }
@@ -1240,6 +1476,78 @@ function attachPhotoEvents() {
       if (btn) btn.innerHTML = `${svg.camera} Change Photo`;
     };
     reader.readAsDataURL(file);
+  });
+}
+
+/* ── Security event attachment ── */
+function attachSecurityEvents() {
+  const pwdInput = document.getElementById('sec-password');
+  const confirmInput = document.getElementById('sec-password-confirm');
+  const togglePwdBtn = document.getElementById('toggle-sec-pwd');
+  const toggleConfirmBtn = document.getElementById('toggle-sec-confirm-pwd');
+  const strengthBadge = document.getElementById('sec-strength-badge');
+  const matchHint = document.getElementById('sec-match-hint');
+
+  togglePwdBtn?.addEventListener('click', () => {
+    const isText = pwdInput.type === 'text';
+    pwdInput.type = isText ? 'password' : 'text';
+    togglePwdBtn.innerHTML = isText ? icon('eye', 18) : icon('eye-off', 18);
+  });
+
+  toggleConfirmBtn?.addEventListener('click', () => {
+    const isText = confirmInput.type === 'text';
+    confirmInput.type = isText ? 'password' : 'text';
+    toggleConfirmBtn.innerHTML = isText ? icon('eye', 18) : icon('eye-off', 18);
+  });
+
+  function updateSecurityStatus() {
+    const val1 = pwdInput?.value || '';
+    const val2 = confirmInput?.value || '';
+
+    if (val1.length > 0) {
+      if (val1.length < 8) {
+        if (strengthBadge) {
+          strengthBadge.textContent = 'Too short (min 8 chars)';
+          strengthBadge.style.color = '#EF4444';
+        }
+      } else {
+        if (strengthBadge) {
+          strengthBadge.textContent = '✓ Length OK';
+          strengthBadge.style.color = '#10B981';
+        }
+      }
+    } else {
+      if (strengthBadge) strengthBadge.textContent = '';
+    }
+
+    if (!val2) {
+      if (matchHint) matchHint.textContent = '';
+      return;
+    }
+    if (val1 === val2) {
+      if (matchHint) {
+        matchHint.textContent = '✓ Passwords match';
+        matchHint.style.color = '#10B981';
+      }
+    } else {
+      if (matchHint) {
+        matchHint.textContent = '✕ Passwords do not match';
+        matchHint.style.color = '#EF4444';
+      }
+    }
+  }
+
+  pwdInput?.addEventListener('input', updateSecurityStatus);
+  confirmInput?.addEventListener('input', updateSecurityStatus);
+
+  confirmInput?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') handleNext();
+  });
+
+  document.getElementById('skip-pwd-btn')?.addEventListener('click', () => {
+    direction = 1;
+    currentStep++;
+    render();
   });
 }
 
