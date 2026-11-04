@@ -19,7 +19,7 @@ class LoginController extends Controller
     {
         try {
             $data = $request->validate([
-                'email'    => ['required', 'email'],
+                'email'    => ['required', 'string'],
                 'password' => ['required', 'string'],
             ]);
 
@@ -113,7 +113,7 @@ class LoginController extends Controller
     public function adminLogin(Request $request)
     {
         $data = $request->validate([
-            'email'    => ['required', 'email'],
+            'email'    => ['required', 'string'],
             'password' => ['required', 'string'],
         ]);
 

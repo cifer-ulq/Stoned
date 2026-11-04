@@ -234,6 +234,7 @@ function renderStandardForm(isSignin, isSignup) {
 
     <!-- Form -->
     <form class="login-form" id="login-form" novalidate>
+      <div id="login-status-alert" style="display:none;"></div>
       ${!isSignin ? `
       <div class="lf-field">
         <div class="lf-field__wrap" id="wrap-name">
@@ -720,9 +721,22 @@ function attachEvents() {
     btn.innerHTML = icon(isHidden ? 'eye-off' : 'eye', 18);
   });
 
-  // Password strength — standard signup
+  // Input clear alerts — standard signin
+  document.getElementById('email')?.addEventListener('input', () => {
+    if (currentView === 'signin') {
+      const alertBox = document.getElementById('login-status-alert');
+      if (alertBox) { alertBox.style.display = 'none'; alertBox.innerHTML = ''; }
+    }
+  });
+
+  // Password strength & clear alert — standard signup/signin
   document.getElementById('password')?.addEventListener('input', (e) => {
-    if (currentView === 'signup') updatePasswordStrength(e.target.value, 'ps', 'pw-label');
+    if (currentView === 'signup') {
+      updatePasswordStrength(e.target.value, 'ps', 'pw-label');
+    } else {
+      const alertBox = document.getElementById('login-status-alert');
+      if (alertBox) { alertBox.style.display = 'none'; alertBox.innerHTML = ''; }
+    }
   });
 
   // Password strength — company form
@@ -839,12 +853,32 @@ function showError(id, msg) {
   if (err) { err.textContent = msg; err.classList.add('lf-field__error--visible'); }
 }
 
+/* ── Show generic login error without turning textboxes red ── */
+function showLoginError(msg = 'Invalid credentials.') {
+  const form = document.getElementById('login-form');
+  let alertBox = document.getElementById('login-status-alert');
+  if (!alertBox && form) {
+    alertBox = document.createElement('div');
+    alertBox.id = 'login-status-alert';
+    form.insertBefore(alertBox, form.firstChild);
+  }
+  if (alertBox) {
+    alertBox.style.cssText = 'background:rgba(239, 68, 68, 0.08);border:1.5px solid rgba(239, 68, 68, 0.25);border-radius:10px;padding:12px 16px;margin-bottom:18px;display:flex;align-items:center;gap:10px;color:#DC2626;font-size:0.85rem;line-height:1.4;';
+    alertBox.innerHTML = `<span style="flex-shrink:0;display:inline-flex;align-items:center;">${icon('alert-triangle', 18)}</span><span style="font-weight:500;">${escapeHtml(msg)}</span>`;
+  }
+}
+
 function clearErrors() {
   document.querySelectorAll('.lf-field__wrap--error').forEach(el => el.classList.remove('lf-field__wrap--error'));
   document.querySelectorAll('.lf-field__error--visible').forEach(el => {
     el.textContent = '';
     el.classList.remove('lf-field__error--visible');
   });
+  const alertBox = document.getElementById('login-status-alert');
+  if (alertBox) {
+    alertBox.style.display = 'none';
+    alertBox.innerHTML = '';
+  }
 }
 
 /* ── Toast notification ── */
@@ -975,38 +1009,48 @@ async function handleSubmit(e) {
   let valid = true;
   const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-  if (currentView === 'signup' && !name) {
-    showError('name', 'Please enter your full name.');
-    valid = false;
-  }
-  if (!email || !emailRe.test(email)) {
-    showError('email', 'Please enter a valid email address.');
-    valid = false;
-  }
-  if (!password || password.length < 8) {
-    showError('password', 'Password must be at least 8 characters.');
-    valid = false;
-  }
   if (currentView === 'signup') {
+    if (!name) {
+      showError('name', 'Please enter your full name.');
+      valid = false;
+    }
+    if (!email || !emailRe.test(email)) {
+      showError('email', 'Please enter a valid email address.');
+      valid = false;
+    }
+    if (!password || password.length < 8) {
+      showError('password', 'Password must be at least 8 characters.');
+      valid = false;
+    }
     const termsChk = document.getElementById('signup-terms-chk');
     if (!termsChk?.checked) {
       showError('terms', 'You must read and agree to the Terms of Service and Privacy Policy.');
       valid = false;
     }
-  }
-  if (!valid) return;
+    if (!valid) return;
 
-  const btn = document.getElementById('submit-btn');
-  const lbl = document.getElementById('submit-label');
-  btn.disabled = true;
-  lbl.innerHTML = '<span class="login-spinner"></span> Please wait…';
+    const btn = document.getElementById('submit-btn');
+    const lbl = document.getElementById('submit-label');
+    btn.disabled = true;
+    lbl.innerHTML = '<span class="login-spinner"></span> Please wait…';
 
-  if (currentView === 'signup') {
     // Store credentials temporarily — role + profile collected on onboarding
     sessionStorage.setItem('hireme-signup', JSON.stringify({ name, email, password, terms_accepted: true }));
     window.location.href = './onboarding.html';
     return;
   }
+
+  // ── Standard Sign-In ──
+  // Do not highlight textboxes red or reveal whether email or password was wrong/missing
+  if (!email || !password) {
+    showLoginError('Invalid credentials.');
+    return;
+  }
+
+  const btn = document.getElementById('submit-btn');
+  const lbl = document.getElementById('submit-label');
+  btn.disabled = true;
+  lbl.innerHTML = '<span class="login-spinner"></span> Please wait…';
 
   // Sign-in: call real API
   try {
@@ -1021,13 +1065,15 @@ async function handleSubmit(e) {
       if (data.code === 'AUTH_PROVIDER_NO_PASSWORD') {
         const form = document.getElementById('login-form');
         let alertBox = document.getElementById('login-status-alert');
-        if (!alertBox) {
+        if (!alertBox && form) {
           alertBox = document.createElement('div');
           alertBox.id = 'login-status-alert';
           form.insertBefore(alertBox, form.firstChild);
         }
-        alertBox.style.cssText = `background:#EFF6FF;border:1.5px solid #3B82F6;border-radius:10px;padding:14px 16px;margin-bottom:18px;display:flex;align-items:flex-start;gap:12px;color:#1E40AF;font-size:0.83rem;line-height:1.5;`;
-        alertBox.innerHTML = `<div><span style="font-size:1.2rem;display:inline-block;">ℹ️</span></div><div><strong style="display:block;margin-bottom:2px;font-size:0.88rem;color:#1E3A8A;">Social Account Detected</strong>${escapeHtml(data.message)}</div>`;
+        if (alertBox) {
+          alertBox.style.cssText = `background:#EFF6FF;border:1.5px solid #3B82F6;border-radius:10px;padding:14px 16px;margin-bottom:18px;display:flex;align-items:flex-start;gap:12px;color:#1E40AF;font-size:0.83rem;line-height:1.5;`;
+          alertBox.innerHTML = `<div><span style="font-size:1.2rem;display:inline-block;">ℹ️</span></div><div><strong style="display:block;margin-bottom:2px;font-size:0.88rem;color:#1E3A8A;">Social Account Detected</strong>${escapeHtml(data.message)}</div>`;
+        }
         btn.disabled = false;
         lbl.textContent = 'Sign In';
         return;
@@ -1037,19 +1083,22 @@ async function handleSubmit(e) {
         const isPending = data.code === 'ACCOUNT_PENDING_APPROVAL';
         const form = document.getElementById('login-form');
         let alertBox = document.getElementById('login-status-alert');
-        if (!alertBox) {
+        if (!alertBox && form) {
           alertBox = document.createElement('div');
           alertBox.id = 'login-status-alert';
           form.insertBefore(alertBox, form.firstChild);
         }
-        alertBox.style.cssText = `background:${isPending ? '#FEF3C7' : '#FEE2E2'};border:1.5px solid ${isPending ? '#F59E0B' : '#EF4444'};border-radius:10px;padding:14px 16px;margin-bottom:18px;display:flex;align-items:flex-start;gap:12px;color:${isPending ? '#92400E' : '#991B1B'};font-size:0.83rem;line-height:1.5;`;
-        alertBox.innerHTML = `<div><span style="font-size:1.2rem;display:inline-block;">${isPending ? '⏳' : '⚠️'}</span></div><div><strong style="display:block;margin-bottom:2px;font-size:0.88rem;color:${isPending ? '#78350F' : '#7F1D1D'};">${isPending ? 'Account Approval Pending' : 'Account Registration Notice'}</strong>${escapeHtml(data.message)}</div>`;
+        if (alertBox) {
+          alertBox.style.cssText = `background:${isPending ? '#FEF3C7' : '#FEE2E2'};border:1.5px solid ${isPending ? '#F59E0B' : '#EF4444'};border-radius:10px;padding:14px 16px;margin-bottom:18px;display:flex;align-items:flex-start;gap:12px;color:${isPending ? '#92400E' : '#991B1B'};font-size:0.83rem;line-height:1.5;`;
+          alertBox.innerHTML = `<div><span style="font-size:1.2rem;display:inline-block;">${isPending ? '⏳' : '⚠️'}</span></div><div><strong style="display:block;margin-bottom:2px;font-size:0.88rem;color:${isPending ? '#78350F' : '#7F1D1D'};">${isPending ? 'Account Approval Pending' : 'Account Registration Notice'}</strong>${escapeHtml(data.message)}</div>`;
+        }
         btn.disabled = false;
         lbl.textContent = 'Sign In';
         return;
       }
-      const msg = data.errors?.email?.[0] || data.message || 'Invalid credentials.';
-      showError('email', msg);
+
+      // Generic login error: never highlight textboxes red, always state "Invalid credentials."
+      showLoginError('Invalid credentials.');
       btn.disabled = false;
       lbl.textContent = 'Sign In';
       return;
@@ -1073,7 +1122,7 @@ async function handleSubmit(e) {
     };
     window.location.href = destinations[data.user.role] || '/main/';
   } catch {
-    showError('email', 'Could not connect to server. Is the backend running?');
+    showLoginError('Could not connect to server. Please verify the backend is running.');
     btn.disabled = false;
     lbl.textContent = 'Sign In';
   }
