@@ -15,29 +15,6 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        $this->call([
-            AdminSeeder::class,
-            CompanyDashboardSeeder::class,
-            CompanyAnalyticsSeeder::class,
-            PGLangAnalyticsSeeder::class,
-            PGLangOjtSeeder::class,
-            Graduate2021BatchSeeder::class,
-            GraduateBSIT2021Seeder::class,
-            IT4BStudentsAndOjtSeeder::class,
-            CompleteStudentAndGraduateProfileSeeder::class,
-            InnoTechOjtPostingsSeeder::class,
-            InnoTechPostInterviewStudentSeeder::class,
-            InnoTechFirstDayOjtStudentSeeder::class,
-            InnoTechAlexOfferedJobSeeder::class,
-            BSIT4BStudentsAnd2020GraduatesSeeder::class,
-            FiveCompaniesOjtAndJobListingsSeeder::class,
-            StudentPostInterviewOjtSeeder::class,
-            NaAhCompanyFirstDayOjtSeeder::class,
-            FreshBSIT2026AlumniSeeder::class,
-            ActiveOjtStudentsAndNewPostingsSeeder::class,
-            ThreeVerifiedPartnerCompaniesSeeder::class,
-            TenActiveOjtStudentsSeeder::class,
-            TenFinishedOjtStudentsSeeder::class,
-        ]);
+        // No automatic seeders - prevents injecting test data into the database
     }
 }

@@ -20,107 +20,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Route;
 
-// ── Manual Seeder Triggers & Diagnostic Verification ────────────────────────
-Route::get('dev/seed-alumni', function (Request $request) {
-    try {
-        \Illuminate\Support\Facades\Artisan::call('db:seed', [
-            '--class' => 'FreshBSIT2026AlumniSeeder',
-            '--force' => true,
-        ]);
-        $output = \Illuminate\Support\Facades\Artisan::output();
-        return response()->json([
-            'status'  => 'success',
-            'message' => 'FreshBSIT2026AlumniSeeder executed successfully.',
-            'output'  => array_values(array_filter(explode("\n", trim($output)))),
-        ]);
-    } catch (\Throwable $e) {
-        return response()->json([
-            'status'  => 'error',
-            'message' => $e->getMessage(),
-        ], 500);
-    }
-});
-
-Route::get('dev/seed-naah', function (Request $request) {
-    try {
-        \Illuminate\Support\Facades\Artisan::call('db:seed', [
-            '--class' => 'NaAhCompanyFirstDayOjtSeeder',
-            '--force' => true,
-        ]);
-        $output = \Illuminate\Support\Facades\Artisan::output();
-        return response()->json([
-            'status'  => 'success',
-            'message' => 'NaAhCompanyFirstDayOjtSeeder executed successfully.',
-            'output'  => array_values(array_filter(explode("\n", trim($output)))),
-        ]);
-    } catch (\Throwable $e) {
-        return response()->json([
-            'status'  => 'error',
-            'message' => $e->getMessage(),
-        ], 500);
-    }
-});
-
-Route::get('dev/seed-three-companies', function (Request $request) {
-    try {
-        \Illuminate\Support\Facades\Artisan::call('db:seed', [
-            '--class' => 'ThreeVerifiedPartnerCompaniesSeeder',
-            '--force' => true,
-        ]);
-        $output = \Illuminate\Support\Facades\Artisan::output();
-        return response()->json([
-            'status'  => 'success',
-            'message' => 'ThreeVerifiedPartnerCompaniesSeeder executed successfully.',
-            'output'  => array_values(array_filter(explode("\n", trim($output)))),
-        ]);
-    } catch (\Throwable $e) {
-        return response()->json([
-            'status'  => 'error',
-            'message' => $e->getMessage(),
-        ], 500);
-    }
-});
-
-Route::get('dev/seed-active-ojt', function (Request $request) {
-    try {
-        \Illuminate\Support\Facades\Artisan::call('db:seed', [
-            '--class' => 'TenActiveOjtStudentsSeeder',
-            '--force' => true,
-        ]);
-        $output = \Illuminate\Support\Facades\Artisan::output();
-        return response()->json([
-            'status'  => 'success',
-            'message' => 'TenActiveOjtStudentsSeeder executed successfully.',
-            'output'  => array_values(array_filter(explode("\n", trim($output)))),
-        ]);
-    } catch (\Throwable $e) {
-        return response()->json([
-            'status'  => 'error',
-            'message' => $e->getMessage(),
-        ], 500);
-    }
-});
-
-Route::get('dev/seed-finished-ojt', function (Request $request) {
-    try {
-        \Illuminate\Support\Facades\Artisan::call('db:seed', [
-            '--class' => 'TenFinishedOjtStudentsSeeder',
-            '--force' => true,
-        ]);
-        $output = \Illuminate\Support\Facades\Artisan::output();
-        return response()->json([
-            'status'  => 'success',
-            'message' => 'TenFinishedOjtStudentsSeeder executed successfully.',
-            'output'  => array_values(array_filter(explode("\n", trim($output)))),
-        ]);
-    } catch (\Throwable $e) {
-        return response()->json([
-            'status'  => 'error',
-            'message' => $e->getMessage(),
-        ], 500);
-    }
-});
-
 // ── Email Diagnostics & Self-Test ───────────────────────────────────────────
 Route::get('mail-diagnostic', function (Request $request) {
     $rawUsername = (string) config('mail.mailers.smtp.username');
@@ -500,8 +399,6 @@ Route::middleware('auth:sanctum')->prefix('chat')->group(function () {
     Route::post('{key}/messages',        [ChatController::class, 'send']);
 });
 
-// Public / Key-protected Admin seeding trigger (for free-tier hosting where shell is unavailable)
-Route::match(['get', 'post'], 'admin/seed-ecosystem', [AdminController::class, 'seedEcosystem']);
 
 // ── Admin routes ──────────────────────────────────────────────────────────────
 Route::middleware('auth:sanctum')->prefix('admin')->group(function () {

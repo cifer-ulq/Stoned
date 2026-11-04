@@ -11,17 +11,11 @@ php artisan view:clear || true
 # Ensure storage link exists
 php artisan storage:link || true
 
-# Run database migrations and required seeders in background so port binding is never blocked!
+# Run database migrations in background so port binding is never blocked!
 echo "==> Triggering background database migrations..."
 (
     php artisan migrate --force || true
-    echo "==> Ensuring Na Ah Company OJT & Fresh BSIT 2026 Alumni Seeders..."
-    php artisan db:seed --class=NaAhCompanyFirstDayOjtSeeder --force || true
-    php artisan db:seed --class=FreshBSIT2026AlumniSeeder --force || true
-    php artisan db:seed --class=ThreeVerifiedPartnerCompaniesSeeder --force || true
-    php artisan db:seed --class=TenActiveOjtStudentsSeeder --force || true
-    php artisan db:seed --class=TenFinishedOjtStudentsSeeder --force || true
-    echo "==> Background migrations and seeders completed!"
+    echo "==> Background migrations completed!"
 ) &
 
 PORT="${PORT:-8000}"

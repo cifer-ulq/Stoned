@@ -133,27 +133,7 @@ Route::get('/run-migrate', function () {
     }
 });
 
-Route::get('/run-seed', function () {
-    try {
-        $sqlPath = database_path('hireme_production_seed.sql');
-        if (!file_exists($sqlPath)) {
-            return response()->json(['success' => false, 'error' => 'Seed SQL file not found at: ' . $sqlPath]);
-        }
-        $sql = file_get_contents($sqlPath);
-        \Illuminate\Support\Facades\DB::unprepared($sql);
-        $userCount = \App\Models\User::count();
-        return response()->json([
-            'success'     => true,
-            'message'     => "Successfully restored database seed to cloud PostgreSQL!",
-            'users_count' => $userCount,
-        ]);
-    } catch (\Throwable $e) {
-        return response()->json([
-            'success' => false,
-            'error'   => $e->getMessage(),
-        ], 500);
-    }
-});
+
 
 if (app()->environment('local')) {
     Route::get('/preview-email/company-invitation', function () {
