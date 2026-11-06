@@ -1788,7 +1788,10 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
       else logs.unshift(resLog);
       logMap[resLog.date] = resLog;
       if (lat != null) { ojt._studentLat = lat; ojt._studentLon = lon; }
-      ojt.hoursRendered = logs.reduce((sum, l) => sum + (parseFloat(l.hours) || 0), 0);
+      ojt.hoursRendered = logs.reduce((sum, l) => {
+        const isApproved = (l.approvalStatus ?? 'approved') === 'approved';
+        return sum + (isApproved ? (parseFloat(l.hoursCredited ?? l.hours) || 0) : 0);
+      }, 0);
       ojt.daysCompleted = new Set(logs.map(l => l.date)).size;
       showToast(toastMsg || 'Attendance recorded.');
       renderTrackerPage(container, ojt, logs, year, month, onMonthChange);
@@ -1799,9 +1802,13 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
   const btnMorningIn = container.querySelector('#btn-morning-in');
   if (btnMorningIn) {
     btnMorningIn.addEventListener('click', () => {
-      showLogInModal('Time In (Morning)', ojt, async (timeIn24, lat, lon) => {
+      showLogInModal('Time In (Morning)', ojt, async (timeIn24, lat, lon, extraData) => {
         const body = { time_in: timeIn24, session: 'morning' };
         if (lat != null) { body.latitude = lat; body.longitude = lon; }
+        if (extraData?.out_of_range_reason) {
+          body.out_of_range_reason = extraData.out_of_range_reason;
+          body.proof_image = extraData.proof_image;
+        }
         const res = await apiPost('/student/ojt-tracker/log-in', body);
         if (res && res.log) {
           refreshAfterLog(res.log, lat, lon, res.message || 'Time In (Morning) recorded!');
@@ -1818,9 +1825,13 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
   const btnMorningOut = container.querySelector('#btn-morning-out');
   if (btnMorningOut) {
     btnMorningOut.addEventListener('click', () => {
-      showLogOutModal(todayLog, 'Time Out (Morning)', ojt, async (timeOut24, lat, lon) => {
+      showLogOutModal(todayLog, 'Time Out (Morning)', ojt, async (timeOut24, lat, lon, extraData) => {
         const body = { time_out: timeOut24, session: 'morning' };
         if (lat != null) { body.latitude = lat; body.longitude = lon; }
+        if (extraData?.out_of_range_reason) {
+          body.out_of_range_reason = extraData.out_of_range_reason;
+          body.proof_image = extraData.proof_image;
+        }
         const res = await apiPost('/student/ojt-tracker/log-out', body);
         if (res && res.log) {
           refreshAfterLog(res.log, lat, lon, res.message || 'Time Out (Morning) recorded. Enjoy your break!');
@@ -1837,9 +1848,13 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
   const btnAfternoonIn = container.querySelector('#btn-afternoon-in');
   if (btnAfternoonIn) {
     btnAfternoonIn.addEventListener('click', () => {
-      showLogInModal('Time In (Afternoon)', ojt, async (timeIn24, lat, lon) => {
+      showLogInModal('Time In (Afternoon)', ojt, async (timeIn24, lat, lon, extraData) => {
         const body = { time_in: timeIn24, session: 'afternoon' };
         if (lat != null) { body.latitude = lat; body.longitude = lon; }
+        if (extraData?.out_of_range_reason) {
+          body.out_of_range_reason = extraData.out_of_range_reason;
+          body.proof_image = extraData.proof_image;
+        }
         const res = await apiPost('/student/ojt-tracker/log-in', body);
         if (res && res.log) {
           refreshAfterLog(res.log, lat, lon, res.message || 'Time In (Afternoon) recorded!');
@@ -1856,9 +1871,13 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
   const btnAfternoonOut = container.querySelector('#btn-afternoon-out');
   if (btnAfternoonOut) {
     btnAfternoonOut.addEventListener('click', () => {
-      showLogOutModal(todayLog, 'Time Out (Afternoon)', ojt, async (timeOut24, lat, lon) => {
+      showLogOutModal(todayLog, 'Time Out (Afternoon)', ojt, async (timeOut24, lat, lon, extraData) => {
         const body = { time_out: timeOut24, session: 'afternoon' };
         if (lat != null) { body.latitude = lat; body.longitude = lon; }
+        if (extraData?.out_of_range_reason) {
+          body.out_of_range_reason = extraData.out_of_range_reason;
+          body.proof_image = extraData.proof_image;
+        }
         const res = await apiPost('/student/ojt-tracker/log-out', body);
         if (res && res.log) {
           refreshAfterLog(res.log, lat, lon, res.message || 'Time Out (Afternoon) recorded. Great work today!');
@@ -1875,9 +1894,13 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
   const fallbackLogIn = container.querySelector('#btn-log-in');
   if (fallbackLogIn) {
     fallbackLogIn.addEventListener('click', () => {
-      showLogInModal('Time In', ojt, async (timeIn24, lat, lon) => {
+      showLogInModal('Time In', ojt, async (timeIn24, lat, lon, extraData) => {
         const body = { time_in: timeIn24 };
         if (lat != null) { body.latitude = lat; body.longitude = lon; }
+        if (extraData?.out_of_range_reason) {
+          body.out_of_range_reason = extraData.out_of_range_reason;
+          body.proof_image = extraData.proof_image;
+        }
         const res = await apiPost('/student/ojt-tracker/log-in', body);
         if (res && res.log) {
           refreshAfterLog(res.log, lat, lon, res.message || 'Time-in recorded!');
@@ -1893,9 +1916,13 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
   const fallbackLogOut = container.querySelector('#btn-log-out');
   if (fallbackLogOut) {
     fallbackLogOut.addEventListener('click', () => {
-      showLogOutModal(todayLog, 'Time Out', ojt, async (timeOut24, lat, lon) => {
+      showLogOutModal(todayLog, 'Time Out', ojt, async (timeOut24, lat, lon, extraData) => {
         const body = { time_out: timeOut24 };
         if (lat != null) { body.latitude = lat; body.longitude = lon; }
+        if (extraData?.out_of_range_reason) {
+          body.out_of_range_reason = extraData.out_of_range_reason;
+          body.proof_image = extraData.proof_image;
+        }
         const res = await apiPost('/student/ojt-tracker/log-out', body);
         if (res && res.log) {
           refreshAfterLog(res.log, lat, lon, res.message || 'Time-out recorded!');
@@ -2076,6 +2103,9 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
 
 // ── Helper to render a single table row for a log entry ───────────────────────
 function renderTrackerLogRow(log) {
+  const isPendingApproval = log.approvalStatus === 'pending_company';
+  const isRejected = log.approvalStatus === 'rejected';
+
   const st = log.status;
   const sc = st === 'valid'
     ? { label: 'Valid',     color: 'var(--color-success)',                           bg: 'var(--color-success-bg)' }
@@ -2087,6 +2117,15 @@ function renderTrackerLogRow(log) {
     ? { label: 'GPS Saved', color: 'var(--color-warning)',                            bg: 'var(--color-warning-bg)' }
     : { label: 'Pending',   color: 'var(--color-warning)',                            bg: 'var(--color-warning-bg)' };
 
+  let statusBadgeHtml = '';
+  if (isPendingApproval) {
+    statusBadgeHtml = `<span style="background:rgba(217,119,6,0.12);color:#d97706;font-size:0.63rem;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap;display:inline-flex;align-items:center;gap:3px;" title="Outside geofence - awaiting company supervisor approval">${icon('alertTriangle', 10)} Pending Review</span>`;
+  } else if (isRejected) {
+    statusBadgeHtml = `<span style="background:var(--color-error-bg,rgba(239,68,68,0.1));color:var(--color-error,#ef4444);font-size:0.63rem;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap;display:inline-flex;align-items:center;gap:3px;" title="${esc(log.rejectionReason || 'Attendance rejected')}">${icon('x', 10)} Rejected</span>`;
+  } else {
+    statusBadgeHtml = `<span style="background:${sc.bg};color:${sc.color};font-size:0.63rem;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap;">${sc.label}</span>`;
+  }
+
   const lv = log.locationValidity;
   const dist = log.distanceMeters != null ? Number(log.distanceMeters) : null;
   const inLat = log.inLat ?? log.latitude;
@@ -2094,32 +2133,34 @@ function renderTrackerLogRow(log) {
   const hasCoords = inLat != null && inLon != null;
   const coordsHint = hasCoords ? `<div style="font-size:0.6rem;color:var(--text-tertiary);margin-top:3px;">${Number(inLat).toFixed(5)}, ${Number(inLon).toFixed(5)}</div>` : '';
 
-  // Geofence Rule:
-  // <= 100 meters is within site ("In Site" / Valid)
-  // > 100 meters is outside site ("Too Far" / Not Valid)
-  let isInSite = false;
-  let isTooFar = false;
-
-  if (dist !== null) {
-    isInSite = dist <= 100;
-    isTooFar = dist > 100;
-  } else if (lv === 'In Site' || lv === 'valid' || log.status === 'valid') {
-    isInSite = true;
-  } else if (lv === 'Too Far' || log.status === 'not_valid') {
-    isTooFar = true;
-  }
-
   let lvHtml = '';
-  if (isInSite) {
+  if (log.hasGeofenceExemption) {
     const distHint = dist !== null ? ` (${dist}m)` : '';
-    lvHtml = `<div><span style="background:var(--color-success-bg);color:var(--color-success);font-size:0.63rem;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap;">${icon('checkCircle', 10)} In Site${distHint}</span>${coordsHint}</div>`;
-  } else if (isTooFar) {
-    const distHint = dist !== null ? ` (${dist}m)` : '';
-    lvHtml = `<div><span style="background:var(--color-error-bg,rgba(239,68,68,0.1));color:var(--color-error,#ef4444);font-size:0.63rem;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap;">${icon('alertTriangle', 10)} Too Far${distHint}</span>${coordsHint}</div>`;
-  } else if (hasCoords) {
-    lvHtml = `<div><span style="background:rgba(255,149,0,.1);color:#FF9500;font-size:0.63rem;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap;">${icon('mapPin', 10)} GPS saved</span>${coordsHint}</div>`;
+    lvHtml = `<div><span style="background:rgba(217,119,6,0.12);color:#d97706;font-size:0.63rem;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap;display:inline-flex;align-items:center;gap:3px;" title="${esc(log.outOfRangeReason || 'Off-site punch with photo proof')}">${icon('camera', 10)} Off-Site Proof${distHint}</span>${coordsHint}</div>`;
   } else {
-    lvHtml = `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(107,114,148,0.1);color:var(--text-tertiary);font-size:0.63rem;font-weight:600;padding:2px 8px;border-radius:99px;white-space:nowrap;">${icon('mapPin', 10)} No location</span>`;
+    let isInSite = false;
+    let isTooFar = false;
+
+    if (dist !== null) {
+      isInSite = dist <= 100;
+      isTooFar = dist > 100;
+    } else if (lv === 'In Site' || lv === 'valid' || log.status === 'valid') {
+      isInSite = true;
+    } else if (lv === 'Too Far' || log.status === 'not_valid') {
+      isTooFar = true;
+    }
+
+    if (isInSite) {
+      const distHint = dist !== null ? ` (${dist}m)` : '';
+      lvHtml = `<div><span style="background:var(--color-success-bg);color:var(--color-success);font-size:0.63rem;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap;">${icon('checkCircle', 10)} In Site${distHint}</span>${coordsHint}</div>`;
+    } else if (isTooFar) {
+      const distHint = dist !== null ? ` (${dist}m)` : '';
+      lvHtml = `<div><span style="background:var(--color-error-bg,rgba(239,68,68,0.1));color:var(--color-error,#ef4444);font-size:0.63rem;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap;">${icon('alertTriangle', 10)} Too Far${distHint}</span>${coordsHint}</div>`;
+    } else if (hasCoords) {
+      lvHtml = `<div><span style="background:rgba(255,149,0,.1);color:#FF9500;font-size:0.63rem;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap;">${icon('mapPin', 10)} GPS saved</span>${coordsHint}</div>`;
+    } else {
+      lvHtml = `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(107,114,148,0.1);color:var(--text-tertiary);font-size:0.63rem;font-weight:600;padding:2px 8px;border-radius:99px;white-space:nowrap;">${icon('mapPin', 10)} No location</span>`;
+    }
   }
 
   const mIn = log.morningIn || log.timeIn || '—';
@@ -2131,6 +2172,15 @@ function renderTrackerLogRow(log) {
     ? `${log.afternoonOut}${log.autoAfternoonTimeout ? '<div style="font-size:0.6rem;color:#d97706;font-weight:600;">Auto ' + log.afternoonOut + '</div>' : ''}`
     : (log.afternoonIn ? '<span style="color:var(--color-warning);font-size:0.7rem;font-weight:600;">In Progress</span>' : (log.timeOut && !log.morningOut ? log.timeOut : '—'));
 
+  let hoursDisplay = '—';
+  if (isPendingApproval) {
+    hoursDisplay = `<span style="color:#d97706;font-size:0.78rem;font-weight:700;" title="Hours held in escrow pending supervisor review">${log.hours || 0}h <div style="font-size:0.6rem;font-weight:600;color:#d97706;">(Escrow)</div></span>`;
+  } else if (isRejected) {
+    hoursDisplay = `<span style="color:#ef4444;font-size:0.78rem;font-weight:700;text-decoration:line-through;" title="${esc(log.rejectionReason || 'Rejected')}">${log.hours || 0}h <div style="font-size:0.6rem;font-weight:600;color:#ef4444;">(Rejected)</div></span>`;
+  } else if (log.hours > 0 || log.timeOut || log.afternoonOut) {
+    hoursDisplay = `${log.hoursCredited ?? log.hours}h`;
+  }
+
   return `
     <tr class="log-table-row" data-log-id="${log.id}" style="border-bottom:1px solid var(--border-light);cursor:pointer;transition:background 0.15s ease;">
       <td style="padding:9px 10px;font-size:0.78rem;font-weight:500;white-space:nowrap;">${log.dayLabel || log.date}</td>
@@ -2138,10 +2188,8 @@ function renderTrackerLogRow(log) {
       <td style="padding:9px 10px;font-size:0.78rem;text-align:center;color:#000;font-weight:600;">${mOut}</td>
       <td style="padding:9px 10px;font-size:0.78rem;text-align:center;color:#000;font-weight:600;">${aIn}</td>
       <td style="padding:9px 10px;font-size:0.78rem;text-align:center;color:#000;font-weight:600;">${aOut}</td>
-      <td style="padding:9px 10px;font-size:0.83rem;font-weight:700;text-align:center;">${(log.hours > 0 || log.timeOut || log.afternoonOut) ? log.hours + 'h' : '—'}</td>
-      <td style="padding:9px 10px;text-align:center;">
-        <span style="background:${sc.bg};color:${sc.color};font-size:0.63rem;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap;">${sc.label}</span>
-      </td>
+      <td style="padding:9px 10px;font-size:0.83rem;font-weight:700;text-align:center;">${hoursDisplay}</td>
+      <td style="padding:9px 10px;text-align:center;">${statusBadgeHtml}</td>
       <td style="padding:9px 10px;text-align:center;">${lvHtml}</td>
     </tr>`;
 }
@@ -2637,6 +2685,201 @@ function showOutsideGeofenceModal(errOrDistance) {
 
 const showLocationWarning = showOutsideGeofenceModal;
 
+// ── Off-Site Camera & Evidence Capture Form Helper ────────────────────────────
+function setupOffSiteEvidence(panelEl, onEvidenceChange) {
+  let mediaStream = null;
+  let compressedPhotoBase64 = null;
+
+  panelEl.innerHTML = `
+    <div style="margin-top:10px;padding:12px;background:var(--bg-secondary);border:1.5px dashed #d97706;border-radius:var(--radius-md);">
+      <div style="display:flex;align-items:center;gap:6px;font-size:0.8rem;font-weight:700;color:#d97706;margin-bottom:6px;">
+        ${icon('camera', 15)} Camera Verification & Explanation Required
+      </div>
+      <p style="font-size:0.72rem;color:var(--text-secondary);line-height:1.45;margin-bottom:10px;">
+        You are outside the host site perimeter. To submit for company review, please state your assignment/reason and capture a live photo.
+      </p>
+
+      <div style="margin-bottom:10px;">
+        <label style="display:block;font-size:0.72rem;font-weight:700;color:var(--text-primary);margin-bottom:4px;">
+          Written Explanation / Assignment *
+        </label>
+        <textarea id="evidence-reason" class="form-input" rows="2" placeholder="e.g., Assigned to off-site client installation or official fieldwork..." style="font-size:0.75rem;resize:vertical;"></textarea>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <label style="display:block;font-size:0.72rem;font-weight:700;color:var(--text-primary);">
+          Live Photo Proof *
+        </label>
+        <div style="position:relative;width:100%;background:#0f172a;border-radius:8px;overflow:hidden;min-height:150px;display:flex;align-items:center;justify-content:center;">
+          <video id="evidence-video" autoplay playsinline style="width:100%;max-height:180px;object-fit:cover;display:none;"></video>
+          <img id="evidence-preview" style="width:100%;max-height:180px;object-fit:cover;display:none;" />
+          <div id="evidence-placeholder" style="text-align:center;padding:20px 12px;color:#94a3b8;font-size:0.75rem;">
+            ${icon('camera', 28)}
+            <div style="margin-top:6px;">Camera not started</div>
+          </div>
+          <canvas id="evidence-canvas" style="display:none;"></canvas>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px;">
+          <button type="button" class="btn btn--sm btn--primary" id="btn-start-camera" style="font-size:0.73rem;padding:5px 12px;display:inline-flex;align-items:center;gap:5px;">
+            ${icon('camera', 13)} Open Camera
+          </button>
+          <button type="button" class="btn btn--sm btn--primary" id="btn-snap-photo" style="display:none;font-size:0.73rem;padding:5px 12px;background:#059669;border-color:#059669;align-items:center;gap:5px;">
+            ${icon('check', 13)} Take Snapshot
+          </button>
+          <button type="button" class="btn btn--sm btn--outline" id="btn-retake-photo" style="display:none;font-size:0.73rem;padding:5px 12px;align-items:center;gap:5px;">
+            ${icon('refreshCcw', 13)} Retake
+          </button>
+          <label class="btn btn--sm btn--ghost" style="font-size:0.72rem;padding:5px 10px;cursor:pointer;margin-left:auto;color:var(--text-tertiary);display:inline-flex;align-items:center;gap:4px;">
+            ${icon('upload', 12)} Upload <input type="file" id="evidence-file-input" accept="image/*" capture="user" style="display:none;" />
+          </label>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const videoEl = panelEl.querySelector('#evidence-video');
+  const previewEl = panelEl.querySelector('#evidence-preview');
+  const placeholderEl = panelEl.querySelector('#evidence-placeholder');
+  const canvasEl = panelEl.querySelector('#evidence-canvas');
+  const startBtn = panelEl.querySelector('#btn-start-camera');
+  const snapBtn = panelEl.querySelector('#btn-snap-photo');
+  const retakeBtn = panelEl.querySelector('#btn-retake-photo');
+  const fileInput = panelEl.querySelector('#evidence-file-input');
+  const reasonEl = panelEl.querySelector('#evidence-reason');
+
+  function notify() {
+    const reason = reasonEl.value.trim();
+    const isReady = !!(compressedPhotoBase64 && reason.length >= 3);
+    onEvidenceChange({
+      isReady,
+      reason,
+      photo: compressedPhotoBase64,
+    });
+  }
+
+  reasonEl.addEventListener('input', notify);
+
+  async function startCamera() {
+    try {
+      if (mediaStream) {
+        mediaStream.getTracks().forEach(t => t.stop());
+      }
+      mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }
+      });
+      videoEl.srcObject = mediaStream;
+      videoEl.style.display = 'block';
+      previewEl.style.display = 'none';
+      placeholderEl.style.display = 'none';
+      startBtn.style.display = 'none';
+      snapBtn.style.display = 'inline-flex';
+      retakeBtn.style.display = 'none';
+    } catch (err) {
+      console.warn('Camera access error:', err);
+      showToast('Could not open camera directly. Please use the Upload button.', 'warning');
+    }
+  }
+
+  function snapPhoto() {
+    if (!videoEl.videoWidth || !videoEl.videoHeight) return;
+    const maxDim = 800;
+    let w = videoEl.videoWidth;
+    let h = videoEl.videoHeight;
+    if (w > maxDim || h > maxDim) {
+      if (w > h) {
+        h = Math.round((h * maxDim) / w);
+        w = maxDim;
+      } else {
+        w = Math.round((w * maxDim) / h);
+        h = maxDim;
+      }
+    }
+    canvasEl.width = w;
+    canvasEl.height = h;
+    const ctx = canvasEl.getContext('2d');
+    ctx.drawImage(videoEl, 0, 0, w, h);
+    compressedPhotoBase64 = canvasEl.toDataURL('image/jpeg', 0.75);
+
+    if (mediaStream) {
+      mediaStream.getTracks().forEach(t => t.stop());
+      mediaStream = null;
+    }
+
+    previewEl.src = compressedPhotoBase64;
+    previewEl.style.display = 'block';
+    videoEl.style.display = 'none';
+    snapBtn.style.display = 'none';
+    retakeBtn.style.display = 'inline-flex';
+    notify();
+  }
+
+  function handleFile(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const maxDim = 800;
+        let w = img.width;
+        let h = img.height;
+        if (w > maxDim || h > maxDim) {
+          if (w > h) {
+            h = Math.round((h * maxDim) / w);
+            w = maxDim;
+          } else {
+            w = Math.round((w * maxDim) / h);
+            h = maxDim;
+          }
+        }
+        canvasEl.width = w;
+        canvasEl.height = h;
+        const ctx = canvasEl.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        compressedPhotoBase64 = canvasEl.toDataURL('image/jpeg', 0.75);
+
+        if (mediaStream) {
+          mediaStream.getTracks().forEach(t => t.stop());
+          mediaStream = null;
+        }
+
+        previewEl.src = compressedPhotoBase64;
+        previewEl.style.display = 'block';
+        videoEl.style.display = 'none';
+        placeholderEl.style.display = 'none';
+        startBtn.style.display = 'none';
+        snapBtn.style.display = 'none';
+        retakeBtn.style.display = 'inline-flex';
+        notify();
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  startBtn.addEventListener('click', startCamera);
+  snapBtn.addEventListener('click', snapPhoto);
+  retakeBtn.addEventListener('click', () => {
+    compressedPhotoBase64 = null;
+    notify();
+    startCamera();
+  });
+  fileInput.addEventListener('change', e => {
+    if (e.target.files && e.target.files[0]) {
+      handleFile(e.target.files[0]);
+    }
+  });
+
+  return {
+    destroy: () => {
+      if (mediaStream) {
+        mediaStream.getTracks().forEach(t => t.stop());
+        mediaStream = null;
+      }
+    }
+  };
+}
+
 // ── Log In Modal ──────────────────────────────────────────────────────────────
 function showLogInModal(sessionLabelOrSuccess, ojtContextOrSuccess, onSuccessMaybe) {
   const sessionLabel = typeof sessionLabelOrSuccess === 'string' ? sessionLabelOrSuccess : 'Log In';
@@ -2653,6 +2896,8 @@ function showLogInModal(sessionLabelOrSuccess, ojtContextOrSuccess, onSuccessMay
 
   let geoResult = null;
   let computedDistance = null;
+  let evidenceData = null;
+  let evidenceController = null;
   const isAfternoon = sessionLabel.toLowerCase().includes('afternoon');
   const nowHM = currentTimeHHMM();
   const defaultTime = isAfternoon && nowHM < '13:00' ? '13:00' : nowHM;
@@ -2660,7 +2905,7 @@ function showLogInModal(sessionLabelOrSuccess, ojtContextOrSuccess, onSuccessMay
   const bd = document.createElement('div');
   bd.className = 'modal-backdrop modal-backdrop--visible';
   bd.innerHTML = `
-    <div class="modal modal--visible ojt-tracker-modal ojt-login-modal" style="max-width:420px;">
+    <div class="modal modal--visible ojt-tracker-modal ojt-login-modal" style="max-width:440px;">
       <div class="modal__header">
         <h3 class="modal__title" style="display:flex;align-items:center;gap:8px;">${icon('logIn', 20)} ${esc(sessionLabel)}</h3>
         <button class="modal__close" id="li-close">${icon('x', 20)}</button>
@@ -2681,8 +2926,9 @@ function showLogInModal(sessionLabelOrSuccess, ojtContextOrSuccess, onSuccessMay
           <p id="li-fail-desc" style="font-size:0.72rem;color:var(--text-secondary);line-height:1.55;margin-bottom:10px;">GPS location is mandatory to record attendance. Please enable location permissions in your browser or device settings, then click <strong>Retry Location</strong>.</p>
           <button class="btn btn--outline" id="li-retry" type="button" style="font-size:0.76rem;padding:5px 14px;display:inline-flex;align-items:center;gap:6px;">${icon('refreshCcw',13)} Retry Location</button>
         </div>
+        <div id="li-evidence-container"></div>
         <p class="text-xs text-secondary" style="display:flex;align-items:flex-start;gap:6px;margin-top:10px;padding:10px 12px;background:var(--color-info-bg);border:1px solid var(--color-info);border-radius:var(--radius-md);line-height:1.5;">
-          ${icon('mapPin', 13)} GPS location is verified against the host site perimeter (100m radius). Time-in is blocked outside this zone.
+          ${icon('mapPin', 13)} GPS location is verified against host site perimeter (100m). Out-of-range entries require photo proof & supervisor review.
         </p>
       </div>
       <div class="modal__footer" style="flex-wrap:wrap;gap:8px;">
@@ -2698,10 +2944,17 @@ function showLogInModal(sessionLabelOrSuccess, ojtContextOrSuccess, onSuccessMay
   const submitBtn = bd.querySelector('#li-submit');
   const failPanel = bd.querySelector('#li-geo-fail-panel');
   const retryBtn  = bd.querySelector('#li-retry');
+  const evidenceContainer = bd.querySelector('#li-evidence-container');
 
   function attemptGeo() {
     geoResult = null;
     computedDistance = null;
+    evidenceData = null;
+    if (evidenceController) {
+      evidenceController.destroy();
+      evidenceController = null;
+    }
+    evidenceContainer.innerHTML = '';
     submitBtn.disabled = true;
     failPanel.style.display = 'none';
     geoBox.style.background = 'var(--bg-secondary)';
@@ -2725,27 +2978,34 @@ function showLogInModal(sessionLabelOrSuccess, ojtContextOrSuccess, onSuccessMay
             geoLabel.innerHTML = `<span style="color:var(--color-success,#10b981);font-weight:700;">Within OJT site radius</span> <span style="color:var(--text-secondary);font-size:0.75rem;">(${computedDistance}m from ${esc(compName)})</span>`;
             failPanel.style.display = 'none';
             submitBtn.disabled = false;
+            submitBtn.style.background = '';
+            submitBtn.style.borderColor = '';
+            submitBtn.innerHTML = `${icon('checkCircle', 16)} Confirm ${esc(sessionLabel)}`;
             submitBtn.title = '';
           } else {
-            // Outside geofence boundary - BLOCK confirm
-            geoBox.style.background = 'rgba(239,68,68,0.08)';
-            geoBox.style.border = '1px solid rgba(239,68,68,0.4)';
-            geoLabel.innerHTML = `<span style="color:#ef4444;font-weight:700;">Outside OJT Site Radius</span> <span style="color:#ef4444;font-size:0.75rem;">(${computedDistance}m away · limit: ${maxRadius}m)</span>`;
-            failPanel.innerHTML = `
-              <p style="font-size:0.78rem;font-weight:700;color:#ef4444;margin-bottom:6px;display:flex;align-items:center;gap:6px;">
-                ${icon('alertTriangle', 14)} Outside Log-In Radius (${computedDistance}m away)
-              </p>
-              <p style="font-size:0.73rem;color:var(--text-secondary);line-height:1.55;margin-bottom:10px;">
-                You cannot time in because you are outside the host training site perimeter. You must be physically within <strong>${maxRadius} meters</strong> of <strong>${esc(compName)}</strong> to record attendance.
-              </p>
-              <button class="btn btn--outline" id="li-retry" type="button" style="font-size:0.76rem;padding:6px 14px;display:inline-flex;align-items:center;gap:6px;">
-                ${icon('refreshCcw', 13)} Re-check GPS Location
-              </button>
-            `;
-            failPanel.style.display = 'block';
-            failPanel.querySelector('#li-retry')?.addEventListener('click', attemptGeo);
+            // Outside geofence boundary - Show Out-of-Range Evidence Form
+            geoBox.style.background = 'rgba(217,119,6,0.08)';
+            geoBox.style.border = '1px solid rgba(217,119,6,0.4)';
+            geoLabel.innerHTML = `<span style="color:#d97706;font-weight:700;">Outside OJT Site Radius</span> <span style="color:#d97706;font-size:0.75rem;">(${computedDistance}m away · limit: ${maxRadius}m)</span>`;
+            failPanel.style.display = 'none';
+
             submitBtn.disabled = true;
-            submitBtn.title = `Disabled: You are ${computedDistance}m away from the OJT site (must be within ${maxRadius}m)`;
+            submitBtn.style.background = '#d97706';
+            submitBtn.style.borderColor = '#d97706';
+            submitBtn.innerHTML = `${icon('send', 16)} Submit for Review`;
+            submitBtn.title = 'Please take a photo and provide a reason to submit.';
+
+            evidenceController = setupOffSiteEvidence(evidenceContainer, ({ isReady, reason, photo }) => {
+              if (isReady) {
+                evidenceData = { out_of_range_reason: reason, proof_image: photo };
+                submitBtn.disabled = false;
+                submitBtn.title = '';
+              } else {
+                evidenceData = null;
+                submitBtn.disabled = true;
+                submitBtn.title = 'Please take a photo and provide a reason to submit.';
+              }
+            });
           }
         } else {
           // No coordinates configured on host posting
@@ -2774,7 +3034,10 @@ function showLogInModal(sessionLabelOrSuccess, ojtContextOrSuccess, onSuccessMay
   retryBtn.addEventListener('click', attemptGeo);
   attemptGeo();
 
-  const close = () => bd.remove();
+  const close = () => {
+    if (evidenceController) evidenceController.destroy();
+    bd.remove();
+  };
   bd.querySelector('#li-close').addEventListener('click', close);
   bd.querySelector('#li-cancel').addEventListener('click', close);
   bd.addEventListener('click', e => { if (e.target === bd) close(); });
@@ -2791,17 +3054,12 @@ function showLogInModal(sessionLabelOrSuccess, ojtContextOrSuccess, onSuccessMay
       return;
     }
     const maxRadius = ojtContext?.geofenceRadius || 100;
-    if (computedDistance != null && computedDistance > maxRadius) {
-      showOutsideGeofenceModal({
-        distance_meters: computedDistance,
-        allowed_radius_meters: maxRadius,
-        company_name: ojtContext?.company,
-        location: ojtContext?.location
-      });
+    if (computedDistance != null && computedDistance > maxRadius && !evidenceData) {
+      showToast('Please take a live photo and provide an assignment reason.', 'warning');
       return;
     }
     close();
-    onSuccess(timeVal, geoResult.lat, geoResult.lon);
+    onSuccess(timeVal, geoResult.lat, geoResult.lon, evidenceData);
   });
 }
 
@@ -2844,6 +3102,8 @@ function showLogOutModal(todayLog, sessionLabelOrOjt, ojtContextOrSuccess, onSuc
   let geoResult = null;
   let computedDistance = null;
   let isWithinGeofence = true;
+  let evidenceData = null;
+  let evidenceController = null;
 
   const isMorning = sessionLabel.toLowerCase().includes('lunch') || sessionLabel.toLowerCase().includes('morning');
   const loggedInAt = isMorning ? (todayLog?.morningIn || todayLog?.timeIn || '—') : (todayLog?.afternoonIn || todayLog?.timeIn || '—');
@@ -2867,7 +3127,7 @@ function showLogOutModal(todayLog, sessionLabelOrOjt, ojtContextOrSuccess, onSuc
   const bd = document.createElement('div');
   bd.className = 'modal-backdrop modal-backdrop--visible';
   bd.innerHTML = `
-    <div class="modal modal--visible ojt-tracker-modal ojt-logout-modal" style="max-width:420px;">
+    <div class="modal modal--visible ojt-tracker-modal ojt-logout-modal" style="max-width:440px;">
       <div class="modal__header">
         <h3 class="modal__title" style="display:flex;align-items:center;gap:8px;color:#d97706;">${icon('logOut', 20)} ${esc(sessionLabel)}</h3>
         <button class="modal__close" id="lo-close">${icon('x', 20)}</button>
@@ -2885,14 +3145,15 @@ function showLogOutModal(todayLog, sessionLabelOrOjt, ojtContextOrSuccess, onSuc
           ${icon('mapPin', 14)}
           <span class="text-xs" id="lo-geo-label">Detecting your location…</span>
         </div>
-        <!-- Alert panel for GPS errors or out-of-bounds geofence -->
+        <!-- Alert panel for GPS errors -->
         <div id="lo-geo-fail-panel" style="display:none;margin-top:10px;padding:12px;background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.3);border-radius:var(--radius-md);">
           <p style="font-size:0.78rem;font-weight:600;color:#ef4444;margin-bottom:6px;display:flex;align-items:center;gap:6px;">${icon('alertTriangle',13)} GPS Location Required</p>
           <p style="font-size:0.72rem;color:var(--text-secondary);line-height:1.55;margin-bottom:10px;">GPS location is mandatory to record attendance. Please allow location permissions in your browser or device settings, then click <strong>Retry Location</strong>.</p>
           <button class="btn btn--outline" id="lo-retry" type="button" style="font-size:0.76rem;padding:5px 14px;display:inline-flex;align-items:center;gap:6px;">${icon('refreshCcw',13)} Retry Location</button>
         </div>
+        <div id="lo-evidence-container"></div>
         <p class="text-xs text-secondary" style="display:flex;align-items:flex-start;gap:6px;margin-top:10px;padding:10px 12px;background:var(--color-info-bg);border:1px solid var(--color-info);border-radius:var(--radius-md);line-height:1.5;">
-          ${icon('mapPin', 13)} GPS location is verified against the host site perimeter (100m radius). Time-out is blocked outside this zone.
+          ${icon('mapPin', 13)} GPS location is verified against host site perimeter (100m). Out-of-range entries require photo proof & supervisor review.
         </p>
       </div>
       <div class="modal__footer" style="flex-wrap:wrap;gap:8px;">
@@ -2910,6 +3171,7 @@ function showLogOutModal(todayLog, sessionLabelOrOjt, ojtContextOrSuccess, onSuc
   const retryBtn  = bd.querySelector('#lo-retry');
   const timeInput = bd.querySelector('#lo-time');
   const warningEl = bd.querySelector('#lo-time-warning');
+  const evidenceContainer = bd.querySelector('#lo-evidence-container');
 
   function normalizeOutTime(rawVal) {
     if (!rawVal) return rawVal;
@@ -2923,31 +3185,45 @@ function showLogOutModal(todayLog, sessionLabelOrOjt, ojtContextOrSuccess, onSuc
     return rawVal;
   }
 
-  function checkTimeValidity() {
+  function checkTimeValidity(updateBtn = true) {
     const val = normalizeOutTime(timeInput.value);
     if (loggedIn24 && val && val < loggedIn24) {
       warningEl.textContent = `Time Out cannot be earlier than Time In (${loggedInAt}).`;
       warningEl.style.display = 'block';
-      submitBtn.disabled = true;
+      if (updateBtn) submitBtn.disabled = true;
       return false;
     } else {
       warningEl.style.display = 'none';
-      if (geoResult && geoResult.lat != null && geoResult.lon != null && isWithinGeofence) {
-        submitBtn.disabled = false;
-      } else {
-        submitBtn.disabled = true;
+      if (updateBtn) {
+        if (geoResult && geoResult.lat != null && geoResult.lon != null) {
+          if (isWithinGeofence) {
+            submitBtn.disabled = false;
+          } else if (evidenceData) {
+            submitBtn.disabled = false;
+          } else {
+            submitBtn.disabled = true;
+          }
+        } else {
+          submitBtn.disabled = true;
+        }
       }
       return true;
     }
   }
 
-  timeInput.addEventListener('input', checkTimeValidity);
-  timeInput.addEventListener('change', checkTimeValidity);
+  timeInput.addEventListener('input', () => checkTimeValidity(true));
+  timeInput.addEventListener('change', () => checkTimeValidity(true));
 
   function attemptGeo() {
     geoResult = null;
     computedDistance = null;
     isWithinGeofence = false;
+    evidenceData = null;
+    if (evidenceController) {
+      evidenceController.destroy();
+      evidenceController = null;
+    }
+    if (evidenceContainer) evidenceContainer.innerHTML = '';
     submitBtn.disabled = true;
     failPanel.style.display = 'none';
     geoBox.style.background = 'var(--bg-secondary)';
@@ -2970,32 +3246,42 @@ function showLogOutModal(todayLog, sessionLabelOrOjt, ojtContextOrSuccess, onSuc
             geoBox.style.border = '1px solid var(--color-success, #10b981)';
             geoLabel.innerHTML = `<span style="color:var(--color-success,#10b981);font-weight:700;">Within OJT site radius</span> <span style="color:var(--text-secondary);font-size:0.75rem;">(${computedDistance}m from ${esc(compName)})</span>`;
             failPanel.style.display = 'none';
-            checkTimeValidity();
+            submitBtn.style.background = '#d97706';
+            submitBtn.style.borderColor = '#d97706';
+            submitBtn.innerHTML = `${icon('checkCircle', 16)} Confirm ${esc(sessionLabel)}`;
+            submitBtn.title = '';
+            checkTimeValidity(true);
           } else {
             isWithinGeofence = false;
-            geoBox.style.background = 'rgba(239,68,68,0.08)';
-            geoBox.style.border = '1px solid rgba(239,68,68,0.4)';
-            geoLabel.innerHTML = `<span style="color:#ef4444;font-weight:700;">Outside OJT Site Radius</span> <span style="color:#ef4444;font-size:0.75rem;">(${computedDistance}m away · limit: ${maxRadius}m)</span>`;
-            failPanel.innerHTML = `
-              <p style="font-size:0.78rem;font-weight:700;color:#ef4444;margin-bottom:6px;display:flex;align-items:center;gap:6px;">
-                ${icon('alertTriangle', 14)} Outside Log-Out Radius (${computedDistance}m away)
-              </p>
-              <p style="font-size:0.73rem;color:var(--text-secondary);line-height:1.55;margin-bottom:10px;">
-                You cannot time out because you are outside the host training site perimeter. You must be physically within <strong>${maxRadius} meters</strong> of <strong>${esc(compName)}</strong> to record your exit.
-              </p>
-              <button class="btn btn--outline" id="lo-retry" type="button" style="font-size:0.76rem;padding:6px 14px;display:inline-flex;align-items:center;gap:6px;">
-                ${icon('refreshCcw', 13)} Re-check GPS Location
-              </button>
-            `;
-            failPanel.style.display = 'block';
-            failPanel.querySelector('#lo-retry')?.addEventListener('click', attemptGeo);
+            geoBox.style.background = 'rgba(217,119,6,0.08)';
+            geoBox.style.border = '1px solid rgba(217,119,6,0.4)';
+            geoLabel.innerHTML = `<span style="color:#d97706;font-weight:700;">Outside OJT Site Radius</span> <span style="color:#d97706;font-size:0.75rem;">(${computedDistance}m away · limit: ${maxRadius}m)</span>`;
+            failPanel.style.display = 'none';
+
             submitBtn.disabled = true;
-            submitBtn.title = `Disabled: You are ${computedDistance}m away from the OJT site (must be within ${maxRadius}m)`;
+            submitBtn.style.background = '#d97706';
+            submitBtn.style.borderColor = '#d97706';
+            submitBtn.innerHTML = `${icon('send', 16)} Submit for Review`;
+            submitBtn.title = 'Please take a photo and provide a reason to submit.';
+
+            evidenceController = setupOffSiteEvidence(evidenceContainer, ({ isReady, reason, photo }) => {
+              if (isReady && checkTimeValidity(false)) {
+                evidenceData = { out_of_range_reason: reason, proof_image: photo };
+                submitBtn.disabled = false;
+                submitBtn.title = '';
+              } else {
+                evidenceData = null;
+                submitBtn.disabled = true;
+                if (!isReady) {
+                  submitBtn.title = 'Please take a photo and provide a reason to submit.';
+                }
+              }
+            });
           }
         } else {
           isWithinGeofence = true;
           failPanel.style.display = 'none';
-          checkTimeValidity();
+          checkTimeValidity(true);
         }
       } else {
         isWithinGeofence = false;
@@ -3020,7 +3306,10 @@ function showLogOutModal(todayLog, sessionLabelOrOjt, ojtContextOrSuccess, onSuc
   retryBtn.addEventListener('click', attemptGeo);
   attemptGeo();
 
-  const close = () => bd.remove();
+  const close = () => {
+    if (evidenceController) evidenceController.destroy();
+    bd.remove();
+  };
   bd.querySelector('#lo-close').addEventListener('click', close);
   bd.querySelector('#lo-cancel').addEventListener('click', close);
   bd.addEventListener('click', e => { if (e.target === bd) close(); });
@@ -3037,17 +3326,12 @@ function showLogOutModal(todayLog, sessionLabelOrOjt, ojtContextOrSuccess, onSuc
       return;
     }
     const maxRadius = ojtContext?.geofenceRadius || 100;
-    if (computedDistance != null && computedDistance > maxRadius) {
-      showOutsideGeofenceModal({
-        distance_meters: computedDistance,
-        allowed_radius_meters: maxRadius,
-        company_name: ojtContext?.company,
-        location: ojtContext?.location
-      });
+    if (computedDistance != null && computedDistance > maxRadius && !evidenceData) {
+      showToast('Please take a live photo and provide an assignment reason.', 'warning');
       return;
     }
     close();
-    onSuccess(timeVal, geoResult.lat, geoResult.lon);
+    onSuccess(timeVal, geoResult.lat, geoResult.lon, evidenceData);
   });
 }
 
@@ -3058,13 +3342,22 @@ function showLogDetail(log) {
   const bd = document.createElement('div');
   bd.className = 'modal-backdrop modal-backdrop--visible';
   const st = log.status;
-  const sc = st === 'valid'
+  const isPending = log.approvalStatus === 'pending_company';
+  const isRej = log.approvalStatus === 'rejected';
+
+  let sc = st === 'valid'
     ? { label: 'Valid',     color: 'var(--color-success)',                           bg: 'var(--color-success-bg)',                            ic: 'checkCircle'  }
     : st === 'not_valid'
     ? { label: 'Not Valid', color: 'var(--color-error,#ef4444)',                     bg: 'var(--color-error-bg,rgba(239,68,68,0.1))',           ic: 'alertTriangle' }
     : st === 'no_gps'
     ? { label: 'No GPS',    color: 'var(--text-tertiary)',                            bg: 'var(--bg-tertiary)',                                  ic: 'mapPin'       }
     : { label: 'GPS Saved', color: 'var(--color-warning)',                            bg: 'var(--color-warning-bg)',                             ic: 'clock'        };
+
+  if (isPending) {
+    sc = { label: 'Pending Review', color: '#d97706', bg: 'rgba(217,119,6,0.12)', ic: 'alertTriangle' };
+  } else if (isRej) {
+    sc = { label: 'Rejected', color: 'var(--color-error,#ef4444)', bg: 'var(--color-error-bg,rgba(239,68,68,0.1))', ic: 'x' };
+  }
 
   const mIn = log.morningIn || log.timeIn || '—';
   const mOut = log.morningOut || (log.autoMorningTimeout ? '12:00 (Auto)' : '—');
@@ -3073,7 +3366,47 @@ function showLogDetail(log) {
   const aIn = log.afternoonIn || '—';
   const aOut = log.afternoonOut ? (log.afternoonOut + (log.autoAfternoonTimeout ? ' (Auto)' : '')) : (log.timeOut && !log.morningOut ? (log.timeOut + (log.autoAfternoonTimeout ? ' (Auto)' : '')) : '—');
   const aHrs = log.afternoonHours != null ? `${log.afternoonHours}h` : '—';
-  const totalHrs = (log.hours > 0 || log.timeOut || log.afternoonOut) ? `${log.hours}h` : '—';
+  
+  let totalDisplay = (log.hours > 0 || log.timeOut || log.afternoonOut) ? `${log.hours}h` : '—';
+  if (isPending) {
+    totalDisplay = `<span style="color:#d97706;">${log.hours || 0}h (Held in Escrow)</span>`;
+  } else if (isRej) {
+    totalDisplay = `<span style="color:#ef4444;text-decoration:line-through;">${log.hours || 0}h (Rejected)</span>`;
+  } else if (log.hoursCredited != null) {
+    totalDisplay = `${log.hoursCredited}h`;
+  }
+
+  let exemptionSection = '';
+  if (log.hasGeofenceExemption) {
+    const isApp = log.approvalStatus === 'approved';
+    const stBadge = isPending
+      ? `<span style="background:rgba(217,119,6,0.15);color:#d97706;font-size:0.7rem;font-weight:700;padding:2px 8px;border-radius:99px;">Awaiting Review</span>`
+      : isRej
+      ? `<span style="background:rgba(239,68,68,0.12);color:#ef4444;font-size:0.7rem;font-weight:700;padding:2px 8px;border-radius:99px;">Rejected</span>`
+      : `<span style="background:var(--color-success-bg);color:var(--color-success);font-size:0.7rem;font-weight:700;padding:2px 8px;border-radius:99px;">Approved by Supervisor</span>`;
+
+    const imgHtml = log.proofImage
+      ? `<div style="margin-top:8px;text-align:center;"><img src="${storageUrl(log.proofImage)}" alt="Attendance proof" style="max-width:100%;max-height:180px;border-radius:var(--radius-md);border:1px solid var(--border-light);object-fit:cover;" /></div>`
+      : '';
+
+    const rejHtml = isRej && log.rejectionReason
+      ? `<div style="margin-top:6px;font-size:0.75rem;color:#ef4444;text-align:left;"><b>Supervisor Remark:</b> ${esc(log.rejectionReason)}</div>`
+      : '';
+
+    exemptionSection = `
+      <div style="margin-top:14px;padding:12px;background:rgba(217,119,6,0.06);border:1px solid rgba(217,119,6,0.25);border-radius:var(--radius-md);text-align:left;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:6px;">
+          <span style="font-size:0.75rem;font-weight:700;color:#d97706;display:flex;align-items:center;gap:4px;">
+            ${icon('camera', 13)} Off-Site Submission Proof
+          </span>
+          ${stBadge}
+        </div>
+        ${log.outOfRangeReason ? `<div style="font-size:0.76rem;color:var(--text-secondary);margin-bottom:4px;"><b>Assignment Reason:</b> ${esc(log.outOfRangeReason)}</div>` : ''}
+        ${imgHtml}
+        ${rejHtml}
+      </div>
+    `;
+  }
 
   bd.innerHTML = `
     <div class="modal modal--visible" style="max-width:440px;text-align:center;">
@@ -3117,8 +3450,10 @@ function showLogDetail(log) {
 
         <div style="margin-top:12px;padding:8px 12px;background:rgba(0,89,48,0.06);border-radius:var(--radius-md);display:flex;justify-content:space-between;align-items:center;">
           <span style="font-size:0.78rem;font-weight:600;color:var(--text-secondary);">Total Rendered:</span>
-          <span style="font-size:0.95rem;font-weight:800;color:var(--color-primary);">${totalHrs}</span>
+          <span style="font-size:0.95rem;font-weight:800;color:var(--color-primary);">${totalDisplay}</span>
         </div>
+
+        ${exemptionSection}
 
         <button class="btn btn--outline" style="margin-top:16px;width:100%;" id="log-detail-close">Close</button>
       </div>

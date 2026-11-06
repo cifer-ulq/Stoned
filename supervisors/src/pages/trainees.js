@@ -1207,13 +1207,21 @@ export default function traineesPage(container) {
     ].filter(Boolean);
 
     const logsHtml = t.dailyLogs?.length
-      ? t.dailyLogs.map(l => `
+      ? t.dailyLogs.map(l => {
+          const isPending = (l.approvalStatus || '') === 'pending_company';
+          const isRejected = (l.approvalStatus || '') === 'rejected';
+          const badgeText = isPending ? 'Pending Review' : isRejected ? 'Rejected' : escapeHtml(l.status || 'recorded');
+          const badgeClass = isPending ? 'badge--warning' : isRejected ? 'badge--danger' : l.status === 'approved' ? 'badge--success' : 'badge--warning';
+          const hrsText = isPending ? `${l.hours}h (Escrow)` : isRejected ? `${l.hours}h (Rejected)` : `${l.hoursCredited ?? l.hours}h`;
+
+          return `
           <div class="tr2-log-row">
             <span class="tr2-log-date">${l.date}</span>
-            <span class="tr2-log-hrs">${l.hours}h</span>
-            <span class="tr2-log-task">${REAL(l.task) ? escapeHtml(l.task) : '—'}</span>
-            <span class="badge ${l.status === 'approved' ? 'badge--success' : 'badge--warning'}" style="font-size:0.75rem;padding:2px 8px;font-weight:600;">${escapeHtml(l.status)}</span>
-          </div>`).join('')
+            <span class="tr2-log-hrs">${hrsText}</span>
+            <span class="tr2-log-task">${REAL(l.task) ? escapeHtml(l.task) : (l.outOfRangeReason ? `Off-site: ${escapeHtml(l.outOfRangeReason)}` : '—')}</span>
+            <span class="badge ${badgeClass}" style="font-size:0.75rem;padding:2px 8px;font-weight:600;">${badgeText}</span>
+          </div>`;
+        }).join('')
       : `<p class="text-sm text-tertiary" style="padding:var(--space-3) 0;margin:0;">No daily time logs recorded yet.</p>`;
 
     root.innerHTML = `

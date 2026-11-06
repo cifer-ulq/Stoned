@@ -19,17 +19,23 @@ class TimeLog extends Model
         'hours_rendered', 'description', 'latitude', 'longitude', 'status',
         'time_in_lat', 'time_in_lon', 'time_out_lat', 'time_out_lon',
         'location_validity', 'distance_meters',
+        'has_geofence_exemption', 'approval_status', 'out_of_range_reason',
+        'proof_image_path', 'hours_credited', 'approved_by_user_id',
+        'approved_at', 'rejection_reason',
     ];
 
     protected function casts(): array
     {
         return [
-            'log_date'             => 'date',
-            'hours_rendered'       => 'decimal:2',
-            'morning_hours'        => 'decimal:2',
-            'afternoon_hours'      => 'decimal:2',
+            'log_date'               => 'date',
+            'hours_rendered'         => 'decimal:2',
+            'hours_credited'         => 'decimal:2',
+            'morning_hours'          => 'decimal:2',
+            'afternoon_hours'        => 'decimal:2',
             'auto_morning_timeout'   => 'boolean',
             'auto_afternoon_timeout' => 'boolean',
+            'has_geofence_exemption' => 'boolean',
+            'approved_at'            => 'datetime',
         ];
     }
 
@@ -68,4 +74,5 @@ class TimeLog extends Model
 
     public function user() { return $this->belongsTo(User::class); }
     public function ojtRecord() { return $this->belongsTo(OjtRecord::class, 'ojt_record_id'); }
+    public function approvedBy() { return $this->belongsTo(User::class, 'approved_by_user_id'); }
 }

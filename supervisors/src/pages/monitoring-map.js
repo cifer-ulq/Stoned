@@ -4,7 +4,7 @@
    =========================== */
 
 import { icon } from '../components/icons.js';
-import { apiFetch, apiGet } from '../api/client.js';
+import { apiFetch, apiGet, storageUrl } from '../api/client.js';
 
 /* ── Module state ── */
 let mapInstance   = null;
@@ -1016,13 +1016,109 @@ function renderLogMarkers(company, student, logs) {
   }
 }
 
+/**
+ * Off-Site Attendance Proof Modal (Academic Coordinator / Supervisor View)
+ */
+function openSupervisorProofModal(log) {
+  const existing = document.getElementById('sup-proof-modal-overlay');
+  if (existing) existing.remove();
+
+  const bd = document.createElement('div');
+  bd.id = 'sup-proof-modal-overlay';
+  bd.className = 'modal-backdrop modal-backdrop--visible';
+  bd.style.cssText = `
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(4px);
+    z-index: 99999; display: flex; align-items: center; justify-content: center;
+    padding: 20px; box-sizing: border-box; animation: fadeIn 0.15s ease-out;
+  `;
+
+  const isPending = (log.approvalStatus || '') === 'pending_company';
+  const isApproved = (log.approvalStatus || '') === 'approved';
+  const isRej = (log.approvalStatus || '') === 'rejected';
+
+  const badgeHtml = isPending
+    ? `<span style="background:#FFFBEB;color:#B45309;border:1px solid #FDE68A;font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;">Pending Company Review</span>`
+    : isApproved
+    ? `<span style="background:#ECFDF5;color:#047857;border:1px solid #A7F3D0;font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;">Approved by Company</span>`
+    : `<span style="background:#FEF2F2;color:#B91C1C;border:1px solid #FECACA;font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;">Rejected</span>`;
+
+  const imgUrl = log.proofImage ? storageUrl(log.proofImage) : null;
+
+  bd.innerHTML = `
+    <div class="modal modal--visible" style="max-width:480px;width:100%;border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);">
+      <div class="modal__header" style="padding:16px 20px;border-bottom:1px solid var(--border-light,#E2E8F0);display:flex;align-items:center;justify-content:space-between;background:#FAFBFD;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="width:34px;height:34px;border-radius:8px;background:rgba(217,119,6,0.12);color:#D97706;display:flex;align-items:center;justify-content:center;">
+            ${icon('camera', 18)}
+          </div>
+          <div>
+            <h3 style="margin:0;font-size:0.95rem;font-weight:800;color:var(--text-primary);">Off-Site Attendance Evidence</h3>
+            <p style="margin:0;font-size:0.72rem;color:var(--text-secondary);">${escapeHtml(log.dayLabel || log.date)} &bull; ${log.distanceMeters ?? '?'}m from site</p>
+          </div>
+        </div>
+        <button type="button" id="sup-proof-close" style="background:none;border:none;cursor:pointer;color:var(--text-secondary);padding:6px;border-radius:6px;">
+          ${icon('x', 18)}
+        </button>
+      </div>
+      <div class="modal__body" style="padding:18px 20px;max-height:75vh;overflow-y:auto;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <span style="font-size:12px;font-weight:600;color:var(--text-secondary);">Company Review Status:</span>
+          ${badgeHtml}
+        </div>
+        <div style="padding:10px 12px;background:#F8FAFC;border:1px solid var(--border-light,#E2E8F0);border-radius:8px;margin-bottom:12px;font-size:12px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+            <span style="color:var(--text-secondary);">Hours Claimed:</span>
+            <span style="font-weight:700;">${log.hours || 0} hrs ${isPending ? '<span style="color:#B45309;">(In Escrow)</span>' : ''}</span>
+          </div>
+          ${log.approvedAt ? `<div style="font-size:11px;color:#047857;margin-top:2px;">Approved on ${escapeHtml(log.approvedAt)}</div>` : ''}
+          ${isRej && log.rejectionReason ? `<div style="font-size:11px;color:#B91C1C;margin-top:2px;"><b>Rejection Note:</b> ${escapeHtml(log.rejectionReason)}</div>` : ''}
+        </div>
+        <div style="margin-bottom:12px;">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:4px;">Student's Written Reason</div>
+          <div style="padding:10px 12px;background:#fff;border:1px solid var(--border-light,#E2E8F0);border-radius:8px;font-size:12px;line-height:1.5;">
+            ${escapeHtml(log.outOfRangeReason || 'No reason specified.')}
+          </div>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:6px;">Live Camera Photo Proof</div>
+          ${imgUrl ? `
+            <div style="text-align:center;background:#0F172A;border-radius:8px;padding:8px;">
+              <a href="${escapeHtml(imgUrl)}" target="_blank" title="Click to view full image">
+                <img src="${escapeHtml(imgUrl)}" alt="Live Proof" style="max-width:100%;max-height:260px;border-radius:6px;object-fit:contain;display:block;margin:0 auto;" />
+              </a>
+              <div style="font-size:10px;color:#94A3B8;margin-top:6px;">Click photo to open full resolution in new tab</div>
+            </div>
+          ` : `
+            <div style="padding:20px;text-align:center;background:#F8FAFC;border:1px dashed #CBD5E1;border-radius:8px;color:var(--text-tertiary);font-size:12px;">
+              No image attached.
+            </div>
+          `}
+        </div>
+      </div>
+      <div class="modal__footer" style="padding:12px 20px;border-top:1px solid var(--border-light,#E2E8F0);background:#FAFBFD;text-align:right;">
+        <button type="button" class="btn btn--outline btn--sm" id="sup-proof-done">Close</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(bd);
+  const close = () => bd.remove();
+  bd.querySelector('#sup-proof-close')?.addEventListener('click', close);
+  bd.querySelector('#sup-proof-done')?.addEventListener('click', close);
+  bd.addEventListener('click', e => { if (e.target === bd) close(); });
+}
+
 /* ── Render Logs Timeline Panel ── */
 function renderLogsPanel(container, logs) {
   const body   = container.querySelector('#mon-logs-body');
   const headEl = container.querySelector('#logs-head');
   if (!body) return;
 
-  const totalHrs     = logs.reduce((a, l) => a + (l.hours || 0), 0).toFixed(1);
+  const totalHrs     = logs.reduce((a, l) => {
+    const isApp = (l.approvalStatus ?? 'approved') === 'approved';
+    return a + (isApp ? (l.hoursCredited ?? l.hours ?? 0) : 0);
+  }, 0).toFixed(1);
   const invalidCount = logs.filter(l => (l.distanceMeters != null ? Number(l.distanceMeters) > 100 : (l.locationValidity === 'Too Far' || l.locationValidity === 'not_valid'))).length;
 
   if (headEl) {
@@ -1053,9 +1149,51 @@ function renderLogsPanel(container, logs) {
     </div>
     <div class="mon-timeline">
       ${logs.map((log, idx) => {
-        const isInvalid = log.distanceMeters != null ? Number(log.distanceMeters) > 100 : (log.locationValidity === 'Too Far' || log.locationValidity === 'not_valid');
-        const statusCls = log.status === 'approved' ? 'mon-badge--green'
-          : log.status === 'pending' ? 'mon-badge--amber' : 'mon-badge--neutral';
+        const isExemption = Boolean(log.hasGeofenceExemption);
+        const isPending = (log.approvalStatus || '') === 'pending_company';
+        const isRejected = (log.approvalStatus || '') === 'rejected';
+        const isApprovedExemption = (log.approvalStatus || '') === 'approved' && isExemption;
+        const isInvalid = !isApprovedExemption && (log.distanceMeters != null ? Number(log.distanceMeters) > 100 : (log.locationValidity === 'Too Far' || log.locationValidity === 'not_valid'));
+
+        let statusPillHtml = '';
+        if (isPending) {
+          statusPillHtml = `<span class="mon-status-pill mon-badge--amber" style="background:#FFFBEB;color:#B45309;border:1px solid #FDE68A;">Pending Co. Review</span>`;
+        } else if (isRejected) {
+          statusPillHtml = `<span class="mon-status-pill" style="background:#FEF2F2;color:#DC2626;border:1px solid #FECACA;">Rejected</span>`;
+        } else if (isApprovedExemption) {
+          statusPillHtml = `<span class="mon-status-pill mon-badge--green">Approved Exemption</span>`;
+        } else {
+          const statusCls = log.status === 'approved' ? 'mon-badge--green'
+            : log.status === 'pending' ? 'mon-badge--amber' : 'mon-badge--neutral';
+          statusPillHtml = `<span class="mon-status-pill ${statusCls}">${escapeHtml(log.status || 'recorded')}</span>`;
+        }
+
+        let hrsChipHtml = '';
+        if (isPending) {
+          hrsChipHtml = `<span class="mon-time-chip" style="color:#B45309;font-weight:700;">${log.hours || 0}h (Escrow)</span>`;
+        } else if (isRejected) {
+          hrsChipHtml = `<span class="mon-time-chip" style="color:#DC2626;text-decoration:line-through;">${log.hours || 0}h</span>`;
+        } else {
+          hrsChipHtml = `<span class="mon-time-chip mon-time-chip--hrs">${log.hoursCredited ?? log.hours ?? 0} hrs</span>`;
+        }
+
+        let geoLineHtml = '';
+        if (isExemption) {
+          geoLineHtml = `
+            <div class="mon-geo-status" style="background:rgba(217,119,6,0.08);color:#B45309;padding:4px 8px;border-radius:6px;margin-top:6px;display:flex;align-items:center;justify-content:space-between;gap:6px;">
+              <span style="display:inline-flex;align-items:center;gap:4px;">${icon('camera', 11)} Off-Site Proof &bull; ${log.distanceMeters ?? '?'}m</span>
+              ${log.proofImage ? `<button type="button" class="btn btn--xs btn--ghost js-view-sup-proof" data-log-id="${log.id}" style="padding:1px 6px;font-size:10px;color:#B45309;font-weight:700;display:inline-flex;align-items:center;gap:3px;cursor:pointer;">${icon('eye', 10)} View Photo</button>` : ''}
+            </div>
+            ${log.outOfRangeReason ? `<div style="font-size:10px;color:var(--text-secondary);margin-top:3px;font-style:italic;">Reason: "${escapeHtml(log.outOfRangeReason)}"</div>` : ''}
+          `;
+        } else {
+          geoLineHtml = `
+            <div class="mon-geo-status ${isInvalid ? 'mon-geo-status--bad' : 'mon-geo-status--good'}">
+              ${icon(isInvalid ? 'alertTriangle' : 'checkCircle', 10)}
+              <span>${isInvalid ? `Out of range (${log.distanceMeters ?? '?'}m from site)` : `Valid location (${log.distanceMeters ?? 0}m from site)`}</span>
+            </div>
+          `;
+        }
 
         return `
           <div class="mon-timeline-card ${isInvalid ? 'mon-timeline-card--warn' : ''}" data-log-id="${log.id}">
@@ -1063,13 +1201,13 @@ function renderLogsPanel(container, logs) {
             <div class="mon-timeline-body">
               <div class="mon-timeline-top">
                 <span class="mon-timeline-date">${escapeHtml(log.dayLabel || log.date || 'Log Entry')}</span>
-                <span class="mon-status-pill ${statusCls}">${escapeHtml(log.status || 'recorded')}</span>
+                ${statusPillHtml}
               </div>
 
               <div class="mon-timeline-chips">
                 <span class="mon-time-chip">${icon('logIn', 10)} ${escapeHtml(log.timeIn || '—')}</span>
                 <span class="mon-time-chip">${icon('logOut', 10)} ${escapeHtml(log.timeOut || '—')}${log.autoAfternoonTimeout ? ' (Auto)' : ''}</span>
-                <span class="mon-time-chip mon-time-chip--hrs">${log.hours || 0} hrs</span>
+                ${hrsChipHtml}
               </div>
 
               ${log.task ? `
@@ -1078,16 +1216,23 @@ function renderLogsPanel(container, logs) {
                 </div>
               ` : ''}
 
-              <div class="mon-geo-status ${isInvalid ? 'mon-geo-status--bad' : 'mon-geo-status--good'}">
-                ${icon(isInvalid ? 'alertTriangle' : 'checkCircle', 10)}
-                <span>${isInvalid ? `Out of range (${log.distanceMeters ?? '?'}m from site)` : `Valid location (${log.distanceMeters ?? 0}m from site)`}</span>
-              </div>
+              ${geoLineHtml}
             </div>
           </div>
         `;
       }).join('')}
     </div>
   `;
+
+  // Supervisor View Photo listener
+  body.querySelectorAll('.js-view-sup-proof').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const logId = parseInt(btn.dataset.logId, 10);
+      const log = logs.find(l => l.id === logId);
+      if (log) openSupervisorProofModal(log);
+    });
+  });
 
   // Interactive timeline cards click to locate on map
   body.querySelectorAll('.mon-timeline-card').forEach(card => {

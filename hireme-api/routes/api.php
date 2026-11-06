@@ -129,6 +129,8 @@ Route::middleware('auth:sanctum')->prefix('company')->group(function () {
     Route::get('dashboard',                       [CompanyController::class, 'dashboard']);
     Route::get('ojt-trainees',                    [CompanyController::class, 'ojtTrainees']);
     Route::get('ojt-trainees/{studentId}/logs',   [CompanyController::class, 'traineeTimeLogs']);
+    Route::post('ojt-trainees/attendance/{logId}/approve', [CompanyController::class, 'approveAttendance']);
+    Route::post('ojt-trainees/attendance/{logId}/reject',  [CompanyController::class, 'rejectAttendance']);
     Route::get('ojt-postings',                    [CompanyController::class, 'ojtPostings']);
     Route::post('ojt-postings',                   [CompanyController::class, 'storeOjtPosting']);
     Route::put('ojt-postings/{id}',               [CompanyController::class, 'updateOjtPosting']);

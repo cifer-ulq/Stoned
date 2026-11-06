@@ -1629,6 +1629,13 @@ class CompanyController extends Controller
                 'morningValidity'    => $log->morning_validity,
                 'afternoonValidity'  => $log->afternoon_validity,
                 'distanceMeters'     => $log->distance_meters !== null ? (int) $log->distance_meters : null,
+                'hasGeofenceExemption' => (bool) $log->has_geofence_exemption,
+                'approvalStatus'       => $log->approval_status ?? 'approved',
+                'hoursCredited'        => (float) ($log->hours_credited ?? (($log->approval_status ?? 'approved') === 'approved' ? $log->hours_rendered : 0)),
+                'outOfRangeReason'     => $log->out_of_range_reason,
+                'proofImage'           => $log->proof_image_path ? \Illuminate\Support\Facades\Storage::disk('public')->url($log->proof_image_path) : null,
+                'rejectionReason'      => $log->rejection_reason,
+                'approvedAt'           => $log->approved_at?->format('M j, Y g:i A'),
                 'siteLocation'       => $siteLocation,
                 'inLat'              => $inLat !== null ? (float) $inLat : null,
                 'inLon'              => $inLon !== null ? (float) $inLon : null,
@@ -1637,13 +1644,14 @@ class CompanyController extends Controller
             ];
         })->values();
 
-        $totalHoursFromLogs = (float) $rawLogs->sum('hours_rendered');
-        $completedHours     = (float) ($record?->completed_hours ?? 0);
+        $totalHoursFromLogs    = (float) $rawLogs->where('approval_status', 'approved')->sum('hours_rendered');
+        $completedHours        = (float) ($record?->completed_hours ?? 0);
         if ($completedHours == 0 && $totalHoursFromLogs > 0) {
             $completedHours = $totalHoursFromLogs;
         }
-        $requiredHours = (int) ($record?->required_hours ?? 600);
-        $progressPct   = $requiredHours > 0 ? min(100, (int) round(($completedHours / $requiredHours) * 100)) : 0;
+        $requiredHours         = (int) ($record?->required_hours ?? 600);
+        $progressPct           = $requiredHours > 0 ? min(100, (int) round(($completedHours / $requiredHours) * 100)) : 0;
+        $pendingApprovalsCount = $rawLogs->where('approval_status', 'pending_company')->count();
 
         $inSiteCount = $logs->where('locationValidity', 'In Site')->count();
         $tooFarCount = $logs->where('locationValidity', 'Too Far')->count();
@@ -1668,15 +1676,16 @@ class CompanyController extends Controller
                 'shift_end'     => $interest->shift_end ?? $record?->shift_end ?? '17:00',
             ],
             'summary' => [
-                'totalLogs'          => $logs->count(),
-                'completedHours'     => round($completedHours, 2),
-                'loggedHoursSum'     => round($totalHoursFromLogs, 2),
-                'requiredHours'      => $requiredHours,
-                'progressPct'        => $progressPct,
-                'inSiteCount'        => $inSiteCount,
-                'tooFarCount'        => $tooFarCount,
-                'noGpsCount'         => max(0, $noGpsCount),
-                'todayDtr'           => $todayDtr,
+                'totalLogs'             => $logs->count(),
+                'completedHours'        => round($completedHours, 2),
+                'loggedHoursSum'        => round($totalHoursFromLogs, 2),
+                'requiredHours'         => $requiredHours,
+                'progressPct'           => $progressPct,
+                'pendingApprovalCount'  => $pendingApprovalsCount,
+                'inSiteCount'           => $inSiteCount,
+                'tooFarCount'           => $tooFarCount,
+                'noGpsCount'            => max(0, $noGpsCount),
+                'todayDtr'              => $todayDtr,
             ],
             'data' => $logs,
         ]);
@@ -3432,6 +3441,166 @@ class CompanyController extends Controller
             'message' => 'Candidate successfully added to Employee Roster.',
             'data'    => $app,
         ], 201);
+    }
+
+    /**
+     * Resolve academic supervisor IDs for a student.
+     */
+    private function getSupervisorIdsForStudent(User $student): \Illuminate\Support\Collection
+    {
+        $program = $student->studentProfile?->program;
+        if ($program) {
+            $norm = \App\Services\CourseNormalizer::normalize($program);
+            $ids = User::where('role', 'supervisor')
+                ->whereHas('supervisorProfile', function ($q) use ($norm) {
+                    $q->where('course', $norm)
+                      ->orWhere(function ($sq) use ($norm) {
+                          $sq->whereNull('course')->where('position', $norm);
+                      });
+                })
+                ->pluck('id');
+
+            if ($ids->isNotEmpty()) {
+                return $ids;
+            }
+        }
+
+        return User::where('role', 'supervisor')->pluck('id');
+    }
+
+    /**
+     * POST /api/company/ojt-trainees/attendance/{logId}/approve
+     * Approve an out-of-range OJT attendance log and credit hours.
+     */
+    public function approveAttendance(Request $request, $logId)
+    {
+        $userId = $request->user()->id;
+        $companyPostingIds = OjtPosting::where('company_user_id', $userId)->pluck('id');
+
+        $log = TimeLog::with(['user.studentProfile', 'ojtRecord'])->findOrFail($logId);
+
+        $isCompanyTrainee = StudentOjtInterest::where('student_user_id', $log->user_id)
+            ->whereIn('ojt_posting_id', $companyPostingIds)
+            ->exists();
+
+        if (!$isCompanyTrainee) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized: This trainee is not enrolled in any of your active OJT listings.',
+            ], 403);
+        }
+
+        if ($log->approval_status === 'approved') {
+            return response()->json([
+                'success' => true,
+                'message' => 'Attendance is already approved.',
+                'log'     => $log,
+            ]);
+        }
+
+        $hoursToCredit = (float) $log->hours_rendered;
+        $log->update([
+            'approval_status'     => 'approved',
+            'hours_credited'      => $hoursToCredit,
+            'approved_by_user_id' => $userId,
+            'approved_at'         => now(),
+            'rejection_reason'    => null,
+        ]);
+
+        $ojtRecord = $log->ojtRecord ?? OjtRecord::where('user_id', $log->user_id)->first();
+        if ($ojtRecord && $hoursToCredit > 0) {
+            $ojtRecord->increment('completed_hours', $hoursToCredit);
+        }
+
+        // Notify student
+        $dateFormatted = $log->log_date ? $log->log_date->format('M j, Y') : 'your recent shift';
+        AppNotification::send(
+            $log->user_id,
+            'attendance_approved',
+            'Attendance Approved',
+            "Your out-of-range attendance for {$dateFormatted} ({$hoursToCredit} hrs) has been verified and approved by your host company supervisor.",
+            ['log_id' => $log->id, 'hours' => $hoursToCredit, 'date' => $log->log_date?->toDateString()]
+        );
+
+        // Notify academic coordinator
+        $studentUser = $log->user;
+        if ($studentUser) {
+            $compName = $request->user()->name;
+            foreach ($this->getSupervisorIdsForStudent($studentUser) as $svId) {
+                AppNotification::send(
+                    $svId,
+                    'attendance_approved',
+                    'Trainee Attendance Verified',
+                    "{$compName} verified and approved {$studentUser->name}'s off-site attendance for {$dateFormatted} ({$hoursToCredit} hrs).",
+                    ['student_id' => $studentUser->id, 'log_id' => $log->id]
+                );
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Attendance approved. {$hoursToCredit} hours credited to trainee.",
+            'log'     => $log,
+        ]);
+    }
+
+    /**
+     * POST /api/company/ojt-trainees/attendance/{logId}/reject
+     * Reject an out-of-range OJT attendance log (0 hours credited).
+     */
+    public function rejectAttendance(Request $request, $logId)
+    {
+        $request->validate([
+            'reason' => 'required|string|min:3|max:1000',
+        ], [
+            'reason.required' => 'Please provide a reason for rejecting this attendance log.',
+        ]);
+
+        $userId = $request->user()->id;
+        $companyPostingIds = OjtPosting::where('company_user_id', $userId)->pluck('id');
+
+        $log = TimeLog::with(['user', 'ojtRecord'])->findOrFail($logId);
+
+        $isCompanyTrainee = StudentOjtInterest::where('student_user_id', $log->user_id)
+            ->whereIn('ojt_posting_id', $companyPostingIds)
+            ->exists();
+
+        if (!$isCompanyTrainee) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized: This trainee is not enrolled in any of your active OJT listings.',
+            ], 403);
+        }
+
+        $credited = (float) ($log->hours_credited ?? 0);
+        $ojtRecord = $log->ojtRecord ?? OjtRecord::where('user_id', $log->user_id)->first();
+        if ($log->approval_status === 'approved' && $credited > 0 && $ojtRecord) {
+            $ojtRecord->decrement('completed_hours', min($credited, (float)$ojtRecord->completed_hours));
+        }
+
+        $reason = trim($request->reason);
+        $log->update([
+            'approval_status'     => 'rejected',
+            'hours_credited'      => 0.00,
+            'approved_by_user_id' => $userId,
+            'approved_at'         => now(),
+            'rejection_reason'    => $reason,
+        ]);
+
+        $dateFormatted = $log->log_date ? $log->log_date->format('M j, Y') : 'your recent shift';
+        AppNotification::send(
+            $log->user_id,
+            'attendance_rejected',
+            'Attendance Rejected',
+            "Your out-of-range attendance for {$dateFormatted} was rejected by your host company: \"{$reason}\". 0 hours credited.",
+            ['log_id' => $log->id, 'reason' => $reason]
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Attendance rejected. Trainee notified.',
+            'log'     => $log,
+        ]);
     }
 }
 

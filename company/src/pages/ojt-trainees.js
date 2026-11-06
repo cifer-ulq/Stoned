@@ -5,7 +5,7 @@
  */
 
 import { icon } from '../components/icons.js';
-import { apiGet, apiPost, apiCache } from '../api/client.js';
+import { apiGet, apiPost, apiCache, storageUrl } from '../api/client.js';
 
 export async function renderOjtTrainees(container) {
   // State
@@ -2541,6 +2541,217 @@ function renderTodayDtrBadge(todayDtr) {
 }
 
 /**
+ * Review Attendance Proof Modal for Off-Site Geofence Exemptions
+ */
+function openAttendanceReviewModal(log, studentInfo, onComplete) {
+  const existing = document.getElementById('company-attendance-review-modal');
+  if (existing) existing.remove();
+
+  const bd = document.createElement('div');
+  bd.id = 'company-attendance-review-modal';
+  bd.className = 'modal-backdrop modal-backdrop--visible';
+  bd.style.cssText = `
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(4px);
+    z-index: 100005; display: flex; align-items: center; justify-content: center;
+    padding: 20px; box-sizing: border-box; animation: fadeIn 0.15s ease-out;
+  `;
+
+  const isPending = (log.approvalStatus || '') === 'pending_company';
+  const isRejected = (log.approvalStatus || '') === 'rejected';
+  const isApproved = (log.approvalStatus || '') === 'approved';
+
+  const mIn = log.morningIn || (!log.afternoonIn && log.timeIn ? log.timeIn : '—');
+  const mOut = log.morningOut || (log.autoMorningTimeout ? '12:00 (Auto)' : '—');
+  const aIn = log.afternoonIn || '—';
+  const aOut = log.afternoonOut || (!log.morningIn && !log.afternoonIn && log.timeOut ? log.timeOut : '—');
+  const dist = log.distanceMeters != null ? `${log.distanceMeters} meters away from host training site` : 'Outside geofence zone';
+
+  const imgUrl = log.proofImage ? storageUrl(log.proofImage) : null;
+
+  bd.innerHTML = `
+    <div class="modal modal--visible" style="max-width:540px;width:100%;border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);">
+      <div class="modal__header" style="padding:16px 20px;border-bottom:1px solid #E2E8F0;display:flex;align-items:center;justify-content:space-between;background:#FAFBFD;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="width:34px;height:34px;border-radius:8px;background:rgba(217,119,6,0.12);color:#D97706;display:flex;align-items:center;justify-content:center;">
+            ${icon('camera', 18)}
+          </div>
+          <div>
+            <h3 style="margin:0;font-size:0.98rem;font-weight:800;color:var(--text-primary);">
+              ${isPending ? 'Review Off-Site Attendance' : 'Off-Site Attendance Evidence'}
+            </h3>
+            <p style="margin:0;font-size:0.74rem;color:var(--text-secondary);">
+              ${escapeHtml(studentInfo.name || 'Trainee')} &bull; ${escapeHtml(log.dayLabel || log.date)}
+            </p>
+          </div>
+        </div>
+        <button type="button" id="arm-close-btn" style="background:none;border:none;cursor:pointer;color:var(--text-secondary);padding:6px;border-radius:6px;">
+          ${icon('x', 18)}
+        </button>
+      </div>
+
+      <div class="modal__body" style="padding:18px 20px;max-height:75vh;overflow-y:auto;">
+        <!-- Status Banner -->
+        ${isPending ? `
+          <div style="padding:10px 14px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;margin-bottom:14px;font-size:0.78rem;color:#B45309;line-height:1.5;">
+            <strong>Awaiting Your Decision:</strong> The student logged attendance outside the host training site perimeter (${escapeHtml(dist)}). Hours rendered (<strong>${Number(log.hours || 0).toFixed(2)} hrs</strong>) are currently <strong>held in escrow</strong> and will only count towards their OJT completion if you approve.
+          </div>
+        ` : isApproved ? `
+          <div style="padding:10px 14px;background:#ECFDF5;border:1px solid #A7F3D0;border-radius:8px;margin-bottom:14px;font-size:0.78rem;color:#047857;display:flex;align-items:center;gap:8px;">
+            ${icon('checkCircle', 16)}
+            <div>
+              <strong>Approved:</strong> This attendance has been approved and <strong>${Number(log.hoursCredited ?? log.hours ?? 0).toFixed(2)} hrs</strong> were credited.
+              ${log.approvedAt ? `<div style="font-size:0.7rem;color:#065F46;margin-top:2px;">Approved on ${escapeHtml(log.approvedAt)}</div>` : ''}
+            </div>
+          </div>
+        ` : `
+          <div style="padding:10px 14px;background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;margin-bottom:14px;font-size:0.78rem;color:#B91C1C;">
+            <strong>Rejected:</strong> This attendance record was rejected. Hours were not credited.
+            ${log.rejectionReason ? `<div style="margin-top:4px;font-weight:600;">Reason: ${escapeHtml(log.rejectionReason)}</div>` : ''}
+          </div>
+        `}
+
+        <!-- Shift & Log Info -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:10px 12px;background:#F8FAFC;border-radius:8px;border:1px solid #E2E8F0;margin-bottom:14px;">
+          <div>
+            <div style="font-size:0.68rem;color:var(--text-tertiary);text-transform:uppercase;font-weight:700;">Morning</div>
+            <div style="font-size:0.8rem;font-weight:600;color:var(--text-primary);margin-top:2px;">In: ${escapeHtml(mIn)} &bull; Out: ${escapeHtml(mOut)}</div>
+          </div>
+          <div>
+            <div style="font-size:0.68rem;color:var(--text-tertiary);text-transform:uppercase;font-weight:700;">Afternoon</div>
+            <div style="font-size:0.8rem;font-weight:600;color:var(--text-primary);margin-top:2px;">In: ${escapeHtml(aIn)} &bull; Out: ${escapeHtml(aOut)}</div>
+          </div>
+          <div style="grid-column:span 2;border-top:1px dashed #E2E8F0;padding-top:6px;display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:0.74rem;color:var(--text-secondary);">Hours Rendered:</span>
+            <span style="font-size:0.86rem;font-weight:800;color:var(--color-primary,#005930);">${Number(log.hours || 0).toFixed(2)} hrs</span>
+          </div>
+          <div style="grid-column:span 2;display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:0.74rem;color:var(--text-secondary);">Distance:</span>
+            <span style="font-size:0.76rem;font-weight:700;color:#D97706;">${escapeHtml(dist)}</span>
+          </div>
+        </div>
+
+        <!-- Explanation & Photo -->
+        <div style="margin-bottom:14px;">
+          <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:5px;">Assignment Explanation</div>
+          <div style="padding:10px 12px;background:#fff;border:1px solid #E2E8F0;border-radius:8px;font-size:0.82rem;color:var(--text-primary);line-height:1.5;">
+            ${escapeHtml(log.outOfRangeReason || 'No written explanation provided.')}
+          </div>
+        </div>
+
+        <div style="margin-bottom:14px;">
+          <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:6px;">Live Camera Photo Proof</div>
+          ${imgUrl ? `
+            <div style="text-align:center;background:#0F172A;border-radius:8px;padding:8px;overflow:hidden;">
+              <a href="${escapeHtml(imgUrl)}" target="_blank" title="Click to view full size">
+                <img src="${escapeHtml(imgUrl)}" alt="Live Proof" style="max-width:100%;max-height:280px;border-radius:6px;object-fit:contain;display:block;margin:0 auto;" />
+              </a>
+              <div style="font-size:0.68rem;color:#94A3B8;margin-top:6px;">Click photo to open full resolution</div>
+            </div>
+          ` : `
+            <div style="padding:20px;text-align:center;background:#F8FAFC;border:1px dashed #CBD5E1;border-radius:8px;color:var(--text-tertiary);font-size:0.78rem;">
+              No image proof attached.
+            </div>
+          `}
+        </div>
+
+        <!-- Rejection reason input container (hidden until Reject is clicked) -->
+        ${isPending ? `
+          <div id="arm-reject-box" style="display:none;margin-top:14px;padding:12px;background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;">
+            <label style="display:block;font-size:0.74rem;font-weight:700;color:#991B1B;margin-bottom:4px;">
+              Reason for Rejection *
+            </label>
+            <textarea id="arm-reject-reason" class="input" rows="2" placeholder="e.g., Unofficial errand, incorrect location, unclear task..." style="width:100%;font-size:0.78rem;"></textarea>
+            <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px;">
+              <button type="button" class="btn btn--outline btn--xs" id="arm-cancel-reject-btn">Cancel</button>
+              <button type="button" class="btn btn--xs" id="arm-confirm-reject-btn" style="background:#DC2626;color:#fff;border:none;">Confirm Rejection</button>
+            </div>
+          </div>
+        ` : ''}
+      </div>
+
+      <div class="modal__footer" style="padding:14px 20px;border-top:1px solid #E2E8F0;background:#FAFBFD;display:flex;align-items:center;justify-content:flex-end;gap:10px;">
+        ${isPending ? `
+          <button type="button" class="btn btn--outline btn--sm" id="arm-start-reject-btn" style="color:#DC2626;border-color:#FCA5A5;">
+            ${icon('x', 14)} Reject
+          </button>
+          <button type="button" class="btn btn--primary btn--sm" id="arm-approve-btn" style="background:var(--color-primary,#005930);gap:6px;">
+            ${icon('checkCircle', 15)} Approve &amp; Credit Hours
+          </button>
+        ` : `
+          <button type="button" class="btn btn--outline btn--sm" id="arm-done-btn">Close</button>
+        `}
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(bd);
+
+  const closeReviewModal = () => bd.remove();
+  bd.querySelector('#arm-close-btn')?.addEventListener('click', closeReviewModal);
+  bd.querySelector('#arm-done-btn')?.addEventListener('click', closeReviewModal);
+  bd.addEventListener('click', e => { if (e.target === bd) closeReviewModal(); });
+
+  if (isPending) {
+    const startRejectBtn = bd.querySelector('#arm-start-reject-btn');
+    const rejectBox = bd.querySelector('#arm-reject-box');
+    const cancelRejectBtn = bd.querySelector('#arm-cancel-reject-btn');
+    const confirmRejectBtn = bd.querySelector('#arm-confirm-reject-btn');
+    const approveBtn = bd.querySelector('#arm-approve-btn');
+    const rejectInput = bd.querySelector('#arm-reject-reason');
+
+    startRejectBtn?.addEventListener('click', () => {
+      rejectBox.style.display = 'block';
+      rejectInput?.focus();
+    });
+
+    cancelRejectBtn?.addEventListener('click', () => {
+      rejectBox.style.display = 'none';
+      if (rejectInput) rejectInput.value = '';
+    });
+
+    confirmRejectBtn?.addEventListener('click', async () => {
+      const reason = rejectInput?.value?.trim();
+      if (!reason) {
+        alert('Please specify a rejection reason.');
+        rejectInput?.focus();
+        return;
+      }
+      confirmRejectBtn.disabled = true;
+      confirmRejectBtn.textContent = 'Rejecting...';
+      try {
+        const res = await apiPost(`/company/ojt-trainees/attendance/${log.id}/reject`, { reason });
+        if (!res?.success) throw new Error(res?.message || 'Failed to reject attendance.');
+        closeReviewModal();
+        if (typeof onComplete === 'function') onComplete();
+      } catch (err) {
+        alert(err.message || 'Error rejecting attendance.');
+        confirmRejectBtn.disabled = false;
+        confirmRejectBtn.textContent = 'Confirm Rejection';
+      }
+    });
+
+    approveBtn?.addEventListener('click', async () => {
+      if (!confirm(`Are you sure you want to approve this off-site attendance and credit ${Number(log.hours || 0).toFixed(2)} hours to ${studentInfo.name || 'the student'}?`)) {
+        return;
+      }
+      approveBtn.disabled = true;
+      approveBtn.innerHTML = `${icon('checkCircle', 15)} Approving...`;
+      try {
+        const res = await apiPost(`/company/ojt-trainees/attendance/${log.id}/approve`);
+        if (!res?.success) throw new Error(res?.message || 'Failed to approve attendance.');
+        closeReviewModal();
+        if (typeof onComplete === 'function') onComplete();
+      } catch (err) {
+        alert(err.message || 'Error approving attendance.');
+        approveBtn.disabled = false;
+        approveBtn.innerHTML = `${icon('checkCircle', 15)} Approve &amp; Credit Hours`;
+      }
+    });
+  }
+}
+
+/**
  * Company Trainee Daily Time Record (DTR) Modal — Table-only view (No Map)
  * Displays Morning In/Out, Afternoon In/Out, Hours Rendered, Status, and Location Validity/Distance
  */
@@ -2612,9 +2823,10 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
       if (validityFilter === 'in_site' && log.locationValidity !== 'In Site') return false;
       if (validityFilter === 'too_far' && log.locationValidity !== 'Too Far') return false;
       if (validityFilter === 'no_gps' && (log.locationValidity === 'In Site' || log.locationValidity === 'Too Far')) return false;
+      if (validityFilter === 'pending' && log.approvalStatus !== 'pending_company') return false;
 
       if (q) {
-        const hay = `${log.dayLabel || ''} ${log.date || ''} ${log.rawDate || ''} ${log.locationValidity || ''} ${log.siteLocation || ''}`.toLowerCase();
+        const hay = `${log.dayLabel || ''} ${log.date || ''} ${log.rawDate || ''} ${log.locationValidity || ''} ${log.siteLocation || ''} ${log.outOfRangeReason || ''}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
@@ -2626,7 +2838,12 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
     const dist = log.distanceMeters != null ? `${log.distanceMeters}m` : '';
     let badgeHtml = '';
 
-    if (val === 'In Site') {
+    if (log.hasGeofenceExemption) {
+      badgeHtml = `
+        <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:99px;font-size:0.72rem;font-weight:700;background:#FFFBEB;color:#B45309;border:1px solid #FDE68A;">
+          ${icon('camera', 11)} Off-Site (${dist || 'Exemption'})
+        </span>`;
+    } else if (val === 'In Site') {
       badgeHtml = `
         <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:99px;font-size:0.72rem;font-weight:700;background:#ECFDF5;color:#047857;border:1px solid #A7F3D0;">
           ✓ In Site${dist ? ` (${dist})` : ''}
@@ -2661,6 +2878,26 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
   }
 
   function renderStatusBadge(log) {
+    const isPending = (log.approvalStatus || '') === 'pending_company';
+    const isRejected = (log.approvalStatus || '') === 'rejected';
+    const isApprovedExemption = (log.approvalStatus || '') === 'approved' && log.hasGeofenceExemption;
+
+    if (isPending) {
+      return `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:0.7rem;font-weight:700;background:#FFFBEB;color:#B45309;border:1px solid #FDE68A;" title="Punch outside geofence perimeter. Awaiting your approval.">
+        ${icon('alertTriangle', 11)} Pending Review
+      </span>`;
+    }
+    if (isRejected) {
+      return `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:0.7rem;font-weight:700;background:#FEF2F2;color:#B91C1C;border:1px solid #FECACA;" title="${escapeHtml(log.rejectionReason || 'Rejected by supervisor')}">
+        ${icon('x', 11)} Rejected
+      </span>`;
+    }
+    if (isApprovedExemption) {
+      return `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:0.7rem;font-weight:700;background:#F0FDF4;color:#15803D;border:1px solid #BBF7D0;" title="Exemption approved by company">
+        ${icon('checkCircle', 11)} Approved (Off-site)
+      </span>`;
+    }
+
     const st = (log.status || '').toLowerCase();
     const isOngoing = (log.morningIn && !log.morningOut && !log.afternoonIn) || (log.afternoonIn && !log.afternoonOut) || (log.timeIn && !log.timeOut);
 
@@ -2680,7 +2917,7 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
     if (!rows.length) {
       return `
         <tr>
-          <td colspan="8" style="padding:42px 20px;text-align:center;color:var(--text-secondary);">
+          <td colspan="9" style="padding:42px 20px;text-align:center;color:var(--text-secondary);">
             <div style="width:42px;height:42px;border-radius:50%;background:rgba(0,89,48,0.06);color:var(--color-primary, #005930);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">
               ${icon('clock', 20)}
             </div>
@@ -2723,11 +2960,38 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
           ? `<span style="font-size:0.72rem;font-weight:700;color:#059669;background:#ECFDF5;padding:2px 7px;border-radius:99px;">Active (PM)</span>`
           : `<span style="color:#94A3B8;">—</span>`);
 
-      const hrs = Number(log.hours || 0).toFixed(2);
+      const isPending = (log.approvalStatus || '') === 'pending_company';
+      const isRejected = (log.approvalStatus || '') === 'rejected';
+
+      const rawHrs = Number(log.hours || 0).toFixed(2);
+      let hrsHtml = '';
+      if (isPending) {
+        hrsHtml = `<div style="font-weight:700;font-size:0.83rem;color:#D97706;">${rawHrs} hrs <span style="font-size:0.64rem;font-weight:600;display:block;color:#B45309;">(In Escrow)</span></div>`;
+      } else if (isRejected) {
+        hrsHtml = `<div style="font-weight:700;font-size:0.83rem;color:#DC2626;text-decoration:line-through;">${rawHrs} hrs <span style="font-size:0.64rem;font-weight:600;display:block;color:#DC2626;text-decoration:none;">(Rejected)</span></div>`;
+      } else {
+        hrsHtml = `<div style="font-weight:700;font-size:0.83rem;color:var(--color-primary, #005930);">${rawHrs} hrs</div>`;
+      }
+
       const hasSplitHrs = (log.morningHours > 0 || log.afternoonHours > 0);
       const splitSub = hasSplitHrs
         ? `<div style="font-size:0.67rem;color:var(--text-tertiary);">AM: ${Number(log.morningHours || 0).toFixed(1)}h &bull; PM: ${Number(log.afternoonHours || 0).toFixed(1)}h</div>`
         : '';
+
+      let actionHtml = `<span style="color:#94A3B8;font-size:0.75rem;">—</span>`;
+      if (isPending) {
+        actionHtml = `
+          <button type="button" class="btn btn--xs js-review-attendance-btn" data-log-id="${log.id}" style="background:#D97706;color:#fff;border:none;border-radius:6px;padding:4px 9px;font-size:0.72rem;font-weight:700;display:inline-flex;align-items:center;gap:4px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,0.06);white-space:nowrap;">
+            ${icon('camera', 11)} Review Proof
+          </button>
+        `;
+      } else if (log.hasGeofenceExemption) {
+        actionHtml = `
+          <button type="button" class="btn btn--xs btn--outline js-review-attendance-btn" data-log-id="${log.id}" style="font-size:0.72rem;padding:3px 8px;display:inline-flex;align-items:center;gap:4px;white-space:nowrap;">
+            ${icon('eye', 11)} View Proof
+          </button>
+        `;
+      }
 
       return `
         <tr style="border-bottom:1px solid #F1F5F9;">
@@ -2740,14 +3004,30 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
           <td style="padding:11px 12px;white-space:nowrap;font-size:0.81rem;">${aInHtml}</td>
           <td style="padding:11px 12px;white-space:nowrap;font-size:0.81rem;">${aOutHtml}</td>
           <td style="padding:11px 12px;white-space:nowrap;">
-            <div style="font-weight:700;font-size:0.83rem;color:var(--color-primary, #005930);">${hrs} hrs</div>
+            ${hrsHtml}
             ${splitSub}
           </td>
           <td style="padding:11px 12px;white-space:nowrap;">${renderStatusBadge(log)}</td>
-          <td style="padding:11px 14px;min-width:190px;">${renderLocationCell(log)}</td>
+          <td style="padding:11px 14px;min-width:170px;">${renderLocationCell(log)}</td>
+          <td style="padding:11px 12px;white-space:nowrap;text-align:center;">${actionHtml}</td>
         </tr>
       `;
     }).join('');
+  }
+
+  function attachReviewButtonListeners() {
+    backdrop.querySelectorAll('.js-review-attendance-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const logId = parseInt(btn.dataset.logId, 10);
+        const log = logsData.find(l => l.id === logId);
+        if (log) {
+          openAttendanceReviewModal(log, studentInfo, () => {
+            fetchAndRenderDtr();
+          });
+        }
+      });
+    });
   }
 
   function renderModalShell() {
@@ -2810,12 +3090,21 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
               <span style="color:#B91C1C;">⚠ ${summaryInfo.tooFarCount ?? 0} Too Far</span>
             </div>
           </div>
-          <div style="background:#fff;border:1px solid #E2E8F0;border-radius:10px;padding:10px 14px;">
-            <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;color:var(--text-tertiary);">Assigned Shift Schedule</div>
-            <div style="font-size:0.9rem;font-weight:700;color:var(--text-primary);margin-top:3px;">
-              ${escapeHtml(studentInfo.shift_start || '08:00')} &ndash; ${escapeHtml(studentInfo.shift_end || '17:00')}
+          ${(summaryInfo.pendingApprovalCount > 0) ? `
+            <div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;padding:10px 14px;">
+              <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;color:#B45309;">Off-Site Pending Review</div>
+              <div style="font-size:1.1rem;font-weight:800;color:#D97706;margin-top:2px;display:flex;align-items:center;gap:6px;">
+                ${icon('alertTriangle', 16)} ${summaryInfo.pendingApprovalCount} <span style="font-size:0.76rem;font-weight:700;color:#B45309;">Needs Decision</span>
+              </div>
             </div>
-          </div>
+          ` : `
+            <div style="background:#fff;border:1px solid #E2E8F0;border-radius:10px;padding:10px 14px;">
+              <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;color:var(--text-tertiary);">Assigned Shift Schedule</div>
+              <div style="font-size:0.9rem;font-weight:700;color:var(--text-primary);margin-top:3px;">
+                ${escapeHtml(studentInfo.shift_start || '08:00')} &ndash; ${escapeHtml(studentInfo.shift_end || '17:00')}
+              </div>
+            </div>
+          `}
         </div>
 
         <!-- Filter & Search Bar -->
@@ -2837,6 +3126,7 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
               <option value="in_site" ${validityFilter === 'in_site' ? 'selected' : ''}>In Site Only (${summaryInfo.inSiteCount ?? 0})</option>
               <option value="too_far" ${validityFilter === 'too_far' ? 'selected' : ''}>Too Far Only (${summaryInfo.tooFarCount ?? 0})</option>
               <option value="no_gps" ${validityFilter === 'no_gps' ? 'selected' : ''}>No GPS (${summaryInfo.noGpsCount ?? 0})</option>
+              ${(summaryInfo.pendingApprovalCount > 0) ? `<option value="pending" ${validityFilter === 'pending' ? 'selected' : ''}>Pending Review (${summaryInfo.pendingApprovalCount})</option>` : ''}
             </select>
           </div>
           <div style="font-size:0.75rem;color:var(--text-secondary);" id="dtr-modal-count-label">
@@ -2857,6 +3147,7 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
                 <th style="padding:10px 12px;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:#475569;">Hrs Rendered</th>
                 <th style="padding:10px 12px;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:#475569;">Status</th>
                 <th style="padding:10px 14px;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:#475569;">Location &amp; Geofence</th>
+                <th style="padding:10px 12px;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:#475569;text-align:center;">Action</th>
               </tr>
             </thead>
             <tbody id="dtr-modal-tbody">
@@ -2886,7 +3177,10 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
 
     function updateTableOnly() {
       const rows = getFilteredLogs();
-      if (tbodyEl) tbodyEl.innerHTML = renderTableRowsHtml(rows);
+      if (tbodyEl) {
+        tbodyEl.innerHTML = renderTableRowsHtml(rows);
+        attachReviewButtonListeners();
+      }
       if (countLabelEl) {
         countLabelEl.innerHTML = `Showing <strong>${rows.length}</strong> of <strong>${logsData.length}</strong> daily records`;
       }
@@ -2901,6 +3195,8 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
       validityFilter = e.target.value;
       updateTableOnly();
     });
+
+    attachReviewButtonListeners();
 
     backdrop.querySelector('#dtr-modal-export-csv')?.addEventListener('click', () => {
       const rows = getFilteredLogs();

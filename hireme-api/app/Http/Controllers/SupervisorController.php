@@ -1022,6 +1022,13 @@ class SupervisorController extends Controller
                     'hours'              => (float) $log->hours_rendered,
                     'status'             => $log->status,
                     'task'               => $log->description,
+                    'hasGeofenceExemption' => (bool) $log->has_geofence_exemption,
+                    'approvalStatus'       => $log->approval_status ?? 'approved',
+                    'hoursCredited'        => (float) ($log->hours_credited ?? (($log->approval_status ?? 'approved') === 'approved' ? $log->hours_rendered : 0)),
+                    'outOfRangeReason'     => $log->out_of_range_reason,
+                    'proofImage'           => $log->proof_image_path ? \Illuminate\Support\Facades\Storage::disk('public')->url($log->proof_image_path) : null,
+                    'rejectionReason'      => $log->rejection_reason,
+                    'approvedAt'           => $log->approved_at?->format('M j, Y g:i A'),
                     'locationValidity'   => $log->distance_meters !== null
                         ? ((float) $log->distance_meters <= 100 ? 'In Site' : 'Too Far')
                         : ($log->location_validity === 'valid' ? 'In Site' : $log->location_validity),

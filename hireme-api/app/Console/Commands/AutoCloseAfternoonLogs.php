@@ -74,8 +74,9 @@ class AutoCloseAfternoonLogs extends Command
                         'time_out'             => $lunchStart,
                     ]);
 
-                    if ($ojtRecord && $mHours > 0) {
+                    if ($ojtRecord && $mHours > 0 && ($log->approval_status ?? 'approved') === 'approved') {
                         $ojtRecord->increment('completed_hours', $mHours);
+                        $log->increment('hours_credited', $mHours);
                     }
                     $closedCount++;
                 }
@@ -103,8 +104,9 @@ class AutoCloseAfternoonLogs extends Command
                             'time_out'               => $shiftEnd,
                         ]);
 
-                        if ($ojtRecord && $pmHours > 0) {
+                        if ($ojtRecord && $pmHours > 0 && ($log->approval_status ?? 'approved') === 'approved') {
                             $ojtRecord->increment('completed_hours', $pmHours);
+                            $log->update(['hours_credited' => $totalDayHours]);
                         }
                     } elseif (!$hasLunch && $log->time_in && !$log->time_out) {
                         $tIn   = Carbon::parse($log->time_in);
@@ -119,8 +121,9 @@ class AutoCloseAfternoonLogs extends Command
                             'auto_afternoon_timeout' => true,
                         ]);
 
-                        if ($ojtRecord && $hours > 0) {
+                        if ($ojtRecord && $hours > 0 && ($log->approval_status ?? 'approved') === 'approved') {
                             $ojtRecord->increment('completed_hours', $hours);
+                            $log->update(['hours_credited' => $hours]);
                         }
                     }
                     $closedCount++;

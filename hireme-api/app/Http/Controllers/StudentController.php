@@ -1201,6 +1201,12 @@ class StudentController extends Controller
                     'status'              => $locationStatus,
                     'locationValidity'    => $normalizedValidity,
                     'distanceMeters'      => $log->distance_meters,
+                    'hasGeofenceExemption'=> (bool) $log->has_geofence_exemption,
+                    'approvalStatus'      => $log->approval_status ?? 'approved',
+                    'hoursCredited'       => (float) ($log->hours_credited ?? (($log->approval_status ?? 'approved') === 'approved' ? $log->hours_rendered : 0)),
+                    'outOfRangeReason'    => $log->out_of_range_reason,
+                    'proofImage'          => $log->proof_image_path ? \Illuminate\Support\Facades\Storage::disk('public')->url($log->proof_image_path) : null,
+                    'rejectionReason'     => $log->rejection_reason,
                     'inLat'               => $inLat  !== null ? (float) $inLat  : null,
                     'inLon'               => $inLon  !== null ? (float) $inLon  : null,
                     'outLat'              => $log->time_out_lat !== null ? (float) $log->time_out_lat : null,
@@ -1208,7 +1214,7 @@ class StudentController extends Controller
                 ];
             });
 
-        $hoursRendered = $ojtRecord?->completed_hours ?? $timeLogs->sum('hours');
+        $hoursRendered = $ojtRecord?->completed_hours ?? $timeLogs->where('approvalStatus', 'approved')->sum('hours');
         $daysCompleted = $timeLogs->unique('date')->count();
 
         // Supervisor name
@@ -1287,6 +1293,12 @@ class StudentController extends Controller
                 'hours'              => (float) $todayLogRecord->hours_rendered,
                 'status'             => $todayLogRecord->status,
                 'locationValidity'   => $todayLogRecord->location_validity,
+                'hasGeofenceExemption'=> (bool) $todayLogRecord->has_geofence_exemption,
+                'approvalStatus'      => $todayLogRecord->approval_status ?? 'approved',
+                'hoursCredited'       => (float) ($todayLogRecord->hours_credited ?? (($todayLogRecord->approval_status ?? 'approved') === 'approved' ? $todayLogRecord->hours_rendered : 0)),
+                'outOfRangeReason'    => $todayLogRecord->out_of_range_reason,
+                'proofImage'          => $todayLogRecord->proof_image_path ? \Illuminate\Support\Facades\Storage::disk('public')->url($todayLogRecord->proof_image_path) : null,
+                'rejectionReason'     => $todayLogRecord->rejection_reason,
             ];
         }
 
@@ -1485,8 +1497,9 @@ class StudentController extends Controller
                 'time_out'             => $lunchStart,
             ]);
 
-            if ($ojtRecord && $mHours > 0) {
+            if ($ojtRecord && $mHours > 0 && ($log->approval_status ?? 'approved') === 'approved') {
                 $ojtRecord->increment('completed_hours', $mHours);
+                $log->increment('hours_credited', $mHours);
             }
         }
     }
@@ -1518,8 +1531,9 @@ class StudentController extends Controller
             ]);
 
             $record = $ojtRecord ?? $log->ojtRecord;
-            if ($record && $pmHours > 0) {
+            if ($record && $pmHours > 0 && ($log->approval_status ?? 'approved') === 'approved') {
                 $record->increment('completed_hours', $pmHours);
+                $log->update(['hours_credited' => $totalDayHours]);
             }
         }
         // Case 2: Half-day schedule without lunch break (time_in active, no time_out)
@@ -1537,10 +1551,36 @@ class StudentController extends Controller
             ]);
 
             $record = $ojtRecord ?? $log->ojtRecord;
-            if ($record && $hours > 0) {
+            if ($record && $hours > 0 && ($log->approval_status ?? 'approved') === 'approved') {
                 $record->increment('completed_hours', $hours);
+                $log->update(['hours_credited' => $hours]);
             }
         }
+    }
+
+    /**
+     * Store an attendance proof image from base64 data URL or uploaded file.
+     */
+    private function saveProofImage($proofImage, $userId): ?string
+    {
+        if (!$proofImage) return null;
+
+        if (is_string($proofImage) && preg_match('/^data:image\/(\w+);base64,/', $proofImage, $type)) {
+            $data = substr($proofImage, strpos($proofImage, ',') + 1);
+            $type = strtolower($type[1]);
+            if ($type === 'jpeg') $type = 'jpg';
+            $decoded = base64_decode($data);
+            if ($decoded === false) return null;
+
+            $filename = 'proof_' . $userId . '_' . time() . '_' . \Illuminate\Support\Str::random(8) . '.' . $type;
+            $path = 'attendance_proofs/' . $filename;
+            \Illuminate\Support\Facades\Storage::disk('public')->put($path, $decoded);
+            return $path;
+        } elseif ($proofImage instanceof \Illuminate\Http\UploadedFile) {
+            return $proofImage->store('attendance_proofs', 'public');
+        }
+
+        return null;
     }
 
     /**
@@ -1620,10 +1660,12 @@ class StudentController extends Controller
     public function logTimeIn(Request $request)
     {
         $request->validate([
-            'time_in'   => 'required|date_format:H:i',
-            'latitude'  => 'required|numeric|between:-90,90',
-            'longitude' => 'required|numeric|between:-180,180',
-            'session'   => 'nullable|in:morning,afternoon,auto',
+            'time_in'             => 'required|date_format:H:i',
+            'latitude'            => 'required|numeric|between:-90,90',
+            'longitude'           => 'required|numeric|between:-180,180',
+            'session'             => 'nullable|in:morning,afternoon,auto',
+            'out_of_range_reason' => 'nullable|string|max:1000',
+            'proof_image'         => 'nullable',
         ], [
             'latitude.required'  => 'GPS location is required to log attendance. Please enable location access on your device.',
             'longitude.required' => 'GPS location is required to log attendance. Please enable location access on your device.',
@@ -1702,11 +1744,16 @@ class StudentController extends Controller
             }
         }
 
-        // 3. Location validity & strict geofence distance enforcement (<= 100m)
+        // 3. Location validity & geofence distance enforcement (<= 100m)
         $locationValidity = null;
         $distanceMeters   = null;
         $lat = $request->latitude  !== null ? (float) $request->latitude  : null;
         $lon = $request->longitude !== null ? (float) $request->longitude : null;
+
+        $hasExemption     = false;
+        $approvalStatus   = 'approved';
+        $outOfRangeReason = null;
+        $proofPath        = null;
 
         if ($lat !== null && $lon !== null && $interest?->posting) {
             $posting = $interest->posting;
@@ -1718,18 +1765,29 @@ class StudentController extends Controller
                 ));
                 $locationValidity = $distanceMeters <= self::GEOFENCE_RADIUS_METERS ? 'In Site' : 'Too Far';
 
-                // Strict Geofence Enforcement: Block time-in if trainee is outside the 100m radius
+                // Geofence check: if trainee is outside 100m radius, require photo & explanation
                 if ($distanceMeters > self::GEOFENCE_RADIUS_METERS) {
                     $compName = $posting->company_name ?: 'Host Company';
-                    return response()->json([
-                        'success'               => false,
-                        'error_code'            => 'OUTSIDE_GEOFENCE',
-                        'message'               => "You cannot time in because you are outside the OJT site radius. You are currently {$distanceMeters}m away from {$compName} (maximum allowed radius: 100m).",
-                        'distance_meters'       => $distanceMeters,
-                        'allowed_radius_meters' => self::GEOFENCE_RADIUS_METERS,
-                        'company_name'          => $compName,
-                        'location'              => $posting->location,
-                    ], 422);
+                    $reason   = trim((string) $request->input('out_of_range_reason', ''));
+                    $proof    = $request->input('proof_image') ?? $request->file('proof_image');
+
+                    if (empty($reason) || empty($proof)) {
+                        return response()->json([
+                            'success'               => false,
+                            'error_code'            => 'OUTSIDE_GEOFENCE_REQUIRES_PROOF',
+                            'requires_proof'        => true,
+                            'message'               => "You are outside the OJT site radius ({$distanceMeters}m away from {$compName}). A live camera photo and written justification are required to submit an attendance review request.",
+                            'distance_meters'       => $distanceMeters,
+                            'allowed_radius_meters' => self::GEOFENCE_RADIUS_METERS,
+                            'company_name'          => $compName,
+                            'location'              => $posting->location,
+                        ], 422);
+                    }
+
+                    $proofPath        = $this->saveProofImage($proof, $user->id);
+                    $hasExemption     = true;
+                    $approvalStatus   = 'pending_company';
+                    $outOfRangeReason = $reason;
                 }
             } else {
                 return response()->json([
@@ -1740,7 +1798,7 @@ class StudentController extends Controller
             }
         }
 
-        $logStatus = 'valid';
+        $logStatus = $hasExemption ? 'pending_approval' : 'valid';
 
         // 4. Session processing & Lunch Break Validation
         $log = TimeLog::where('user_id', $user->id)->where('log_date', $today)->first();
@@ -1796,21 +1854,26 @@ class StudentController extends Controller
             if (!$hasLunch) {
                 // Half-day or no lunch break
                 $log = TimeLog::create([
-                    'user_id'           => $user->id,
-                    'ojt_record_id'     => $ojtRecord?->id,
-                    'log_date'          => $today,
-                    'time_in'           => $request->time_in,
-                    'morning_in'        => $request->time_in,
-                    'latitude'          => $lat,
-                    'longitude'         => $lon,
-                    'time_in_lat'       => $lat,
-                    'time_in_lon'       => $lon,
-                    'morning_in_lat'    => $lat,
-                    'morning_in_lon'    => $lon,
-                    'location_validity' => $locationValidity,
-                    'morning_validity'  => $locationValidity,
-                    'distance_meters'   => $distanceMeters,
-                    'status'            => $logStatus,
+                    'user_id'                => $user->id,
+                    'ojt_record_id'          => $ojtRecord?->id,
+                    'log_date'               => $today,
+                    'time_in'                => $request->time_in,
+                    'morning_in'             => $request->time_in,
+                    'latitude'               => $lat,
+                    'longitude'              => $lon,
+                    'time_in_lat'            => $lat,
+                    'time_in_lon'            => $lon,
+                    'morning_in_lat'         => $lat,
+                    'morning_in_lon'         => $lon,
+                    'location_validity'      => $locationValidity,
+                    'morning_validity'       => $locationValidity,
+                    'distance_meters'        => $distanceMeters,
+                    'status'                 => $logStatus,
+                    'has_geofence_exemption' => $hasExemption,
+                    'approval_status'        => $approvalStatus,
+                    'out_of_range_reason'    => $outOfRangeReason,
+                    'proof_image_path'       => $proofPath,
+                    'hours_credited'         => 0.00,
                 ]);
                 $sessionLabel = 'Time In';
             } else {
@@ -1821,41 +1884,51 @@ class StudentController extends Controller
                 if ($isAfternoon) {
                     // Student missed morning, timed in directly for afternoon
                     $log = TimeLog::create([
-                        'user_id'            => $user->id,
-                        'ojt_record_id'      => $ojtRecord?->id,
-                        'log_date'           => $today,
-                        'time_in'            => $request->time_in,
-                        'afternoon_in'       => $request->time_in,
-                        'latitude'           => $lat,
-                        'longitude'          => $lon,
-                        'time_in_lat'        => $lat,
-                        'time_in_lon'        => $lon,
-                        'afternoon_in_lat'   => $lat,
-                        'afternoon_in_lon'   => $lon,
-                        'location_validity'  => $locationValidity,
-                        'afternoon_validity' => $locationValidity,
-                        'distance_meters'    => $distanceMeters,
-                        'status'             => $logStatus,
+                        'user_id'                => $user->id,
+                        'ojt_record_id'          => $ojtRecord?->id,
+                        'log_date'               => $today,
+                        'time_in'                => $request->time_in,
+                        'afternoon_in'           => $request->time_in,
+                        'latitude'               => $lat,
+                        'longitude'              => $lon,
+                        'time_in_lat'            => $lat,
+                        'time_in_lon'            => $lon,
+                        'afternoon_in_lat'       => $lat,
+                        'afternoon_in_lon'       => $lon,
+                        'location_validity'      => $locationValidity,
+                        'afternoon_validity'     => $locationValidity,
+                        'distance_meters'        => $distanceMeters,
+                        'status'                 => $logStatus,
+                        'has_geofence_exemption' => $hasExemption,
+                        'approval_status'        => $approvalStatus,
+                        'out_of_range_reason'    => $outOfRangeReason,
+                        'proof_image_path'       => $proofPath,
+                        'hours_credited'         => 0.00,
                     ]);
                     $sessionLabel = 'Time In (Afternoon)';
                 } else {
                     // Morning time-in
                     $log = TimeLog::create([
-                        'user_id'           => $user->id,
-                        'ojt_record_id'     => $ojtRecord?->id,
-                        'log_date'          => $today,
-                        'time_in'           => $request->time_in,
-                        'morning_in'        => $request->time_in,
-                        'latitude'          => $lat,
-                        'longitude'         => $lon,
-                        'time_in_lat'       => $lat,
-                        'time_in_lon'       => $lon,
-                        'morning_in_lat'    => $lat,
-                        'morning_in_lon'    => $lon,
-                        'location_validity' => $locationValidity,
-                        'morning_validity'  => $locationValidity,
-                        'distance_meters'   => $distanceMeters,
-                        'status'            => $logStatus,
+                        'user_id'                => $user->id,
+                        'ojt_record_id'          => $ojtRecord?->id,
+                        'log_date'               => $today,
+                        'time_in'                => $request->time_in,
+                        'morning_in'             => $request->time_in,
+                        'latitude'               => $lat,
+                        'longitude'              => $lon,
+                        'time_in_lat'            => $lat,
+                        'time_in_lon'            => $lon,
+                        'morning_in_lat'         => $lat,
+                        'morning_in_lon'         => $lon,
+                        'location_validity'      => $locationValidity,
+                        'morning_validity'       => $locationValidity,
+                        'distance_meters'        => $distanceMeters,
+                        'status'                 => $logStatus,
+                        'has_geofence_exemption' => $hasExemption,
+                        'approval_status'        => $approvalStatus,
+                        'out_of_range_reason'    => $outOfRangeReason,
+                        'proof_image_path'       => $proofPath,
+                        'hours_credited'         => 0.00,
                     ]);
                     $sessionLabel = 'Time In (Morning)';
                 }
@@ -1895,41 +1968,63 @@ class StudentController extends Controller
                 }
 
                 // Record Afternoon Time In
-                $log->update(array_filter([
+                $updatePayload = array_filter([
                     'afternoon_in'       => $request->time_in,
                     'afternoon_in_lat'   => $lat,
                     'afternoon_in_lon'   => $lon,
                     'afternoon_validity' => $locationValidity,
                     'location_validity'  => $locationValidity ?? $log->location_validity,
                     'distance_meters'    => $distanceMeters ?? $log->distance_meters,
-                ], fn($v) => $v !== null));
+                ], fn($v) => $v !== null);
+
+                if ($hasExemption) {
+                    $updatePayload['has_geofence_exemption'] = true;
+                    $updatePayload['approval_status']        = 'pending_company';
+                    $updatePayload['out_of_range_reason']    = $outOfRangeReason;
+                    if ($proofPath) $updatePayload['proof_image_path'] = $proofPath;
+                }
+
+                $log->update($updatePayload);
                 $sessionLabel = 'Time In (Afternoon)';
             } elseif ($log->afternoon_in) {
                 return response()->json(['message' => 'Already logged in for afternoon session today.'], 422);
             } else {
                 // Fallback to morning in
-                $log->update(array_filter([
+                $updatePayload = array_filter([
                     'morning_in'        => $request->time_in,
                     'morning_in_lat'    => $lat,
                     'morning_in_lon'    => $lon,
                     'morning_validity'  => $locationValidity,
                     'location_validity' => $locationValidity ?? $log->location_validity,
                     'distance_meters'   => $distanceMeters ?? $log->distance_meters,
-                ], fn($v) => $v !== null));
+                ], fn($v) => $v !== null);
+
+                if ($hasExemption) {
+                    $updatePayload['has_geofence_exemption'] = true;
+                    $updatePayload['approval_status']        = 'pending_company';
+                    $updatePayload['out_of_range_reason']    = $outOfRangeReason;
+                    if ($proofPath) $updatePayload['proof_image_path'] = $proofPath;
+                }
+
+                $log->update($updatePayload);
                 $sessionLabel = 'Time In (Morning)';
             }
         }
 
         // Notify supervisors for this student's program
         $locationNote = $locationValidity ? " ({$locationValidity})" : '';
+        if ($hasExemption) {
+            $locationNote .= " [⚠️ Outside Range: Review Required]";
+        }
         foreach ($this->getSupervisorIdsForStudent($user) as $svId) {
             AppNotification::send(
                 $svId,
-                'student_time_in',
-                'Student Logged In',
-                "{$user->name} logged in ({$sessionLabel}) at {$timeInFormatted} on {$today}{$locationNote}.",
+                $hasExemption ? 'student_time_in_out_of_range' : 'student_time_in',
+                $hasExemption ? 'Trainee Off-Site Time-In' : 'Student Logged In',
+                "{$user->name} logged in ({$sessionLabel}) at {$timeInFormatted} on {$today}{$locationNote}." . ($hasExemption ? " Pending company approval." : ""),
                 ['student_id' => $user->id, 'log_id' => $log->id, 'date' => $today,
-                 'time_in' => $timeInFormatted, 'session' => $sessionLabel, 'location_validity' => $locationValidity]
+                 'time_in' => $timeInFormatted, 'session' => $sessionLabel, 'location_validity' => $locationValidity,
+                 'has_geofence_exemption' => $hasExemption]
             );
         }
 
@@ -1939,54 +2034,87 @@ class StudentController extends Controller
             $postingTitle = $interest?->posting?->title ?? 'OJT Placement';
             $distLabel = $distanceMeters !== null ? " · {$distanceMeters}m" : '';
             $companyLocNote = $locationValidity ? " [{$locationValidity}{$distLabel}]" : '';
-            AppNotification::send(
-                $companyUserId,
-                'student_time_in',
-                "Trainee {$sessionLabel}: {$user->name}",
-                "{$user->name} ({$postingTitle}) logged {$sessionLabel} at {$timeInFormatted} on {$today}{$companyLocNote}.",
-                [
-                    'student_id'        => $user->id,
-                    'student_name'      => $user->name,
-                    'posting_id'        => $interest?->ojt_posting_id,
-                    'posting_title'     => $postingTitle,
-                    'log_id'            => $log->id,
-                    'date'              => $today,
-                    'time_in'           => $timeInFormatted,
-                    'session'           => $sessionLabel,
-                    'location_validity' => $locationValidity,
-                    'distance_meters'   => $distanceMeters,
-                    'action_url'        => '#/ojt-trainees',
-                ]
-            );
+
+            if ($hasExemption) {
+                AppNotification::send(
+                    $companyUserId,
+                    'attendance_pending_approval',
+                    "⚠️ Off-Site Trainee Time-In: {$user->name}",
+                    "{$user->name} ({$postingTitle}) timed in outside the OJT perimeter ({$distanceMeters}m away). Reason: \"{$outOfRangeReason}\". Live photo proof submitted. Awaiting your approval.",
+                    [
+                        'student_id'        => $user->id,
+                        'student_name'      => $user->name,
+                        'posting_id'        => $interest?->ojt_posting_id,
+                        'posting_title'     => $postingTitle,
+                        'log_id'            => $log->id,
+                        'date'              => $today,
+                        'time_in'           => $timeInFormatted,
+                        'session'           => $sessionLabel,
+                        'distance_meters'   => $distanceMeters,
+                        'requires_approval' => true,
+                        'action_url'        => '#/ojt-trainees',
+                    ]
+                );
+            } else {
+                AppNotification::send(
+                    $companyUserId,
+                    'student_time_in',
+                    "Trainee {$sessionLabel}: {$user->name}",
+                    "{$user->name} ({$postingTitle}) logged {$sessionLabel} at {$timeInFormatted} on {$today}{$companyLocNote}.",
+                    [
+                        'student_id'        => $user->id,
+                        'student_name'      => $user->name,
+                        'posting_id'        => $interest?->ojt_posting_id,
+                        'posting_title'     => $postingTitle,
+                        'log_id'            => $log->id,
+                        'date'              => $today,
+                        'time_in'           => $timeInFormatted,
+                        'session'           => $sessionLabel,
+                        'location_validity' => $locationValidity,
+                        'distance_meters'   => $distanceMeters,
+                        'action_url'        => '#/ojt-trainees',
+                    ]
+                );
+            }
         }
 
         return response()->json([
-            'message'  => "{$sessionLabel} recorded.",
-            'tooFar'   => $locationValidity === 'Too Far',
-            'distance' => $distanceMeters,
-            'session'  => $sessionLabel,
-            'log'      => [
-                'id'                 => $log->id,
-                'date'               => $log->log_date->format('M j, Y'),
-                'dayLabel'           => $log->log_date->format('D M j'),
-                'timeIn'             => $log->time_in ? \Carbon\Carbon::parse($log->time_in)->format('g:i A') : null,
-                'timeOut'            => $log->time_out ? \Carbon\Carbon::parse($log->time_out)->format('g:i A') : null,
-                'morningIn'          => $log->morning_in ? \Carbon\Carbon::parse($log->morning_in)->format('g:i A') : null,
-                'morningOut'         => $log->morning_out ? \Carbon\Carbon::parse($log->morning_out)->format('g:i A') : null,
-                'afternoonIn'        => $log->afternoon_in ? \Carbon\Carbon::parse($log->afternoon_in)->format('g:i A') : null,
-                'afternoonOut'       => $log->afternoon_out ? \Carbon\Carbon::parse($log->afternoon_out)->format('g:i A') : null,
-                'morningHours'       => (float) ($log->morning_hours ?? 0),
-                'afternoonHours'     => (float) ($log->afternoon_hours ?? 0),
-                'autoMorningTimeout' => (bool) $log->auto_morning_timeout,
+            'message'          => $hasExemption
+                ? "{$sessionLabel} recorded (Outside Range). Sent to company supervisor for review."
+                : "{$sessionLabel} recorded.",
+            'pending_approval' => $hasExemption,
+            'approval_status'  => $log->approval_status ?? $approvalStatus,
+            'tooFar'           => $locationValidity === 'Too Far',
+            'distance'         => $distanceMeters,
+            'session'          => $sessionLabel,
+            'log'              => [
+                'id'                   => $log->id,
+                'date'                 => $log->log_date->format('M j, Y'),
+                'dayLabel'             => $log->log_date->format('D M j'),
+                'timeIn'               => $log->time_in ? \Carbon\Carbon::parse($log->time_in)->format('g:i A') : null,
+                'timeOut'              => $log->time_out ? \Carbon\Carbon::parse($log->time_out)->format('g:i A') : null,
+                'morningIn'            => $log->morning_in ? \Carbon\Carbon::parse($log->morning_in)->format('g:i A') : null,
+                'morningOut'           => $log->morning_out ? \Carbon\Carbon::parse($log->morning_out)->format('g:i A') : null,
+                'afternoonIn'          => $log->afternoon_in ? \Carbon\Carbon::parse($log->afternoon_in)->format('g:i A') : null,
+                'afternoonOut'         => $log->afternoon_out ? \Carbon\Carbon::parse($log->afternoon_out)->format('g:i A') : null,
+                'morningHours'         => (float) ($log->morning_hours ?? 0),
+                'afternoonHours'       => (float) ($log->afternoon_hours ?? 0),
+                'autoMorningTimeout'   => (bool) $log->auto_morning_timeout,
                 'autoAfternoonTimeout' => (bool) $log->auto_afternoon_timeout,
-                'hours'              => (float) $log->hours_rendered,
-                'status'             => $log->status,
-                'locationValidity'   => $locationValidity,
-                'distanceMeters'     => $distanceMeters,
-                'inLat'              => $lat,
-                'inLon'              => $lon,
-                'outLat'             => null,
-                'outLon'             => null,
+                'hours'                => (float) $log->hours_rendered,
+                'status'               => $log->status,
+                'locationValidity'     => $locationValidity,
+                'distanceMeters'       => $distanceMeters,
+                'hasGeofenceExemption' => (bool) $log->has_geofence_exemption,
+                'approvalStatus'       => $log->approval_status ?? $approvalStatus,
+                'hoursCredited'        => (float) ($log->hours_credited ?? 0),
+                'outOfRangeReason'     => $log->out_of_range_reason,
+                'proofImage'           => $log->proof_image_path ? \Illuminate\Support\Facades\Storage::disk('public')->url($log->proof_image_path) : null,
+                'rejectionReason'      => $log->rejection_reason,
+                'inLat'                => $lat,
+                'inLon'                => $lon,
+                'outLat'               => null,
+                'outLon'               => null,
             ],
         ]);
     }
@@ -1998,10 +2126,12 @@ class StudentController extends Controller
     public function logTimeOut(Request $request)
     {
         $request->validate([
-            'time_out'  => 'required|date_format:H:i',
-            'latitude'  => 'required|numeric|between:-90,90',
-            'longitude' => 'required|numeric|between:-180,180',
-            'session'   => 'nullable|in:morning,afternoon,auto',
+            'time_out'            => 'required|date_format:H:i',
+            'latitude'            => 'required|numeric|between:-90,90',
+            'longitude'           => 'required|numeric|between:-180,180',
+            'session'             => 'nullable|in:morning,afternoon,auto',
+            'out_of_range_reason' => 'nullable|string|max:1000',
+            'proof_image'         => 'nullable',
         ], [
             'latitude.required'  => 'GPS location is required to log attendance. Please enable location access on your device.',
             'longitude.required' => 'GPS location is required to log attendance. Please enable location access on your device.',
@@ -2063,9 +2193,13 @@ class StudentController extends Controller
         $outLon = $request->longitude !== null ? (float) $request->longitude : null;
         $reqTimeOut = \Carbon\Carbon::createFromFormat('H:i', $request->time_out);
 
-        // Compute time-out geofence distance and strictly enforce geofence radius (<= 100m)
+        // Compute time-out geofence distance and handle out-of-range evidence
         $outLocationValidity = null;
         $outDistanceMeters   = null;
+        $outHasExemption     = false;
+        $outOutOfRangeReason = null;
+        $outProofPath        = null;
+
         if ($outLat !== null && $outLon !== null && $interest?->posting) {
             $posting = $interest->posting;
             if ($posting->latitude !== null && $posting->longitude !== null) {
@@ -2076,18 +2210,31 @@ class StudentController extends Controller
                 ));
                 $outLocationValidity = $outDistanceMeters <= self::GEOFENCE_RADIUS_METERS ? 'In Site' : 'Too Far';
 
-                // Strict Geofence Enforcement: Block time-out if trainee is outside the 100m radius
                 if ($outDistanceMeters > self::GEOFENCE_RADIUS_METERS) {
                     $compName = $posting->company_name ?: 'Host Company';
-                    return response()->json([
-                        'success'               => false,
-                        'error_code'            => 'OUTSIDE_GEOFENCE',
-                        'message'               => "You cannot time out because you are outside the OJT site radius. You are currently {$outDistanceMeters}m away from {$compName} (maximum allowed radius: 100m).",
-                        'distance_meters'       => $outDistanceMeters,
-                        'allowed_radius_meters' => self::GEOFENCE_RADIUS_METERS,
-                        'company_name'          => $compName,
-                        'location'              => $posting->location,
-                    ], 422);
+                    $reason   = trim((string) $request->input('out_of_range_reason', ''));
+                    $proof    = $request->input('proof_image') ?? $request->file('proof_image');
+
+                    $alreadyPending = ($log->approval_status ?? '') === 'pending_company';
+
+                    if (!$alreadyPending && (empty($reason) || empty($proof))) {
+                        return response()->json([
+                            'success'               => false,
+                            'error_code'            => 'OUTSIDE_GEOFENCE_REQUIRES_PROOF',
+                            'requires_proof'        => true,
+                            'message'               => "You are outside the OJT site radius ({$outDistanceMeters}m away from {$compName}). A live camera photo and written explanation are required to submit an exit attendance review.",
+                            'distance_meters'       => $outDistanceMeters,
+                            'allowed_radius_meters' => self::GEOFENCE_RADIUS_METERS,
+                            'company_name'          => $compName,
+                            'location'              => $posting->location,
+                        ], 422);
+                    }
+
+                    if (!empty($proof)) {
+                        $outProofPath = $this->saveProofImage($proof, $user->id);
+                    }
+                    $outHasExemption     = true;
+                    $outOutOfRangeReason = !empty($reason) ? $reason : $log->out_of_range_reason;
                 }
             } else {
                 return response()->json([
@@ -2097,6 +2244,10 @@ class StudentController extends Controller
                 ], 422);
             }
         }
+
+        // Determine effective approval status for this day
+        $isPendingCompany = $outHasExemption || ($log->approval_status === 'pending_company');
+        $effectiveApprovalStatus = $isPendingCompany ? 'pending_company' : 'approved';
 
         // -------------------------------------------------------------
         // Case 1: Half-Day schedule (hasLunch == false)
@@ -2122,13 +2273,22 @@ class StudentController extends Controller
                 return response()->json(['message' => "Time out ({$outFmt}) cannot be earlier than time in ({$inFmt})."], 422);
             }
             $hours = round($timeIn->diffInMinutes($reqTimeOut) / 60, 2);
-            $log->update([
-                'time_out'       => $request->time_out,
-                'hours_rendered' => $hours,
-                'time_out_lat'   => $outLat,
-                'time_out_lon'   => $outLon,
-            ]);
-            if ($ojtRecord) {
+
+            $updateData = [
+                'time_out'               => $request->time_out,
+                'hours_rendered'         => $hours,
+                'time_out_lat'           => $outLat,
+                'time_out_lon'           => $outLon,
+                'has_geofence_exemption' => $isPendingCompany,
+                'approval_status'        => $effectiveApprovalStatus,
+                'hours_credited'         => $isPendingCompany ? 0.00 : $hours,
+            ];
+            if ($outOutOfRangeReason) $updateData['out_of_range_reason'] = $outOutOfRangeReason;
+            if ($outProofPath) $updateData['proof_image_path'] = $outProofPath;
+
+            $log->update($updateData);
+
+            if ($ojtRecord && !$isPendingCompany && $hours > 0) {
                 $ojtRecord->increment('completed_hours', $hours);
             }
             $sessionLabel = 'Time-out';
@@ -2157,18 +2317,25 @@ class StudentController extends Controller
 
                 $totalDayHours = $mHours + (float) ($log->afternoon_hours ?? 0);
 
-                $log->update([
-                    'morning_out'      => $request->time_out,
-                    'morning_hours'    => $mHours,
-                    'morning_out_lat'  => $outLat,
-                    'morning_out_lon'  => $outLon,
-                    'time_out'         => $request->time_out,
-                    'time_out_lat'     => $outLat,
-                    'time_out_lon'     => $outLon,
-                    'hours_rendered'   => $totalDayHours,
-                ]);
+                $updateData = [
+                    'morning_out'            => $request->time_out,
+                    'morning_hours'          => $mHours,
+                    'morning_out_lat'        => $outLat,
+                    'morning_out_lon'        => $outLon,
+                    'time_out'               => $request->time_out,
+                    'time_out_lat'           => $outLat,
+                    'time_out_lon'           => $outLon,
+                    'hours_rendered'         => $totalDayHours,
+                    'has_geofence_exemption' => $isPendingCompany,
+                    'approval_status'        => $effectiveApprovalStatus,
+                    'hours_credited'         => $isPendingCompany ? 0.00 : $totalDayHours,
+                ];
+                if ($outOutOfRangeReason) $updateData['out_of_range_reason'] = $outOutOfRangeReason;
+                if ($outProofPath) $updateData['proof_image_path'] = $outProofPath;
 
-                if ($ojtRecord && $mHours > 0) {
+                $log->update($updateData);
+
+                if ($ojtRecord && !$isPendingCompany && $mHours > 0) {
                     $ojtRecord->increment('completed_hours', $mHours);
                 }
 
@@ -2199,21 +2366,27 @@ class StudentController extends Controller
                 $pmHours = round($timeIn->diffInMinutes($reqTimeOut) / 60, 2);
                 $totalDayHours = (float) ($log->morning_hours ?? 0) + $pmHours;
 
-                $log->update([
-                    'afternoon_out'     => $request->time_out,
-                    'afternoon_hours'   => $pmHours,
-                    'afternoon_out_lat' => $outLat,
-                    'afternoon_out_lon' => $outLon,
-                    'time_out'          => $request->time_out,
-                    'time_out_lat'      => $outLat,
-                    'time_out_lon'      => $outLon,
-                    'hours_rendered'    => $totalDayHours,
-                ]);
+                $updateData = [
+                    'afternoon_out'          => $request->time_out,
+                    'afternoon_hours'        => $pmHours,
+                    'afternoon_out_lat'      => $outLat,
+                    'afternoon_out_lon'      => $outLon,
+                    'time_out'               => $request->time_out,
+                    'time_out_lat'           => $outLat,
+                    'time_out_lon'           => $outLon,
+                    'hours_rendered'         => $totalDayHours,
+                    'has_geofence_exemption' => $isPendingCompany,
+                    'approval_status'        => $effectiveApprovalStatus,
+                    'hours_credited'         => $isPendingCompany ? 0.00 : $totalDayHours,
+                ];
+                if ($outOutOfRangeReason) $updateData['out_of_range_reason'] = $outOutOfRangeReason;
+                if ($outProofPath) $updateData['proof_image_path'] = $outProofPath;
 
-                if ($ojtRecord && $pmHours > 0) {
+                $log->update($updateData);
+
+                if ($ojtRecord && !$isPendingCompany && $pmHours > 0) {
                     $ojtRecord->increment('completed_hours', $pmHours);
                 }
-
 
                 $sessionLabel = 'Time Out (Afternoon)';
                 $sessionHours = $pmHours;
@@ -2234,14 +2407,16 @@ class StudentController extends Controller
 
         // Notify supervisors for this student's program
         $timeOutFormatted = $reqTimeOut->format('g:i A');
+        $outStatusLabel = $isPendingCompany ? " (Outside Range - Pending Company Review)" : "";
         foreach ($this->getSupervisorIdsForStudent($user) as $svId) {
             AppNotification::send(
                 $svId,
-                'student_time_out',
-                'Student Logged Out',
-                "{$user->name} logged out ({$sessionLabel}) at {$timeOutFormatted} on {$today} ({$sessionHours} hrs rendered).",
+                $isPendingCompany ? 'student_time_out_out_of_range' : 'student_time_out',
+                $isPendingCompany ? 'Trainee Off-Site Time-Out' : 'Student Logged Out',
+                "{$user->name} logged out ({$sessionLabel}) at {$timeOutFormatted} on {$today} ({$sessionHours} hrs rendered){$outStatusLabel}.",
                 ['student_id' => $user->id, 'log_id' => $log->id, 'date' => $today,
-                 'time_out' => $timeOutFormatted, 'session' => $sessionLabel, 'hours' => $sessionHours]
+                 'time_out' => $timeOutFormatted, 'session' => $sessionLabel, 'hours' => $sessionHours,
+                 'has_geofence_exemption' => $isPendingCompany]
             );
         }
 
@@ -2254,55 +2429,90 @@ class StudentController extends Controller
             $distLabel = $distVal !== null ? " · {$distVal}m" : '';
             $companyLocNote = $locVal ? " [{$locVal}{$distLabel}]" : '';
             $totalDayHrs = (float) $log->hours_rendered;
-            AppNotification::send(
-                $companyUserId,
-                'student_time_out',
-                "Trainee {$sessionLabel}: {$user->name}",
-                "{$user->name} ({$postingTitle}) logged {$sessionLabel} at {$timeOutFormatted} on {$today} ({$sessionHours} hrs session · {$totalDayHrs} hrs total today){$companyLocNote}.",
-                [
-                    'student_id'        => $user->id,
-                    'student_name'      => $user->name,
-                    'posting_id'        => $interest?->ojt_posting_id,
-                    'posting_title'     => $postingTitle,
-                    'log_id'            => $log->id,
-                    'date'              => $today,
-                    'time_out'          => $timeOutFormatted,
-                    'session'           => $sessionLabel,
-                    'hours'             => $sessionHours,
-                    'hours_rendered'    => $totalDayHrs,
-                    'location_validity' => $locVal,
-                    'distance_meters'   => $distVal,
-                    'action_url'        => '#/ojt-trainees',
-                ]
-            );
+
+            if ($isPendingCompany) {
+                AppNotification::send(
+                    $companyUserId,
+                    'attendance_pending_approval',
+                    "⚠️ Off-Site Trainee Time-Out: {$user->name}",
+                    "{$user->name} ({$postingTitle}) logged {$sessionLabel} outside the OJT perimeter ({$distVal}m away). Reason: \"{$log->out_of_range_reason}\". Awaiting your review & approval.",
+                    [
+                        'student_id'        => $user->id,
+                        'student_name'      => $user->name,
+                        'posting_id'        => $interest?->ojt_posting_id,
+                        'posting_title'     => $postingTitle,
+                        'log_id'            => $log->id,
+                        'date'              => $today,
+                        'time_out'          => $timeOutFormatted,
+                        'session'           => $sessionLabel,
+                        'hours'             => $sessionHours,
+                        'hours_rendered'    => $totalDayHrs,
+                        'distance_meters'   => $distVal,
+                        'requires_approval' => true,
+                        'action_url'        => '#/ojt-trainees',
+                    ]
+                );
+            } else {
+                AppNotification::send(
+                    $companyUserId,
+                    'student_time_out',
+                    "Trainee {$sessionLabel}: {$user->name}",
+                    "{$user->name} ({$postingTitle}) logged {$sessionLabel} at {$timeOutFormatted} on {$today} ({$sessionHours} hrs session · {$totalDayHrs} hrs total today){$companyLocNote}.",
+                    [
+                        'student_id'        => $user->id,
+                        'student_name'      => $user->name,
+                        'posting_id'        => $interest?->ojt_posting_id,
+                        'posting_title'     => $postingTitle,
+                        'log_id'            => $log->id,
+                        'date'              => $today,
+                        'time_out'          => $timeOutFormatted,
+                        'session'           => $sessionLabel,
+                        'hours'             => $sessionHours,
+                        'hours_rendered'    => $totalDayHrs,
+                        'location_validity' => $locVal,
+                        'distance_meters'   => $distVal,
+                        'action_url'        => '#/ojt-trainees',
+                    ]
+                );
+            }
         }
 
         return response()->json([
-            'message' => "{$sessionLabel} recorded.",
-            'session' => $sessionLabel,
-            'hours'   => $sessionHours,
-            'log'     => [
-                'id'                 => $log->id,
-                'date'               => $log->log_date->format('M j, Y'),
-                'dayLabel'           => $log->log_date->format('D M j'),
-                'timeIn'             => $log->time_in ? \Carbon\Carbon::parse($log->time_in)->format('g:i A') : null,
-                'timeOut'            => $log->time_out ? \Carbon\Carbon::parse($log->time_out)->format('g:i A') : null,
-                'morningIn'          => $log->morning_in ? \Carbon\Carbon::parse($log->morning_in)->format('g:i A') : null,
-                'morningOut'         => $log->morning_out ? \Carbon\Carbon::parse($log->morning_out)->format('g:i A') : null,
-                'afternoonIn'        => $log->afternoon_in ? \Carbon\Carbon::parse($log->afternoon_in)->format('g:i A') : null,
-                'afternoonOut'       => $log->afternoon_out ? \Carbon\Carbon::parse($log->afternoon_out)->format('g:i A') : null,
-                'morningHours'       => (float) ($log->morning_hours ?? 0),
-                'afternoonHours'     => (float) ($log->afternoon_hours ?? 0),
-                'autoMorningTimeout' => (bool) $log->auto_morning_timeout,
+            'message'          => $isPendingCompany 
+                ? "{$sessionLabel} recorded (Outside Range). Sent to company supervisor for review."
+                : "{$sessionLabel} recorded.",
+            'pending_approval' => $isPendingCompany,
+            'approval_status'  => $log->approval_status ?? $effectiveApprovalStatus,
+            'session'          => $sessionLabel,
+            'hours'            => $sessionHours,
+            'log'              => [
+                'id'                   => $log->id,
+                'date'                 => $log->log_date->format('M j, Y'),
+                'dayLabel'             => $log->log_date->format('D M j'),
+                'timeIn'               => $log->time_in ? \Carbon\Carbon::parse($log->time_in)->format('g:i A') : null,
+                'timeOut'              => $log->time_out ? \Carbon\Carbon::parse($log->time_out)->format('g:i A') : null,
+                'morningIn'            => $log->morning_in ? \Carbon\Carbon::parse($log->morning_in)->format('g:i A') : null,
+                'morningOut'           => $log->morning_out ? \Carbon\Carbon::parse($log->morning_out)->format('g:i A') : null,
+                'afternoonIn'          => $log->afternoon_in ? \Carbon\Carbon::parse($log->afternoon_in)->format('g:i A') : null,
+                'afternoonOut'         => $log->afternoon_out ? \Carbon\Carbon::parse($log->afternoon_out)->format('g:i A') : null,
+                'morningHours'         => (float) ($log->morning_hours ?? 0),
+                'afternoonHours'       => (float) ($log->afternoon_hours ?? 0),
+                'autoMorningTimeout'   => (bool) $log->auto_morning_timeout,
                 'autoAfternoonTimeout' => (bool) $log->auto_afternoon_timeout,
-                'hours'              => (float) $log->hours_rendered,
-                'status'             => $log->status,
-                'locationValidity'   => $log->location_validity,
-                'distanceMeters'     => $log->distance_meters,
-                'inLat'              => $log->time_in_lat !== null ? (float) $log->time_in_lat : null,
-                'inLon'              => $log->time_in_lon !== null ? (float) $log->time_in_lon : null,
-                'outLat'             => $outLat,
-                'outLon'             => $outLon,
+                'hours'                => (float) $log->hours_rendered,
+                'status'               => $log->status,
+                'locationValidity'     => $log->location_validity,
+                'distanceMeters'       => $log->distance_meters,
+                'hasGeofenceExemption' => (bool) $log->has_geofence_exemption,
+                'approvalStatus'       => $log->approval_status ?? $effectiveApprovalStatus,
+                'hoursCredited'        => (float) ($log->hours_credited ?? 0),
+                'outOfRangeReason'     => $log->out_of_range_reason,
+                'proofImage'           => $log->proof_image_path ? \Illuminate\Support\Facades\Storage::disk('public')->url($log->proof_image_path) : null,
+                'rejectionReason'      => $log->rejection_reason,
+                'inLat'                => $log->time_in_lat !== null ? (float) $log->time_in_lat : null,
+                'inLon'                => $log->time_in_lon !== null ? (float) $log->time_in_lon : null,
+                'outLat'               => $outLat,
+                'outLon'               => $outLon,
             ],
         ]);
     }
