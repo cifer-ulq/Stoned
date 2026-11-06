@@ -43,3 +43,8 @@ Thumbs.db
 cloudflared.exe
 __pycache__/
 *.pyc
+
+# Temporary screenshots and capture output
+manual_screenshots/
+screenshots_live_v2/
+test_admin_light.png
