@@ -1107,8 +1107,10 @@ function openSupervisorProofModal(log) {
   bd.querySelector('#sup-proof-close')?.addEventListener('click', close);
   bd.querySelector('#sup-proof-done')?.addEventListener('click', close);
   bd.addEventListener('click', e => { if (e.target === bd) close(); });
-}
-
+}
+
+
+
 /* ── Render Logs Timeline Panel ── */
 function renderLogsPanel(container, logs) {
   const body   = container.querySelector('#mon-logs-body');
@@ -1156,7 +1158,15 @@ function renderLogsPanel(container, logs) {
         const isInvalid = !isApprovedExemption && (log.distanceMeters != null ? Number(log.distanceMeters) > 100 : (log.locationValidity === 'Too Far' || log.locationValidity === 'not_valid'));
 
         let statusPillHtml = '';
-        if (isPending) {
+        if (log.status === 'absent') {
+          statusPillHtml = `<span class="mon-status-pill" style="background:#FEF2F2;color:#DC2626;border:1px solid #FECACA;font-weight:700;">Absent</span>`;
+        } else if (log.status === 'half_day_am') {
+          statusPillHtml = `<span class="mon-status-pill" style="background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE;font-weight:700;">Half Day (AM)</span>`;
+        } else if (log.status === 'half_day_pm') {
+          statusPillHtml = `<span class="mon-status-pill" style="background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE;font-weight:700;">Half Day (PM)</span>`;
+        } else if (log.status === 'excused') {
+          statusPillHtml = `<span class="mon-status-pill" style="background:#F1F5F9;color:#475569;border:1px solid #E2E8F0;font-weight:700;" title="${escapeHtml(log.outOfRangeReason || 'Absence excused')}">Excused</span>`;
+        } else if (isPending) {
           statusPillHtml = `<span class="mon-status-pill mon-badge--amber" style="background:#FFFBEB;color:#B45309;border:1px solid #FDE68A;">Pending Co. Review</span>`;
         } else if (isRejected) {
           statusPillHtml = `<span class="mon-status-pill" style="background:#FEF2F2;color:#DC2626;border:1px solid #FECACA;">Rejected</span>`;
@@ -1169,7 +1179,9 @@ function renderLogsPanel(container, logs) {
         }
 
         let hrsChipHtml = '';
-        if (isPending) {
+        if (log.status === 'absent' || log.status === 'excused') {
+          hrsChipHtml = `<span class="mon-time-chip" style="color:var(--text-tertiary);font-weight:600;">0 hrs</span>`;
+        } else if (isPending) {
           hrsChipHtml = `<span class="mon-time-chip" style="color:#B45309;font-weight:700;">${log.hours || 0}h (Escrow)</span>`;
         } else if (isRejected) {
           hrsChipHtml = `<span class="mon-time-chip" style="color:#DC2626;text-decoration:line-through;">${log.hours || 0}h</span>`;

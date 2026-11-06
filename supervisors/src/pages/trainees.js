@@ -1208,11 +1208,43 @@ export default function traineesPage(container) {
 
     const logsHtml = t.dailyLogs?.length
       ? t.dailyLogs.map(l => {
+          const isAbsent = l.status === 'absent';
+          const isExcused = l.status === 'excused';
+          const isHalfDayAm = l.status === 'half_day_am';
+          const isHalfDayPm = l.status === 'half_day_pm';
           const isPending = (l.approvalStatus || '') === 'pending_company';
           const isRejected = (l.approvalStatus || '') === 'rejected';
-          const badgeText = isPending ? 'Pending Review' : isRejected ? 'Rejected' : escapeHtml(l.status || 'recorded');
-          const badgeClass = isPending ? 'badge--warning' : isRejected ? 'badge--danger' : l.status === 'approved' ? 'badge--success' : 'badge--warning';
-          const hrsText = isPending ? `${l.hours}h (Escrow)` : isRejected ? `${l.hours}h (Rejected)` : `${l.hoursCredited ?? l.hours}h`;
+
+          let badgeText = 'recorded';
+          let badgeClass = 'badge--warning';
+          let hrsText = `${l.hoursCredited ?? l.hours}h`;
+
+          if (isAbsent) {
+            badgeText = 'Absent';
+            badgeClass = 'badge--danger';
+            hrsText = '0h';
+          } else if (isExcused) {
+            badgeText = 'Excused';
+            badgeClass = 'badge--neutral';
+            hrsText = '0h';
+          } else if (isHalfDayAm) {
+            badgeText = 'Half Day (AM)';
+            badgeClass = 'badge--primary';
+          } else if (isHalfDayPm) {
+            badgeText = 'Half Day (PM)';
+            badgeClass = 'badge--primary';
+          } else if (isPending) {
+            badgeText = 'Pending Review';
+            badgeClass = 'badge--warning';
+            hrsText = `${l.hours}h (Escrow)`;
+          } else if (isRejected) {
+            badgeText = 'Rejected';
+            badgeClass = 'badge--danger';
+            hrsText = `${l.hours}h (Rejected)`;
+          } else {
+            badgeText = escapeHtml(l.status || 'recorded');
+            badgeClass = l.status === 'approved' ? 'badge--success' : 'badge--warning';
+          }
 
           return `
           <div class="tr2-log-row">

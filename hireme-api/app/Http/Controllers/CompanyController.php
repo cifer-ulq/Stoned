@@ -1682,6 +1682,10 @@ class CompanyController extends Controller
                 'requiredHours'         => $requiredHours,
                 'progressPct'           => $progressPct,
                 'pendingApprovalCount'  => $pendingApprovalsCount,
+                'unexcusedAbsenceCount' => $rawLogs->where('status', 'absent')->count(),
+                'halfDayAmCount'        => $rawLogs->where('status', 'half_day_am')->count(),
+                'halfDayPmCount'        => $rawLogs->where('status', 'half_day_pm')->count(),
+                'excusedCount'          => $rawLogs->where('status', 'excused')->count(),
                 'inSiteCount'           => $inSiteCount,
                 'tooFarCount'           => $tooFarCount,
                 'noGpsCount'            => max(0, $noGpsCount),
@@ -3600,6 +3604,165 @@ class CompanyController extends Controller
             'success' => true,
             'message' => 'Attendance rejected. Trainee notified.',
             'log'     => $log,
+        ]);
+    }
+
+    /**
+     * POST /api/company/ojt-trainees/attendance/{logId}/excuse
+     * Excuse an unexcused absence recorded for a trainee.
+     */
+    public function excuseAttendance(Request $request, $logId)
+    {
+        $request->validate([
+            'excuse_reason' => 'required|string|min:3|max:1000',
+        ], [
+            'excuse_reason.required' => 'Please provide a valid excuse reason.',
+        ]);
+
+        $userId = $request->user()->id;
+        $companyPostingIds = OjtPosting::where('company_user_id', $userId)->pluck('id');
+
+        $log = TimeLog::with(['user', 'ojtRecord'])->findOrFail($logId);
+
+        $isCompanyTrainee = StudentOjtInterest::where('student_user_id', $log->user_id)
+            ->whereIn('ojt_posting_id', $companyPostingIds)
+            ->exists();
+
+        if (!$isCompanyTrainee) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized: This trainee is not enrolled in any of your active OJT listings.',
+            ], 403);
+        }
+
+        $reason = trim($request->excuse_reason);
+        $log->update([
+            'status'              => 'excused',
+            'out_of_range_reason' => 'Excused: ' . $reason,
+            'approved_by_user_id' => $userId,
+            'approved_at'         => now(),
+        ]);
+
+        $dateFormatted = $log->log_date ? $log->log_date->format('M j, Y') : 'the scheduled shift';
+
+        // Notify trainee
+        AppNotification::send(
+            $log->user_id,
+            'attendance_excused',
+            'Absence Excused',
+            "Your absence for {$dateFormatted} has been excused by your host company: \"{$reason}\".",
+            ['log_id' => $log->id, 'reason' => $reason, 'date' => $log->log_date?->toDateString()]
+        );
+
+        // Notify academic coordinator(s)
+        $studentUser = $log->user;
+        if ($studentUser) {
+            $compName = $request->user()->name;
+            foreach ($this->getSupervisorIdsForStudent($studentUser) as $svId) {
+                AppNotification::send(
+                    $svId,
+                    'attendance_excused',
+                    'Trainee Absence Excused',
+                    "{$compName} marked {$studentUser->name}'s absence for {$dateFormatted} as excused: \"{$reason}\".",
+                    ['student_id' => $studentUser->id, 'log_id' => $log->id]
+                );
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Absence excused successfully.',
+            'log'     => $log,
+        ]);
+    }
+
+    /**
+     * POST /api/company/ojt-trainees/attendance/mark-company-closed
+     * Declare a non-working / closed day for all active company trainees (e.g. company shutdown, special event).
+     */
+    public function markCompanyClosed(Request $request)
+    {
+        $request->validate([
+            'date'   => 'required|date',
+            'reason' => 'required|string|min:3|max:500',
+        ], [
+            'date.required'   => 'Please select a date for the company shutdown.',
+            'reason.required' => 'Please provide a reason for the company shutdown.',
+        ]);
+
+        $userId = $request->user()->id;
+        $closeDate = Carbon::parse($request->date)->toDateString();
+        $reason = trim($request->reason);
+
+        $companyPostingIds = OjtPosting::where('company_user_id', $userId)->pluck('id');
+        $activeInterests = StudentOjtInterest::with(['student.ojtRecord'])
+            ->whereIn('ojt_posting_id', $companyPostingIds)
+            ->whereIn('status', ['ojt_started', 'accepted', 'ojt_confirmed'])
+            ->get();
+
+        $affectedCount = 0;
+        $compName = $request->user()->name;
+
+        foreach ($activeInterests as $interest) {
+            $student = $interest->student;
+            if (!$student) continue;
+
+            $ojtRecord = $student->ojtRecord ?? OjtRecord::where('user_id', $student->id)->latest()->first();
+
+            $existingLog = TimeLog::where('user_id', $student->id)
+                ->where('log_date', $closeDate)
+                ->first();
+
+            if ($existingLog) {
+                if ($existingLog->status === 'absent' || (float)$existingLog->hours_rendered === 0.0) {
+                    $existingLog->update([
+                        'status'              => 'excused',
+                        'out_of_range_reason' => 'Company Closed: ' . $reason,
+                        'approved_by_user_id' => $userId,
+                        'approved_at'         => now(),
+                    ]);
+                    $affectedCount++;
+                }
+            } else {
+                TimeLog::create([
+                    'user_id'             => $student->id,
+                    'ojt_record_id'       => $ojtRecord?->id,
+                    'log_date'            => $closeDate,
+                    'status'              => 'excused',
+                    'hours_rendered'      => 0.00,
+                    'hours_credited'      => 0.00,
+                    'approval_status'     => 'approved',
+                    'out_of_range_reason' => 'Company Closed: ' . $reason,
+                    'approved_by_user_id' => $userId,
+                    'approved_at'         => now(),
+                ]);
+                $affectedCount++;
+            }
+
+            $formattedDate = Carbon::parse($closeDate)->format('M d, Y');
+            AppNotification::send(
+                $student->id,
+                'attendance_excused',
+                'Company Closed / Non-Working Day',
+                "{$compName} declared {$formattedDate} as a non-working day: \"{$reason}\". You are excused from attendance.",
+                ['date' => $closeDate, 'reason' => $reason]
+            );
+
+            foreach ($this->getSupervisorIdsForStudent($student) as $svId) {
+                AppNotification::send(
+                    $svId,
+                    'attendance_excused',
+                    'Company Closed / Excused Day',
+                    "{$compName} declared {$formattedDate} as a non-working day for trainee {$student->name}: \"{$reason}\".",
+                    ['student_id' => $student->id, 'date' => $closeDate]
+                );
+            }
+        }
+
+        return response()->json([
+            'success'        => true,
+            'message'        => "Marked company closed for {$affectedCount} trainee(s).",
+            'affected_count' => $affectedCount,
         ]);
     }
 }

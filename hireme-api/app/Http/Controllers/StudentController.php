@@ -1198,7 +1198,9 @@ class StudentController extends Controller
                     'autoMorningTimeout'  => (bool) ($log->auto_morning_timeout ?? false),
                     'autoAfternoonTimeout' => (bool) ($log->auto_afternoon_timeout ?? false),
                     'hours'               => (float) $log->hours_rendered,
-                    'status'              => $locationStatus,
+                    'status'              => in_array($log->status, ['absent', 'excused', 'half_day_am', 'half_day_pm']) ? $log->status : $locationStatus,
+                    'sessionStatus'       => $log->status,
+                    'locationStatus'      => $locationStatus,
                     'locationValidity'    => $normalizedValidity,
                     'distanceMeters'      => $log->distance_meters,
                     'hasGeofenceExemption'=> (bool) $log->has_geofence_exemption,
@@ -1214,8 +1216,8 @@ class StudentController extends Controller
                 ];
             });
 
-        $hoursRendered = $ojtRecord?->completed_hours ?? $timeLogs->where('approvalStatus', 'approved')->sum('hours');
-        $daysCompleted = $timeLogs->unique('date')->count();
+        $hoursRendered = $ojtRecord?->completed_hours ?? $timeLogs->where('approvalStatus', 'approved')->where('status', '!=', 'absent')->sum('hours');
+        $daysCompleted = $timeLogs->where('status', '!=', 'absent')->filter(fn($l) => ($l['hours'] ?? 0) > 0)->unique('date')->count();
 
         // Supervisor name
         $supervisorName = $ojtRecord?->supervisor_name ?? ($endorser ? $endorser->name : 'N/A');
@@ -1413,13 +1415,16 @@ class StudentController extends Controller
             ] : null,
             'is_pull_out_pending' => (bool) $isPullOutPending,
             'progress' => [
-                'hoursRendered'      => (float) $hoursRendered,
-                'totalHours'         => (float) $totalHours,
-                'daysCompleted'      => $daysCompleted,
-                'totalDays'          => $totalDays,
-                'curriculumTarget'   => (float) $curriculumTarget,
-                'accreditedHours'    => (float) $accreditedHours,
-                'cumulativeRendered' => (float) ($hoursRendered + $accreditedHours),
+                'hoursRendered'         => (float) $hoursRendered,
+                'totalHours'            => (float) $totalHours,
+                'daysCompleted'         => $daysCompleted,
+                'totalDays'             => $totalDays,
+                'curriculumTarget'      => (float) $curriculumTarget,
+                'accreditedHours'       => (float) $accreditedHours,
+                'cumulativeRendered'    => (float) ($hoursRendered + $accreditedHours),
+                'unexcusedAbsenceCount' => $timeLogs->where('status', 'absent')->count(),
+                'excusedAbsenceCount'   => $timeLogs->where('status', 'excused')->count(),
+                'halfDayCount'          => $timeLogs->whereIn('status', ['half_day_am', 'half_day_pm'])->count(),
             ],
             'studentLocation' => $lastGeo ? [
                 'lat' => (float) ($lastGeo->time_in_lat ?? $lastGeo->latitude),

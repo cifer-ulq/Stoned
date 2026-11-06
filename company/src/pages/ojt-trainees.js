@@ -2822,6 +2822,7 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
     return logsData.filter(log => {
       if (validityFilter === 'in_site' && log.locationValidity !== 'In Site') return false;
       if (validityFilter === 'too_far' && log.locationValidity !== 'Too Far') return false;
+      if (validityFilter === 'absent' && log.status !== 'absent') return false;
       if (validityFilter === 'no_gps' && (log.locationValidity === 'In Site' || log.locationValidity === 'Too Far')) return false;
       if (validityFilter === 'pending' && log.approvalStatus !== 'pending_company') return false;
 
@@ -2834,6 +2835,12 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
   }
 
   function renderLocationCell(log) {
+    if (log.status === 'absent') {
+      return `<span style="color:#94A3B8;font-size:0.75rem;">No Attendance</span>`;
+    }
+    if (log.status === 'excused') {
+      return `<span style="color:#475569;font-size:0.73rem;font-weight:600;" title="${escapeHtml(log.outOfRangeReason || 'Excused')}">${escapeHtml(log.outOfRangeReason || 'Excused')}</span>`;
+    }
     const val = log.locationValidity;
     const dist = log.distanceMeters != null ? `${log.distanceMeters}m` : '';
     let badgeHtml = '';
@@ -2899,6 +2906,27 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
     }
 
     const st = (log.status || '').toLowerCase();
+    if (st === 'absent') {
+      return `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:0.7rem;font-weight:700;background:#FEF2F2;color:#B91C1C;border:1px solid #FECACA;">
+        ${icon('x', 11)} Absent
+      </span>`;
+    }
+    if (st === 'half_day_am') {
+      return `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:0.7rem;font-weight:700;background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE;">
+        Half Day (AM)
+      </span>`;
+    }
+    if (st === 'half_day_pm') {
+      return `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:0.7rem;font-weight:700;background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE;">
+        Half Day (PM)
+      </span>`;
+    }
+    if (st === 'excused') {
+      return `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:0.7rem;font-weight:700;background:#F1F5F9;color:#475569;border:1px solid #E2E8F0;" title="${escapeHtml(log.outOfRangeReason || 'Absence excused')}">
+        ${icon('checkCircle', 11)} Excused
+      </span>`;
+    }
+
     const isOngoing = (log.morningIn && !log.morningOut && !log.afternoonIn) || (log.afternoonIn && !log.afternoonOut) || (log.timeIn && !log.timeOut);
 
     if (isOngoing) {
@@ -2929,10 +2957,15 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
     }
 
     return rows.map(log => {
-      const mIn = log.morningIn || (!log.afternoonIn && log.timeIn ? log.timeIn : null);
-      const mOut = log.morningOut || null;
-      const aIn = log.afternoonIn || null;
-      const aOut = log.afternoonOut || (!log.morningIn && !log.afternoonIn && log.timeOut ? log.timeOut : null);
+      const isAbsent = log.status === 'absent';
+      const isExcused = log.status === 'excused';
+      const isHalfDayAm = log.status === 'half_day_am';
+      const isHalfDayPm = log.status === 'half_day_pm';
+
+      const mIn = isAbsent || isExcused || isHalfDayPm ? null : (log.morningIn || (!log.afternoonIn && log.timeIn ? log.timeIn : null));
+      const mOut = isAbsent || isExcused || isHalfDayPm ? null : (log.morningOut || null);
+      const aIn = isAbsent || isExcused || isHalfDayAm ? null : (log.afternoonIn || null);
+      const aOut = isAbsent || isExcused || isHalfDayAm ? null : (log.afternoonOut || (!log.morningIn && !log.afternoonIn && log.timeOut ? log.timeOut : null));
 
       const mInHtml = mIn
         ? `<span style="font-weight:600;color:#0F172A;">${escapeHtml(mIn)}</span>`
@@ -2979,7 +3012,15 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
         : '';
 
       let actionHtml = `<span style="color:#94A3B8;font-size:0.75rem;">—</span>`;
-      if (isPending) {
+      if (isAbsent) {
+        actionHtml = `
+          <button type="button" class="btn btn--xs btn--outline js-excuse-absence-btn" data-log-id="${log.id}" style="font-size:0.72rem;padding:3px 8px;display:inline-flex;align-items:center;gap:4px;color:#005930;border-color:rgba(0,89,48,0.3);white-space:nowrap;cursor:pointer;">
+            ${icon('check', 11)} Excuse
+          </button>
+        `;
+      } else if (isExcused) {
+        actionHtml = `<span style="color:#059669;font-size:0.72rem;font-weight:600;">Excused</span>`;
+      } else if (isPending) {
         actionHtml = `
           <button type="button" class="btn btn--xs js-review-attendance-btn" data-log-id="${log.id}" style="background:#D97706;color:#fff;border:none;border-radius:6px;padding:4px 9px;font-size:0.72rem;font-weight:700;display:inline-flex;align-items:center;gap:4px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,0.06);white-space:nowrap;">
             ${icon('camera', 11)} Review Proof
@@ -3025,6 +3066,30 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
           openAttendanceReviewModal(log, studentInfo, () => {
             fetchAndRenderDtr();
           });
+        }
+      });
+    });
+
+    backdrop.querySelectorAll('.js-excuse-absence-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const logId = parseInt(btn.dataset.logId, 10);
+        const reason = window.prompt('Enter reason for excusing this absence (e.g. Medical certificate presented, Official errand, Emergency):');
+        if (!reason || !reason.trim()) return;
+
+        btn.disabled = true;
+        btn.textContent = 'Excusing...';
+        try {
+          const res = await apiPost(`/company/ojt-trainees/attendance/${logId}/excuse`, {
+            excuse_reason: reason.trim(),
+          });
+          if (!res?.success) throw new Error(res?.message || 'Failed to excuse absence.');
+          showToast('Absence excused successfully.');
+          fetchAndRenderDtr();
+        } catch (err) {
+          alert(err.message || 'Error excusing absence.');
+          btn.disabled = false;
+          btn.textContent = 'Excuse';
         }
       });
     });
@@ -3090,6 +3155,12 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
               <span style="color:#B91C1C;">⚠ ${summaryInfo.tooFarCount ?? 0} Too Far</span>
             </div>
           </div>
+          <div style="background:${(summaryInfo.unexcusedAbsenceCount > 0 ? '#FEF2F2' : '#fff')};border:1px solid ${(summaryInfo.unexcusedAbsenceCount > 0 ? '#FECACA' : '#E2E8F0')};border-radius:10px;padding:10px 14px;">
+            <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;color:${(summaryInfo.unexcusedAbsenceCount > 0 ? '#B91C1C' : 'var(--text-tertiary)')};">Unexcused Absences</div>
+            <div style="font-size:1.1rem;font-weight:800;color:${(summaryInfo.unexcusedAbsenceCount > 0 ? '#DC2626' : 'var(--text-primary)')};margin-top:2px;">
+              ${summaryInfo.unexcusedAbsenceCount ?? 0} <span style="font-size:0.8rem;font-weight:600;color:var(--text-secondary);">Days</span>
+            </div>
+          </div>
           ${(summaryInfo.pendingApprovalCount > 0) ? `
             <div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;padding:10px 14px;">
               <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;color:#B45309;">Off-Site Pending Review</div>
@@ -3125,6 +3196,7 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
               <option value="all" ${validityFilter === 'all' ? 'selected' : ''}>All Locations (${logsData.length})</option>
               <option value="in_site" ${validityFilter === 'in_site' ? 'selected' : ''}>In Site Only (${summaryInfo.inSiteCount ?? 0})</option>
               <option value="too_far" ${validityFilter === 'too_far' ? 'selected' : ''}>Too Far Only (${summaryInfo.tooFarCount ?? 0})</option>
+              <option value="absent" ${validityFilter === 'absent' ? 'selected' : ''}>Absences Only (${summaryInfo.unexcusedAbsenceCount ?? 0})</option>
               <option value="no_gps" ${validityFilter === 'no_gps' ? 'selected' : ''}>No GPS (${summaryInfo.noGpsCount ?? 0})</option>
               ${(summaryInfo.pendingApprovalCount > 0) ? `<option value="pending" ${validityFilter === 'pending' ? 'selected' : ''}>Pending Review (${summaryInfo.pendingApprovalCount})</option>` : ''}
             </select>

@@ -9,4 +9,5 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('dtr:auto-close-afternoon')->hourly();
+Schedule::command('ojt:check-daily-absences')->everyFifteenMinutes();
 Schedule::command('moa:check-expirations')->daily();

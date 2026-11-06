@@ -1663,6 +1663,13 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
               <p class="text-xs text-tertiary" style="margin-bottom:3px;">Shift &amp; Hours</p>
               <p class="text-sm" style="font-weight:600;">${esc(shiftText)} <span style="font-weight:400;color:var(--text-secondary);font-size:0.75rem;">(${sched.dailyHours || 8}h/day)</span></p>
             </div>` : ''}
+            ${ojt.unexcusedAbsenceCount > 0 ? `
+            <div>
+              <p class="text-xs text-tertiary" style="margin-bottom:3px;">Unexcused Absences</p>
+              <p class="text-sm" style="font-weight:700;color:#ef4444;display:flex;align-items:center;gap:4px;">
+                ${icon('alertTriangle', 13)} ${ojt.unexcusedAbsenceCount} Day${ojt.unexcusedAbsenceCount > 1 ? 's' : ''}
+              </p>
+            </div>` : ''}
           </div>
 
           <!-- Hours progress bar -->
@@ -1790,9 +1797,9 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
       if (lat != null) { ojt._studentLat = lat; ojt._studentLon = lon; }
       ojt.hoursRendered = logs.reduce((sum, l) => {
         const isApproved = (l.approvalStatus ?? 'approved') === 'approved';
-        return sum + (isApproved ? (parseFloat(l.hoursCredited ?? l.hours) || 0) : 0);
+        return sum + (isApproved && l.status !== 'absent' ? (parseFloat(l.hoursCredited ?? l.hours) || 0) : 0);
       }, 0);
-      ojt.daysCompleted = new Set(logs.map(l => l.date)).size;
+      ojt.daysCompleted = new Set(logs.filter(l => l.status !== 'absent' && (parseFloat(l.hoursCredited ?? l.hours) > 0)).map(l => l.date)).size;
       showToast(toastMsg || 'Attendance recorded.');
       renderTrackerPage(container, ojt, logs, year, month, onMonthChange);
     }
@@ -2107,6 +2114,11 @@ function renderTrackerLogRow(log) {
   const isRejected = log.approvalStatus === 'rejected';
 
   const st = log.status;
+  const isAbsent = st === 'absent';
+  const isHalfDayAm = st === 'half_day_am';
+  const isHalfDayPm = st === 'half_day_pm';
+  const isExcused = st === 'excused';
+
   const sc = st === 'valid'
     ? { label: 'Valid',     color: 'var(--color-success)',                           bg: 'var(--color-success-bg)' }
     : st === 'not_valid'
@@ -2118,7 +2130,15 @@ function renderTrackerLogRow(log) {
     : { label: 'Pending',   color: 'var(--color-warning)',                            bg: 'var(--color-warning-bg)' };
 
   let statusBadgeHtml = '';
-  if (isPendingApproval) {
+  if (isAbsent) {
+    statusBadgeHtml = `<span style="background:var(--color-error-bg,rgba(239,68,68,0.1));color:var(--color-error,#ef4444);font-size:0.63rem;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap;display:inline-flex;align-items:center;gap:3px;">${icon('x', 10)} Absent</span>`;
+  } else if (isHalfDayAm) {
+    statusBadgeHtml = `<span style="background:rgba(37,99,235,0.1);color:#2563eb;font-size:0.63rem;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap;display:inline-flex;align-items:center;gap:3px;">Half Day (AM)</span>`;
+  } else if (isHalfDayPm) {
+    statusBadgeHtml = `<span style="background:rgba(37,99,235,0.1);color:#2563eb;font-size:0.63rem;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap;display:inline-flex;align-items:center;gap:3px;">Half Day (PM)</span>`;
+  } else if (isExcused) {
+    statusBadgeHtml = `<span style="background:rgba(100,116,139,0.12);color:#475569;font-size:0.63rem;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap;display:inline-flex;align-items:center;gap:3px;" title="${esc(log.outOfRangeReason || 'Absence excused')}">${icon('checkCircle', 10)} Excused</span>`;
+  } else if (isPendingApproval) {
     statusBadgeHtml = `<span style="background:rgba(217,119,6,0.12);color:#d97706;font-size:0.63rem;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap;display:inline-flex;align-items:center;gap:3px;" title="Outside geofence - awaiting company supervisor approval">${icon('alertTriangle', 10)} Pending Review</span>`;
   } else if (isRejected) {
     statusBadgeHtml = `<span style="background:var(--color-error-bg,rgba(239,68,68,0.1));color:var(--color-error,#ef4444);font-size:0.63rem;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap;display:inline-flex;align-items:center;gap:3px;" title="${esc(log.rejectionReason || 'Attendance rejected')}">${icon('x', 10)} Rejected</span>`;
@@ -2134,7 +2154,11 @@ function renderTrackerLogRow(log) {
   const coordsHint = hasCoords ? `<div style="font-size:0.6rem;color:var(--text-tertiary);margin-top:3px;">${Number(inLat).toFixed(5)}, ${Number(inLon).toFixed(5)}</div>` : '';
 
   let lvHtml = '';
-  if (log.hasGeofenceExemption) {
+  if (isAbsent) {
+    lvHtml = `<span style="color:var(--text-tertiary);font-size:0.65rem;">No Attendance</span>`;
+  } else if (isExcused) {
+    lvHtml = `<span style="color:#475569;font-size:0.65rem;font-weight:600;" title="${esc(log.outOfRangeReason || 'Excused')}">${esc(log.outOfRangeReason ? (log.outOfRangeReason.length > 22 ? log.outOfRangeReason.slice(0, 20) + '…' : log.outOfRangeReason) : 'Excused')}</span>`;
+  } else if (log.hasGeofenceExemption) {
     const distHint = dist !== null ? ` (${dist}m)` : '';
     lvHtml = `<div><span style="background:rgba(217,119,6,0.12);color:#d97706;font-size:0.63rem;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap;display:inline-flex;align-items:center;gap:3px;" title="${esc(log.outOfRangeReason || 'Off-site punch with photo proof')}">${icon('camera', 10)} Off-Site Proof${distHint}</span>${coordsHint}</div>`;
   } else {
@@ -2163,17 +2187,19 @@ function renderTrackerLogRow(log) {
     }
   }
 
-  const mIn = log.morningIn || log.timeIn || '—';
-  const mOut = log.morningOut
+  const mIn = isAbsent || isExcused || isHalfDayPm ? '—' : (log.morningIn || log.timeIn || '—');
+  const mOut = isAbsent || isExcused || isHalfDayPm ? '—' : (log.morningOut
     ? `${log.morningOut}${log.autoMorningTimeout ? '<div style="font-size:0.6rem;color:#d97706;font-weight:600;">Auto 12:00</div>' : ''}`
-    : (log.afternoonIn ? '<span style="color:#d97706;font-size:0.68rem;font-weight:600;">Auto 12:00</span>' : '—');
-  const aIn = log.afternoonIn || '—';
-  const aOut = log.afternoonOut
+    : (log.afternoonIn ? '<span style="color:#d97706;font-size:0.68rem;font-weight:600;">Auto 12:00</span>' : '—'));
+  const aIn = isAbsent || isExcused || isHalfDayAm ? '—' : (log.afternoonIn || '—');
+  const aOut = isAbsent || isExcused || isHalfDayAm ? '—' : (log.afternoonOut
     ? `${log.afternoonOut}${log.autoAfternoonTimeout ? '<div style="font-size:0.6rem;color:#d97706;font-weight:600;">Auto ' + log.afternoonOut + '</div>' : ''}`
-    : (log.afternoonIn ? '<span style="color:var(--color-warning);font-size:0.7rem;font-weight:600;">In Progress</span>' : (log.timeOut && !log.morningOut ? log.timeOut : '—'));
+    : (log.afternoonIn ? '<span style="color:var(--color-warning);font-size:0.7rem;font-weight:600;">In Progress</span>' : (log.timeOut && !log.morningOut ? log.timeOut : '—')));
 
   let hoursDisplay = '—';
-  if (isPendingApproval) {
+  if (isAbsent || isExcused) {
+    hoursDisplay = '<span style="color:var(--text-tertiary);font-size:0.78rem;font-weight:600;">0h</span>';
+  } else if (isPendingApproval) {
     hoursDisplay = `<span style="color:#d97706;font-size:0.78rem;font-weight:700;" title="Hours held in escrow pending supervisor review">${log.hours || 0}h <div style="font-size:0.6rem;font-weight:600;color:#d97706;">(Escrow)</div></span>`;
   } else if (isRejected) {
     hoursDisplay = `<span style="color:#ef4444;font-size:0.78rem;font-weight:700;text-decoration:line-through;" title="${esc(log.rejectionReason || 'Rejected')}">${log.hours || 0}h <div style="font-size:0.6rem;font-weight:600;color:#ef4444;">(Rejected)</div></span>`;
@@ -2545,19 +2571,36 @@ function buildCalendarHTML(year, month, logMap) {
       numColor = '#fff';
     }
 
+    let tooltipParts = isWeekend ? 'Weekend' : '';
     if (log) {
-      const dotColor = log.status === 'valid'     ? 'var(--color-success)'
-                     : log.status === 'not_valid' ? 'var(--color-error,#ef4444)'
-                     : 'var(--text-tertiary)';
-      dotHtml    = `<span style="display:block;width:4px;height:4px;border-radius:50%;background:${dotColor};margin:1px auto 0;"></span>`;
-      extraAttr  = `data-log-date="${dateStr}" class="cal-day--has-log"`;
-    } else if (isPast && !isWeekend) {
-      dotHtml = `<span style="display:block;width:4px;height:4px;border-radius:50%;background:var(--color-error);margin:1px auto 0;"></span>`;
-    }
+      let dotColor = 'var(--text-tertiary)';
+      tooltipParts = `${log.timeIn || '—'} – ${log.timeOut || '—'} · ${log.hours || 0}h (${log.status})`;
 
-    const tooltipParts = log
-      ? `${log.timeIn} – ${log.timeOut} · ${log.hours}h (${log.status})`
-      : isWeekend ? 'Weekend' : '';
+      if (log.status === 'absent') {
+        dotColor = 'var(--color-error,#ef4444)';
+        if (!isToday) cellBg = 'rgba(239,68,68,0.08)';
+        tooltipParts = 'Absent (0h rendered)';
+      } else if (log.status === 'half_day_am') {
+        dotColor = '#2563eb';
+        if (!isToday) cellBg = 'rgba(37,99,235,0.06)';
+        tooltipParts = `Half Day (AM) · ${log.morningHours || log.hours || 4}h`;
+      } else if (log.status === 'half_day_pm') {
+        dotColor = '#2563eb';
+        if (!isToday) cellBg = 'rgba(37,99,235,0.06)';
+        tooltipParts = `Half Day (PM) · ${log.afternoonHours || log.hours || 4}h`;
+      } else if (log.status === 'excused') {
+        dotColor = '#64748b';
+        if (!isToday) cellBg = 'rgba(100,116,139,0.08)';
+        tooltipParts = `Excused: ${log.outOfRangeReason || 'Leave'}`;
+      } else if (log.status === 'valid') {
+        dotColor = 'var(--color-success)';
+      } else if (log.status === 'not_valid') {
+        dotColor = 'var(--color-error,#ef4444)';
+      }
+
+      dotHtml   = `<span style="display:block;width:4px;height:4px;border-radius:50%;background:${dotColor};margin:1px auto 0;"></span>`;
+      extraAttr = `data-log-date="${dateStr}" class="cal-day--has-log"`;
+    }
 
     html += `
       <div ${extraAttr}
