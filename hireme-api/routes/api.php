@@ -145,6 +145,7 @@ Route::middleware('auth:sanctum')->prefix('company')->group(function () {
     Route::post('ojt-postings/{postingId}/mark-viewed/{interestId}',             [CompanyController::class, 'markResumeViewed']);
     Route::post('ojt-postings/{postingId}/schedule-interview/{interestId}',      [CompanyController::class, 'scheduleOjtInterview']);
     Route::post('ojt-postings/{postingId}/accept-after-interview/{interestId}',  [CompanyController::class, 'acceptAfterInterview']);
+    Route::post('ojt-postings/{postingId}/direct-accept/{interestId}',          [CompanyController::class, 'directAcceptStudent']);
     Route::post('ojt-postings/{postingId}/set-ojt-start/{interestId}',           [CompanyController::class, 'setOjtInstructions']);
 
     // Job Listings CRUD

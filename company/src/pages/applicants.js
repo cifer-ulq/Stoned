@@ -345,7 +345,11 @@ function renderCards(container, apps, allApps) {
                 ${icon('externalLink', 11)} View Letter PDF
               </a>` : ''}
           </div>`;
-        primaryBtn = `<button class="ap-btn ap-btn--primary ap-btn-ojt-schedule" data-id="${id}" style="background:#005930;border-color:#005930;" title="Schedule face-to-face or online interview">${icon('calendar', 14)} Schedule Interview</button>`;
+        primaryBtn = `
+          <div style="display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <button class="ap-btn ap-btn--outline ap-btn-ojt-schedule" data-id="${id}" style="color:#005930;border-color:#005930;background:#ffffff;font-weight:700;" title="Schedule face-to-face or online interview">${icon('calendar', 14)} Schedule Interview</button>
+            <button class="ap-btn ap-btn--primary ap-btn-ojt-direct-accept" data-id="${id}" style="background:#005930;border-color:#005930;font-weight:700;" title="Accept student directly without an interview">${icon('checkCircle', 14)} Direct Accept</button>
+          </div>`;
       } else if (raw === 'interview_scheduled') {
         statusBadge = 'Interview Scheduled';
         statusClass = 'interview';
@@ -645,6 +649,14 @@ function renderCards(container, apps, allApps) {
     btn.addEventListener('click', () => {
       const app = allApps.find(a => String(a.id) === btn.dataset.id);
       if (app) showOjtScheduleInterviewModal(app, allApps, container, null);
+    });
+  });
+
+  // Wire OJT Direct Accept buttons (skip interview)
+  grid.querySelectorAll('.ap-btn-ojt-direct-accept').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const app = allApps.find(a => String(a.id) === btn.dataset.id);
+      if (app) showOjtDirectAcceptModal(app, allApps, container, null);
     });
   });
 
@@ -1095,6 +1107,88 @@ function showOjtScheduleInterviewModal(app, allApps, container, parentBackdrop) 
       errEl.style.display = 'block';
       submitBtn.disabled = false;
       submitBtn.innerHTML = `${icon('calendar', 14)} Schedule Interview`;
+    }
+  });
+}
+
+function showOjtDirectAcceptModal(app, allApps, container, parentBackdrop) {
+  const modal = document.createElement('div');
+  modal.className = 'modal-backdrop modal-backdrop--visible';
+  modal.style.zIndex = '10002';
+  const studentName = app.applicant?.name || 'Applicant';
+  const slotId = app.job?.id || app.posting_id;
+  const interestId = app.raw_id;
+
+  modal.innerHTML = `
+    <div class="modal modal--visible" style="max-width:490px;">
+      <div class="modal__header" style="border-bottom:3px solid #005930;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:40px;height:40px;border-radius:10px;background:rgba(0,89,48,0.1);color:#005930;display:flex;align-items:center;justify-content:center;">${icon('checkCircle', 20)}</div>
+          <div>
+            <h3 class="modal__title" style="margin:0;">Direct Accept (Skip Interview)</h3>
+            <p style="font-size:0.76rem;color:var(--text-secondary);margin:2px 0 0;">${studentName}</p>
+          </div>
+        </div>
+        <button class="modal__close" id="da-close">${icon('x', 20)}</button>
+      </div>
+      <div class="modal__body" style="padding:20px 24px;">
+        <div style="background:rgba(0,89,48,0.06);border:1px solid rgba(0,89,48,0.2);border-radius:var(--radius-md);padding:12px 14px;margin-bottom:18px;font-size:0.8rem;color:#005930;display:flex;gap:8px;">
+          ${icon('alertCircle', 14)} <span>You are accepting <strong>${escapeHtml(studentName)}</strong> directly based on their portfolio and university endorsement letter without conducting an interview. The OJT Coordinator will be notified for final academic sign-off.</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Acceptance Message / Welcome Note for Student <span style="color:var(--color-error);">*</span></label>
+          <textarea id="da-note" class="form-textarea" rows="4" placeholder='e.g. "We reviewed your portfolio and endorsement letter and are pleased to directly accept you into our OJT program. Welcome aboard!"' style="resize:vertical;"></textarea>
+          <span class="form-hint">This welcome note will be sent to the student. Minimum 5 characters.</span>
+        </div>
+        <p id="da-error" style="color:var(--color-error);font-size:0.8rem;margin:8px 0 0;display:none;"></p>
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn--outline" id="da-cancel">Cancel</button>
+        <button class="btn btn--primary" id="da-submit" style="background:#005930;border-color:#005930;gap:6px;">${icon('checkCircle', 14)} Confirm Direct Acceptance</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  const close = () => modal.remove();
+  modal.querySelector('#da-close').addEventListener('click', close);
+  modal.querySelector('#da-cancel').addEventListener('click', close);
+  modal.addEventListener('click', e => { if (e.target === modal) close(); });
+
+  modal.querySelector('#da-submit').addEventListener('click', async () => {
+    const note = modal.querySelector('#da-note').value.trim();
+    const errEl = modal.querySelector('#da-error');
+    if (!note || note.length < 5) {
+      errEl.textContent = 'Please enter a message of at least 5 characters.';
+      errEl.style.display = 'block';
+      return;
+    }
+    const submitBtn = modal.querySelector('#da-submit');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = `${icon('clock', 14)} Processing…`;
+    errEl.style.display = 'none';
+
+    try {
+      const res = await apiPost(`/company/ojt-postings/${slotId}/direct-accept/${interestId}`, { company_note: note });
+      if (res?.success) {
+        close();
+        if (parentBackdrop) parentBackdrop.remove();
+        app.raw_status = 'company_accepted';
+        app.status = 'offered';
+        app.status_label = 'Accepted — Pending Approval';
+        app.company_note = note;
+        refreshApplicantUI(container, allApps);
+        showToast(res.message || 'Student accepted directly! The coordinator will give final OJT approval.', 'success');
+      } else {
+        errEl.textContent = res?.message || 'Failed to accept student directly.';
+        errEl.style.display = 'block';
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `${icon('checkCircle', 14)} Confirm Direct Acceptance`;
+      }
+    } catch {
+      errEl.textContent = 'Network error. Please try again.';
+      errEl.style.display = 'block';
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = `${icon('checkCircle', 14)} Confirm Direct Acceptance`;
     }
   });
 }

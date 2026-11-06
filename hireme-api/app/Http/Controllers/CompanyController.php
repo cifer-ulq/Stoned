@@ -636,6 +636,73 @@ class CompanyController extends Controller
     }
 
     /**
+     * POST /company/ojt-postings/{postingId}/direct-accept/{interestId}
+     * Host company accepts a trainee directly without scheduling a formal interview.
+     * Gate 1: Posting must belong to authenticated company user.
+     * Gate 2: Interest must be at status 'endorsed' (coordinator letter received).
+     * Transitions: endorsed -> company_accepted
+     */
+    public function directAcceptStudent(Request $request, $postingId, $interestId)
+    {
+        OjtPosting::where('company_user_id', $request->user()->id)->findOrFail($postingId);
+
+        $interest = StudentOjtInterest::where('ojt_posting_id', $postingId)
+            ->where('id', $interestId)
+            ->where('status', 'endorsed')
+            ->firstOrFail();
+
+        $validated = $request->validate([
+            'company_note' => ['required', 'string', 'min:5', 'max:1000'],
+        ], [
+            'company_note.required' => 'Please provide an acceptance note or welcome message for the student.',
+            'company_note.min'      => 'The note must be at least 5 characters.',
+        ]);
+
+        $interest->load('student.studentProfile', 'posting');
+
+        $interest->update([
+            'status'                 => 'company_accepted',
+            'company_accepted_at'    => now(),
+            'company_note'           => trim($validated['company_note']),
+            'interview_type'         => 'waived',
+            'interview_scheduled_at' => null,
+        ]);
+
+        // Synchronize slot occupancy
+        $interest->posting?->syncSlotsRemaining();
+
+        $compName = $interest->posting->company_name ?? 'Host Company';
+        $postTitle = $interest->posting->title ?? 'OJT Placement';
+
+        // 1. Notify Student
+        AppNotification::send(
+            $interest->student_user_id,
+            'company_accepted',
+            'Application Accepted Directly! 🎉',
+            "{$compName} has directly accepted your OJT application for \"{$postTitle}\" based on your portfolio and university endorsement letter (no interview required). Message: \"{$validated['company_note']}\". The OJT Coordinator will review for final approval shortly.",
+            ['posting_id' => $interest->ojt_posting_id, 'interest_id' => $interest->id]
+        );
+
+        // 2. Notify Academic Coordinator(s)
+        $supervisors = $this->getCoordinatorsForStudent($interest->student);
+        foreach ($supervisors as $sup) {
+            AppNotification::send(
+                $sup->id,
+                'company_accepted',
+                'Trainee Accepted Directly — Final Approval Needed',
+                "{$compName} has directly accepted {$interest->student->name} for \"{$postTitle}\" without requiring an interview. Please review and provide final OJT approval.",
+                ['interest_id' => $interest->id, 'posting_id' => $interest->ojt_posting_id]
+            );
+        }
+
+        return response()->json([
+            'success'  => true,
+            'message'  => "{$interest->student->name} has been accepted directly. The OJT Coordinator has been notified for final approval.",
+            'interest' => $interest,
+        ]);
+    }
+
+    /**
      * POST /company/ojt-postings/{postingId}/set-ojt-start/{interestId}
      * After the coordinator approves OJT (status: accepted), the company sets
      * the actual start date and instructions for the student.

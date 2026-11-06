@@ -1036,7 +1036,11 @@ function studentDetailCard(s, state) {
     const typeLabel = interviewType === 'face_to_face' ? 'In-Person' : interviewType === 'online' ? 'Online' : '';
     badgeHtml = `<span class="ojts-badge ojts-badge--blue">${icon('calendar', 10)} Interview Scheduled${typeLabel ? ' · ' + typeLabel : ''}</span>`;
   } else if (state === 'awaiting_final_accept') {
-    badgeHtml = `<span class="ojts-badge ojts-badge--urgent-good"><span class="ojts-pulse-dot ojts-pulse-dot--green" style="width:5px;height:5px;"></span> Company Accepted · Approval Required</span>`;
+    if (interviewType === 'waived') {
+      badgeHtml = `<span class="ojts-badge ojts-badge--urgent-good" style="background:rgba(0,89,48,0.1);color:#005930;border:1px solid rgba(0,89,48,0.25);"><span class="ojts-pulse-dot ojts-pulse-dot--green" style="width:5px;height:5px;"></span> Direct Placement · Approval Required</span>`;
+    } else {
+      badgeHtml = `<span class="ojts-badge ojts-badge--urgent-good"><span class="ojts-pulse-dot ojts-pulse-dot--green" style="width:5px;height:5px;"></span> Company Accepted · Approval Required</span>`;
+    }
   } else if (state === 'coordinator_approved') {
     badgeHtml = `<span class="ojts-badge ojts-badge--good">${icon('shield', 10)} Approved</span>`;
   } else if (state === 'ojt_confirmed') {
@@ -1147,8 +1151,16 @@ function studentDetailCard(s, state) {
       <p class="ojts-candidate-card__quote">&ldquo;${msg}&rdquo;</p>
       ` : ''}
 
-      <!-- Context Box: Scheduled Interview Details -->
-      ${interviewAt ? `
+      <!-- Context Box: Direct Placement or Scheduled Interview Details -->
+      ${interviewType === 'waived' ? `
+      <div class="ojts-candidate-card__context-box" style="background:rgba(0,89,48,0.05);border-color:rgba(0,89,48,0.18);">
+        <div class="ojts-candidate-card__context-row">
+          <span style="font-weight:700;color:#005930;display:inline-flex;align-items:center;gap:4px;">${icon('award', 12)} Direct Placement:</span>
+          <span style="color:#005930;font-size:0.77rem;">Interview waived by host company based on endorsement & academic evaluation.</span>
+        </div>
+        ${companyNote ? `<div style="font-style:italic;color:var(--text-secondary);margin-top:2px;">Company Welcome Note: &ldquo;${companyNote}&rdquo;</div>` : ''}
+      </div>
+      ` : (interviewAt ? `
       <div class="ojts-candidate-card__context-box">
         <div class="ojts-candidate-card__context-row">
           <span style="font-weight:600;color:var(--text-primary);">${icon('calendar', 12)} Interview:</span>
@@ -1157,7 +1169,7 @@ function studentDetailCard(s, state) {
         </div>
         ${companyNote ? `<div style="font-style:italic;color:var(--text-secondary);margin-top:2px;">Company Note: &ldquo;${companyNote}&rdquo;</div>` : ''}
       </div>
-      ` : ''}
+      ` : '')}
 
       <!-- Context Box: Confirmed OJT Start Date -->
       ${ojtStartDate ? `
@@ -1371,6 +1383,8 @@ function showEndorsementUploadModal(interestId, slot, students, body, bd, allInt
 
 // ── Final Accept Modal ────────────────────────────────────────────────────────
 function showFinalAcceptModal(interestId, studentName, slot, students, body, bd, allInterests, onUpdate) {
+  const targetStudent = students.find(s => String(s.id) === String(interestId));
+  const isDirectAccept = targetStudent?.interview_type === 'waived';
   const modal = document.createElement('div');
   modal.className = 'modal-backdrop modal-backdrop--visible';
   modal.style.zIndex = '9999';
@@ -1387,6 +1401,11 @@ function showFinalAcceptModal(interestId, studentName, slot, students, body, bd,
         <button class="modal__close" id="fa-close">${icon('x', 20)}</button>
       </div>
       <div class="modal__body" style="padding:20px 24px;">
+        ${isDirectAccept ? `
+        <div style="background:rgba(0,89,48,0.07);border:1px solid rgba(0,89,48,0.22);border-radius:var(--radius-md);padding:10px 14px;margin-bottom:14px;font-size:0.81rem;color:#005930;display:flex;align-items:center;gap:8px;line-height:1.4;">
+          ${icon('award', 15)} <span><strong>Direct Placement:</strong> The host company accepted this student directly without an interview based on your endorsement letter and credentials.</span>
+        </div>
+        ` : ''}
         <div style="background:#05966910;border:1px solid #05966925;border-radius:var(--radius-md);padding:12px 14px;margin-bottom:16px;font-size:0.81rem;color:#059669;display:flex;gap:8px;line-height:1.4;">
           ${icon('checkCircle', 14)} Giving final approval confirms that this student will officially render OJT hours at this host company.
         </div>

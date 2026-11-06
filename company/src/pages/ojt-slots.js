@@ -1268,7 +1268,7 @@ function renderApplicantsList(body, students, slot, backdrop, container, allSlot
   // ── 4. ENDORSED — Ready to Schedule Interview ─────────────────────────────
   if (endorsed.length) {
     html += `<div class="ojt-stage-group" data-stage="endorsed">`;
-    html += sectionHeader(`${icon('fileCheck', 14)} Letter Received — Schedule Interview`, 'rgb(139,92,246)', 'rgba(139,92,246,0.08)', endorsed.length);
+    html += sectionHeader(`${icon('fileCheck', 14)} Letter Received — Ready for Decision (Interview or Direct Accept)`, 'rgb(139,92,246)', 'rgba(139,92,246,0.08)', endorsed.length);
     html += `<div style="display:flex;flex-direction:column;gap:12px;margin-bottom:24px;">`;
     endorsed.forEach(s => { html += applicantCard(s, 'endorsed'); });
     html += `</div></div>`;
@@ -1423,6 +1423,15 @@ function renderApplicantsList(body, students, slot, backdrop, container, allSlot
     });
   });
 
+  // ── Direct Accept (Skip Interview) ─────────────────────────────────────────
+  body.querySelectorAll('.btn--direct-accept').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const interestId = btn.dataset.id;
+      const studentName = btn.dataset.name || 'Student';
+      showDirectAcceptModal(slot, interestId, studentName, body, container, allSlots, backdrop);
+    });
+  });
+
   // ── Accept After Interview ────────────────────────────────────────────────
   body.querySelectorAll('.btn--accept-after-interview').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -1569,7 +1578,10 @@ function applicantCard(s, state) {
     stageDetailsBox = `
       <div style="margin:0 20px 14px;padding:12px 14px;background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.22);border-radius:8px;display:flex;flex-direction:column;gap:6px;">
         <span style="display:flex;align-items:center;gap:7px;font-size:0.78rem;color:rgb(139,92,246);font-weight:700;">
-          ${icon('fileCheck', 14)} Endorsement letter uploaded${endorsedAt ? ` on ${endorsedAt}` : ''}.
+          ${icon('fileCheck', 14)} Endorsement letter uploaded${endorsedAt ? ` on ${endorsedAt}` : ''} &bull; Ready for Decision
+        </span>
+        <span style="font-size:0.75rem;color:#475569;">
+          You can schedule a formal interview or choose <strong>Direct Accept</strong> to place the student immediately without an interview.
         </span>
         ${endorsementLetterUrl ? `
           <a href="${resolveStorageUrl(endorsementLetterUrl)}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;font-size:0.76rem;color:rgb(139,92,246);text-decoration:underline;font-weight:600;">
@@ -1668,7 +1680,8 @@ function applicantCard(s, state) {
   } else if (state === 'endorsed') {
     actionButtons = `
       <button class="btn btn--sm btn--outline btn--reject-modal" data-id="${s.id}" data-name="${name}" style="color:#ef4444;border-color:#fca5a5;background:#fef2f2;border-radius:8px;height:34px;padding:0 14px;font-size:0.78rem;font-weight:700;display:inline-flex;align-items:center;gap:5px;">${icon('x', 12)} Decline</button>
-      <button class="btn btn--sm btn--primary btn--schedule-interview" data-id="${s.id}" data-name="${name}" style="height:34px;padding:0 18px;font-size:0.78rem;font-weight:700;display:inline-flex;align-items:center;gap:5px;background:#005930;border-color:#005930;border-radius:8px;box-shadow:0 2px 8px rgba(0,89,48,0.2);">${icon('calendar', 12)} Schedule Interview</button>`;
+      <button class="btn btn--sm btn--outline btn--schedule-interview" data-id="${s.id}" data-name="${name}" style="height:34px;padding:0 14px;font-size:0.78rem;font-weight:700;display:inline-flex;align-items:center;gap:5px;border-color:#005930;color:#005930;background:#ffffff;border-radius:8px;">${icon('calendar', 12)} Schedule Interview</button>
+      <button class="btn btn--sm btn--primary btn--direct-accept" data-id="${s.id}" data-name="${name}" style="height:34px;padding:0 16px;font-size:0.78rem;font-weight:700;display:inline-flex;align-items:center;gap:5px;background:#005930;border-color:#005930;border-radius:8px;box-shadow:0 2px 8px rgba(0,89,48,0.2);">${icon('checkCircle', 12)} Direct Accept</button>`;
   } else if (state === 'interview_scheduled') {
     const interviewRaw = s.interview_scheduled_at_raw || '';
     const interviewPassed = interviewRaw ? new Date(interviewRaw) <= new Date() : true;
@@ -2274,6 +2287,69 @@ function showRequestEndorsementModal(slot, interestId, studentName, body, contai
       errEl.style.display = 'block';
       submitBtn.disabled = false;
       submitBtn.innerHTML = `${icon('fileText', 14)} Send Request`;
+    }
+  });
+}
+
+// ── Direct Accept Modal (Skip Interview) ──────────────────────────────────────
+function showDirectAcceptModal(slot, interestId, studentName, body, container, allSlots, backdrop) {
+  const modal = document.createElement('div');
+  modal.className = 'modal-backdrop modal-backdrop--visible';
+  modal.style.zIndex = '9999';
+  modal.innerHTML = `
+    <div class="modal modal--visible" style="max-width:490px;">
+      <div class="modal__header" style="border-bottom:3px solid #005930;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:40px;height:40px;border-radius:10px;background:rgba(0,89,48,0.1);color:#005930;display:flex;align-items:center;justify-content:center;">${icon('checkCircle', 20)}</div>
+          <div>
+            <h3 class="modal__title" style="margin:0;">Direct Accept (Skip Interview)</h3>
+            <p style="font-size:0.76rem;color:var(--text-secondary);margin:2px 0 0;">${studentName}</p>
+          </div>
+        </div>
+        <button class="modal__close" id="da-close">${icon('x', 20)}</button>
+      </div>
+      <div class="modal__body" style="padding:20px 24px;">
+        <div style="background:rgba(0,89,48,0.06);border:1px solid rgba(0,89,48,0.2);border-radius:var(--radius-md);padding:12px 14px;margin-bottom:18px;font-size:0.8rem;color:#005930;display:flex;gap:8px;">
+          ${icon('alertCircle', 14)} <span>You are accepting <strong>${escapeHtml(studentName)}</strong> directly based on their credentials and university endorsement letter without holding an interview. The OJT Coordinator will be notified to give final approval.</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Acceptance Message / Welcome Note for Student <span style="color:var(--color-error);">*</span></label>
+          <textarea id="da-note" class="form-textarea" rows="4" placeholder='e.g. "We evaluated your portfolio and are pleased to directly accept you into our OJT program. Welcome aboard!"' style="resize:vertical;"></textarea>
+          <span class="form-hint">This welcome note will be sent to the student. Minimum 5 characters.</span>
+        </div>
+        <p id="da-error" style="color:var(--color-error);font-size:0.8rem;margin:8px 0 0;display:none;"></p>
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn--outline" id="da-cancel">Cancel</button>
+        <button class="btn btn--primary" id="da-submit" style="background:#005930;border-color:#005930;gap:6px;">${icon('checkCircle', 14)} Confirm Direct Acceptance</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  const close = () => modal.remove();
+  modal.querySelector('#da-close').addEventListener('click', close);
+  modal.querySelector('#da-cancel').addEventListener('click', close);
+  modal.addEventListener('click', e => { if (e.target === modal) close(); });
+  modal.querySelector('#da-submit').addEventListener('click', async () => {
+    const note = modal.querySelector('#da-note').value.trim();
+    const errEl = modal.querySelector('#da-error');
+    if (!note || note.length < 5) { errEl.textContent = 'Please enter a message of at least 5 characters.'; errEl.style.display = 'block'; return; }
+    const submitBtn = modal.querySelector('#da-submit');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = `${icon('clock', 14)} Processing…`;
+    errEl.style.display = 'none';
+    const res = await apiPost(`/company/ojt-postings/${slot.id}/direct-accept/${interestId}`, { company_note: note });
+    if (res?.success) {
+      close();
+      showToast(res.message || 'Student accepted directly! The coordinator will give final OJT approval.', 'success');
+      const refreshed = await apiGet(`/company/ojt-postings/${slot.id}/interests`);
+      if (refreshed?.success) renderApplicantsList(body, refreshed.data, slot, backdrop, container, allSlots);
+      refreshSlotCards(container, allSlots);
+    } else {
+      errEl.textContent = res?.message || 'Failed to accept student directly.';
+      errEl.style.display = 'block';
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = `${icon('checkCircle', 14)} Confirm Direct Acceptance`;
     }
   });
 }

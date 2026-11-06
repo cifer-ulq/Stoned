@@ -120,6 +120,9 @@ function getOjtStatusBadge(item) {
     return 'Interview Scheduled';
   }
   if (status === 'company_accepted') {
+    if (item?.interviewType === 'waived') {
+      return 'Directly Accepted (Awaiting Coordinator)';
+    }
     return 'Accepted (Awaiting Coordinator)';
   }
   const sIdx = getOjtStepIndex(item);
@@ -139,6 +142,9 @@ function getOjtGuidance(item) {
     return 'An interview has been scheduled. Please review the interview schedule and venue details below and prepare well.';
   }
   if (status === 'company_accepted') {
+    if (item?.interviewType === 'waived') {
+      return 'Congratulations! The company accepted you directly based on your credentials and endorsement letter without an interview. Waiting for your OJT Coordinator to grant final approval.';
+    }
     return 'Congratulations! The company accepted you after the interview. Waiting for your OJT Coordinator to grant final approval.';
   }
   return OJT_STEP_GUIDANCE[status] || '';
@@ -292,7 +298,7 @@ function openApplicationDetailsModal(item, onWithdrawSuccess, existingOverlay = 
                         </span>
                       </div>
                       <p class="ojt-timeline__label" style="color:${textColor}; font-weight:${isCurrent ? '700' : '500'};">
-                        ${step.label}
+                        ${(step.key === 'interview_scheduled' && item.interviewType === 'waived' && isDone) ? 'Interview <span style="font-size:0.68rem;opacity:0.85;">(Waived)</span>' : step.label}
                       </p>
                     </div>`;
                 }).join('')}
@@ -364,6 +370,33 @@ function openApplicationDetailsModal(item, onWithdrawSuccess, existingOverlay = 
                 ${icon('sparkles', 14)} Next Step Guidance:
               </strong>
               <p style="margin:0;">${escapeHtml(getOjtGuidance(item))}</p>
+            </div>
+          ` : ''}
+
+          <!-- Direct Placement Card (If interview waived) -->
+          ${(isOjt && item.interviewType === 'waived' && ['company_accepted', 'accepted', 'ojt_confirmed', 'ojt_started'].includes(item.rawStatus)) ? `
+            <div class="app-details-note-box" style="border-left-color:#059669; background:rgba(5,150,105,0.08);">
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:6px;">
+                <strong style="color:#059669; display:flex; align-items:center; gap:6px;">
+                  ${icon('checkCircle', 14)} Direct Acceptance (Interview Waived) 🎉
+                </strong>
+                <span style="font-size:0.75rem; background:#dcfce7; color:#15803d; padding:2px 10px; border-radius:99px; font-weight:700; display:inline-flex; align-items:center; gap:4px;">
+                  ${icon('award', 12)} Direct Placement
+                </span>
+              </div>
+              <p style="margin:0 0 6px; font-size:0.84rem; color:var(--text-secondary);">
+                The company directly accepted your application based on your academic profile and coordinator endorsement without requiring an interview.
+              </p>
+              ${item.companyNote ? `
+                <div style="margin-top:8px; padding-top:8px; border-top:1px dashed rgba(0,0,0,0.1); font-size:0.8rem;">
+                  <span style="color:var(--text-tertiary);">Company Welcome Message:</span> <em>"${escapeHtml(item.companyNote)}"</em>
+                </div>
+              ` : ''}
+              ${item.coordinatorNote ? `
+                <div style="margin-top:8px; padding-top:8px; border-top:1px dashed rgba(0,0,0,0.1); font-size:0.8rem;">
+                  <span style="color:var(--text-tertiary);">Coordinator Note:</span> <em>"${escapeHtml(item.coordinatorNote)}"</em>
+                </div>
+              ` : ''}
             </div>
           ` : ''}
 
@@ -1061,7 +1094,7 @@ function unifiedApplicationCard(item, idx) {
                       </span>
                     </div>
                     <p class="ojt-timeline__label" style="color:${textColor}; font-weight:${isCurrent ? '700' : '500'};">
-                      ${step.label}
+                      ${(step.key === 'interview_scheduled' && item.interviewType === 'waived' && isDone) ? 'Interview (Waived)' : step.label}
                     </p>
                   </div>`;
               }).join('')}
@@ -1696,6 +1729,7 @@ export async function renderApplications(container) {
             existing.rawStatus !== fresh.rawStatus ||
             existing.status !== fresh.status ||
             existing.interviewScheduledAt !== fresh.interviewScheduledAt ||
+            existing.interviewType !== fresh.interviewType ||
             existing.companyNote !== fresh.companyNote ||
             existing.coordinatorNote !== fresh.coordinatorNote ||
             existing.ojtStartDate !== fresh.ojtStartDate ||
