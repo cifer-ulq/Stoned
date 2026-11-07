@@ -5,6 +5,13 @@
 import { icon } from '../components/icons.js';
 import { apiGet, apiPost, apiPut, apiDelete, apiUpload, storageUrl } from '../api/client.js';
 import { getState, setState } from '../store.js';
+import {
+  SKILL_CATEGORIES,
+  SKILL_TAXONOMY,
+  normalizeSkill,
+  searchSkills,
+  getSkillsGroupedByCategory,
+} from '@shared/skills-taxonomy.js';
 
 /* ─── palette for skills / experience types ─── */
 const typeColor = { OJT: 'accent', Freelance: 'success', Volunteer: 'warning', 'Full-time': 'info', 'Part-time': 'neutral' };
@@ -577,12 +584,19 @@ function renderAbout() {
             ${(() => {
               const groups = {};
               SKL.forEach(s => {
-                if (!groups[s.category]) groups[s.category] = [];
-                groups[s.category].push(s);
+                const cat = s.category || 'other';
+                if (!groups[cat]) groups[cat] = [];
+                groups[cat].push(s);
               });
-              return Object.entries(CATEGORY_META)
-                .filter(([cat]) => groups[cat]?.length)
-                .map(([cat, meta]) => `
+              const presentCats = Object.keys(groups);
+              const orderedCats = Object.keys(CATEGORY_META)
+                .filter(c => groups[c]?.length)
+                .concat(presentCats.filter(c => !CATEGORY_META[c]));
+
+              return orderedCats.map(cat => {
+                const meta = getCategoryMeta(cat);
+                const items = groups[cat] || [];
+                return `
                   <div class="skill-category-card" data-cat="${cat}">
                     <div class="skill-category-card__header">
                       <div class="skill-category-card__badge" style="background: ${meta.bg}; color: ${meta.color};">
@@ -591,10 +605,10 @@ function renderAbout() {
                       <div class="skill-category-card__info">
                         <h4 class="skill-category-card__title">${meta.label}</h4>
                       </div>
-                      <span class="skill-category-card__count">${groups[cat].length} ${groups[cat].length === 1 ? 'skill' : 'skills'}</span>
+                      <span class="skill-category-card__count">${items.length} ${items.length === 1 ? 'skill' : 'skills'}</span>
                     </div>
                     <div class="skill-category-card__list">
-                      ${groups[cat].map(s => {
+                      ${items.map(s => {
                         const lvl = skillLevelMeta(s.level);
                         return `
                           <div class="skill-item-card" data-id="${s.id}">
@@ -625,7 +639,8 @@ function renderAbout() {
                       }).join('')}
                     </div>
                   </div>
-                `).join('');
+                `;
+              }).join('');
             })()}
           </div>
         `}
@@ -1337,46 +1352,19 @@ function skillLevelMeta(level) {
   return SKILL_LEVELS[3];
 }
 
-/* ── Skill Modal ── */
-/* ── Predefined skill lists per category ── */
-const SKILL_CATALOG = {
-  language: [
-    'HTML','CSS','JavaScript','TypeScript','Python','Java','PHP','C','C++','C#',
-    'Ruby','Go','Rust','Swift','Kotlin','Dart','R','MATLAB','Scala','Bash','SQL',
-    'Perl','Lua','Elixir','Haskell','Assembly',
-  ],
-  framework: [
-    'React','Vue.js','Angular','Next.js','Nuxt.js','Svelte','SvelteKit','Bootstrap',
-    'Tailwind CSS','Laravel','Django','Flask','FastAPI','Spring Boot','Express.js',
-    'Node.js','Flutter','React Native','Ionic','Electron','Astro','Remix',
-    'Ruby on Rails','Symfony','CodeIgniter',
-  ],
-  tool: [
-    'Git','GitHub','GitLab','Bitbucket','Docker','Kubernetes','VS Code','Figma',
-    'Adobe XD','Postman','Insomnia','Linux','Webpack','Vite','npm','Yarn','Pnpm',
-    'Jira','Trello','Notion','Slack','Photoshop','Illustrator','Canva','Nginx',
-    'Apache','CI/CD','Jenkins','GitHub Actions',
-  ],
-  database: [
-    'MySQL','PostgreSQL','SQLite','MariaDB','MongoDB','Firebase','Supabase',
-    'Redis','Oracle','MS SQL Server','Elasticsearch','DynamoDB','Cassandra',
-    'CouchDB','PlanetScale','Neon',
-  ],
-  other: [
-    'REST API','GraphQL','WebSockets','gRPC','UI/UX Design','Agile / Scrum',
-    'Project Management','Technical Writing','Data Analysis','Machine Learning',
-    'Deep Learning','Computer Vision','NLP','DevOps','AWS','GCP','Azure',
-    'Cybersecurity','Networking','SEO','Content Management','Blockchain','IoT',
-  ],
-};
+/* ── Skill Modal & Taxonomy ── */
+const CATEGORY_META = SKILL_CATEGORIES;
 
-const CATEGORY_META = {
-  language:  { label: 'Languages',            emoji: '💻', color: '#3B82F6', bg: 'rgba(59, 130, 246, 0.12)' },
-  framework: { label: 'Frameworks & Libraries', emoji: '🧩', color: '#8B5CF6', bg: 'rgba(139, 92, 246, 0.12)' },
-  tool:      { label: 'Tools & Software',       emoji: '🔧', color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.12)' },
-  database:  { label: 'Databases',              emoji: '🗄️', color: '#06B6D4', bg: 'rgba(6, 182, 212, 0.12)' },
-  other:     { label: 'Other',                  emoji: '✨', color: '#EC4899', bg: 'rgba(236, 72, 153, 0.12)' },
-};
+function getCategoryMeta(cat) {
+  return CATEGORY_META[cat] || {
+    key: cat || 'other',
+    label: cat ? cat.charAt(0).toUpperCase() + cat.slice(1) : 'Other Skills',
+    shortLabel: cat || 'Other',
+    emoji: '✨',
+    color: '#84CC16',
+    bg: 'rgba(132, 204, 22, 0.12)',
+  };
+}
 
 function openSkillModal(skill) {
   const initCat   = skill?.category || 'language';
@@ -1399,7 +1387,7 @@ function openSkillModal(skill) {
           </div>
           <div>
             <h3 class="skm-title">${skill ? 'Edit Skill' : 'Add a Skill'}</h3>
-            <p class="skm-subtitle">${skill ? 'Update your skill details' : 'Pick from the catalog or add your own'}</p>
+            <p class="skm-subtitle">${skill ? 'Update your skill details' : 'Pick from the standardized catalog or search synonyms'}</p>
           </div>
         </div>
         <button class="skm-close-btn" aria-label="Close">${icon('x', 18)}</button>
@@ -1410,10 +1398,14 @@ function openSkillModal(skill) {
 
         <!-- LEFT: category sidebar -->
         <nav class="skm-sidebar" id="skm-sidebar">
+          <button type="button" class="skm-cat-btn ${initCat === 'all' ? 'skm-cat-btn--active' : ''}" data-cat="all">
+            <span class="skm-cat-emoji">🌐</span>
+            <span class="skm-cat-label">All Skills</span>
+          </button>
           ${Object.entries(CATEGORY_META).map(([cat, m]) => `
             <button type="button" class="skm-cat-btn ${cat === initCat ? 'skm-cat-btn--active' : ''}" data-cat="${cat}">
               <span class="skm-cat-emoji">${m.emoji}</span>
-              <span class="skm-cat-label">${m.label}</span>
+              <span class="skm-cat-label">${m.shortLabel || m.label}</span>
             </button>`).join('')}
         </nav>
 
@@ -1423,7 +1415,7 @@ function openSkillModal(skill) {
           <!-- Search -->
           <div class="skm-search-wrap">
             <svg class="skm-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-            <input class="skm-search" id="skm-search" type="text" placeholder="Search skills…" autocomplete="off" spellcheck="false">
+            <input class="skm-search" id="skm-search" type="text" placeholder="Search skills, aliases (e.g. JS, Postgres, Excel)..." autocomplete="off" spellcheck="false">
             <button class="skm-search-clear" id="skm-search-clear" style="display:none;" aria-label="Clear">
               ${icon('x', 12)}
             </button>
@@ -1434,7 +1426,7 @@ function openSkillModal(skill) {
 
           <!-- Manual input toggle -->
           <div class="skm-manual-toggle" id="skm-manual-wrap" style="display:none;">
-            <span>No results.</span>
+            <span>No standard matches found.</span>
             <button type="button" class="skm-manual-link" id="skm-manual-btn">Add "<span id="skm-manual-query"></span>" manually</button>
           </div>
           <div class="skm-manual-input-wrap" id="skm-manual-input-wrap" style="display:none;">
@@ -1483,14 +1475,14 @@ function openSkillModal(skill) {
 
     <style>
       /* ── Skill Modal ── */
-      .skm-box { max-width: 660px; max-height: 88vh; display:flex; flex-direction:column; overflow:hidden; }
+      .skm-box { max-width: 680px; max-height: 88vh; display:flex; flex-direction:column; overflow:hidden; }
 
       /* header */
       .skm-header { padding: 18px 22px; border-bottom: 1px solid var(--border-subtle); flex-shrink:0; }
       .skm-header-left { display:flex; align-items:center; gap:14px; }
       .skm-header-icon {
         width:40px; height:40px; border-radius:12px; flex-shrink:0;
-        background: linear-gradient(135deg,#4A6CF7,#6D8DFF);
+        background: linear-gradient(135deg,#005930,#10B981);
         display:flex; align-items:center; justify-content:center; color:#fff;
       }
       .skm-title { font-size:1rem; font-weight:700; color:var(--text-primary); margin:0; }
@@ -1508,23 +1500,23 @@ function openSkillModal(skill) {
 
       /* sidebar */
       .skm-sidebar {
-        width:170px; flex-shrink:0; padding:12px 8px;
+        width:180px; flex-shrink:0; padding:12px 8px;
         border-right:1px solid var(--border-subtle);
         display:flex; flex-direction:column; gap:2px; overflow-y:auto;
       }
       .skm-cat-btn {
-        display:flex; align-items:center; gap:10px; width:100%;
-        padding:9px 12px; border-radius:10px; border:none; cursor:pointer;
+        display:flex; align-items:center; gap:8px; width:100%;
+        padding:8px 10px; border-radius:10px; border:none; cursor:pointer;
         background:transparent; text-align:left;
-        font-size:.82rem; color:var(--text-secondary); font-weight:500;
+        font-size:.8rem; color:var(--text-secondary); font-weight:500;
         transition:background .15s,color .15s;
       }
       .skm-cat-btn:hover { background:var(--surface-hover); color:var(--text-primary); }
       .skm-cat-btn--active {
-        background:var(--color-primary-bg); color:var(--color-primary);
+        background:rgba(0,89,48,0.1); color:#005930;
         font-weight:700;
       }
-      .skm-cat-emoji { font-size:1.05rem; flex-shrink:0; }
+      .skm-cat-emoji { font-size:1rem; flex-shrink:0; }
       .skm-cat-label { line-height:1.3; }
 
       /* right panel */
@@ -1536,7 +1528,7 @@ function openSkillModal(skill) {
         background:var(--bg-secondary); border:1.5px solid var(--border-default);
         border-radius:10px; padding:8px 12px; transition:border .15s;
       }
-      .skm-search-wrap:focus-within { border-color:var(--color-primary); background:var(--surface-card); }
+      .skm-search-wrap:focus-within { border-color:#005930; background:var(--surface-card); }
       .skm-search-icon { color:var(--text-tertiary); flex-shrink:0; }
       .skm-search {
         flex:1; background:none; border:none; outline:none;
@@ -1559,23 +1551,24 @@ function openSkillModal(skill) {
       .skm-chip-grid::-webkit-scrollbar-thumb { background:var(--border-default); border-radius:99px; }
       .skm-chip {
         display:inline-flex; align-items:center; gap:5px;
-        padding:5px 13px; border-radius:999px; font-size:.8rem; font-weight:500;
+        padding:5px 12px; border-radius:999px; font-size:.8rem; font-weight:500;
         border: 1.5px solid var(--border-default); background:var(--surface-card);
         color:var(--text-secondary); cursor:pointer; transition:all .15s; white-space:nowrap;
         user-select:none;
       }
-      .skm-chip:hover { border-color:var(--color-primary); color:var(--color-primary); background:var(--color-primary-bg); }
+      .skm-chip:hover { border-color:#005930; color:#005930; background:rgba(0,89,48,0.06); }
       .skm-chip--active {
-        background:linear-gradient(135deg,#4A6CF7,#6D8DFF); color:#fff;
-        border-color:transparent; box-shadow:0 2px 8px rgba(74,108,247,.35);
+        background:linear-gradient(135deg,#005930,#10B981); color:#fff;
+        border-color:transparent; box-shadow:0 2px 8px rgba(0,89,48,.35);
       }
       .skm-chip--active:hover { opacity:.9; color:#fff; }
       .skm-chip-check { display:none; }
       .skm-chip--active .skm-chip-check { display:inline; }
+      .skm-chip-alias { font-size:.68rem; opacity:.75; font-style:italic; }
 
       /* manual */
       .skm-manual-toggle { font-size:.8rem; color:var(--text-tertiary); display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
-      .skm-manual-link { background:none; border:none; cursor:pointer; color:var(--color-primary); font-size:.8rem; font-weight:600; text-decoration:underline; text-underline-offset:2px; padding:0; }
+      .skm-manual-link { background:none; border:none; cursor:pointer; color:#005930; font-size:.8rem; font-weight:600; text-decoration:underline; text-underline-offset:2px; padding:0; }
       .skm-manual-label { font-size:.78rem; font-weight:600; color:var(--text-secondary); margin-bottom:4px; }
       .skm-manual-row { display:flex; gap:8px; }
       .skm-manual-input { flex:1; font-size:.85rem; }
@@ -1587,7 +1580,7 @@ function openSkillModal(skill) {
       }
       .skm-preview { display:flex; align-items:center; gap:10px; padding:10px 14px; border-radius:12px; background:var(--bg-secondary); border:1.5px solid var(--border-default); min-height:52px; }
       .skm-preview-left { display:flex; align-items:center; gap:12px; }
-      .skm-preview-dot { width:10px; height:10px; border-radius:999px; flex-shrink:0; background: linear-gradient(135deg,#4A6CF7,#6D8DFF); opacity:.3; transition:opacity .2s; }
+      .skm-preview-dot { width:10px; height:10px; border-radius:999px; flex-shrink:0; background: linear-gradient(135deg,#005930,#10B981); opacity:.3; transition:opacity .2s; }
       .skm-preview-dot--active { opacity:1; }
       .skm-preview-name { font-size:.9rem; font-weight:700; color:var(--text-primary); }
       .skm-preview-cat { font-size:.75rem; color:var(--text-tertiary); margin-top:1px; }
@@ -1598,43 +1591,17 @@ function openSkillModal(skill) {
       .skm-level-title { font-size:.78rem; font-weight:700; color:var(--text-secondary); text-transform:uppercase; letter-spacing:.06em; }
       .skm-level-badges { display:flex; flex-wrap:wrap; gap:6px; }
       .skm-lvl-badge { padding:5px 14px; border-radius:999px; font-size:.76rem; font-weight:600; border:1.5px solid var(--border-default); background:var(--surface-card); color:var(--text-secondary); cursor:pointer; transition:all .18s; }
-      .skm-lvl-badge:hover { border-color:var(--color-primary); color:var(--color-primary); background:var(--color-primary-bg); }
+      .skm-lvl-badge:hover { border-color:#005930; color:#005930; background:rgba(0,89,48,0.06); }
       .skm-lvl-badge--active { color:#fff; border-color:transparent; }
       .skm-lvl-badge[data-key="beginner"].skm-lvl-badge--active     { background:#64748B; }
       .skm-lvl-badge[data-key="intermediate"].skm-lvl-badge--active { background:#3B82F6; }
       .skm-lvl-badge[data-key="advanced"].skm-lvl-badge--active     { background:#8B5CF6; }
       .skm-lvl-badge[data-key="expert"].skm-lvl-badge--active       { background:#10B981; }
-      .skill-chip__level { font-size:.65rem; font-weight:700; padding:2px 7px; border-radius:999px; letter-spacing:.03em; flex-shrink:0; }
-      .skill-chip__level--beginner     { background:rgba(100,116,139,.12); color:#64748B; }
-      .skill-chip__level--intermediate { background:rgba(59,130,246,.12);  color:#3B82F6; }
-      .skill-chip__level--advanced     { background:rgba(139,92,246,.12);  color:#8B5CF6; }
-      .skill-chip__level--expert       { background:rgba(16,185,129,.12);  color:#10B981; }
 
       /* actions */
       .skm-actions { display:flex; justify-content:flex-end; gap:10px; }
-      .skm-save-btn { display:flex; align-items:center; gap:7px; }
-      .skm-error { color:var(--color-danger,#EF4444); font-size:.8rem; min-height:1em; margin:0; text-align:right; }
-      .skm-slider-track {
-        position:relative; height:8px; border-radius:999px;
-        background:var(--border-default); overflow:visible;
-      }
-      .skm-slider-fill {
-        position:absolute; left:0; top:0; height:100%;
-        border-radius:999px; pointer-events:none;
-        background:linear-gradient(90deg,#4A6CF7,#6D8DFF);
-        transition:width .1s;
-      }
-      .skm-slider {
-        position:absolute; inset:0; width:100%; height:100%;
-        opacity:0; cursor:pointer; margin:0; z-index:1;
-      }
-
-      .skm-slider-labels { display:flex; justify-content:space-between; font-size:.72rem; color:var(--text-tertiary); }
-      .skm-slider-val { font-weight:700; color:var(--color-primary); }
-
-      /* actions */
-      .skm-actions { display:flex; justify-content:flex-end; gap:10px; }
-      .skm-save-btn { display:flex; align-items:center; gap:7px; }
+      .skm-save-btn { display:flex; align-items:center; gap:7px; background:#005930; border-color:#005930; color:#fff; }
+      .skm-save-btn:hover { background:#004626; }
       .skm-error { color:var(--color-danger,#EF4444); font-size:.8rem; min-height:1em; margin:0; text-align:right; }
 
       /* dark mode tweak */
@@ -1700,7 +1667,8 @@ function openSkillModal(skill) {
     if (selectedName) {
       dot.classList.add('skm-preview-dot--active');
       name.textContent = selectedName;
-      cat.textContent  = `${CATEGORY_META[selectedCat]?.label ?? selectedCat}`;
+      const meta = getCategoryMeta(selectedCat);
+      cat.textContent  = `${meta.emoji} ${meta.label}`;
     } else {
       dot.classList.remove('skm-preview-dot--active');
       name.textContent = 'No skill selected';
@@ -1714,10 +1682,33 @@ function openSkillModal(skill) {
     const manual  = overlay.querySelector('#skm-manual-wrap');
     const manInp  = overlay.querySelector('#skm-manual-input-wrap');
     const q       = searchQ.toLowerCase();
-    const source  = SKILL_CATALOG[selectedCat] || [];
-    const filtered = q ? source.filter(s => s.toLowerCase().includes(q)) : source;
 
-    if (filtered.length === 0 && !manualMode) {
+    let items = [];
+    if (q) {
+      const searchCat = selectedCat === 'all' ? null : selectedCat;
+      items = searchSkills(q, searchCat, 50);
+      if (items.length === 0 && searchCat) {
+        items = searchSkills(q, null, 50);
+      }
+    } else {
+      if (selectedCat === 'all') {
+        items = SKILL_TAXONOMY.slice(0, 60).map(s => ({
+          canonical: s.canonical,
+          slug: s.slug,
+          category: s.category,
+        }));
+      } else {
+        items = SKILL_TAXONOMY
+          .filter(s => s.category === selectedCat)
+          .map(s => ({
+            canonical: s.canonical,
+            slug: s.slug,
+            category: s.category,
+          }));
+      }
+    }
+
+    if (items.length === 0 && !manualMode) {
       grid.innerHTML  = '';
       manual.style.display = 'flex';
       overlay.querySelector('#skm-manual-query').textContent = searchQ;
@@ -1729,15 +1720,26 @@ function openSkillModal(skill) {
       manInp.style.display = 'none';
     }
 
-    grid.innerHTML = filtered.map(s => `
-      <button type="button" class="skm-chip ${s === selectedName ? 'skm-chip--active' : ''}" data-skill="${s}">
-        <svg class="skm-chip-check" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-        ${s}
-      </button>`).join('');
+    grid.innerHTML = items.map(it => {
+      const isSelected = it.canonical.toLowerCase() === selectedName.toLowerCase();
+      const hasAlias = it.matchedAlias && it.matchedAlias.toLowerCase() !== it.canonical.toLowerCase();
+      return `
+        <button type="button" class="skm-chip ${isSelected ? 'skm-chip--active' : ''}" data-skill="${it.canonical}" data-cat="${it.category}">
+          <svg class="skm-chip-check" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          <span>${it.canonical}</span>
+          ${hasAlias ? `<span class="skm-chip-alias">(${it.matchedAlias})</span>` : ''}
+        </button>`;
+    }).join('');
 
     grid.querySelectorAll('.skm-chip').forEach(btn => {
       btn.addEventListener('click', () => {
         selectedName = btn.dataset.skill;
+        if (btn.dataset.cat && selectedCat !== 'all' && selectedCat !== btn.dataset.cat) {
+          selectedCat = btn.dataset.cat;
+          overlay.querySelectorAll('.skm-cat-btn').forEach(b => {
+            b.classList.toggle('skm-cat-btn--active', b.dataset.cat === selectedCat);
+          });
+        }
         manualMode   = false;
         renderChips();
         updatePreview();
@@ -1795,13 +1797,29 @@ function openSkillModal(skill) {
     inp.focus();
     inp.select();
   });
-  overlay.querySelector('#skm-manual-confirm').addEventListener('click', () => {
-    const val = overlay.querySelector('#skm-manual-input').value.trim();
-    if (!val) return;
-    selectedName = val;
+
+  const applyManualInput = () => {
+    const raw = overlay.querySelector('#skm-manual-input').value.trim();
+    if (!raw) return;
+    const norm = normalizeSkill(raw);
+    selectedName = norm.canonical;
+    if (norm.isStandard) {
+      selectedCat = norm.category;
+      overlay.querySelectorAll('.skm-cat-btn').forEach(b => {
+        b.classList.toggle('skm-cat-btn--active', b.dataset.cat === selectedCat);
+      });
+    }
     manualMode   = true;
     renderChips();
     updatePreview();
+  };
+
+  overlay.querySelector('#skm-manual-confirm').addEventListener('click', applyManualInput);
+  overlay.querySelector('#skm-manual-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      applyManualInput();
+    }
   });
 
   /* ── save ── */
@@ -1814,15 +1832,24 @@ function openSkillModal(skill) {
     saveBtn.disabled     = true;
     saveBtn.innerHTML    = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation:spin .7s linear infinite"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Saving…`;
 
-    const data = { name: selectedName, level: selectedLevel, category: selectedCat };
+    const norm = normalizeSkill(selectedName);
+    const finalName = norm.canonical;
+    const finalCat = norm.isStandard ? norm.category : (selectedCat === 'all' ? 'other' : (selectedCat || 'other'));
+    const data = { name: finalName, level: selectedLevel, category: finalCat };
+
     try {
       if (skill) {
         await apiPut(`/student/skills/${skill.id}`, data);
         const idx = SKL.findIndex(s => s.id === skill.id);
-        SKL[idx] = { ...SKL[idx], ...data };
+        if (idx >= 0) SKL[idx] = { ...SKL[idx], ...data };
       } else {
         const res = await apiPost('/student/skills', data);
-        SKL.push({ ...data, id: res.id, endorsed_count: 0 });
+        const existingIdx = SKL.findIndex(s => s.name.toLowerCase() === finalName.toLowerCase());
+        if (existingIdx >= 0) {
+          SKL[existingIdx] = { ...SKL[existingIdx], ...data, id: res.id || SKL[existingIdx].id };
+        } else {
+          SKL.push({ ...data, id: res.id, endorsed_count: 0 });
+        }
       }
       close();
       renderAbout();

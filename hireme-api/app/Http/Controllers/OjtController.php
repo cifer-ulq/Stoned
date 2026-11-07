@@ -60,7 +60,6 @@ class OjtController extends Controller
         // Student skills for matching calculation
         $userSkills = \App\Models\StudentSkill::where('user_id', $user->id)
             ->pluck('name')
-            ->map(fn($s) => strtolower(trim($s)))
             ->toArray();
 
         return response()->json([
@@ -78,13 +77,10 @@ class OjtController extends Controller
                 if (is_string($required)) {
                     $required = json_decode($required, true) ?? [];
                 }
-                $matched = array_values(
-                    array_filter($required, fn($s) => in_array(strtolower(trim($s)), $userSkills))
-                );
-                $score = count($required) > 0
-                    ? (int) round(count($matched) / count($required) * 100)
-                    : (count($userSkills) > 0 ? 60 : 50);
-                $rec   = RecommendationService::classify($score);
+                $matchResult = \App\Services\SkillNormalizer::match($userSkills, (array) $required);
+                $matched     = $matchResult['matched_canonical'];
+                $score       = $matchResult['match_score'];
+                $rec         = RecommendationService::classify($score);
 
                 return array_merge($p->toArray(), [
                     'slots_total'          => $slotsTotal,

@@ -16,6 +16,7 @@ use App\Http\Controllers\CompanyPublicController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\EvaluationController;
 use App\Http\Controllers\OjtPullOutController;
+use App\Http\Controllers\SkillController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Route;
@@ -73,6 +74,13 @@ Route::get('mail-diagnostic', function (Request $request) {
             'mail_config'   => $config,
         ], 500);
     }
+});
+
+// ── Standardized Skills Dictionary & Suggestions (Public/Shared) ──────────
+Route::prefix('skills')->group(function () {
+    Route::get('dictionary', [SkillController::class, 'dictionary']);
+    Route::get('suggest',    [SkillController::class, 'suggest']);
+    Route::get('resolve',    [SkillController::class, 'resolve']);
 });
 
 // ── Notifications (shared across all portals) ─────────────────────────────

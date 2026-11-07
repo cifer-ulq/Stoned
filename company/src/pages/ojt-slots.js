@@ -3,12 +3,13 @@ import { apiFetch, apiGet, apiPost, apiPut, resolveStorageUrl } from '../api/cli
 import { openSetOjtScheduleModal } from '../components/ojt-schedule-modal.js';
 import { getState } from '../store.js';
 import { showPostingRestrictedModal, openMoaRequestModal } from '../components/moa-modal.js';
+import { normalizeSkill, searchSkills } from '@shared/skills-taxonomy.js';
 
 export const POPULAR_OJT_SKILLS = [
   'HTML', 'CSS', 'JavaScript', 'PHP', 'MySQL', 'Python', 'React',
-  'Technical Support', 'Troubleshooting', 'Networking', 'Hardware Troubleshooting',
-  'Excel / Spreadsheets', 'Bookkeeping', 'Financial Reporting',
-  'Customer Service', 'Figma / UI Design', 'Graphic Design',
+  'Technical Support', 'Troubleshooting', 'Computer Networking', 'Computer Hardware',
+  'Microsoft Excel / Spreadsheets', 'Bookkeeping', 'Financial Reporting',
+  'Customer Service', 'Figma', 'UI/UX Design', 'Graphic Design',
   'Communication', 'Problem Solving', 'Data Entry', 'Documentation'
 ];
 
@@ -438,7 +439,12 @@ function renderCourseMultiPicker(scopeEl, initialCourses = [], deptSelectEl, pre
  * Reusable dynamic tag picker for Skills, Required Documents, and Qualifications
  */
 function renderTagPicker(scopeEl, initialItems = [], suggestions = [], prefix, itemType = 'item', chipClass = '') {
-  const selected = new Set(initialItems.map(s => String(s).trim()).filter(Boolean));
+  const selected = new Set(
+    initialItems
+      .map(s => String(s).trim())
+      .filter(Boolean)
+      .map(s => (itemType === 'skill' ? normalizeSkill(s).canonical : s))
+  );
   const chipsWrap = scopeEl.querySelector(`#${prefix}-chips`);
   const emptyNote = scopeEl.querySelector(`#${prefix}-empty`);
   const countSpan = scopeEl.querySelector(`#${prefix}-count`);
@@ -479,7 +485,10 @@ function renderTagPicker(scopeEl, initialItems = [], suggestions = [], prefix, i
   function addItem(val) {
     const clean = (val || '').trim();
     if (!clean) return;
-    clean.split('\n').map(s => s.trim()).filter(Boolean).forEach(s => selected.add(s));
+    clean.split('\n').map(s => s.trim()).filter(Boolean).forEach(s => {
+      const finalVal = itemType === 'skill' ? normalizeSkill(s).canonical : s;
+      selected.add(finalVal);
+    });
     if (input) input.value = '';
     update();
   }
@@ -491,6 +500,58 @@ function renderTagPicker(scopeEl, initialItems = [], suggestions = [], prefix, i
         addItem(input.value);
       }
     });
+
+    if (itemType === 'skill') {
+      let dropdown = scopeEl.querySelector(`#${prefix}-dropdown`);
+      if (!dropdown) {
+        dropdown = document.createElement('div');
+        dropdown.id = `${prefix}-dropdown`;
+        dropdown.className = 'ojt-sugg-dropdown';
+        dropdown.style.cssText = 'position:absolute;z-index:99;background:#ffffff;border:1px solid #cbd5e1;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.12);max-height:180px;overflow-y:auto;width:calc(100% - 85px);display:none;margin-top:2px;';
+        const parent = input.parentElement;
+        if (parent) {
+          parent.style.position = 'relative';
+          parent.appendChild(dropdown);
+        }
+      }
+
+      input.addEventListener('input', () => {
+        const q = input.value.trim().toLowerCase();
+        if (!q || q.length < 1) {
+          dropdown.style.display = 'none';
+          return;
+        }
+        const matches = searchSkills(q, null, 6);
+        if (!matches.length) {
+          dropdown.style.display = 'none';
+          return;
+        }
+        dropdown.innerHTML = matches.map(m => {
+          const hasAlias = m.matchedAlias && m.matchedAlias.toLowerCase() !== m.canonical.toLowerCase();
+          return `
+            <div class="ojt-sugg-item" data-val="${escapeHtml(m.canonical)}" style="padding:7px 12px;font-size:0.82rem;cursor:pointer;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #f1f5f9;">
+              <span style="font-weight:600;color:#0f172a;">${escapeHtml(m.canonical)}</span>
+              ${hasAlias ? `<span style="font-size:0.72rem;color:#64748b;font-style:italic;">(matches "${escapeHtml(m.matchedAlias)}")</span>` : ''}
+            </div>
+          `;
+        }).join('');
+        dropdown.style.display = 'block';
+
+        dropdown.querySelectorAll('.ojt-sugg-item').forEach(item => {
+          item.addEventListener('mouseenter', () => item.style.background = '#f8fafc');
+          item.addEventListener('mouseleave', () => item.style.background = 'transparent');
+          item.addEventListener('mousedown', e => {
+            e.preventDefault();
+            addItem(item.dataset.val);
+            dropdown.style.display = 'none';
+          });
+        });
+      });
+
+      input.addEventListener('blur', () => {
+        setTimeout(() => { dropdown.style.display = 'none'; }, 200);
+      });
+    }
   }
 
   if (addBtn) {
@@ -508,7 +569,8 @@ function renderTagPicker(scopeEl, initialItems = [], suggestions = [], prefix, i
     suggsWrap.querySelectorAll('.ojt-sugg-pill').forEach(pill => {
       pill.addEventListener('click', e => {
         e.preventDefault();
-        const val = pill.dataset.val;
+        const rawVal = pill.dataset.val;
+        const val = itemType === 'skill' ? normalizeSkill(rawVal).canonical : rawVal;
         if (selected.has(val)) {
           selected.delete(val);
         } else {

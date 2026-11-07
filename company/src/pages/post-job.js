@@ -7,6 +7,7 @@ import { apiGet, apiPost, apiPut } from '../api/client.js';
 import { navigate } from '../router.js';
 import { getState } from '../store.js';
 import { openMoaRequestModal } from '../components/moa-modal.js';
+import { normalizeSkill, searchSkills } from '@shared/skills-taxonomy.js';
 
 /* ── Preset data ─────────────────────────────────────────── */
 const EMPLOYMENT_TYPES = [
@@ -538,7 +539,7 @@ function resetState(editJob) {
     responsibilities: ensureArray(v?.responsibilities),
     requirements:     ensureArray(v?.requirements),
     benefits:         ensureArray(v?.benefits),
-    skills:           ensureArray(v?.skills || v?.required_skills),
+    skills:           ensureArray(v?.skills || v?.required_skills).map(s => normalizeSkill(s).canonical),
     expires_at:       v?.expires_at       || '',
     status:           v?.status           || 'open',
   };
@@ -1127,10 +1128,14 @@ function renderStep3(wrap) {
 
   const addSkill = val => {
     val = val.trim();
-    if (val && !state.skills.includes(val)) {
-      state.skills.push(val);
+    if (!val) return;
+    const norm = normalizeSkill(val);
+    const finalVal = norm.canonical;
+    if (finalVal && !state.skills.includes(finalVal)) {
+      state.skills.push(finalVal);
       renderSkillChips(wrap);
       syncRecSkills(wrap);
+      refreshSkillCategories(wrap);
     }
     skillInput.value = '';
     skillDropdown.style.display = 'none';
@@ -1144,15 +1149,19 @@ function renderStep3(wrap) {
   });
 
   skillInput.addEventListener('input', () => {
-    const q = skillInput.value.toLowerCase();
+    const q = skillInput.value.toLowerCase().trim();
     if (!q) { skillDropdown.style.display = 'none'; return; }
-    const matches = SKILL_SUGGESTIONS.filter(s =>
-      s.toLowerCase().includes(q) && !state.skills.includes(s)
-    ).slice(0, 6);
+    const matches = searchSkills(q, null, 8).filter(s => !state.skills.includes(s.canonical));
     if (!matches.length) { skillDropdown.style.display = 'none'; return; }
-    skillDropdown.innerHTML = matches.map(m => `
-      <div class="pj-suggest-item" data-val="${escHtml(m)}">${m}</div>
-    `).join('');
+    skillDropdown.innerHTML = matches.map(m => {
+      const hasAlias = m.matchedAlias && m.matchedAlias.toLowerCase() !== m.canonical.toLowerCase();
+      return `
+        <div class="pj-suggest-item" data-val="${escHtml(m.canonical)}" style="display:flex;justify-content:space-between;align-items:center;">
+          <span>${m.canonical}</span>
+          ${hasAlias ? `<span style="font-size:0.7rem;color:#64748b;font-style:italic;">(matches "${escHtml(m.matchedAlias)}")</span>` : ''}
+        </div>
+      `;
+    }).join('');
     skillDropdown.style.display = 'block';
     skillDropdown.querySelectorAll('.pj-suggest-item').forEach(item => {
       item.addEventListener('mousedown', e => {

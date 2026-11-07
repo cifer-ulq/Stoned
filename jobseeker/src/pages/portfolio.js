@@ -5,6 +5,13 @@
 import { icon } from '../components/icons.js';
 import { apiGet, apiPost, apiPut, apiDelete, apiUpload, storageUrl } from '../api/client.js';
 import { getState } from '../store.js';
+import {
+  SKILL_CATEGORIES,
+  SKILL_TAXONOMY,
+  normalizeSkill,
+  searchSkills,
+  getSkillsGroupedByCategory,
+} from '@shared/skills-taxonomy.js';
 
 /* ─── palette for skills / experience types ─── */
 const typeColor = { OJT: 'accent', Freelance: 'success', Volunteer: 'warning', 'Full-time': 'info', 'Part-time': 'neutral' };
@@ -437,12 +444,19 @@ function renderAbout() {
             ${(() => {
               const groups = {};
               SKL.forEach(s => {
-                if (!groups[s.category]) groups[s.category] = [];
-                groups[s.category].push(s);
+                const cat = s.category || 'other';
+                if (!groups[cat]) groups[cat] = [];
+                groups[cat].push(s);
               });
-              return Object.entries(CATEGORY_META)
-                .filter(([cat]) => groups[cat]?.length)
-                .map(([cat, meta]) => `
+              const presentCats = Object.keys(groups);
+              const orderedCats = Object.keys(CATEGORY_META)
+                .filter(c => groups[c]?.length)
+                .concat(presentCats.filter(c => !CATEGORY_META[c]));
+
+              return orderedCats.map(cat => {
+                const meta = getCategoryMeta(cat);
+                const items = groups[cat] || [];
+                return `
                   <div class="skill-category-card" data-cat="${cat}">
                     <div class="skill-category-card__header">
                       <div class="skill-category-card__badge" style="background: ${meta.bg}; color: ${meta.color};">
@@ -451,10 +465,10 @@ function renderAbout() {
                       <div class="skill-category-card__info">
                         <h4 class="skill-category-card__title">${meta.label}</h4>
                       </div>
-                      <span class="skill-category-card__count">${groups[cat].length} ${groups[cat].length === 1 ? 'skill' : 'skills'}</span>
+                      <span class="skill-category-card__count">${items.length} ${items.length === 1 ? 'skill' : 'skills'}</span>
                     </div>
                     <div class="skill-category-card__list">
-                      ${groups[cat].map(s => {
+                      ${items.map(s => {
                         const lvl = skillLevelMeta(s.level);
                         return `
                           <div class="skill-item-card" data-id="${s.id}">
@@ -485,7 +499,8 @@ function renderAbout() {
                       }).join('')}
                     </div>
                   </div>
-                `).join('');
+                `;
+              }).join('');
             })()}
           </div>
         `}
@@ -1009,45 +1024,19 @@ function skillLevelMeta(level) {
   return SKILL_LEVELS[3];
 }
 
-/* ── Skill Catalog ── */
-const SKILL_CATALOG = {
-  language: [
-    'HTML','CSS','JavaScript','TypeScript','Python','Java','PHP','C','C++','C#',
-    'Ruby','Go','Rust','Swift','Kotlin','Dart','R','MATLAB','Scala','Bash','SQL',
-    'Perl','Lua','Elixir','Haskell','Assembly',
-  ],
-  framework: [
-    'React','Vue.js','Angular','Next.js','Nuxt.js','Svelte','SvelteKit','Bootstrap',
-    'Tailwind CSS','Laravel','Django','Flask','FastAPI','Spring Boot','Express.js',
-    'Node.js','Flutter','React Native','Ionic','Electron','Astro','Remix',
-    'Ruby on Rails','Symfony','CodeIgniter',
-  ],
-  tool: [
-    'Git','GitHub','GitLab','Bitbucket','Docker','Kubernetes','VS Code','Figma',
-    'Adobe XD','Postman','Insomnia','Linux','Webpack','Vite','npm','Yarn','Pnpm',
-    'Jira','Trello','Notion','Slack','Photoshop','Illustrator','Canva','Nginx',
-    'Apache','CI/CD','Jenkins','GitHub Actions',
-  ],
-  database: [
-    'MySQL','PostgreSQL','SQLite','MariaDB','MongoDB','Firebase','Supabase',
-    'Redis','Oracle','MS SQL Server','Elasticsearch','DynamoDB','Cassandra',
-    'CouchDB','PlanetScale','Neon',
-  ],
-  other: [
-    'REST API','GraphQL','WebSockets','gRPC','UI/UX Design','Agile / Scrum',
-    'Project Management','Technical Writing','Data Analysis','Machine Learning',
-    'Deep Learning','Computer Vision','NLP','DevOps','AWS','GCP','Azure',
-    'Cybersecurity','Networking','SEO','Content Management','Blockchain','IoT',
-  ],
-};
+/* ── Skill Modal & Taxonomy ── */
+const CATEGORY_META = SKILL_CATEGORIES;
 
-const CATEGORY_META = {
-  language:  { label: 'Languages',             emoji: '💻', color: '#3B82F6', bg: 'rgba(59, 130, 246, 0.12)' },
-  framework: { label: 'Frameworks & Libraries', emoji: '🧩', color: '#8B5CF6', bg: 'rgba(139, 92, 246, 0.12)' },
-  tool:      { label: 'Tools & Software',       emoji: '🔧', color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.12)' },
-  database:  { label: 'Databases',              emoji: '🗄️', color: '#06B6D4', bg: 'rgba(6, 182, 212, 0.12)' },
-  other:     { label: 'Other',                  emoji: '✨', color: '#EC4899', bg: 'rgba(236, 72, 153, 0.12)' },
-};
+function getCategoryMeta(cat) {
+  return CATEGORY_META[cat] || {
+    key: cat || 'other',
+    label: cat ? cat.charAt(0).toUpperCase() + cat.slice(1) : 'Other Skills',
+    shortLabel: cat || 'Other',
+    emoji: '✨',
+    color: '#84CC16',
+    bg: 'rgba(132, 204, 22, 0.12)',
+  };
+}
 
 /* ── Skill Modal ── */
 function openSkillModal(skill) {
@@ -1077,16 +1066,20 @@ function openSkillModal(skill) {
       </div>
       <div class="skm-layout">
         <nav class="skm-sidebar" id="skm-sidebar">
+          <button type="button" class="skm-cat-btn ${initCat === 'all' ? 'skm-cat-btn--active' : ''}" data-cat="all">
+            <span class="skm-cat-emoji">🌐</span>
+            <span class="skm-cat-label">All Skills</span>
+          </button>
           ${Object.entries(CATEGORY_META).map(([cat, m]) => `
             <button type="button" class="skm-cat-btn ${cat === initCat ? 'skm-cat-btn--active' : ''}" data-cat="${cat}">
               <span class="skm-cat-emoji">${m.emoji}</span>
-              <span class="skm-cat-label">${m.label}</span>
+              <span class="skm-cat-label">${m.shortLabel || m.label}</span>
             </button>`).join('')}
         </nav>
         <div class="skm-right">
           <div class="skm-search-wrap">
             <svg class="skm-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-            <input class="skm-search" id="skm-search" type="text" placeholder="Search skills…" autocomplete="off" spellcheck="false">
+            <input class="skm-search" id="skm-search" type="text" placeholder="Search skills, aliases (e.g. JS, Postgres, Excel)..." autocomplete="off" spellcheck="false">
             <button class="skm-search-clear" id="skm-search-clear" style="display:none;" aria-label="Clear">${icon('x', 12)}</button>
           </div>
           <div class="skm-chip-grid" id="skm-chip-grid"></div>
@@ -1229,7 +1222,8 @@ function openSkillModal(skill) {
     if (selectedName) {
       dot.classList.add('skm-preview-dot--active');
       name.textContent = selectedName;
-      cat.textContent  = `${CATEGORY_META[selectedCat]?.label ?? selectedCat}`;
+      const meta = getCategoryMeta(selectedCat);
+      cat.textContent  = `${meta.emoji} ${meta.label}`;
     } else {
       dot.classList.remove('skm-preview-dot--active');
       name.textContent = 'No skill selected';
@@ -1242,10 +1236,33 @@ function openSkillModal(skill) {
     const manual = overlay.querySelector('#skm-manual-wrap');
     const manInp = overlay.querySelector('#skm-manual-input-wrap');
     const q      = searchQ.toLowerCase();
-    const source = SKILL_CATALOG[selectedCat] || [];
-    const filtered = q ? source.filter(s => s.toLowerCase().includes(q)) : source;
 
-    if (filtered.length === 0 && !manualMode) {
+    let items = [];
+    if (q) {
+      const searchCat = selectedCat === 'all' ? null : selectedCat;
+      items = searchSkills(q, searchCat, 50);
+      if (items.length === 0 && searchCat) {
+        items = searchSkills(q, null, 50);
+      }
+    } else {
+      if (selectedCat === 'all') {
+        items = SKILL_TAXONOMY.slice(0, 60).map(s => ({
+          canonical: s.canonical,
+          slug: s.slug,
+          category: s.category,
+        }));
+      } else {
+        items = SKILL_TAXONOMY
+          .filter(s => s.category === selectedCat)
+          .map(s => ({
+            canonical: s.canonical,
+            slug: s.slug,
+            category: s.category,
+          }));
+      }
+    }
+
+    if (items.length === 0 && !manualMode) {
       grid.innerHTML = '';
       manual.style.display = 'flex';
       overlay.querySelector('#skm-manual-query').textContent = searchQ;
@@ -1254,15 +1271,25 @@ function openSkillModal(skill) {
     }
     if (!manualMode) manInp.style.display = 'none';
 
-    grid.innerHTML = filtered.map(s => `
-      <button type="button" class="skm-chip ${s === selectedName ? 'skm-chip--active' : ''}" data-skill="${s}">
-        <svg class="skm-chip-check" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-        ${s}
-      </button>`).join('');
+    grid.innerHTML = items.map(it => {
+      const isSelected = it.canonical.toLowerCase() === selectedName.toLowerCase();
+      const hasAlias = it.matchedAlias && it.matchedAlias.toLowerCase() !== it.canonical.toLowerCase();
+      return `
+        <button type="button" class="skm-chip ${isSelected ? 'skm-chip--active' : ''}" data-skill="${it.canonical}" data-cat="${it.category}">
+          <svg class="skm-chip-check" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          <span>${it.canonical}</span>
+          ${hasAlias ? `<span class="skm-chip-alias">(${it.matchedAlias})</span>` : ''}
+        </button>`;
+    }).join('');
 
     grid.querySelectorAll('.skm-chip').forEach(btn => {
       btn.addEventListener('click', () => {
         selectedName = btn.dataset.skill;
+        if (btn.dataset.cat && selectedCat !== 'all' && selectedCat !== btn.dataset.cat) {
+          selectedCat = btn.dataset.cat;
+          overlay.querySelectorAll('.skm-cat-btn').forEach(b =>
+            b.classList.toggle('skm-cat-btn--active', b.dataset.cat === selectedCat));
+        }
         manualMode   = false;
         renderChips();
         updatePreview();
@@ -1316,13 +1343,28 @@ function openSkillModal(skill) {
     inp.focus();
     inp.select();
   });
-  overlay.querySelector('#skm-manual-confirm').addEventListener('click', () => {
-    const val = overlay.querySelector('#skm-manual-input').value.trim();
-    if (!val) return;
-    selectedName = val;
+
+  const applyManualInput = () => {
+    const raw = overlay.querySelector('#skm-manual-input').value.trim();
+    if (!raw) return;
+    const norm = normalizeSkill(raw);
+    selectedName = norm.canonical;
+    if (norm.isStandard) {
+      selectedCat = norm.category;
+      overlay.querySelectorAll('.skm-cat-btn').forEach(b =>
+        b.classList.toggle('skm-cat-btn--active', b.dataset.cat === selectedCat));
+    }
     manualMode   = true;
     renderChips();
     updatePreview();
+  };
+
+  overlay.querySelector('#skm-manual-confirm').addEventListener('click', applyManualInput);
+  overlay.querySelector('#skm-manual-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      applyManualInput();
+    }
   });
 
   const SAVE_SVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>`;
@@ -1336,15 +1378,24 @@ function openSkillModal(skill) {
     saveBtn.disabled  = true;
     saveBtn.innerHTML = `${SPIN_SVG} Saving…`;
 
-    const data = { name: selectedName, level: selectedLevel, category: selectedCat };
+    const norm = normalizeSkill(selectedName);
+    const finalName = norm.canonical;
+    const finalCat = norm.isStandard ? norm.category : (selectedCat === 'all' ? 'other' : (selectedCat || 'other'));
+    const data = { name: finalName, level: selectedLevel, category: finalCat };
+
     try {
       if (skill) {
         await apiPut(`/jobseeker/skills/${skill.id}`, data);
         const idx = SKL.findIndex(s => s.id === skill.id);
-        SKL[idx] = { ...SKL[idx], ...data };
+        if (idx >= 0) SKL[idx] = { ...SKL[idx], ...data };
       } else {
         const res = await apiPost('/jobseeker/skills', data);
-        SKL.push({ ...data, id: res.id, endorsed_count: 0 });
+        const existingIdx = SKL.findIndex(s => s.name.toLowerCase() === finalName.toLowerCase());
+        if (existingIdx >= 0) {
+          SKL[existingIdx] = { ...SKL[existingIdx], ...data, id: res.id || SKL[existingIdx].id };
+        } else {
+          SKL.push({ ...data, id: res.id, endorsed_count: 0 });
+        }
       }
       close();
       renderAbout();

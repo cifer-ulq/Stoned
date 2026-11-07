@@ -813,11 +813,38 @@ class StudentController extends Controller
     public function storeSkill(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:100',
-            'level' => 'required|integer|min:0|max:100',
-            'category' => 'required|in:language,framework,tool,database,other',
+            'name'     => 'required|string|max:100',
+            'level'    => 'required|integer|min:0|max:100',
+            'category' => 'nullable|string|max:60',
         ]);
-        $skill = StudentSkill::create(array_merge($validated, ['user_id' => $request->user()->id]));
+
+        $norm = \App\Services\SkillNormalizer::normalize($validated['name']);
+        $canonicalName = $norm['canonical'];
+        $category = !empty($validated['category']) ? $validated['category'] : $norm['category'];
+
+        // Prevent duplicate canonical skills for the same student
+        $existing = StudentSkill::where('user_id', $request->user()->id)
+            ->where(function ($q) use ($canonicalName, $validated) {
+                $q->where('name', $canonicalName)
+                  ->orWhere('name', $validated['name']);
+            })
+            ->first();
+
+        if ($existing) {
+            $existing->update([
+                'name'     => $canonicalName,
+                'level'    => $validated['level'],
+                'category' => $category,
+            ]);
+            return response()->json(['message' => 'Skill updated', 'id' => $existing->id, 'data' => $existing], 200);
+        }
+
+        $skill = StudentSkill::create([
+            'user_id'  => $request->user()->id,
+            'name'     => $canonicalName,
+            'level'    => $validated['level'],
+            'category' => $category,
+        ]);
         return response()->json(['message' => 'Skill added', 'id' => $skill->id, 'data' => $skill], 201);
     }
 
@@ -825,11 +852,17 @@ class StudentController extends Controller
     {
         $skill = StudentSkill::where('user_id', $request->user()->id)->findOrFail($id);
         $validated = $request->validate([
-            'name' => 'required|string|max:100',
-            'level' => 'required|integer|min:0|max:100',
-            'category' => 'required|in:language,framework,tool,database,other',
+            'name'     => 'required|string|max:100',
+            'level'    => 'required|integer|min:0|max:100',
+            'category' => 'nullable|string|max:60',
         ]);
-        $skill->update($validated);
+
+        $norm = \App\Services\SkillNormalizer::normalize($validated['name']);
+        $skill->update([
+            'name'     => $norm['canonical'],
+            'level'    => $validated['level'],
+            'category' => !empty($validated['category']) ? $validated['category'] : $norm['category'],
+        ]);
         return response()->json(['message' => 'Skill updated']);
     }
 
@@ -2726,7 +2759,6 @@ class StudentController extends Controller
         $user       = $request->user();
         $userSkills = StudentSkill::where('user_id', $user->id)
             ->pluck('name')
-            ->map(fn($s) => strtolower(trim($s)))
             ->toArray();
 
         $jobs = \App\Models\JobListing::where('status', 'open')
@@ -2735,16 +2767,13 @@ class StudentController extends Controller
             ->orderByDesc('created_at')
             ->get()
             ->map(function ($job) use ($userSkills) {
-                $required    = $job->required_skills ?? [];
+                $required = $job->required_skills ?? [];
                 if (is_string($required)) {
                     $required = json_decode($required, true) ?? [];
                 }
-                $matched     = array_values(
-                    array_filter($required, fn($s) => in_array(strtolower(trim($s)), $userSkills))
-                );
-                $score       = count($required) > 0
-                    ? (int) round(count($matched) / count($required) * 100)
-                    : 50;
+                $matchResult = \App\Services\SkillNormalizer::match($userSkills, (array) $required);
+                $matched     = $matchResult['matched_canonical'];
+                $score       = $matchResult['match_score'];
                 $rec         = RecommendationService::classify($score);
                 $companyName = $job->company?->name ?? 'Company';
 
@@ -2942,15 +2971,14 @@ class StudentController extends Controller
 
         $userSkills = StudentSkill::where('user_id', $user->id)
             ->pluck('name')
-            ->map(fn($s) => strtolower(trim($s)))
             ->toArray();
 
         $required = $job->required_skills ?? [];
         if (is_string($required)) {
             $required = json_decode($required, true) ?? [];
         }
-        $matched  = array_filter($required, fn($s) => in_array(strtolower(trim($s)), $userSkills));
-        $score    = count($required) > 0 ? (int) round(count($matched) / count($required) * 100) : 50;
+        $matchResult = \App\Services\SkillNormalizer::match($userSkills, (array) $required);
+        $score       = $matchResult['match_score'];
 
         $validated = $request->validate([
             'cover_letter'        => 'nullable|string|max:2000',

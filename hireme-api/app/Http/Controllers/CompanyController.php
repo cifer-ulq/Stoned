@@ -170,6 +170,10 @@ class CompanyController extends Controller
             $validated['preferred_courses'] = CourseNormalizer::normalizeArray($validated['preferred_courses']);
         }
 
+        if (isset($validated['required_skills']) && is_array($validated['required_skills'])) {
+            $validated['required_skills'] = \App\Services\SkillNormalizer::normalizeArray($validated['required_skills']);
+        }
+
         $posting = OjtPosting::create([
             ...$validated,
             'company_name'    => $companyName,
@@ -201,6 +205,10 @@ class CompanyController extends Controller
 
         if (isset($data['preferred_courses']) && is_array($data['preferred_courses'])) {
             $data['preferred_courses'] = CourseNormalizer::normalizeArray($data['preferred_courses']);
+        }
+
+        if (isset($data['required_skills']) && is_array($data['required_skills'])) {
+            $data['required_skills'] = \App\Services\SkillNormalizer::normalizeArray($data['required_skills']);
         }
 
         if (isset($data['status']) && $data['status'] === 'open') {
@@ -2088,6 +2096,10 @@ class CompanyController extends Controller
             'expires_at'       => ['nullable', 'date'],
         ]);
 
+        if (isset($data['required_skills']) && is_array($data['required_skills'])) {
+            $data['required_skills'] = \App\Services\SkillNormalizer::normalizeArray($data['required_skills']);
+        }
+
         $job = JobListing::create(['company_user_id' => $request->user()->id] + $data);
 
         return response()->json(['success' => true, 'data' => $this->formatJob($job->loadCount('applications'))], 201);
@@ -2123,6 +2135,10 @@ class CompanyController extends Controller
                     'reason'  => 'moa_required',
                 ], 403);
             }
+        }
+
+        if (isset($data['required_skills']) && is_array($data['required_skills'])) {
+            $data['required_skills'] = \App\Services\SkillNormalizer::normalizeArray($data['required_skills']);
         }
 
         $job->update($data);
@@ -2185,11 +2201,9 @@ class CompanyController extends Controller
             $skills    = $skillsByUser->get($applicant?->id, collect())->pluck('name')->toArray();
             $required  = $app->jobListing?->required_skills ?? [];
 
-            $userSkillsLower = array_map(fn ($s) => strtolower(trim($s)), $skills);
-            $matched = array_values(array_filter($required, fn ($s) => in_array(strtolower(trim($s)), $userSkillsLower)));
-            $score   = (count($required) > 0 && count($matched) > 0)
-                ? (int) round(count($matched) / count($required) * 100)
-                : 0;
+            $matchResult = \App\Services\SkillNormalizer::match($skills, (array) $required);
+            $matched     = $matchResult['matched_canonical'];
+            $score       = $matchResult['match_score'];
 
             $parts    = explode(' ', trim($applicant?->name ?? 'Candidate'));
             $initials = strtoupper(substr($parts[0] ?? '', 0, 1) . substr(end($parts) ?? '', 0, 1));
@@ -2257,11 +2271,9 @@ class CompanyController extends Controller
             $skills  = $skillsByUser->get($student?->id, collect())->pluck('name')->toArray();
             $required = $posting?->required_skills ?? [];
 
-            $userSkillsLower = array_map(fn ($s) => strtolower(trim($s)), $skills);
-            $matched = array_values(array_filter($required, fn ($s) => in_array(strtolower(trim($s)), $userSkillsLower)));
-            $score   = (count($required) > 0 && count($matched) > 0)
-                ? (int) round(count($matched) / count($required) * 100)
-                : 0;
+            $matchResult = \App\Services\SkillNormalizer::match($skills, (array) $required);
+            $matched     = $matchResult['matched_canonical'];
+            $score       = $matchResult['match_score'];
 
             $parts    = explode(' ', trim($student?->name ?? 'Student'));
             $initials = strtoupper(substr($parts[0] ?? '', 0, 1) . substr(end($parts) ?? '', 0, 1));

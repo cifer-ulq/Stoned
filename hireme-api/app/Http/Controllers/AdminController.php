@@ -1541,18 +1541,21 @@ class AdminController extends Controller
     ): array {
         $reqCount = count($required);
 
-        // ── 1. Skill Match (0-100) ──────────────────────────────────────────
-        $matchedSkills = array_intersect($studentSkills, $required);
-        $matchedCount  = count($matchedSkills);
-        $skillMatchScore = $reqCount > 0
-            ? ($matchedCount / $reqCount) * 100
-            : 0;
+        // ── 1. Skill Match (0-100) via SkillNormalizer ───────────────────────
+        $matchResult     = \App\Services\SkillNormalizer::match($studentSkills, $required);
+        $matchedSkills   = $matchResult['matched_canonical'];
+        $matchedCount    = $matchResult['matched_count'];
+        $skillMatchScore = $matchResult['match_score'];
 
         // ── 2. Skill Proficiency (0-100) ────────────────────────────────────
         // Average level of matched skills; default 50 if no level data.
         if ($matchedCount > 0) {
+            $slugLevelMap = [];
+            foreach ($skillLevels as $name => $lvl) {
+                $slugLevelMap[\App\Services\SkillNormalizer::slug($name)] = (float) $lvl;
+            }
             $levels = array_map(
-                fn($sk) => $skillLevels[$sk] ?? 50,
+                fn($sk) => $slugLevelMap[\App\Services\SkillNormalizer::slug($sk)] ?? 50,
                 $matchedSkills
             );
             $proficiencyScore = array_sum($levels) / count($levels);
@@ -1563,12 +1566,10 @@ class AdminController extends Controller
         // ── 3. Experience Relevance (0-100) ─────────────────────────────────
         $expRaw = 0;
         $itExpCount = 0;
+        $reqSlugs = \App\Services\SkillNormalizer::toSlugs($required);
         foreach ($experiences as $exp) {
-            $expSkills = array_map(
-                fn($s) => strtolower(trim((string) $s)),
-                $this->toSafeArray($exp->skills)
-            );
-            $hasSkillOverlap = !empty(array_intersect($expSkills, $required));
+            $expSlugs = \App\Services\SkillNormalizer::toSlugs($this->toSafeArray($exp->skills));
+            $hasSkillOverlap = !empty(array_intersect($expSlugs, $reqSlugs));
             $isItRelated     = (bool) $exp->is_it_related;
 
             if ($isItRelated) {
@@ -1600,11 +1601,8 @@ class AdminController extends Controller
         // ── 5. Portfolio Projects (0-100) ────────────────────────────────────
         $projRaw = 0;
         foreach ($projects as $proj) {
-            $stack = array_map(
-                fn($t) => strtolower(trim((string) $t)),
-                $this->toSafeArray($proj->tech_stack)
-            );
-            if (!empty(array_intersect($stack, $required))) {
+            $stackSlugs = \App\Services\SkillNormalizer::toSlugs($this->toSafeArray($proj->tech_stack));
+            if (!empty(array_intersect($stackSlugs, $reqSlugs))) {
                 $projRaw += (bool) $proj->is_featured ? 70 : 50;
             }
         }
@@ -1670,39 +1668,36 @@ class AdminController extends Controller
             }
         }
 
-        // ── 2. Technical Skills Match (0-100) ────────────────────────────────
-        $reqCount = count($requiredSkills);
-        $matchedSkills = !empty($requiredSkills) ? array_intersect($studentSkills, $requiredSkills) : [];
-        $matchedCount  = count($matchedSkills);
-
-        if ($reqCount > 0) {
-            $skillMatchScore = ($matchedCount / $reqCount) * 100;
-        } else {
-            $skillMatchScore = !empty($studentSkills) ? 80 : 50;
-        }
+        // ── 2. Technical Skills Match (0-100) via SkillNormalizer ────────────
+        $matchResult     = \App\Services\SkillNormalizer::match($studentSkills, $requiredSkills);
+        $matchedSkills   = $matchResult['matched_canonical'];
+        $matchedCount    = $matchResult['matched_count'];
+        $skillMatchScore = $matchResult['match_score'];
 
         // ── 3. Skill Proficiency (0-100) ────────────────────────────────────
         if ($matchedCount > 0) {
+            $slugLevelMap = [];
+            foreach ($skillLevels as $name => $lvl) {
+                $slugLevelMap[\App\Services\SkillNormalizer::slug($name)] = (float) $lvl;
+            }
             $levels = array_map(
-                fn($sk) => $skillLevels[$sk] ?? 50,
+                fn($sk) => $slugLevelMap[\App\Services\SkillNormalizer::slug($sk)] ?? 50,
                 $matchedSkills
             );
             $proficiencyScore = array_sum($levels) / count($levels);
         } else {
-            $proficiencyScore = $reqCount === 0 && !empty($studentSkills) ? 60 : 0;
+            $proficiencyScore = empty($requiredSkills) && !empty($studentSkills) ? 60 : 0;
         }
 
         // ── 4. Academic & Portfolio Projects (0-100) ────────────────────────
         $projRaw = 0;
+        $reqSlugs = \App\Services\SkillNormalizer::toSlugs($requiredSkills);
         foreach ($projects as $proj) {
-            $stack = array_map(
-                fn($t) => strtolower(trim((string) $t)),
-                $this->toSafeArray($proj->tech_stack)
-            );
-            $overlap = array_intersect($stack, $requiredSkills);
+            $stackSlugs = \App\Services\SkillNormalizer::toSlugs($this->toSafeArray($proj->tech_stack));
+            $overlap    = array_intersect($stackSlugs, $reqSlugs);
             if (!empty($overlap)) {
                 $projRaw += (bool) $proj->is_featured ? 50 : 35;
-            } elseif (!empty($stack)) {
+            } elseif (!empty($stackSlugs)) {
                 $projRaw += 15;
             }
         }
@@ -1804,16 +1799,17 @@ class AdminController extends Controller
 
             $jobDemandCount = [];
             foreach ($jobs as $job) {
-                foreach ($this->toSafeArray($job->required_skills) as $skill) {
-                    $k = strtolower(trim((string) $skill));
-                    if ($k !== '') $jobDemandCount[$k] = ($jobDemandCount[$k] ?? 0) + 1;
+                $canonicals = \App\Services\SkillNormalizer::normalizeArray($this->toSafeArray($job->required_skills));
+                foreach ($canonicals as $skill) {
+                    $jobDemandCount[$skill] = ($jobDemandCount[$skill] ?? 0) + 1;
                 }
             }
             arsort($jobDemandCount);
 
             $candidateSkillCount = [];
             foreach ($skillsMap as $skills) {
-                foreach ($skills as $sk) {
+                $canonicals = \App\Services\SkillNormalizer::normalizeArray($skills);
+                foreach ($canonicals as $sk) {
                     $candidateSkillCount[$sk] = ($candidateSkillCount[$sk] ?? 0) + 1;
                 }
             }
