@@ -6328,3 +6328,41 @@
 }
 
 
+
+
+.jm-card__local-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: var(--color-primary-bg, rgba(0, 89, 48, 0.08));
+  color: var(--color-primary, #005930);
+  border: 1px solid rgba(0, 89, 48, 0.22);
+}
+
+.jm-meta-item--local {
+  color: var(--color-primary, #005930) !important;
+  font-weight: var(--weight-semibold, 600) !important;
+}
+
+.jf-chip-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  font-weight: var(--weight-bold, 700);
+  padding: 1px 6px;
+  border-radius: var(--radius-full, 9999px);
+  background: var(--color-primary-bg, rgba(0, 89, 48, 0.08));
+  color: var(--color-primary, #005930);
+  margin-left: 4px;
+  transition: all var(--duration-fast, 150ms);
+}
+
+.jf-quick-chip--active .jf-chip-count {
+  background: rgba(255, 255, 255, 0.28);
+  color: #ffffff;
+}

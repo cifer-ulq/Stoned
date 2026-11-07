@@ -245,13 +245,6 @@ function externalCard(job, idx) {
     : escapeHtml(job.company_initial || (job.company || 'C').charAt(0));
 
   const isLocal = Boolean(job.is_local || job.location_scope === 'local' || (job.location && /bacolod|negros|talisay|silay/i.test(job.location)));
-  const isRemote = Boolean(job.location_scope === 'remote' || job.remote || (job.location && /remote/i.test(job.location)));
-
-  const locBadge = isLocal
-    ? `<span class="jm-card__loc-pill" style="display:inline-flex;align-items:center;gap:3px;font-size:0.67rem;font-weight:700;padding:2px 8px;border-radius:12px;background:#dcfce7;color:#15803d;border:1px solid #bbf7d0;" title="Local City Opportunity">${icon('mapPin', 10)} Bacolod / Local</span>`
-    : (isRemote
-        ? `<span class="jm-card__loc-pill" style="display:inline-flex;align-items:center;gap:3px;font-size:0.67rem;font-weight:700;padding:2px 8px;border-radius:12px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;" title="Work from Anywhere / Remote">${icon('globe', 10)} Remote</span>`
-        : `<span class="jm-card__loc-pill" style="display:inline-flex;align-items:center;gap:3px;font-size:0.67rem;font-weight:700;padding:2px 8px;border-radius:12px;background:#f1f5f9;color:#475569;border:1px solid #cbd5e1;" title="Philippine Nationwide">${icon('mapPin', 10)} PH Nationwide</span>`);
 
   return `
     <article class="jm-card jm-card--external" style="--enter-delay:${Math.min(idx * 25, 350)}ms;" data-job-id="${job.id}">
@@ -268,19 +261,22 @@ function externalCard(job, idx) {
               ${icon('briefcase', 13)}
               <span>${escapeHtml(job.company)}</span>
               <span class="jm-card__ext-pill">${icon('externalLink', 10)} External</span>
+              ${isLocal ? `<span class="jm-card__local-pill">${icon('mapPin', 10)} Bacolod Hub</span>` : ''}
             </p>
           </div>
         </div>
-        <div class="jm-card__status-col" style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;">
+        <div class="jm-card__status-col">
           <span class="jm-card__hot-badge" title="Highly Recommended">${icon('award', 11)} Highly Recommended</span>
-          ${locBadge}
         </div>
       </div>
 
 
       <div class="jm-card__body">
         <div class="jm-card__meta">
-          <span class="jm-meta-item">${icon('mapPin', 12)} ${escapeHtml(job.location || 'Remote')}${job.remote ? ' · Remote' : ''}</span>
+          <span class="jm-meta-item ${isLocal ? 'jm-meta-item--local' : ''}">
+            ${icon('mapPin', 12)}
+            <span>${escapeHtml(job.location || 'Remote')}${job.remote ? ' · Remote' : ''}</span>
+          </span>
           ${job.type ? `<span class="jm-meta-item">${icon('clock', 12)} ${escapeHtml(job.type)}</span>` : ''}
           ${job.salary ? `<span class="jm-meta-item jm-meta-item--salary">${icon('dollarSign', 12)} ${escapeHtml(job.salary)}</span>` : ''}
         </div>
@@ -724,29 +720,10 @@ export async function renderJobs(container) {
         </div>
       </section>
 
-      <!-- External Jobs Location Scope Bar -->
-      <div class="animate-fade-in-up" id="external-subtabs" style="display:none; align-items:center; gap:8px; padding:10px 14px; background:var(--bg-surface, #ffffff); border:1px solid var(--border-default, #e2e8f0); border-radius:12px; margin-bottom:14px; flex-wrap:wrap;">
-        <span style="font-size:0.78rem; font-weight:700; color:var(--text-secondary, #64748b); display:flex; align-items:center; gap:4px;">
-          ${icon('mapPin', 13)} Location Scope:
-        </span>
-        <button class="jf-pill jf-pill--active jm-scope-pill" data-scope="all">
-          All Opportunities (<span id="ext-scope-all-count">0</span>)
-        </button>
-        <button class="jf-pill jm-scope-pill" data-scope="local">
-          📍 Bacolod / Local (<span id="ext-scope-local-count">0</span>)
-        </button>
-        <button class="jf-pill jm-scope-pill" data-scope="nationwide">
-          🇵🇭 Nationwide PH (<span id="ext-scope-ph-count">0</span>)
-        </button>
-        <button class="jf-pill jm-scope-pill" data-scope="remote">
-          🌐 Remote (<span id="ext-scope-remote-count">0</span>)
-        </button>
-      </div>
-
       <!-- Quick Filter Chips Row -->
       <div class="jf-quick-bar animate-fade-in-up" id="jf-quick-bar" style="animation-delay:330ms;">
-        <span class="jf-quick-bar__title">${icon('sparkles', 13)} Quick Filters:</span>
-        <div class="jf-quick-bar__chips">
+        <span class="jf-quick-bar__title" id="jf-quick-title">${icon('sparkles', 13)} Quick Filters:</span>
+        <div class="jf-quick-bar__chips" id="jf-quick-chips">
           <button class="jf-quick-chip" data-quick="top-match">
             <span class="jf-quick-chip__icon">🌟</span> 71%+ Match
           </button>
@@ -1015,19 +992,56 @@ export async function renderJobs(container) {
   let externalVisibleCount = 16;
   let empStatus     = { hired: false, active_ojt: false, pending_ojt: false };
 
-  function updateExternalScopeCounts() {
-    const list = Array.isArray(externalJobs) ? externalJobs : [];
-    const allEl = container.querySelector('#ext-scope-all-count');
-    if (allEl) allEl.textContent = list.length;
-    const localC = list.filter(j => j.is_local || j.location_scope === 'local' || (j.location && /bacolod|negros|talisay|silay/i.test(j.location))).length;
-    const locEl = container.querySelector('#ext-scope-local-count');
-    if (locEl) locEl.textContent = localC;
-    const phC = list.filter(j => j.location_scope === 'nationwide').length;
-    const phEl = container.querySelector('#ext-scope-ph-count');
-    if (phEl) phEl.textContent = phC;
-    const remC = list.filter(j => j.location_scope === 'remote' || j.remote || (j.location && /remote/i.test(j.location))).length;
-    const remEl = container.querySelector('#ext-scope-remote-count');
-    if (remEl) remEl.textContent = remC;
+  function renderQuickBar() {
+    const titleEl = container.querySelector('#jf-quick-title');
+    const chipsEl = container.querySelector('#jf-quick-chips');
+    if (!titleEl || !chipsEl) return;
+
+    if (currentFilter === 'external') {
+      const list = Array.isArray(externalJobs) ? externalJobs : [];
+      const localC = list.filter(j => j.is_local || j.location_scope === 'local' || (j.location && /bacolod|negros|talisay|silay/i.test(j.location))).length;
+      const phC = list.filter(j => j.location_scope === 'nationwide').length;
+      const remC = list.filter(j => j.location_scope === 'remote' || j.remote || (j.location && /remote/i.test(j.location))).length;
+
+      titleEl.innerHTML = `${icon('mapPin', 13)} Location Scope:`;
+      chipsEl.innerHTML = `
+        <button class="jf-quick-chip ${externalScope === 'all' ? 'jf-quick-chip--active' : ''} jm-scope-chip" data-scope="all">
+          <span class="jf-quick-chip__icon">🌐</span> All Roles
+          <span class="jf-chip-count">${list.length}</span>
+        </button>
+        <button class="jf-quick-chip ${externalScope === 'local' ? 'jf-quick-chip--active' : ''} jm-scope-chip" data-scope="local">
+          <span class="jf-quick-chip__icon">📍</span> Bacolod &amp; Negros Local
+          <span class="jf-chip-count">${localC}</span>
+        </button>
+        <button class="jf-quick-chip ${externalScope === 'nationwide' ? 'jf-quick-chip--active' : ''} jm-scope-chip" data-scope="nationwide">
+          <span class="jf-quick-chip__icon">🇵🇭</span> Nationwide PH
+          <span class="jf-chip-count">${phC}</span>
+        </button>
+        <button class="jf-quick-chip ${externalScope === 'remote' ? 'jf-quick-chip--active' : ''} jm-scope-chip" data-scope="remote">
+          <span class="jf-quick-chip__icon">💻</span> Global Remote
+          <span class="jf-chip-count">${remC}</span>
+        </button>
+      `;
+    } else {
+      titleEl.innerHTML = `${icon('sparkles', 13)} Quick Filters:`;
+      chipsEl.innerHTML = `
+        <button class="jf-quick-chip ${filters.minScore >= 71 ? 'jf-quick-chip--active' : ''}" data-quick="top-match">
+          <span class="jf-quick-chip__icon">🌟</span> 71%+ Match
+        </button>
+        <button class="jf-quick-chip ${filters.types.has('Full-time') ? 'jf-quick-chip--active' : ''}" data-quick="full-time">
+          <span class="jf-quick-chip__icon">🏢</span> Full-Time
+        </button>
+        <button class="jf-quick-chip ${filters.types.has('Remote') ? 'jf-quick-chip--active' : ''}" data-quick="remote">
+          <span class="jf-quick-chip__icon">🌐</span> Remote Only
+        </button>
+        <button class="jf-quick-chip ${filters.minSalary >= 30000 ? 'jf-quick-chip--active' : ''}" data-quick="salary-30k">
+          <span class="jf-quick-chip__icon">💰</span> ₱30k+
+        </button>
+        <button class="jf-quick-chip ${filters.datePosted === 'week' ? 'jf-quick-chip--active' : ''}" data-quick="recent-week">
+          <span class="jf-quick-chip__icon">⏱️</span> Past 7 Days
+        </button>
+      `;
+    }
   }
 
   /* ── Filter state ── */
@@ -1051,7 +1065,7 @@ export async function renderJobs(container) {
       lastExternalSearchQuery = '';
       const ec = container.querySelector('#external-count');
       if (ec) ec.textContent = externalJobs.length;
-      updateExternalScopeCounts();
+      renderQuickBar();
       renderCards(false);
       return;
     }
@@ -1081,7 +1095,7 @@ export async function renderJobs(container) {
         }
         const ec = container.querySelector('#external-count');
         if (ec) ec.textContent = externalJobs.length;
-        updateExternalScopeCounts();
+        renderQuickBar();
       } else {
         externalJobs = [];
         const msg = res?.message || 'External job listings are temporarily unavailable.';
@@ -1398,12 +1412,13 @@ export async function renderJobs(container) {
 
       if (jobs.length > externalVisibleCount) {
         html += `
-          <div class="jm-load-more-wrap" style="grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 28px 16px 20px; gap: 8px;">
-            <button class="btn btn--primary" id="jm-load-more-btn" style="height: 42px; padding: 0 24px; font-weight: 700; border-radius: 10px; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 14px rgba(0, 89, 48, 0.22); cursor: pointer;">
-              ${icon('chevronDown', 15)} Load More Opportunities (${visible.length} of ${jobs.length})
+          <div class="jm-load-more-wrap" style="grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px 16px 20px; gap: 8px;">
+            <button class="btn btn--secondary" id="jm-load-more-btn" style="height: 40px; padding: 0 24px; font-weight: 600; border-radius: var(--radius-full); display: inline-flex; align-items: center; gap: 8px; font-size: 0.85rem; border: 1.5px solid var(--border-default); cursor: pointer; transition: all 0.2s ease;">
+              ${icon('chevronDown', 15)} Show More Opportunities
+              <span class="jf-chip-count" style="margin-left: 2px;">${visible.length} of ${jobs.length}</span>
             </button>
-            <span style="font-size: 0.78rem; color: var(--text-secondary); font-weight: 500;">
-              Showing top ${visible.length} of ${jobs.length} external positions
+            <span style="font-size: 0.78rem; color: var(--text-tertiary); font-weight: 500;">
+              Showing top ${visible.length} of ${jobs.length} verified listings
             </span>
           </div>`;
       }
@@ -1927,6 +1942,17 @@ export async function renderJobs(container) {
   container.querySelector('#jf-quick-bar')?.addEventListener('click', (e) => {
     const chip = e.target.closest('.jf-quick-chip');
     if (!chip) return;
+
+    if (chip.dataset.scope) {
+      const scope = chip.dataset.scope;
+      if (scope === externalScope) return;
+      externalScope = scope;
+      externalVisibleCount = 16;
+      renderQuickBar();
+      renderCards(false);
+      return;
+    }
+
     const q = chip.dataset.quick;
 
     if (q === 'top-match') {
@@ -2151,34 +2177,19 @@ export async function renderJobs(container) {
     // Hide company and department filters on external tab if needed
     if (companyGroup) companyGroup.style.display = filter === 'external' ? 'none' : '';
 
-    const extSubtabs = container.querySelector('#external-subtabs');
-    if (extSubtabs) extSubtabs.style.display = filter === 'external' ? 'flex' : 'none';
-
     filterBar.querySelectorAll('.jm-tabs__btn').forEach(b => b.classList.remove('jm-tabs__btn--active'));
     btn.classList.add('jm-tabs__btn--active');
 
+    externalVisibleCount = 16;
+    renderQuickBar();
+
     if (filter === 'external') {
-      externalVisibleCount = 16;
-      updateExternalScopeCounts();
       if (externalJobs === null || (searchQuery && lastExternalSearchQuery !== searchQuery)) {
         await fetchExternalJobs(searchQuery);
       }
     }
     renderCards();
     updateFilterBadge();
-  });
-
-  /* Scope subtabs listener */
-  container.querySelector('#external-subtabs')?.addEventListener('click', (e) => {
-    const pill = e.target.closest('.jm-scope-pill');
-    if (!pill) return;
-    const scope = pill.dataset.scope;
-    if (scope === externalScope) return;
-    externalScope = scope;
-    container.querySelectorAll('.jm-scope-pill').forEach(p => p.classList.remove('jf-pill--active'));
-    pill.classList.add('jf-pill--active');
-    externalVisibleCount = 16;
-    renderCards(false);
   });
 
   /* Sort */
