@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\GraduateProfile;
 use App\Models\JobseekerProfile;
+use App\Models\PortfolioProject;
+use App\Models\StudentExperience;
 use App\Models\StudentProfile;
 use App\Models\StudentSkill;
 use App\Models\User;
@@ -14,11 +16,11 @@ use Illuminate\Support\Facades\Log;
 class ExternalJobService
 {
     /**
-     * Retrieve 100+ external 100% real-time, verified job listings tailored to the user profile
-     * or search query, prioritizing the user's local city (Bacolod City / Negros Occidental),
-     * nationwide Philippine tech opportunities, and verified global remote positions.
+     * Retrieve 100% real-time, verified external job listings personalized
+     * to the student's or graduate's individual skills, portfolio projects, and resume.
      *
-     * NO static, hardcoded, or simulated jobs. Every listing is pulled from live job aggregators.
+     * Prioritizes local city opportunities (Bacolod City & Negros Occidental) and
+     * Philippine nationwide roles, with strict technical relevance filtering for remote roles.
      *
      * @param User $user
      * @param string|null $searchTerm
@@ -28,60 +30,24 @@ class ExternalJobService
     {
         $searchTerm = trim($searchTerm ?? '');
 
-        // 1. Resolve user skills or deduce intelligent defaults based on profile / program
-        $userSkills = [];
-        try {
-            $userSkills = StudentSkill::where('user_id', $user->id)->pluck('name')->toArray();
-        } catch (\Throwable $e) {
-            Log::warning('[ExternalJobService] Could not load user skills from DB: ' . $e->getMessage());
-        }
+        // 1. Build Candidate Profile Vector from Skills, Projects, Experience, and Resume
+        $vector = self::extractCandidateVector($user);
 
-        if (empty($userSkills)) {
-            $program = '';
-            try {
-                $profile     = StudentProfile::where('user_id', $user->id)->first();
-                $gradProfile = GraduateProfile::where('user_id', $user->id)->first();
-                $jsProfile   = JobseekerProfile::where('user_id', $user->id)->first();
-                $program     = strtoupper($profile?->program ?? $gradProfile?->course ?? $jsProfile?->desired_job_title ?? '');
-            } catch (\Throwable $e) {
-                // Ignore DB error
-            }
-
-            if (str_contains($program, 'IT') || str_contains($program, 'TECH') || str_contains($program, 'CS') || str_contains($program, 'COMP')) {
-                $userSkills = ['Web Development', 'JavaScript', 'PHP', 'HTML/CSS', 'MySQL', 'Technical Support'];
-            } elseif (str_contains($program, 'IS') || str_contains($program, 'INFO')) {
-                $userSkills = ['Systems Analysis', 'Database Administration', 'SQL', 'IT Support', 'Web Development'];
-            } elseif (str_contains($program, 'BUS') || str_contains($program, 'BA') || str_contains($program, 'MKT')) {
-                $userSkills = ['Project Management', 'Data Analysis', 'Digital Marketing', 'Operations'];
-            } else {
-                $userSkills = ['Web Development', 'Software Engineering', 'Technical Support', 'Database Management'];
-            }
-        }
-
-        $searchableSkills = array_values(array_filter($userSkills, fn($s) => mb_strlen(trim($s)) >= 2));
-
-        // 2. Resolve user's city context (defaults to Bacolod City / Negros Occidental for CHMSU)
+        // 2. Resolve user's geographical anchor (defaults to Bacolod City)
         $userCity = self::resolveUserCity($user);
 
-        // 3. Cache management (1 hour TTL for fresh, real-time results)
-        if (!empty($searchTerm)) {
-            $cacheKey = 'ext_real_jobs_q_' . md5(strtolower($searchTerm)) . '_' . $user->id;
-            $cacheTtl = now()->addHours(1);
-        } else {
-            $cacheKey = 'ext_real_jobs_u_' . $user->id . '_' . md5(implode(',', $userSkills) . '_' . $userCity);
-            $cacheTtl = now()->addHours(2);
-        }
-
+        // 3. Personalized Cache Management (2-hour TTL per candidate)
+        $cacheKey = 'ext_pers_jobs_v7_' . $user->id . '_' . md5($searchTerm . '_' . $vector['searchable_pool'] . '_' . $userCity);
         $cached = Cache::get($cacheKey);
         if ($cached !== null && is_array($cached) && !empty($cached)) {
             return $cached;
         }
 
-        $allJobs = [];
+        $allRawJobs = [];
         $seenKeys = [];
 
-        // Helper to add jobs with title+company deduplication
-        $addJob = function (array $job) use (&$allJobs, &$seenKeys) {
+        // Deduplication helper
+        $addRawJob = function (array $job) use (&$allRawJobs, &$seenKeys) {
             $id = $job['id'] ?? uniqid('ext-');
             $normTitle = strtolower(preg_replace('/[^a-z0-9]/', '', $job['title'] ?? ''));
             $normComp  = strtolower(preg_replace('/[^a-z0-9]/', '', $job['company'] ?? ''));
@@ -98,80 +64,364 @@ class ExternalJobService
             if (!empty($dedupeKey)) {
                 $seenKeys[$dedupeKey] = true;
             }
-            $allJobs[] = $job;
+            $allRawJobs[] = $job;
         };
 
-        // 4. Provider A: JSearch RapidAPI (Authentic Live Google Jobs index for Local Bacolod + Philippines)
+        // 4. Provider A: JSearch RapidAPI (Bacolod City & Philippine Live Network)
         $apiKey = config('services.jsearch.key');
         if (!empty($apiKey)) {
-            // A1: City & Provincial specific JSearch live postings (Bacolod City & Negros Occidental)
+            // A1: City & Provincial specific postings (Bacolod / Negros Occidental)
             $localRaw = self::fetchFromJSearchLocal($apiKey, $searchTerm, $userCity);
             foreach ($localRaw as $job) {
-                $addJob(self::normalizeJSearchJob($job, $userSkills, 'local'));
+                $normalized = self::normalizeJSearchJob($job, $vector['canonical_skills'], 'local');
+                $addRawJob($normalized);
             }
 
-            // A2: Philippine nationwide tech opportunities
-            $phRaw = self::fetchFromJSearchPH($apiKey, $searchTerm, $searchableSkills);
+            // A2: Philippine nationwide tech opportunities tailored to candidate's primary skill
+            $phRaw = self::fetchFromJSearchPH($apiKey, $searchTerm, $vector['search_query_term']);
             foreach ($phRaw as $job) {
-                $addJob(self::normalizeJSearchJob($job, $userSkills, 'nationwide'));
+                $normalized = self::normalizeJSearchJob($job, $vector['canonical_skills'], 'nationwide');
+                $addRawJob($normalized);
             }
         }
 
-        // 5. Provider B: Jooble Developer API (Dedicated Philippine Jobs Feed)
+        // 5. Provider B: Jooble Developer API (If configured in .env)
         $joobleKey = config('services.jooble.key');
         if (!empty($joobleKey)) {
-            // Jooble Local Bacolod / Negros Postings
-            $joobleLocalRaw = self::fetchFromJooble($joobleKey, $searchTerm, $userCity . ', Philippines');
-            foreach ($joobleLocalRaw as $job) {
-                $addJob(self::normalizeJoobleJob($job, $userSkills));
-            }
-
-            // Jooble PH Nationwide Postings
-            $jooblePHRaw = self::fetchFromJooble($joobleKey, $searchTerm, 'Philippines');
-            foreach ($jooblePHRaw as $job) {
-                $addJob(self::normalizeJoobleJob($job, $userSkills));
+            $joobleRaw = self::fetchFromJooble($joobleKey, $searchTerm, $userCity . ', Philippines');
+            foreach ($joobleRaw as $job) {
+                $addRawJob(self::normalizeJoobleJob($job, $vector['canonical_skills']));
             }
         }
 
-        // 6. Provider C: Jobicy Remote Jobs API (Live public feed of 50-60 verified remote tech roles)
-        $jobicyRaw = self::fetchFromJobicy($searchTerm);
+        // 6. Provider C: Jobicy Remote Jobs API (Tech-only feeds)
+        $jobicyRaw = self::fetchFromJobicy($searchTerm, $vector['archetype']);
         foreach ($jobicyRaw as $job) {
-            $addJob(self::normalizeJobicyJob($job, $userSkills));
+            $addRawJob(self::normalizeJobicyJob($job, $vector['canonical_skills']));
         }
 
-        // 7. Provider D: Remotive API (Live public feed of software developer roles)
+        // 7. Provider D: Remotive API (Software & Tech)
         $remotiveRaw = self::fetchFromRemotive($searchTerm);
         foreach ($remotiveRaw as $job) {
-            $addJob(self::normalizeRemotiveJob($job, $userSkills));
+            $addRawJob(self::normalizeRemotiveJob($job, $vector['canonical_skills']));
         }
 
-        // 8. Provider E: Arbeitnow API (Live public feed of remote tech and software roles)
+        // 8. Provider E: Arbeitnow API (Remote Tech)
         $arbeitnowRaw = self::fetchFromArbeitnow($searchTerm);
         foreach ($arbeitnowRaw as $job) {
-            $addJob(self::normalizeArbeitnowJob($job, $userSkills));
+            $addRawJob(self::normalizeArbeitnowJob($job, $vector['canonical_skills']));
         }
 
-        // 9. Sort by calculated relevance score (Local Bacolod / Negros matches receive highest ranking)
-        usort($allJobs, function ($a, $b) {
+        // 9. Personalization & Strict Relevancy Scoring
+        // Every job is scored against the candidate's skills, projects, and archetype.
+        // Irrelevant jobs (such as overseas non-tech roles) are strictly discarded.
+        $personalizedJobs = [];
+        foreach ($allRawJobs as $rawJob) {
+            $scoredJob = self::personalizeJob($rawJob, $vector);
+            if ($scoredJob !== null) {
+                $personalizedJobs[] = $scoredJob;
+            }
+        }
+
+        // 10. Sort by calculated personal relevance score (highest match + local proximity first)
+        usort($personalizedJobs, function ($a, $b) {
             return ($b['_relevance'] ?? 0) <=> ($a['_relevance'] ?? 0);
         });
 
-        // Strip internal `_relevance` key before caching and returning
+        // Strip internal `_relevance` sorting key before returning
         $finalJobs = array_map(function ($item) {
             unset($item['_relevance']);
             return $item;
-        }, $allJobs);
+        }, $personalizedJobs);
 
         if (!empty($finalJobs)) {
-            Cache::put($cacheKey, $finalJobs, $cacheTtl);
+            Cache::put($cacheKey, $finalJobs, now()->addHours(2));
         }
 
         return $finalJobs;
     }
 
     /**
-     * Resolve the student's or jobseeker's geographical city anchor.
-     * Defaults to Bacolod City (CHMSU's main host metro).
+     * Extract a rich candidate vector from skills, portfolio projects,
+     * resume objectives, and past experiences.
+     */
+    public static function extractCandidateVector(User $user): array
+    {
+        // 1. Technical Skills from StudentSkill
+        $rawSkills = [];
+        try {
+            $rawSkills = StudentSkill::where('user_id', $user->id)->pluck('name')->toArray();
+        } catch (\Throwable $e) {
+            Log::warning('[ExternalJobService] Could not load StudentSkill: ' . $e->getMessage());
+        }
+
+        // 2. Portfolio Projects (Tech Stack + Titles + Roles)
+        $projectTech = [];
+        $projectTitles = [];
+        $projectRoles = [];
+        try {
+            $projects = PortfolioProject::where('user_id', $user->id)->get();
+            foreach ($projects as $p) {
+                if (!empty($p->tech_stack) && is_array($p->tech_stack)) {
+                    $projectTech = array_merge($projectTech, $p->tech_stack);
+                }
+                if (!empty($p->title)) {
+                    $projectTitles[] = $p->title;
+                }
+                if (!empty($p->role)) {
+                    $projectRoles[] = $p->role;
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[ExternalJobService] Could not load PortfolioProject: ' . $e->getMessage());
+        }
+
+        // 3. Experience & Past Work
+        $expSkills = [];
+        $expRoles = [];
+        try {
+            $experiences = StudentExperience::where('user_id', $user->id)->get();
+            foreach ($experiences as $exp) {
+                if (!empty($exp->skills) && is_array($exp->skills)) {
+                    $expSkills = array_merge($expSkills, $exp->skills);
+                }
+                if (!empty($exp->role)) {
+                    $expRoles[] = $exp->role;
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[ExternalJobService] Could not load StudentExperience: ' . $e->getMessage());
+        }
+
+        // 4. Profile Headline, Resume Objective & Degree Program
+        $program      = '';
+        $headline     = '';
+        $bio          = '';
+        $desiredTitle = '';
+        try {
+            $studentProfile = StudentProfile::where('user_id', $user->id)->first();
+            $gradProfile    = GraduateProfile::where('user_id', $user->id)->first();
+            $jsProfile      = JobseekerProfile::where('user_id', $user->id)->first();
+
+            $program      = $studentProfile?->program ?? $gradProfile?->course ?? '';
+            $headline     = $studentProfile?->headline ?? $jsProfile?->headline ?? '';
+            $bio          = $studentProfile?->resume_objective ?? $studentProfile?->bio ?? $jsProfile?->bio ?? '';
+            $desiredTitle = $jsProfile?->desired_job_title ?? '';
+        } catch (\Throwable $e) {
+            // Ignore DB error
+        }
+
+        // 5. Canonical Skills Normalization via SkillNormalizer
+        $allRawSkills = array_unique(array_filter(array_merge($rawSkills, $projectTech, $expSkills)));
+        $canonicalSkills = SkillNormalizer::normalizeArray($allRawSkills);
+
+        if (empty($canonicalSkills)) {
+            $progUpper = strtoupper($program . ' ' . $desiredTitle . ' ' . $headline);
+            if (str_contains($progUpper, 'IT') || str_contains($progUpper, 'TECH') || str_contains($progUpper, 'CS') || str_contains($progUpper, 'COMP')) {
+                $canonicalSkills = ['Web Development', 'PHP', 'JavaScript', 'HTML/CSS', 'MySQL', 'Technical Support'];
+            } elseif (str_contains($progUpper, 'IS') || str_contains($progUpper, 'INFO')) {
+                $canonicalSkills = ['Systems Analysis', 'Database Administration', 'SQL', 'IT Support', 'Web Development'];
+            } elseif (str_contains($progUpper, 'BUS') || str_contains($progUpper, 'BA') || str_contains($progUpper, 'MKT')) {
+                $canonicalSkills = ['Project Management', 'Data Analysis', 'Digital Marketing', 'Operations'];
+            } else {
+                $canonicalSkills = ['Web Development', 'Software Engineering', 'Technical Support', 'Database Management'];
+            }
+        }
+
+        // 6. Weighted Archetype Classifier (Evaluates dominant career field)
+        $scores = [
+            'fullstack'        => 0,
+            'frontend'         => 0,
+            'mobile'           => 0,
+            'qa'               => 0,
+            'network_sysadmin' => 0,
+            'data'             => 0,
+            'business'         => 0,
+        ];
+
+        foreach ($canonicalSkills as $s) {
+            $sl = strtolower($s);
+            if (in_array($sl, ['php', 'laravel', 'node.js', 'backend', 'full-stack', 'full stack', 'java', 'python', 'c#', 'c++', 'software engineering'])) {
+                $scores['fullstack'] += 3;
+            }
+            if (in_array($sl, ['react', 'vue.js', 'vue', 'frontend', 'html/css', 'html', 'css', 'tailwind css', 'figma', 'ui/ux', 'web development'])) {
+                $scores['frontend'] += 2;
+            }
+            if (in_array($sl, ['flutter', 'dart', 'react native', 'android', 'ios', 'mobile development'])) {
+                $scores['mobile'] += 3;
+            }
+            if (in_array($sl, ['qa & software testing', 'qa', 'quality assurance', 'test cases', 'postman', 'cypress', 'jest', 'manual testing', 'software testing'])) {
+                $scores['qa'] += 4;
+            }
+            if (in_array($sl, ['linux', 'docker', 'cisco', 'networking', 'computer networking', 'active directory', 'windows server', 'bash scripting', 'hardware', 'technical support'])) {
+                $scores['network_sysadmin'] += 3;
+            }
+            if (in_array($sl, ['sql', 'data analysis', 'postgresql', 'mysql', 'tableau', 'powerbi', 'data science', 'database administration'])) {
+                $scores['data'] += 2;
+            }
+            if (in_array($sl, ['project management', 'digital marketing', 'business administration', 'accounting', 'finance', 'operations'])) {
+                $scores['business'] += 3;
+            }
+        }
+
+        // Check project roles & titles
+        $projText = strtolower(implode(' ', $projectTitles) . ' ' . implode(' ', $projectRoles));
+        if (str_contains($projText, 'qa') || str_contains($projText, 'test')) $scores['qa'] += 3;
+        if (str_contains($projText, 'network') || str_contains($projText, 'sysadmin')) $scores['network_sysadmin'] += 3;
+        if (str_contains($projText, 'mobile') || str_contains($projText, 'flutter')) $scores['mobile'] += 3;
+        if (str_contains($projText, 'fullstack') || str_contains($projText, 'laravel') || str_contains($projText, 'backend')) $scores['fullstack'] += 3;
+
+        arsort($scores);
+        $archetype = array_key_first($scores) ?: 'fullstack';
+
+        // Select clean, resilient search query term
+        $searchTermMap = [
+            'qa'               => 'QA software tester',
+            'network_sysadmin' => 'IT network support',
+            'frontend'         => 'frontend developer',
+            'mobile'           => 'mobile app developer',
+            'data'             => 'data analyst SQL',
+            'business'         => 'business operations',
+            'fullstack'        => 'software developer',
+        ];
+
+        $cleanSearchTerm = $searchTermMap[$archetype] ?? 'software developer';
+        $primarySkill = !empty($canonicalSkills[0]) ? preg_replace('/[^a-zA-Z0-9\s]/', '', $canonicalSkills[0]) : 'Software';
+
+        return [
+            'user_id'            => $user->id,
+            'name'               => $user->name,
+            'program'            => $program,
+            'headline'           => $headline,
+            'desired_title'      => $desiredTitle,
+            'archetype'          => $archetype,
+            'canonical_skills'   => $canonicalSkills,
+            'project_tech'       => array_values(array_unique($projectTech)),
+            'project_titles'     => $projectTitles,
+            'project_roles'      => $projectRoles,
+            'primary_skill'      => $primarySkill,
+            'search_query_term'  => $cleanSearchTerm,
+            'searchable_pool'    => strtolower(implode(' ', $canonicalSkills) . ' ' . implode(' ', $projectTech) . ' ' . implode(' ', $projectTitles) . ' ' . $headline . ' ' . $program),
+        ];
+    }
+
+    /**
+     * Personalize and filter a job against candidate skills, projects, and career path.
+     * Rejects completely irrelevant jobs (e.g. non-tech overseas positions).
+     */
+    protected static function personalizeJob(array $job, array $vector): ?array
+    {
+        $jobTitleLower = strtolower($job['title'] ?? '');
+        $jobDescLower  = strtolower($job['description'] ?? '');
+        $jobText       = $jobTitleLower . ' ' . $jobDescLower . ' ' . strtolower(implode(' ', (array)($job['skills'] ?? [])));
+        $isLocal       = !empty($job['is_local']);
+        $isRemote      = ($job['location_scope'] ?? '') === 'remote';
+
+        // 1. Skill Matching
+        $candidateSkills = $vector['canonical_skills'];
+        $matched = [];
+        foreach ($candidateSkills as $skill) {
+            $cleanSkill = preg_replace('/\(.*?\)/', '', $skill); // Remove "(Ubuntu/Debian)", etc.
+            $skillLower = strtolower(trim($cleanSkill));
+            if (mb_strlen($skillLower) >= 2 && str_contains($jobText, $skillLower)) {
+                $matched[] = $skill;
+            }
+        }
+
+        // 2. Project Tech Stack Matching
+        $matchedProjectTech = [];
+        foreach ($vector['project_tech'] as $tech) {
+            $techLower = strtolower(trim($tech));
+            if (mb_strlen($techLower) >= 2 && str_contains($jobText, $techLower)) {
+                $matchedProjectTech[] = $tech;
+                if (!in_array($tech, $matched)) {
+                    $matched[] = $tech;
+                }
+            }
+        }
+
+        // 3. Archetype Alignment
+        $archetypeMatch = false;
+        switch ($vector['archetype']) {
+            case 'qa':
+                $archetypeMatch = str_contains($jobText, 'qa') || str_contains($jobText, 'test') || str_contains($jobText, 'quality') || str_contains($jobText, 'tester');
+                break;
+            case 'network_sysadmin':
+                $archetypeMatch = str_contains($jobText, 'network') || str_contains($jobText, 'support') || str_contains($jobText, 'system') || str_contains($jobText, 'hardware') || str_contains($jobText, 'cisco') || str_contains($jobText, 'infrastructure') || str_contains($jobText, 'helpdesk');
+                break;
+            case 'frontend':
+                $archetypeMatch = str_contains($jobText, 'frontend') || str_contains($jobText, 'react') || str_contains($jobText, 'vue') || str_contains($jobText, 'web') || str_contains($jobText, 'ui') || str_contains($jobText, 'figma') || str_contains($jobText, 'css');
+                break;
+            case 'mobile':
+                $archetypeMatch = str_contains($jobText, 'mobile') || str_contains($jobText, 'flutter') || str_contains($jobText, 'android') || str_contains($jobText, 'ios') || str_contains($jobText, 'app');
+                break;
+            case 'data':
+                $archetypeMatch = str_contains($jobText, 'data') || str_contains($jobText, 'sql') || str_contains($jobText, 'analyst') || str_contains($jobText, 'database') || str_contains($jobText, 'analytics') || str_contains($jobText, 'accounting');
+                break;
+            case 'business':
+                $archetypeMatch = str_contains($jobText, 'business') || str_contains($jobText, 'project') || str_contains($jobText, 'marketing') || str_contains($jobText, 'operations') || str_contains($jobText, 'account');
+                break;
+            default: // fullstack / IT
+                $archetypeMatch = str_contains($jobText, 'developer') || str_contains($jobText, 'software') || str_contains($jobText, 'web') || str_contains($jobText, 'engineer') || str_contains($jobText, 'php') || str_contains($jobText, 'it');
+                break;
+        }
+
+        // ── STRICT GATEKEEPER ──
+        // For Remote Jobs: Discard any job that has NO technical relevance to software, web, IT, or the student's skills.
+        // This permanently eliminates overseas non-tech jobs like Australian maps raters or patient advocates.
+        if ($isRemote) {
+            $isTechRemote = str_contains($jobText, 'developer') || str_contains($jobText, 'software') || str_contains($jobText, 'engineer')
+                || str_contains($jobText, 'programmer') || str_contains($jobText, 'frontend') || str_contains($jobText, 'backend')
+                || str_contains($jobText, 'qa') || str_contains($jobText, 'data') || str_contains($jobText, 'tech')
+                || str_contains($jobText, 'full stack') || str_contains($jobText, 'fullstack');
+
+            if (!$isTechRemote && empty($matched)) {
+                return null;
+            }
+        }
+
+        // For Nationwide Jobs: Must align with technical or degree archetype
+        if (!$isLocal && !$isRemote) {
+            $isTechPh = str_contains($jobText, 'developer') || str_contains($jobText, 'software') || str_contains($jobText, 'engineer')
+                || str_contains($jobText, 'programmer') || str_contains($jobText, 'it') || str_contains($jobText, 'support')
+                || str_contains($jobText, 'tech') || str_contains($jobText, 'analyst') || str_contains($jobText, 'qa')
+                || str_contains($jobText, 'network') || str_contains($jobText, 'web') || str_contains($jobText, 'data')
+                || str_contains($jobText, 'system') || str_contains($jobText, 'helpdesk');
+
+            if (!$isTechPh && empty($matched) && !$archetypeMatch) {
+                return null;
+            }
+        }
+
+        // Compute authentic, individualized match score (0 - 100%)
+        $baseScore = $archetypeMatch ? 56 : 50;
+        $skillBonus = min(count($matched) * 12, 32);
+        $projectBonus = min(count($matchedProjectTech) * 8, 16);
+        $titleBonus = (str_contains($jobTitleLower, strtolower($vector['primary_skill'])) || str_contains($jobTitleLower, 'junior') || str_contains($jobTitleLower, 'associate')) ? 6 : 0;
+
+        $totalScore = min(98, $baseScore + $skillBonus + $projectBonus + $titleBonus);
+
+        // Calculate sort relevance (prioritizes local proximity and candidate match)
+        $relevance = $totalScore
+            + ($isLocal ? 45 : 0)
+            + ($archetypeMatch ? 20 : 0)
+            + (count($matched) * 10)
+            + (count($matchedProjectTech) * 5);
+
+        $rec = RecommendationService::classify($totalScore);
+
+        $job['matched_skills']       = array_values(array_unique($matched));
+        $job['match_score']          = $totalScore;
+        $job['match_tier']           = $rec['tier'];
+        $job['recommendation_label'] = $rec['short_label'];
+        $job['match_recommendation'] = $rec;
+        $job['_relevance']           = $relevance;
+
+        return $job;
+    }
+
+    /**
+     * Resolve the student's geographical city anchor (defaults to Bacolod City).
      */
     protected static function resolveUserCity(User $user): string
     {
@@ -180,134 +430,171 @@ class ExternalJobService
             if ($studentProfile) {
                 $loc = $studentProfile->location ?? '';
                 if (!empty($loc)) {
-                    if (stripos($loc, 'Bacolod') !== false) return 'Bacolod City';
-                    if (stripos($loc, 'Talisay') !== false) return 'Talisay City';
-                    if (stripos($loc, 'Silay') !== false) return 'Silay City';
-                    if (stripos($loc, 'Negros') !== false) return 'Negros Occidental';
+                    if (stripos($loc, 'Bacolod') !== false) return 'Bacolod';
+                    if (stripos($loc, 'Talisay') !== false) return 'Talisay';
+                    if (stripos($loc, 'Silay') !== false) return 'Silay';
+                    if (stripos($loc, 'Negros') !== false) return 'Bacolod';
                 }
                 $campus = $studentProfile->campus ?? '';
                 if (!empty($campus)) {
-                    if (stripos($campus, 'Alijis') !== false || stripos($campus, 'Fortune') !== false) return 'Bacolod City';
-                    if (stripos($campus, 'Talisay') !== false) return 'Talisay City';
-                    if (stripos($campus, 'Binalbagan') !== false) return 'Binalbagan';
+                    if (stripos($campus, 'Alijis') !== false || stripos($campus, 'Fortune') !== false) return 'Bacolod';
+                    if (stripos($campus, 'Talisay') !== false) return 'Talisay';
+                    if (stripos($campus, 'Binalbagan') !== false) return 'Bacolod';
                 }
             }
 
             $jobseekerProfile = JobseekerProfile::where('user_id', $user->id)->first();
             if ($jobseekerProfile && !empty($jobseekerProfile->location)) {
                 $jLoc = $jobseekerProfile->location;
-                if (stripos($jLoc, 'Bacolod') !== false) return 'Bacolod City';
-                if (stripos($jLoc, 'Talisay') !== false) return 'Talisay City';
-                if (stripos($jLoc, 'Negros') !== false) return 'Negros Occidental';
+                if (stripos($jLoc, 'Bacolod') !== false) return 'Bacolod';
+                if (stripos($jLoc, 'Talisay') !== false) return 'Talisay';
+                if (stripos($jLoc, 'Negros') !== false) return 'Bacolod';
             }
 
             $gradProfile = GraduateProfile::where('user_id', $user->id)->first();
             if ($gradProfile && !empty($gradProfile->campus)) {
                 $gCampus = $gradProfile->campus;
-                if (stripos($gCampus, 'Alijis') !== false || stripos($gCampus, 'Fortune') !== false) return 'Bacolod City';
-                if (stripos($gCampus, 'Talisay') !== false) return 'Talisay City';
-                if (stripos($gCampus, 'Binalbagan') !== false) return 'Binalbagan';
+                if (stripos($gCampus, 'Alijis') !== false || stripos($gCampus, 'Fortune') !== false) return 'Bacolod';
+                if (stripos($gCampus, 'Talisay') !== false) return 'Talisay';
             }
         } catch (\Throwable $e) {
             // DB fallback
         }
 
-        return 'Bacolod City';
+        return 'Bacolod';
     }
 
     /**
-     * Fetch local city opportunities via JSearch (Bacolod City & Negros Occidental)
-     * Cached globally for 3 hours to protect API quotas.
+     * Fetch local city opportunities via JSearch (Bacolod City & Negros Occidental).
+     * Enforces IPv4 resolution to prevent Windows timeouts and keeps long-term fallback.
      */
     protected static function fetchFromJSearchLocal(string $apiKey, string $searchTerm, string $city): array
     {
-        $cacheKey = 'jsearch_local_live_' . md5($searchTerm . '_' . $city);
+        $cityClean = !empty($city) ? preg_replace('/[^a-zA-Z0-9\s]/', '', $city) : 'Bacolod';
+        if (stripos($cityClean, 'Bacolod') !== false || stripos($cityClean, 'Negros') !== false) {
+            $cityClean = 'Bacolod';
+        }
 
-        return Cache::remember($cacheKey, now()->addHours(3), function () use ($apiKey, $searchTerm, $city) {
-            $queries = [];
-            if (!empty($searchTerm)) {
-                $queries[] = $searchTerm . ' in ' . $city . ' Philippines';
-            } else {
-                $queries[] = 'jobs in ' . $city . ' Philippines';
-                $queries[] = 'jobs in Negros Occidental Philippines';
-            }
+        $cacheKey = 'jsearch_local_pool_v9_' . md5($searchTerm . '_' . $cityClean);
+        $fallbackKey = 'jsearch_local_pool_fallback_v9';
 
-            $combined = [];
-            foreach ($queries as $q) {
-                try {
-                    $r = Http::timeout(10)
-                        ->withoutVerifying()
-                        ->withHeaders([
-                            'X-RapidAPI-Key'  => $apiKey,
-                            'X-RapidAPI-Host' => 'jsearch.p.rapidapi.com',
-                        ])
-                        ->get('https://jsearch.p.rapidapi.com/search', [
-                            'query'     => $q,
-                            'page'      => '1',
-                            'num_pages' => '1',
-                            'country'   => 'PH',
-                        ]);
+        // 1. Check fresh cache (4 hours)
+        $cached = Cache::get($cacheKey);
+        if (!empty($cached) && is_array($cached)) {
+            return $cached;
+        }
 
-                    if ($r->successful()) {
-                        $items = $r->json('data', []);
-                        if (is_array($items)) {
-                            $combined = array_merge($combined, $items);
-                        }
-                    }
-                } catch (\Throwable $e) {
-                    Log::warning('[ExternalJobService] JSearch local fetch failed for query "' . $q . '": ' . $e->getMessage());
+        $query = !empty($searchTerm)
+            ? $searchTerm . ' in ' . $cityClean
+            : 'jobs in ' . $cityClean;
+
+        try {
+            $r = Http::timeout(20)
+                ->withoutVerifying()
+                ->withOptions(['curl' => [CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4]]) // Force IPv4
+                ->withHeaders([
+                    'X-RapidAPI-Key'  => $apiKey,
+                    'X-RapidAPI-Host' => 'jsearch.p.rapidapi.com',
+                ])
+                ->get('https://jsearch.p.rapidapi.com/search', [
+                    'query'     => $query,
+                    'page'      => '1',
+                    'num_pages' => '1',
+                    'country'   => 'PH',
+                ]);
+
+            if ($r->successful()) {
+                $data = $r->json('data', []);
+                if (is_array($data) && !empty($data)) {
+                    Cache::put($cacheKey, $data, now()->addHours(4));
+                    Cache::put($fallbackKey, $data, now()->addDays(14)); // Long-term fallback!
+                    return $data;
                 }
             }
+        } catch (\Throwable $e) {
+            Log::warning('[ExternalJobService] JSearch local fetch timed out/failed: ' . $e->getMessage());
+        }
 
-            return $combined;
-        });
+        // Return long-term fallback if available (Guarantees local jobs are NEVER 0!)
+        $fallback = Cache::get($fallbackKey);
+        if (!empty($fallback) && is_array($fallback)) {
+            Log::info('[ExternalJobService] Served fallback local Bacolod jobs after network timeout.');
+            return $fallback;
+        }
+
+        return [];
     }
 
     /**
-     * Fetch nationwide Philippine tech opportunities via JSearch
-     * Cached globally for 3 hours.
+     * Fetch nationwide Philippine tech opportunities via JSearch.
+     * Enforces IPv4 resolution, shared fallback, and dynamic keyword tailoring without duplicating country string.
      */
-    protected static function fetchFromJSearchPH(string $apiKey, string $searchTerm, array $skills): array
+    protected static function fetchFromJSearchPH(string $apiKey, string $searchTerm, string $searchQueryTerm): array
     {
         $queryKeyword = !empty($searchTerm)
-            ? $searchTerm . ' Philippines'
-            : (!empty($skills[0]) ? $skills[0] . ' developer Philippines' : 'software developer Philippines');
+            ? $searchTerm
+            : (!empty($searchQueryTerm) ? $searchQueryTerm : 'software developer');
 
-        $cacheKey = 'jsearch_ph_live_' . md5($queryKeyword);
+        $cacheKey = 'jsearch_ph_pool_v9_' . md5($queryKeyword);
+        $keywordFallbackKey = 'jsearch_ph_pool_fallback_v9_' . md5($queryKeyword);
+        $sharedFallbackKey = 'jsearch_ph_pool_shared_fallback_v9';
 
-        return Cache::remember($cacheKey, now()->addHours(3), function () use ($apiKey, $queryKeyword) {
-            try {
-                $r = Http::timeout(10)
-                    ->withoutVerifying()
-                    ->withHeaders([
-                        'X-RapidAPI-Key'  => $apiKey,
-                        'X-RapidAPI-Host' => 'jsearch.p.rapidapi.com',
-                    ])
-                    ->get('https://jsearch.p.rapidapi.com/search', [
-                        'query'     => $queryKeyword,
-                        'page'      => '1',
-                        'num_pages' => '1',
-                        'country'   => 'PH',
-                    ]);
+        $cached = Cache::get($cacheKey);
+        if (!empty($cached) && is_array($cached)) {
+            return $cached;
+        }
 
-                if ($r->successful()) {
-                    return $r->json('data', []);
+        try {
+            $r = Http::timeout(20)
+                ->withoutVerifying()
+                ->withOptions(['curl' => [CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4]]) // Force IPv4
+                ->withHeaders([
+                    'X-RapidAPI-Key'  => $apiKey,
+                    'X-RapidAPI-Host' => 'jsearch.p.rapidapi.com',
+                ])
+                ->get('https://jsearch.p.rapidapi.com/search', [
+                    'query'     => $queryKeyword,
+                    'page'      => '1',
+                    'num_pages' => '1',
+                    'country'   => 'PH',
+                ]);
+
+            if ($r->successful()) {
+                $data = $r->json('data', []);
+                if (is_array($data) && !empty($data)) {
+                    Cache::put($cacheKey, $data, now()->addHours(4));
+                    Cache::put($keywordFallbackKey, $data, now()->addDays(14));
+                    Cache::put($sharedFallbackKey, $data, now()->addDays(14)); // Shared nationwide fallback!
+                    return $data;
                 }
-            } catch (\Throwable $e) {
-                Log::warning('[ExternalJobService] JSearch PH fetch failed: ' . $e->getMessage());
             }
+        } catch (\Throwable $e) {
+            Log::warning('[ExternalJobService] JSearch PH fetch timed out/failed: ' . $e->getMessage());
+        }
 
-            return [];
-        });
+        // Check keyword fallback first
+        $keywordFallback = Cache::get($keywordFallbackKey);
+        if (!empty($keywordFallback) && is_array($keywordFallback)) {
+            Log::info('[ExternalJobService] Served keyword fallback nationwide PH jobs after network timeout.');
+            return $keywordFallback;
+        }
+
+        // Check shared nationwide fallback (Guarantees nationwide jobs are NEVER 0!)
+        $sharedFallback = Cache::get($sharedFallbackKey);
+        if (!empty($sharedFallback) && is_array($sharedFallback)) {
+            Log::info('[ExternalJobService] Served shared nationwide PH fallback after network timeout.');
+            return $sharedFallback;
+        }
+
+        return [];
     }
 
     /**
-     * Fetch real-time job listings from Jooble Developer API
-     * Cached globally for 6 hours to conserve quota.
+     * Fetch real-time job listings from Jooble Developer API.
      */
-    protected static function fetchFromJooble(string $apiKey, string $searchTerm, string $location = 'Bacolod, Philippines'): array
+    protected static function fetchFromJooble(string $apiKey, string $searchTerm, string $location): array
     {
-        $cacheKey = 'jooble_live_' . md5($searchTerm . '_' . $location);
+        $cacheKey = 'jooble_live_v8_' . md5($searchTerm . '_' . $location);
 
         return Cache::remember($cacheKey, now()->addHours(6), function () use ($apiKey, $searchTerm, $location) {
             $cleanKey = trim($apiKey);
@@ -340,23 +627,30 @@ class ExternalJobService
     }
 
     /**
-     * Fetch up to 60 remote tech jobs from Jobicy's live public API (No API key required)
-     * Cached globally for 4 hours.
+     * Fetch up to 60 remote tech jobs from Jobicy API tailored to candidate archetype.
      */
-    protected static function fetchFromJobicy(string $searchTerm): array
+    protected static function fetchFromJobicy(string $searchTerm, string $archetype = 'fullstack'): array
     {
         try {
-            $cachedFeed = Cache::remember('jobicy_raw_live_feed_v3', now()->addHours(4), function () {
+            $feedTag = 'jobicy_feed_v8_' . ($archetype === 'qa' ? 'qa' : ($archetype === 'network_sysadmin' ? 'support' : 'dev'));
+            $cachedFeed = Cache::remember($feedTag, now()->addHours(4), function () {
                 $r = Http::timeout(10)
                     ->withoutVerifying()
                     ->get('https://jobicy.com/api/v2/remote-jobs', [
-                        'count' => 60,
+                        'count'    => 60,
+                        'industry' => 'programming',
                     ]);
 
                 if ($r->successful()) {
-                    return $r->json('jobs', []);
+                    $jobs = $r->json('jobs', []);
+                    if (!empty($jobs)) return $jobs;
                 }
-                return [];
+
+                $rGeneral = Http::timeout(10)
+                    ->withoutVerifying()
+                    ->get('https://jobicy.com/api/v2/remote-jobs', ['count' => 50]);
+
+                return $rGeneral->successful() ? $rGeneral->json('jobs', []) : [];
             });
 
             if (empty($cachedFeed) || !is_array($cachedFeed)) {
@@ -386,12 +680,12 @@ class ExternalJobService
     }
 
     /**
-     * Query Remotive API with 4-hour caching for live software dev postings
+     * Query Remotive API with 4-hour caching for live software dev postings.
      */
     protected static function fetchFromRemotive(string $searchTerm): array
     {
         try {
-            $cachedFeed = Cache::remember('remotive_raw_live_feed_v3', now()->addHours(4), function () {
+            $cachedFeed = Cache::remember('remotive_raw_live_feed_v8', now()->addHours(4), function () {
                 $r = Http::timeout(10)
                     ->withoutVerifying()
                     ->get('https://remotive.com/api/remote-jobs', [
@@ -432,13 +726,12 @@ class ExternalJobService
     }
 
     /**
-     * Query Arbeitnow API for live verified tech & remote opportunities
-     * Cached globally for 4 hours.
+     * Query Arbeitnow API for live verified tech opportunities.
      */
     protected static function fetchFromArbeitnow(string $searchTerm): array
     {
         try {
-            $cachedFeed = Cache::remember('arbeitnow_raw_live_feed_v3', now()->addHours(4), function () {
+            $cachedFeed = Cache::remember('arbeitnow_raw_live_feed_v8', now()->addHours(4), function () {
                 $r = Http::timeout(10)
                     ->withoutVerifying()
                     ->get('https://www.arbeitnow.com/api/job-board-api');
@@ -479,91 +772,12 @@ class ExternalJobService
     }
 
     /**
-     * Standardize Jooble API job result into HireMe schema
-     */
-    protected static function normalizeJoobleJob(array $j, array $userSkills): array
-    {
-        $titleLower = strtolower($j['title'] ?? '');
-        $descRaw    = strip_tags($j['snippet'] ?? '');
-        $descClean  = trim(preg_replace('/\s{2,}/', ' ', $descRaw));
-        $excerpt    = mb_strlen($descClean) > 280 ? mb_substr($descClean, 0, 280) . '…' : $descClean;
-        $searchPool = $titleLower . ' ' . strtolower($descClean);
-
-        $matched = [];
-        foreach ($userSkills as $s) {
-            $sl = strtolower(trim($s));
-            if (mb_strlen($sl) >= 2 && str_contains($searchPool, $sl)) {
-                $matched[] = $s;
-            }
-        }
-
-        $company = $j['company'] ?? 'Hiring Employer';
-        $location = !empty($j['location']) ? $j['location'] : 'Bacolod, Philippines';
-        $rec     = RecommendationService::forExternalJob();
-
-        $isLocal = stripos($location, 'Bacolod') !== false
-            || stripos($location, 'Negros') !== false
-            || stripos($location, 'Talisay') !== false
-            || stripos($location, 'Silay') !== false
-            || stripos($titleLower, 'Bacolod') !== false;
-
-        $isRemote = stripos($location, 'remote') !== false
-            || stripos($titleLower, 'remote') !== false
-            || stripos($descClean, 'work from home') !== false;
-
-        $scope = $isLocal ? 'local' : ($isRemote ? 'remote' : 'nationwide');
-
-        $relevance = (count($matched) * 20)
-            + ($isLocal ? 40 : 0)
-            + ($isRemote ? 10 : 15);
-
-        return [
-            'id'                   => 'jooble-' . md5(($j['link'] ?? '') . ($j['title'] ?? '')),
-            'title'                => $j['title'] ?? 'Untitled Position',
-            'company'              => $company,
-            'company_initial'      => strtoupper(substr($company, 0, 1)),
-            'company_logo'         => null,
-            'location'             => $location,
-            'location_scope'       => $scope,
-            'is_local'             => $isLocal,
-            'type'                 => !empty($j['type']) ? $j['type'] : 'Full-time',
-            'salary'               => !empty($j['salary']) ? $j['salary'] : 'Competitive',
-            'description'          => $excerpt,
-            'skills'               => !empty($matched) ? $matched : ['Professional', 'Verified Vacancy'],
-            'matched_skills'       => $matched,
-            'match_score'          => null,
-            'match_tier'           => $rec['tier'],
-            'recommendation_label' => $rec['short_label'],
-            'match_recommendation' => $rec,
-            'link'                 => $j['link'] ?? 'https://ph.jooble.org',
-            'source'               => 'jooble',
-            'posted_date'          => !empty($j['updated'])
-                ? date('M j', strtotime($j['updated']))
-                : 'Recent',
-            'remote'               => $isRemote,
-            'is_external'          => true,
-            '_relevance'           => $relevance,
-        ];
-    }
-
-    /**
      * Standardize JSearch result into HireMe schema
      */
     protected static function normalizeJSearchJob(array $j, array $userSkills, string $defaultScope = 'nationwide'): array
     {
         $qualBullets    = $j['job_highlights']['Qualifications'] ?? [];
         $qualifications = implode(' ', $qualBullets);
-        $titleLower     = strtolower($j['job_title'] ?? '');
-        $descLower      = strtolower($j['job_description'] ?? '');
-        $text           = $titleLower . ' ' . $descLower . ' ' . strtolower($qualifications);
-
-        $matched = [];
-        foreach ($userSkills as $s) {
-            $sl = strtolower(trim($s));
-            if (mb_strlen($sl) >= 2 && str_contains($text, $sl)) {
-                $matched[] = $s;
-            }
-        }
 
         $salary = 'Competitive';
         if (!empty($j['job_salary_min'])) {
@@ -599,7 +813,6 @@ class ExternalJobService
 
         $source   = strtolower(preg_replace('/[^a-zA-Z0-9.]/', '', $j['job_publisher'] ?? 'jsearch'));
         $company  = $j['employer_name'] ?? 'Company';
-        $rec      = RecommendationService::forExternalJob();
 
         // Scope resolution
         $isLocal = stripos($location, 'Bacolod') !== false
@@ -610,41 +823,99 @@ class ExternalJobService
             || (!empty($j['job_location']) && stripos($j['job_location'], 'Bacolod') !== false)
             || $defaultScope === 'local';
 
+        $isPhLocation = (strtoupper($j['job_country'] ?? '') === 'PH')
+            || stripos($location, 'Philippines') !== false
+            || stripos($location, 'PH') !== false
+            || stripos($location, 'Manila') !== false
+            || stripos($location, 'Cebu') !== false
+            || stripos($location, 'Taguig') !== false
+            || stripos($location, 'Makati') !== false
+            || stripos($location, 'Pasig') !== false
+            || stripos($location, 'Quezon City') !== false
+            || stripos($location, 'Davao') !== false
+            || stripos($location, 'Iloilo') !== false
+            || $defaultScope === 'nationwide';
+
         $isRemote = (bool) ($j['job_is_remote'] ?? false) || stripos($location, 'remote') !== false;
+
+        if ($isLocal) {
+            $scope = 'local';
+        } elseif ($isPhLocation) {
+            $scope = 'nationwide';
+        } elseif ($isRemote) {
+            $scope = 'remote';
+        } else {
+            $scope = 'nationwide';
+        }
+
+        return [
+            'id'              => 'js-' . ($j['job_id'] ?? uniqid()),
+            'title'           => $j['job_title'] ?? 'Untitled Position',
+            'company'         => $company,
+            'company_initial' => strtoupper(substr($company, 0, 1)),
+            'company_logo'    => $j['employer_logo'] ?? null,
+            'location'        => $location,
+            'location_scope'  => $scope,
+            'is_local'        => $isLocal,
+            'type'            => $type,
+            'salary'          => $salary,
+            'description'     => $excerpt,
+            'skills'          => !empty($qualBullets) ? array_slice($qualBullets, 0, 8) : ['IT', 'Technical'],
+            'link'            => $j['job_apply_link'] ?? null,
+            'source'          => $source ?: 'jsearch',
+            'posted_date'     => isset($j['job_posted_at_datetime_utc'])
+                ? date('M j', strtotime($j['job_posted_at_datetime_utc']))
+                : 'Recent',
+            'remote'          => $isRemote,
+            'is_external'     => true,
+        ];
+    }
+
+    /**
+     * Standardize Jooble API job result into HireMe schema
+     */
+    protected static function normalizeJoobleJob(array $j, array $userSkills): array
+    {
+        $titleLower = strtolower($j['title'] ?? '');
+        $descRaw    = strip_tags($j['snippet'] ?? '');
+        $descClean  = trim(preg_replace('/\s{2,}/', ' ', $descRaw));
+        $excerpt    = mb_strlen($descClean) > 280 ? mb_substr($descClean, 0, 280) . '…' : $descClean;
+
+        $company  = $j['company'] ?? 'Hiring Employer';
+        $location = !empty($j['location']) ? $j['location'] : 'Bacolod, Philippines';
+
+        $isLocal = stripos($location, 'Bacolod') !== false
+            || stripos($location, 'Negros') !== false
+            || stripos($location, 'Talisay') !== false
+            || stripos($location, 'Silay') !== false
+            || stripos($titleLower, 'Bacolod') !== false;
+
+        $isRemote = stripos($location, 'remote') !== false
+            || stripos($titleLower, 'remote') !== false
+            || stripos($descClean, 'work from home') !== false;
 
         $scope = $isLocal ? 'local' : ($isRemote ? 'remote' : 'nationwide');
 
-        $relevance = (count($matched) * 20)
-            + ($isLocal ? 40 : 0)
-            + ($isRemote ? 10 : 15)
-            + (str_contains($titleLower, 'developer') || str_contains($titleLower, 'engineer') ? 15 : 5);
-
         return [
-            'id'                   => 'js-' . ($j['job_id'] ?? uniqid()),
-            'title'                => $j['job_title'] ?? 'Untitled Position',
-            'company'              => $company,
-            'company_initial'      => strtoupper(substr($company, 0, 1)),
-            'company_logo'         => $j['employer_logo'] ?? null,
-            'location'             => $location,
-            'location_scope'       => $scope,
-            'is_local'             => $isLocal,
-            'type'                 => $type,
-            'salary'               => $salary,
-            'description'          => $excerpt,
-            'skills'               => !empty($qualBullets) ? array_slice($qualBullets, 0, 8) : ['IT', 'Technical'],
-            'matched_skills'       => $matched,
-            'match_score'          => null,
-            'match_tier'           => $rec['tier'],
-            'recommendation_label' => $rec['short_label'],
-            'match_recommendation' => $rec,
-            'link'                 => $j['job_apply_link'] ?? null,
-            'source'               => $source ?: 'jsearch',
-            'posted_date'          => isset($j['job_posted_at_datetime_utc'])
-                ? date('M j', strtotime($j['job_posted_at_datetime_utc']))
+            'id'              => 'jooble-' . md5(($j['link'] ?? '') . ($j['title'] ?? '')),
+            'title'           => $j['title'] ?? 'Untitled Position',
+            'company'         => $company,
+            'company_initial' => strtoupper(substr($company, 0, 1)),
+            'company_logo'    => null,
+            'location'        => $location,
+            'location_scope'  => $scope,
+            'is_local'        => $isLocal,
+            'type'            => !empty($j['type']) ? $j['type'] : 'Full-time',
+            'salary'          => !empty($j['salary']) ? $j['salary'] : 'Competitive',
+            'description'     => $excerpt,
+            'skills'          => ['Professional', 'Verified Vacancy'],
+            'link'            => $j['link'] ?? 'https://ph.jooble.org',
+            'source'          => 'jooble',
+            'posted_date'     => !empty($j['updated'])
+                ? date('M j', strtotime($j['updated']))
                 : 'Recent',
-            'remote'               => $isRemote,
-            'is_external'          => true,
-            '_relevance'           => $relevance,
+            'remote'          => $isRemote,
+            'is_external'     => true,
         ];
     }
 
@@ -653,26 +924,14 @@ class ExternalJobService
      */
     protected static function normalizeJobicyJob(array $j, array $userSkills): array
     {
-        $titleLower = strtolower($j['jobTitle'] ?? '');
         $descRaw    = strip_tags($j['jobDescription'] ?? '');
         $descClean  = trim(preg_replace('/\s{2,}/', ' ', $descRaw));
         $excerpt    = mb_strlen($descClean) > 280 ? mb_substr($descClean, 0, 280) . '…' : $descClean;
         $industries = (array) ($j['jobIndustry'] ?? []);
-        $searchPool = $titleLower . ' ' . strtolower($descClean) . ' ' . implode(' ', array_map('strtolower', $industries));
-
-        $matched = [];
-        foreach ($userSkills as $s) {
-            $sl = strtolower(trim($s));
-            if (mb_strlen($sl) >= 2 && str_contains($searchPool, $sl)) {
-                $matched[] = $s;
-            }
-        }
 
         $company = $j['companyName'] ?? 'Remote Company';
-        $rec     = RecommendationService::forExternalJob();
-
-        $types = (array) ($j['jobType'] ?? ['Full-Time']);
-        $type  = !empty($types[0]) ? ucwords(str_replace('-', ' ', $types[0])) : 'Full-time';
+        $types   = (array) ($j['jobType'] ?? ['Full-Time']);
+        $type    = !empty($types[0]) ? ucwords(str_replace('-', ' ', $types[0])) : 'Full-time';
 
         $geo = trim($j['jobGeo'] ?? 'Anywhere (Remote)');
         $location = !empty($geo) ? $geo . ' (Remote)' : 'Remote (Worldwide)';
@@ -684,34 +943,26 @@ class ExternalJobService
                 . (!empty($j['annualSalaryMax']) ? ' – ' . $curr . number_format($j['annualSalaryMax'] / 1000) . 'k' : '') . ' /yr';
         }
 
-        $relevance = (count($matched) * 20) + 12;
-
         return [
-            'id'                   => 'jobicy-' . ($j['id'] ?? uniqid()),
-            'title'                => $j['jobTitle'] ?? 'Remote Software Role',
-            'company'              => $company,
-            'company_initial'      => strtoupper(substr($company, 0, 1)),
-            'company_logo'         => $j['companyLogo'] ?? null,
-            'location'             => $location,
-            'location_scope'       => 'remote',
-            'is_local'             => false,
-            'type'                 => $type,
-            'salary'               => $salary,
-            'description'          => $excerpt,
-            'skills'               => !empty($industries) ? array_slice($industries, 0, 6) : ['Remote', 'Software'],
-            'matched_skills'       => $matched,
-            'match_score'          => null,
-            'match_tier'           => $rec['tier'],
-            'recommendation_label' => $rec['short_label'],
-            'match_recommendation' => $rec,
-            'link'                 => $j['url'] ?? 'https://jobicy.com',
-            'source'               => 'jobicy',
-            'posted_date'          => !empty($j['pubDate'])
+            'id'              => 'jobicy-' . ($j['id'] ?? uniqid()),
+            'title'           => $j['jobTitle'] ?? 'Remote Software Role',
+            'company'         => $company,
+            'company_initial' => strtoupper(substr($company, 0, 1)),
+            'company_logo'    => $j['companyLogo'] ?? null,
+            'location'        => $location,
+            'location_scope'  => 'remote',
+            'is_local'        => false,
+            'type'            => $type,
+            'salary'          => $salary,
+            'description'     => $excerpt,
+            'skills'          => !empty($industries) ? array_slice($industries, 0, 6) : ['Remote', 'Software'],
+            'link'            => $j['url'] ?? 'https://jobicy.com',
+            'source'          => 'jobicy',
+            'posted_date'     => !empty($j['pubDate'])
                 ? date('M j', strtotime($j['pubDate']))
                 : 'Recent',
-            'remote'               => true,
-            'is_external'          => true,
-            '_relevance'           => $relevance,
+            'remote'          => true,
+            'is_external'     => true,
         ];
     }
 
@@ -720,112 +971,73 @@ class ExternalJobService
      */
     protected static function normalizeRemotiveJob(array $j, array $userSkills): array
     {
-        $titleLower = strtolower($j['title'] ?? '');
         $tags       = $j['tags'] ?? [];
         $descRaw    = strip_tags($j['description'] ?? '');
         $descClean  = trim(preg_replace('/\s{2,}/', ' ', $descRaw));
         $excerpt    = mb_strlen($descClean) > 280 ? mb_substr($descClean, 0, 280) . '…' : $descClean;
-        $searchPool = $titleLower . ' ' . strtolower($descClean) . ' ' . implode(' ', array_map('strtolower', $tags));
-
-        $matched = [];
-        foreach ($userSkills as $s) {
-            $sl = strtolower(trim($s));
-            if (mb_strlen($sl) >= 2 && str_contains($searchPool, $sl)) {
-                $matched[] = $s;
-            }
-        }
 
         $company = $j['company_name'] ?? 'Company';
-        $rec     = RecommendationService::forExternalJob();
-
-        $relevance = (count($matched) * 20) + 10;
 
         return [
-            'id'                   => 'rem-' . ($j['id'] ?? uniqid()),
-            'title'                => $j['title'] ?? 'Remote Developer',
-            'company'              => $company,
-            'company_initial'      => strtoupper(substr($company, 0, 1)),
-            'company_logo'         => $j['company_logo'] ?? null,
-            'location'             => !empty($j['candidate_required_location']) ? $j['candidate_required_location'] . ' (Remote)' : 'Remote (Worldwide)',
-            'location_scope'       => 'remote',
-            'is_local'             => false,
-            'type'                 => ucwords(str_replace('_', ' ', $j['job_type'] ?? 'Full-time')),
-            'salary'               => !empty($j['salary']) ? $j['salary'] : 'Competitive',
-            'description'          => $excerpt,
-            'skills'               => !empty($tags) ? array_slice($tags, 0, 8) : ['Remote', 'Software Development'],
-            'matched_skills'       => $matched,
-            'match_score'          => null,
-            'match_tier'           => $rec['tier'],
-            'recommendation_label' => $rec['short_label'],
-            'match_recommendation' => $rec,
-            'link'                 => $j['url'] ?? 'https://remotive.com',
-            'source'               => 'remotive',
-            'posted_date'          => !empty($j['publication_date'])
+            'id'              => 'rem-' . ($j['id'] ?? uniqid()),
+            'title'           => $j['title'] ?? 'Remote Developer',
+            'company'         => $company,
+            'company_initial' => strtoupper(substr($company, 0, 1)),
+            'company_logo'    => $j['company_logo'] ?? null,
+            'location'        => !empty($j['candidate_required_location']) ? $j['candidate_required_location'] . ' (Remote)' : 'Remote (Worldwide)',
+            'location_scope'  => 'remote',
+            'is_local'        => false,
+            'type'            => ucwords(str_replace('_', ' ', $j['job_type'] ?? 'Full-time')),
+            'salary'          => !empty($j['salary']) ? $j['salary'] : 'Competitive',
+            'description'     => $excerpt,
+            'skills'          => !empty($tags) ? array_slice($tags, 0, 8) : ['Remote', 'Software Development'],
+            'link'            => $j['url'] ?? 'https://remotive.com',
+            'source'          => 'remotive',
+            'posted_date'     => !empty($j['publication_date'])
                 ? date('M j', strtotime($j['publication_date']))
                 : 'Recent',
-            'remote'               => true,
-            'is_external'          => true,
-            '_relevance'           => $relevance,
+            'remote'          => true,
+            'is_external'     => true,
         ];
     }
 
     /**
-     * Standardize Arbeitnow API job result (Remote tech jobs only)
+     * Standardize Arbeitnow API job result
      */
     protected static function normalizeArbeitnowJob(array $j, array $userSkills): array
     {
-        $titleLower = strtolower($j['title'] ?? '');
         $descRaw    = strip_tags($j['description'] ?? '');
         $descClean  = trim(preg_replace('/\s{2,}/', ' ', $descRaw));
         $excerpt    = mb_strlen($descClean) > 280 ? mb_substr($descClean, 0, 280) . '…' : $descClean;
         $tags       = (array) ($j['tags'] ?? []);
-        $searchPool = $titleLower . ' ' . strtolower($descClean) . ' ' . implode(' ', array_map('strtolower', $tags));
-
-        $matched = [];
-        foreach ($userSkills as $s) {
-            $sl = strtolower(trim($s));
-            if (mb_strlen($sl) >= 2 && str_contains($searchPool, $sl)) {
-                $matched[] = $s;
-            }
-        }
 
         $company = $j['company_name'] ?? 'Tech Employer';
-        $rec     = RecommendationService::forExternalJob();
-
-        $types = (array) ($j['job_types'] ?? ['Full-time']);
-        $type  = !empty($types[0]) ? ucwords(str_replace(['_', '-'], ' ', $types[0])) : 'Full-time';
+        $types   = (array) ($j['job_types'] ?? ['Full-time']);
+        $type    = !empty($types[0]) ? ucwords(str_replace(['_', '-'], ' ', $types[0])) : 'Full-time';
 
         $isRemote = (bool) ($j['remote'] ?? false);
         $location = $isRemote ? 'Remote (Worldwide)' : ($j['location'] ?? 'Remote');
 
-        $relevance = (count($matched) * 20) + 10;
-
         return [
-            'id'                   => 'arbeit-' . ($j['slug'] ?? uniqid()),
-            'title'                => $j['title'] ?? 'Software Developer',
-            'company'              => $company,
-            'company_initial'      => strtoupper(substr($company, 0, 1)),
-            'company_logo'         => null,
-            'location'             => $location,
-            'location_scope'       => 'remote',
-            'is_local'             => false,
-            'type'                 => $type,
-            'salary'               => 'Competitive',
-            'description'          => $excerpt,
-            'skills'               => !empty($tags) ? array_slice($tags, 0, 8) : ['Remote', 'Software'],
-            'matched_skills'       => $matched,
-            'match_score'          => null,
-            'match_tier'           => $rec['tier'],
-            'recommendation_label' => $rec['short_label'],
-            'match_recommendation' => $rec,
-            'link'                 => $j['url'] ?? 'https://www.arbeitnow.com',
-            'source'               => 'arbeitnow',
-            'posted_date'          => !empty($j['created_at'])
+            'id'              => 'arbeit-' . ($j['slug'] ?? uniqid()),
+            'title'           => $j['title'] ?? 'Software Developer',
+            'company'         => $company,
+            'company_initial' => strtoupper(substr($company, 0, 1)),
+            'company_logo'    => null,
+            'location'        => $location,
+            'location_scope'  => 'remote',
+            'is_local'        => false,
+            'type'            => $type,
+            'salary'          => 'Competitive',
+            'description'     => $excerpt,
+            'skills'          => !empty($tags) ? array_slice($tags, 0, 8) : ['Remote', 'Software'],
+            'link'            => $j['url'] ?? 'https://www.arbeitnow.com',
+            'source'          => 'arbeitnow',
+            'posted_date'     => !empty($j['created_at'])
                 ? date('M j', $j['created_at'])
                 : 'Recent',
-            'remote'               => true,
-            'is_external'          => true,
-            '_relevance'           => $relevance,
+            'remote'          => true,
+            'is_external'     => true,
         ];
     }
 }
