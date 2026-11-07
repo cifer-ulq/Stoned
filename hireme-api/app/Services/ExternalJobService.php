@@ -37,7 +37,7 @@ class ExternalJobService
         $userCity = self::resolveUserCity($user);
 
         // 3. Personalized Cache Management (2-hour TTL per candidate)
-        $cacheKey = 'ext_pers_jobs_v7_' . $user->id . '_' . md5($searchTerm . '_' . $vector['searchable_pool'] . '_' . $userCity);
+        $cacheKey = 'ext_pers_jobs_v10_' . $user->id . '_' . md5($searchTerm . '_' . $vector['searchable_pool'] . '_' . $userCity);
         $cached = Cache::get($cacheKey);
         if ($cached !== null && is_array($cached) && !empty($cached)) {
             return $cached;
@@ -410,7 +410,36 @@ class ExternalJobService
 
         $rec = RecommendationService::classify($totalScore);
 
-        $job['matched_skills']       = array_values(array_unique($matched));
+        // Merge candidate matched skills at the front of job.skills
+        $candidateMatched = array_values(array_unique($matched));
+        $existingJobSkills = (array) ($job['skills'] ?? []);
+
+        $mergedSkills = [];
+        foreach ($candidateMatched as $cm) {
+            $mergedSkills[] = self::formatSkillName($cm);
+        }
+        foreach ($existingJobSkills as $ejs) {
+            $norm = self::formatSkillName($ejs);
+            if (!in_array($norm, $mergedSkills) && !in_array(strtolower($norm), ['it', 'technical', 'remote'])) {
+                $mergedSkills[] = $norm;
+            }
+        }
+
+        if (empty($mergedSkills)) {
+            $extractedFallback = self::extractSkillsFromJobText($job['title'] ?? '', $job['description'] ?? '');
+            foreach ($extractedFallback as $ef) {
+                if (!in_array($ef, $mergedSkills)) {
+                    $mergedSkills[] = $ef;
+                }
+            }
+        }
+
+        if (empty($mergedSkills)) {
+            $mergedSkills = [$vector['primary_skill'] ?: 'Software', 'Technology'];
+        }
+
+        $job['skills']               = array_slice($mergedSkills, 0, 8);
+        $job['matched_skills']       = $candidateMatched;
         $job['match_score']          = $totalScore;
         $job['match_tier']           = $rec['tier'];
         $job['recommendation_label'] = $rec['short_label'];
@@ -848,6 +877,18 @@ class ExternalJobService
             $scope = 'nationwide';
         }
 
+        $postedIso = now()->toIso8601String();
+        if (!empty($j['job_posted_at_datetime_utc'])) {
+            $ts = strtotime($j['job_posted_at_datetime_utc']);
+            if ($ts !== false && $ts > 0) {
+                $postedIso = date('c', $ts);
+            }
+        } elseif (!empty($j['job_posted_at_timestamp'])) {
+            $postedIso = date('c', (int)$j['job_posted_at_timestamp']);
+        }
+
+        $extractedSkills = self::extractSkillsFromJobText($j['job_title'] ?? '', $desc, $qualBullets);
+
         return [
             'id'              => 'js-' . ($j['job_id'] ?? uniqid()),
             'title'           => $j['job_title'] ?? 'Untitled Position',
@@ -860,12 +901,10 @@ class ExternalJobService
             'type'            => $type,
             'salary'          => $salary,
             'description'     => $excerpt,
-            'skills'          => !empty($qualBullets) ? array_slice($qualBullets, 0, 8) : ['IT', 'Technical'],
+            'skills'          => $extractedSkills,
             'link'            => $j['job_apply_link'] ?? null,
             'source'          => $source ?: 'jsearch',
-            'posted_date'     => isset($j['job_posted_at_datetime_utc'])
-                ? date('M j', strtotime($j['job_posted_at_datetime_utc']))
-                : 'Recent',
+            'posted_date'     => $postedIso,
             'remote'          => $isRemote,
             'is_external'     => true,
         ];
@@ -896,6 +935,16 @@ class ExternalJobService
 
         $scope = $isLocal ? 'local' : ($isRemote ? 'remote' : 'nationwide');
 
+        $postedIso = now()->toIso8601String();
+        if (!empty($j['updated'])) {
+            $ts = strtotime($j['updated']);
+            if ($ts !== false && $ts > 0) {
+                $postedIso = date('c', $ts);
+            }
+        }
+
+        $extractedSkills = self::extractSkillsFromJobText($j['title'] ?? '', $descClean);
+
         return [
             'id'              => 'jooble-' . md5(($j['link'] ?? '') . ($j['title'] ?? '')),
             'title'           => $j['title'] ?? 'Untitled Position',
@@ -908,12 +957,10 @@ class ExternalJobService
             'type'            => !empty($j['type']) ? $j['type'] : 'Full-time',
             'salary'          => !empty($j['salary']) ? $j['salary'] : 'Competitive',
             'description'     => $excerpt,
-            'skills'          => ['Professional', 'Verified Vacancy'],
+            'skills'          => $extractedSkills,
             'link'            => $j['link'] ?? 'https://ph.jooble.org',
             'source'          => 'jooble',
-            'posted_date'     => !empty($j['updated'])
-                ? date('M j', strtotime($j['updated']))
-                : 'Recent',
+            'posted_date'     => $postedIso,
             'remote'          => $isRemote,
             'is_external'     => true,
         ];
@@ -943,6 +990,16 @@ class ExternalJobService
                 . (!empty($j['annualSalaryMax']) ? ' – ' . $curr . number_format($j['annualSalaryMax'] / 1000) . 'k' : '') . ' /yr';
         }
 
+        $postedIso = now()->toIso8601String();
+        if (!empty($j['pubDate'])) {
+            $ts = strtotime($j['pubDate']);
+            if ($ts !== false && $ts > 0) {
+                $postedIso = date('c', $ts);
+            }
+        }
+
+        $extractedSkills = self::extractSkillsFromJobText($j['jobTitle'] ?? '', $descClean, $industries);
+
         return [
             'id'              => 'jobicy-' . ($j['id'] ?? uniqid()),
             'title'           => $j['jobTitle'] ?? 'Remote Software Role',
@@ -955,12 +1012,10 @@ class ExternalJobService
             'type'            => $type,
             'salary'          => $salary,
             'description'     => $excerpt,
-            'skills'          => !empty($industries) ? array_slice($industries, 0, 6) : ['Remote', 'Software'],
+            'skills'          => $extractedSkills,
             'link'            => $j['url'] ?? 'https://jobicy.com',
             'source'          => 'jobicy',
-            'posted_date'     => !empty($j['pubDate'])
-                ? date('M j', strtotime($j['pubDate']))
-                : 'Recent',
+            'posted_date'     => $postedIso,
             'remote'          => true,
             'is_external'     => true,
         ];
@@ -971,12 +1026,22 @@ class ExternalJobService
      */
     protected static function normalizeRemotiveJob(array $j, array $userSkills): array
     {
-        $tags       = $j['tags'] ?? [];
+        $tags       = (array) ($j['tags'] ?? []);
         $descRaw    = strip_tags($j['description'] ?? '');
         $descClean  = trim(preg_replace('/\s{2,}/', ' ', $descRaw));
         $excerpt    = mb_strlen($descClean) > 280 ? mb_substr($descClean, 0, 280) . '…' : $descClean;
 
         $company = $j['company_name'] ?? 'Company';
+
+        $postedIso = now()->toIso8601String();
+        if (!empty($j['publication_date'])) {
+            $ts = strtotime($j['publication_date']);
+            if ($ts !== false && $ts > 0) {
+                $postedIso = date('c', $ts);
+            }
+        }
+
+        $extractedSkills = self::extractSkillsFromJobText($j['title'] ?? '', $descClean, $tags);
 
         return [
             'id'              => 'rem-' . ($j['id'] ?? uniqid()),
@@ -990,12 +1055,10 @@ class ExternalJobService
             'type'            => ucwords(str_replace('_', ' ', $j['job_type'] ?? 'Full-time')),
             'salary'          => !empty($j['salary']) ? $j['salary'] : 'Competitive',
             'description'     => $excerpt,
-            'skills'          => !empty($tags) ? array_slice($tags, 0, 8) : ['Remote', 'Software Development'],
+            'skills'          => $extractedSkills,
             'link'            => $j['url'] ?? 'https://remotive.com',
             'source'          => 'remotive',
-            'posted_date'     => !empty($j['publication_date'])
-                ? date('M j', strtotime($j['publication_date']))
-                : 'Recent',
+            'posted_date'     => $postedIso,
             'remote'          => true,
             'is_external'     => true,
         ];
@@ -1018,6 +1081,16 @@ class ExternalJobService
         $isRemote = (bool) ($j['remote'] ?? false);
         $location = $isRemote ? 'Remote (Worldwide)' : ($j['location'] ?? 'Remote');
 
+        $postedIso = now()->toIso8601String();
+        if (!empty($j['created_at'])) {
+            $ts = is_numeric($j['created_at']) ? (int)$j['created_at'] : strtotime($j['created_at']);
+            if ($ts !== false && $ts > 0) {
+                $postedIso = date('c', $ts);
+            }
+        }
+
+        $extractedSkills = self::extractSkillsFromJobText($j['title'] ?? '', $descClean, $tags);
+
         return [
             'id'              => 'arbeit-' . ($j['slug'] ?? uniqid()),
             'title'           => $j['title'] ?? 'Software Developer',
@@ -1030,14 +1103,195 @@ class ExternalJobService
             'type'            => $type,
             'salary'          => 'Competitive',
             'description'     => $excerpt,
-            'skills'          => !empty($tags) ? array_slice($tags, 0, 8) : ['Remote', 'Software'],
+            'skills'          => $extractedSkills,
             'link'            => $j['url'] ?? 'https://www.arbeitnow.com',
             'source'          => 'arbeitnow',
-            'posted_date'     => !empty($j['created_at'])
-                ? date('M j', $j['created_at'])
-                : 'Recent',
+            'posted_date'     => $postedIso,
             'remote'          => true,
             'is_external'     => true,
         ];
+    }
+
+    /**
+     * Dynamically extract canonical technical and domain skills from job text.
+     */
+    protected static function extractSkillsFromJobText(string $title, string $description, array $existingTags = []): array
+    {
+        $text = strtolower($title . ' ' . $description . ' ' . implode(' ', $existingTags));
+        $extracted = [];
+
+        // Clean existing tags (e.g. from Remotive, Arbeitnow, Jobicy)
+        foreach ($existingTags as $tag) {
+            $t = trim($tag);
+            if (mb_strlen($t) >= 2 && !in_array(strtolower($t), ['it', 'technical', 'remote', 'full-time', 'part-time', 'jobs', 'vacancy', 'professional'])) {
+                $extracted[] = self::formatSkillName($t);
+            }
+        }
+
+        // Comprehensive Skills Taxonomy
+        $taxonomy = [
+            // QA & Testing
+            'QA & Software Testing'   => ['qa', 'quality assurance', 'software testing', 'tester', 'test engineer', 'qa analyst'],
+            'Test Case Design'        => ['test case', 'test cases', 'test scenarios', 'test scripts'],
+            'Automation Testing'      => ['automation testing', 'automated test', 'selenium', 'cypress', 'playwright', 'appium'],
+            'Manual Testing'          => ['manual testing', 'manual test', 'functional testing', 'exploratory testing'],
+            'Postman'                 => ['postman'],
+            'API Testing'             => ['api testing', 'rest api', 'api test', 'restful'],
+            'Regression Testing'      => ['regression testing', 'regression test'],
+            'Jira'                    => ['jira', 'confluence'],
+            'Bug Tracking'            => ['bug tracking', 'defect management', 'issue tracking'],
+            'Performance Testing'     => ['jmeter', 'load testing', 'performance testing'],
+
+            // Web & Full-Stack Development
+            'PHP'                     => ['php'],
+            'Laravel'                 => ['laravel'],
+            'JavaScript'              => ['javascript', 'es6'],
+            'TypeScript'              => ['typescript'],
+            'React'                   => ['react', 'react.js', 'reactjs'],
+            'Vue.js'                  => ['vue', 'vue.js', 'vuejs'],
+            'Node.js'                 => ['node', 'node.js', 'nodejs'],
+            'Next.js'                 => ['next.js', 'nextjs'],
+            'HTML/CSS'                => ['html', 'css', 'html5', 'css3'],
+            'Tailwind CSS'            => ['tailwind', 'tailwindcss'],
+            'Bootstrap'               => ['bootstrap'],
+            'Python'                  => ['python', 'django', 'flask', 'fastapi'],
+            'Java'                    => ['java', 'spring', 'spring boot'],
+            'C#'                      => ['c#', '.net', 'asp.net', 'dotnet'],
+            'C++'                     => ['c++'],
+            'Ruby on Rails'           => ['rails', 'ruby on rails'],
+            'REST API'                => ['rest api', 'restful api', 'web services'],
+            'GraphQL'                 => ['graphql'],
+
+            // Database & Data
+            'SQL'                     => ['sql', 'rdbms'],
+            'MySQL'                   => ['mysql'],
+            'PostgreSQL'              => ['postgresql', 'postgres'],
+            'MongoDB'                 => ['mongodb', 'nosql'],
+            'Redis'                   => ['redis'],
+            'Database Management'     => ['database management', 'dba', 'database administration'],
+            'Data Analysis'           => ['data analysis', 'data analyst', 'data analytics'],
+            'Power BI'                => ['power bi', 'powerbi'],
+            'Tableau'                 => ['tableau'],
+
+            // Network, Cloud & DevOps
+            'Linux'                   => ['linux', 'ubuntu', 'debian', 'centos', 'redhat'],
+            'Docker'                  => ['docker', 'containerization'],
+            'Kubernetes'              => ['kubernetes', 'k8s'],
+            'Computer Networking'     => ['networking', 'network engineer', 'ccna', 'tcp/ip', 'lan/wan', 'cisco'],
+            'Nginx'                   => ['nginx', 'apache'],
+            'Bash Scripting'          => ['bash', 'shell script', 'powershell'],
+            'Git'                     => ['git', 'github', 'gitlab'],
+            'CI/CD'                   => ['ci/cd', 'github actions', 'jenkins', 'devops'],
+            'AWS'                     => ['aws', 'amazon web services'],
+            'Cloud Infrastructure'    => ['cloud infrastructure', 'azure', 'google cloud', 'gcp'],
+            'IT Support'              => ['technical support', 'it support', 'helpdesk', 'desktop support'],
+            'Hardware & Systems'      => ['hardware', 'system administration', 'sysadmin', 'active directory'],
+            'Cybersecurity'           => ['cybersecurity', 'network security', 'information security'],
+
+            // Mobile Development
+            'Flutter'                 => ['flutter', 'dart'],
+            'React Native'            => ['react native'],
+            'Android'                 => ['android development', 'android studio', 'kotlin'],
+            'iOS'                     => ['ios development', 'swift', 'xcode'],
+
+            // Local Bacolod Non-Tech & Office Domains
+            'Accounting'              => ['accounting', 'accountant', 'cpa', 'bookkeeping', 'bookkeeper', 'general ledger'],
+            'Tax Compliance'          => ['tax accountant', 'tax preparation', 'us tax', 'tax return', 'tax compliance'],
+            'Financial Analysis'      => ['financial analysis', 'financial reporting', 'audit', 'auditing'],
+            'Operations Management'   => ['operations manager', 'store operations', 'store compliance', 'retail manager'],
+            'Healthcare Coordination' => ['care coordinator', 'case manager', 'patient care', 'healthcare', 'medical'],
+            'Customer Service'        => ['customer service', 'support agent', 'call center', 'bpo', 'voice support'],
+            'Digital Marketing'       => ['digital marketing', 'social media', 'content marketing', 'seo'],
+            'Project Management'      => ['project management', 'project manager', 'scrum master', 'agile'],
+        ];
+
+        foreach ($taxonomy as $canonicalSkill => $patterns) {
+            foreach ($patterns as $pattern) {
+                if (preg_match('/\b' . preg_quote($pattern, '/') . '\b/i', $text)) {
+                    $extracted[] = $canonicalSkill;
+                    break;
+                }
+            }
+        }
+
+        // Deduplicate and filter out generic filler words
+        $clean = [];
+        foreach ($extracted as $item) {
+            $norm = self::formatSkillName($item);
+            if (!in_array($norm, $clean) && !in_array(strtolower($norm), ['it', 'technical', 'remote'])) {
+                $clean[] = $norm;
+            }
+        }
+
+        // Fallback based on job title keywords if no specific skills matched
+        if (empty($clean)) {
+            $titleLower = strtolower($title);
+            if (str_contains($titleLower, 'qa') || str_contains($titleLower, 'test')) {
+                $clean = ['QA & Software Testing', 'Quality Assurance'];
+            } elseif (str_contains($titleLower, 'developer') || str_contains($titleLower, 'engineer')) {
+                $clean = ['Software Development', 'Web Development'];
+            } elseif (str_contains($titleLower, 'support') || str_contains($titleLower, 'network')) {
+                $clean = ['IT Support', 'Technical Support'];
+            } elseif (str_contains($titleLower, 'account')) {
+                $clean = ['Accounting', 'Financial Analysis'];
+            } elseif (str_contains($titleLower, 'care') || str_contains($titleLower, 'health')) {
+                $clean = ['Healthcare Coordination', 'Patient Care'];
+            } elseif (str_contains($titleLower, 'manager') || str_contains($titleLower, 'operations')) {
+                $clean = ['Operations Management', 'Administration'];
+            } else {
+                $clean = ['Professional Role'];
+            }
+        }
+
+        return array_slice($clean, 0, 8);
+    }
+
+    /**
+     * Standardize skill names and slug aliases.
+     */
+    protected static function formatSkillName(string $s): string
+    {
+        $map = [
+            'javascript'   => 'JavaScript',
+            'typescript'   => 'TypeScript',
+            'node-js'      => 'Node.js',
+            'nodejs'       => 'Node.js',
+            'vue-js'       => 'Vue.js',
+            'vuejs'        => 'Vue.js',
+            'react'        => 'React',
+            'react-native' => 'React Native',
+            'next-js'      => 'Next.js',
+            'nextjs'       => 'Next.js',
+            'mysql'        => 'MySQL',
+            'postgresql'   => 'PostgreSQL',
+            'mongodb'      => 'MongoDB',
+            'php'          => 'PHP',
+            'laravel'      => 'Laravel',
+            'python'       => 'Python',
+            'html'         => 'HTML',
+            'css'          => 'CSS',
+            'git'          => 'Git',
+            'docker'       => 'Docker',
+            'aws'          => 'AWS',
+            'gcp'          => 'GCP',
+            'kubernetes'   => 'Kubernetes',
+            'redis'        => 'Redis',
+            'graphql'      => 'GraphQL',
+            'tailwindcss'  => 'Tailwind CSS',
+            'tailwind-css' => 'Tailwind CSS',
+            'bootstrap'    => 'Bootstrap',
+            'angular'      => 'Angular',
+            'svelte'       => 'Svelte',
+            'flutter'      => 'Flutter',
+            'sql'          => 'SQL',
+            'qa'           => 'QA & Software Testing',
+            'jira'         => 'Jira',
+            'postman'      => 'Postman',
+        ];
+
+        $clean = trim($s);
+        $lower = strtolower($clean);
+
+        return $map[$lower] ?? ucwords(str_replace(['-', '_'], ' ', $clean));
     }
 }

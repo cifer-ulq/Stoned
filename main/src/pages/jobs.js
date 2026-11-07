@@ -26,13 +26,17 @@ const DEPARTMENTS = [
 
 /* ── Relative date helper ── */
 function relativeDate(dateStr) {
-  if (!dateStr) return '';
-  const diff = Math.floor((Date.now() - new Date(dateStr)) / 86400000);
-  if (diff === 0) return 'Today';
+  if (!dateStr || dateStr === 'Recent') return 'Recently posted';
+  const parsed = new Date(dateStr);
+  if (isNaN(parsed.getTime())) return 'Recently posted';
+
+  const diff = Math.floor((Date.now() - parsed.getTime()) / 86400000);
+  if (diff <= 0) return 'Today';
   if (diff === 1) return 'Yesterday';
   if (diff < 7) return `${diff}d ago`;
   if (diff < 30) return `${Math.floor(diff / 7)}w ago`;
-  return new Date(dateStr).toLocaleDateString();
+  if (diff < 365) return `${Math.floor(diff / 30)}mo ago`;
+  return parsed.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function escapeHtml(str) {
@@ -225,7 +229,15 @@ const jobCard = internalCard;
 /* ── External job card (JSearch) ── */
 function externalCard(job, idx) {
   const matchedSkills = job.matched_skills || job.matchedSkills || [];
-  const skills        = job.skills || [];
+  const rawSkills     = job.skills || [];
+
+  // Merge matched skills to the front so the candidate's verified skills always appear
+  const skills = [...matchedSkills];
+  rawSkills.forEach(s => {
+    if (!skills.some(m => String(m).toLowerCase().trim() === String(s).toLowerCase().trim())) {
+      skills.push(s);
+    }
+  });
 
   const fmtSlug = s => {
     const ov = { javascript:'JavaScript', typescript:'TypeScript', 'node-js':'Node.js',
