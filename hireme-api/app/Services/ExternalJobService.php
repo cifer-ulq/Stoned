@@ -117,25 +117,41 @@ class ExternalJobService
             }
         }
 
-        // 5. Provider B: Jobicy Remote Jobs API (Live public feed of 50-60 verified remote tech roles)
+        // 5. Provider B: Jooble Developer API (Dedicated Philippine Jobs Feed)
+        $joobleKey = config('services.jooble.key');
+        if (!empty($joobleKey)) {
+            // Jooble Local Bacolod / Negros Postings
+            $joobleLocalRaw = self::fetchFromJooble($joobleKey, $searchTerm, $userCity . ', Philippines');
+            foreach ($joobleLocalRaw as $job) {
+                $addJob(self::normalizeJoobleJob($job, $userSkills));
+            }
+
+            // Jooble PH Nationwide Postings
+            $jooblePHRaw = self::fetchFromJooble($joobleKey, $searchTerm, 'Philippines');
+            foreach ($jooblePHRaw as $job) {
+                $addJob(self::normalizeJoobleJob($job, $userSkills));
+            }
+        }
+
+        // 6. Provider C: Jobicy Remote Jobs API (Live public feed of 50-60 verified remote tech roles)
         $jobicyRaw = self::fetchFromJobicy($searchTerm);
         foreach ($jobicyRaw as $job) {
             $addJob(self::normalizeJobicyJob($job, $userSkills));
         }
 
-        // 6. Provider C: Remotive API (Live public feed of software developer roles)
+        // 7. Provider D: Remotive API (Live public feed of software developer roles)
         $remotiveRaw = self::fetchFromRemotive($searchTerm);
         foreach ($remotiveRaw as $job) {
             $addJob(self::normalizeRemotiveJob($job, $userSkills));
         }
 
-        // 7. Provider D: Arbeitnow API (Live public feed of remote tech and software roles)
+        // 8. Provider E: Arbeitnow API (Live public feed of remote tech and software roles)
         $arbeitnowRaw = self::fetchFromArbeitnow($searchTerm);
         foreach ($arbeitnowRaw as $job) {
             $addJob(self::normalizeArbeitnowJob($job, $userSkills));
         }
 
-        // 8. Sort by calculated relevance score (Local Bacolod / Negros matches receive highest ranking)
+        // 9. Sort by calculated relevance score (Local Bacolod / Negros matches receive highest ranking)
         usort($allJobs, function ($a, $b) {
             return ($b['_relevance'] ?? 0) <=> ($a['_relevance'] ?? 0);
         });
@@ -286,6 +302,44 @@ class ExternalJobService
     }
 
     /**
+     * Fetch real-time job listings from Jooble Developer API
+     * Cached globally for 6 hours to conserve quota.
+     */
+    protected static function fetchFromJooble(string $apiKey, string $searchTerm, string $location = 'Bacolod, Philippines'): array
+    {
+        $cacheKey = 'jooble_live_' . md5($searchTerm . '_' . $location);
+
+        return Cache::remember($cacheKey, now()->addHours(6), function () use ($apiKey, $searchTerm, $location) {
+            $cleanKey = trim($apiKey);
+            $url = 'https://jooble.org/api/' . $cleanKey;
+
+            try {
+                $payload = [
+                    'keywords'     => !empty($searchTerm) ? $searchTerm : 'developer OR IT OR support OR business',
+                    'location'     => $location,
+                    'page'         => 1,
+                    'ResultOnPage' => 20,
+                ];
+
+                $r = Http::timeout(10)
+                    ->withoutVerifying()
+                    ->withHeaders([
+                        'Content-Type' => 'application/json',
+                    ])
+                    ->post($url, $payload);
+
+                if ($r->successful()) {
+                    return $r->json('jobs', []);
+                }
+            } catch (\Throwable $e) {
+                Log::warning('[ExternalJobService] Jooble API fetch failed: ' . $e->getMessage());
+            }
+
+            return [];
+        });
+    }
+
+    /**
      * Fetch up to 60 remote tech jobs from Jobicy's live public API (No API key required)
      * Cached globally for 4 hours.
      */
@@ -422,6 +476,74 @@ class ExternalJobService
             Log::warning('[ExternalJobService] Arbeitnow fetch failed: ' . $e->getMessage());
             return [];
         }
+    }
+
+    /**
+     * Standardize Jooble API job result into HireMe schema
+     */
+    protected static function normalizeJoobleJob(array $j, array $userSkills): array
+    {
+        $titleLower = strtolower($j['title'] ?? '');
+        $descRaw    = strip_tags($j['snippet'] ?? '');
+        $descClean  = trim(preg_replace('/\s{2,}/', ' ', $descRaw));
+        $excerpt    = mb_strlen($descClean) > 280 ? mb_substr($descClean, 0, 280) . '…' : $descClean;
+        $searchPool = $titleLower . ' ' . strtolower($descClean);
+
+        $matched = [];
+        foreach ($userSkills as $s) {
+            $sl = strtolower(trim($s));
+            if (mb_strlen($sl) >= 2 && str_contains($searchPool, $sl)) {
+                $matched[] = $s;
+            }
+        }
+
+        $company = $j['company'] ?? 'Hiring Employer';
+        $location = !empty($j['location']) ? $j['location'] : 'Bacolod, Philippines';
+        $rec     = RecommendationService::forExternalJob();
+
+        $isLocal = stripos($location, 'Bacolod') !== false
+            || stripos($location, 'Negros') !== false
+            || stripos($location, 'Talisay') !== false
+            || stripos($location, 'Silay') !== false
+            || stripos($titleLower, 'Bacolod') !== false;
+
+        $isRemote = stripos($location, 'remote') !== false
+            || stripos($titleLower, 'remote') !== false
+            || stripos($descClean, 'work from home') !== false;
+
+        $scope = $isLocal ? 'local' : ($isRemote ? 'remote' : 'nationwide');
+
+        $relevance = (count($matched) * 20)
+            + ($isLocal ? 40 : 0)
+            + ($isRemote ? 10 : 15);
+
+        return [
+            'id'                   => 'jooble-' . md5(($j['link'] ?? '') . ($j['title'] ?? '')),
+            'title'                => $j['title'] ?? 'Untitled Position',
+            'company'              => $company,
+            'company_initial'      => strtoupper(substr($company, 0, 1)),
+            'company_logo'         => null,
+            'location'             => $location,
+            'location_scope'       => $scope,
+            'is_local'             => $isLocal,
+            'type'                 => !empty($j['type']) ? $j['type'] : 'Full-time',
+            'salary'               => !empty($j['salary']) ? $j['salary'] : 'Competitive',
+            'description'          => $excerpt,
+            'skills'               => !empty($matched) ? $matched : ['Professional', 'Verified Vacancy'],
+            'matched_skills'       => $matched,
+            'match_score'          => null,
+            'match_tier'           => $rec['tier'],
+            'recommendation_label' => $rec['short_label'],
+            'match_recommendation' => $rec,
+            'link'                 => $j['link'] ?? 'https://ph.jooble.org',
+            'source'               => 'jooble',
+            'posted_date'          => !empty($j['updated'])
+                ? date('M j', strtotime($j['updated']))
+                : 'Recent',
+            'remote'               => $isRemote,
+            'is_external'          => true,
+            '_relevance'           => $relevance,
+        ];
     }
 
     /**

@@ -39,6 +39,10 @@ return [
         'key' => env('JSEARCH_API_KEY'),
     ],
 
+    'jooble' => [
+        'key' => env('JOOBLE_API_KEY'),
+    ],
+
     'google' => [
         'client_id'     => env('GOOGLE_CLIENT_ID'),
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),
