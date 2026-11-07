@@ -988,7 +988,7 @@ export async function renderJobs(container) {
   let defaultExternalJobs = null;
   let lastExternalSearchQuery = '';
   let externalFetching = false;
-  let externalScope = 'all';
+  let externalScope = 'local';
   let externalVisibleCount = 16;
   let empStatus     = { hired: false, active_ojt: false, pending_ojt: false };
 
@@ -1005,10 +1005,6 @@ export async function renderJobs(container) {
 
       titleEl.innerHTML = `${icon('mapPin', 13)} Location Scope:`;
       chipsEl.innerHTML = `
-        <button class="jf-quick-chip ${externalScope === 'all' ? 'jf-quick-chip--active' : ''} jm-scope-chip" data-scope="all">
-          <span class="jf-quick-chip__icon">🌐</span> All Roles
-          <span class="jf-chip-count">${list.length}</span>
-        </button>
         <button class="jf-quick-chip ${externalScope === 'local' ? 'jf-quick-chip--active' : ''} jm-scope-chip" data-scope="local">
           <span class="jf-quick-chip__icon">📍</span> Bacolod &amp; Negros Local
           <span class="jf-chip-count">${localC}</span>
@@ -1020,6 +1016,10 @@ export async function renderJobs(container) {
         <button class="jf-quick-chip ${externalScope === 'remote' ? 'jf-quick-chip--active' : ''} jm-scope-chip" data-scope="remote">
           <span class="jf-quick-chip__icon">💻</span> Global Remote
           <span class="jf-chip-count">${remC}</span>
+        </button>
+        <button class="jf-quick-chip ${externalScope === 'all' ? 'jf-quick-chip--active' : ''} jm-scope-chip" data-scope="all">
+          <span class="jf-quick-chip__icon">🌐</span> All Roles
+          <span class="jf-chip-count">${list.length}</span>
         </button>
       `;
     } else {
