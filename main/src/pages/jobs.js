@@ -244,8 +244,17 @@ function externalCard(job, idx) {
     ? `<img src="${escapeHtml(job.company_logo)}" alt="${escapeHtml(job.company)}">`
     : escapeHtml(job.company_initial || (job.company || 'C').charAt(0));
 
+  const isLocal = Boolean(job.is_local || job.location_scope === 'local' || (job.location && /bacolod|negros|talisay|silay/i.test(job.location)));
+  const isRemote = Boolean(job.location_scope === 'remote' || job.remote || (job.location && /remote/i.test(job.location)));
+
+  const locBadge = isLocal
+    ? `<span class="jm-card__loc-pill" style="display:inline-flex;align-items:center;gap:3px;font-size:0.67rem;font-weight:700;padding:2px 8px;border-radius:12px;background:#dcfce7;color:#15803d;border:1px solid #bbf7d0;" title="Local City Opportunity">${icon('mapPin', 10)} Bacolod / Local</span>`
+    : (isRemote
+        ? `<span class="jm-card__loc-pill" style="display:inline-flex;align-items:center;gap:3px;font-size:0.67rem;font-weight:700;padding:2px 8px;border-radius:12px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;" title="Work from Anywhere / Remote">${icon('globe', 10)} Remote</span>`
+        : `<span class="jm-card__loc-pill" style="display:inline-flex;align-items:center;gap:3px;font-size:0.67rem;font-weight:700;padding:2px 8px;border-radius:12px;background:#f1f5f9;color:#475569;border:1px solid #cbd5e1;" title="Philippine Nationwide">${icon('mapPin', 10)} PH Nationwide</span>`);
+
   return `
-    <article class="jm-card jm-card--external" style="--enter-delay:${idx*60}ms;" data-job-id="${job.id}">
+    <article class="jm-card jm-card--external" style="--enter-delay:${Math.min(idx * 25, 350)}ms;" data-job-id="${job.id}">
       <div class="jm-card__accent" style="background:var(--color-primary, #005930);"></div>
 
       <div class="jm-card__top">
@@ -262,8 +271,9 @@ function externalCard(job, idx) {
             </p>
           </div>
         </div>
-        <div class="jm-card__status-col">
+        <div class="jm-card__status-col" style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;">
           <span class="jm-card__hot-badge" title="Highly Recommended">${icon('award', 11)} Highly Recommended</span>
+          ${locBadge}
         </div>
       </div>
 
@@ -714,6 +724,25 @@ export async function renderJobs(container) {
         </div>
       </section>
 
+      <!-- External Jobs Location Scope Bar -->
+      <div class="animate-fade-in-up" id="external-subtabs" style="display:none; align-items:center; gap:8px; padding:10px 14px; background:var(--bg-surface, #ffffff); border:1px solid var(--border-default, #e2e8f0); border-radius:12px; margin-bottom:14px; flex-wrap:wrap;">
+        <span style="font-size:0.78rem; font-weight:700; color:var(--text-secondary, #64748b); display:flex; align-items:center; gap:4px;">
+          ${icon('mapPin', 13)} Location Scope:
+        </span>
+        <button class="jf-pill jf-pill--active jm-scope-pill" data-scope="all">
+          All Opportunities (<span id="ext-scope-all-count">0</span>)
+        </button>
+        <button class="jf-pill jm-scope-pill" data-scope="local">
+          📍 Bacolod / Local (<span id="ext-scope-local-count">0</span>)
+        </button>
+        <button class="jf-pill jm-scope-pill" data-scope="nationwide">
+          🇵🇭 Nationwide PH (<span id="ext-scope-ph-count">0</span>)
+        </button>
+        <button class="jf-pill jm-scope-pill" data-scope="remote">
+          🌐 Remote (<span id="ext-scope-remote-count">0</span>)
+        </button>
+      </div>
+
       <!-- Quick Filter Chips Row -->
       <div class="jf-quick-bar animate-fade-in-up" id="jf-quick-bar" style="animation-delay:330ms;">
         <span class="jf-quick-bar__title">${icon('sparkles', 13)} Quick Filters:</span>
@@ -982,7 +1011,24 @@ export async function renderJobs(container) {
   let defaultExternalJobs = null;
   let lastExternalSearchQuery = '';
   let externalFetching = false;
+  let externalScope = 'all';
+  let externalVisibleCount = 16;
   let empStatus     = { hired: false, active_ojt: false, pending_ojt: false };
+
+  function updateExternalScopeCounts() {
+    const list = Array.isArray(externalJobs) ? externalJobs : [];
+    const allEl = container.querySelector('#ext-scope-all-count');
+    if (allEl) allEl.textContent = list.length;
+    const localC = list.filter(j => j.is_local || j.location_scope === 'local' || (j.location && /bacolod|negros|talisay|silay/i.test(j.location))).length;
+    const locEl = container.querySelector('#ext-scope-local-count');
+    if (locEl) locEl.textContent = localC;
+    const phC = list.filter(j => j.location_scope === 'nationwide').length;
+    const phEl = container.querySelector('#ext-scope-ph-count');
+    if (phEl) phEl.textContent = phC;
+    const remC = list.filter(j => j.location_scope === 'remote' || j.remote || (j.location && /remote/i.test(j.location))).length;
+    const remEl = container.querySelector('#ext-scope-remote-count');
+    if (remEl) remEl.textContent = remC;
+  }
 
   /* ── Filter state ── */
   const filters = {
@@ -1005,6 +1051,7 @@ export async function renderJobs(container) {
       lastExternalSearchQuery = '';
       const ec = container.querySelector('#external-count');
       if (ec) ec.textContent = externalJobs.length;
+      updateExternalScopeCounts();
       renderCards(false);
       return;
     }
@@ -1034,6 +1081,7 @@ export async function renderJobs(container) {
         }
         const ec = container.querySelector('#external-count');
         if (ec) ec.textContent = externalJobs.length;
+        updateExternalScopeCounts();
       } else {
         externalJobs = [];
         const msg = res?.message || 'External job listings are temporarily unavailable.';
@@ -1192,6 +1240,18 @@ export async function renderJobs(container) {
   function getFilteredJobs() {
     if (currentFilter === 'external') {
       let jobs = Array.isArray(externalJobs) ? [...externalJobs] : [];
+
+      if (externalScope !== 'all') {
+        jobs = jobs.filter(j => {
+          const isLoc = Boolean(j.is_local || j.location_scope === 'local' || (j.location && /bacolod|negros|talisay|silay/i.test(j.location)));
+          const isRem = Boolean(j.location_scope === 'remote' || j.remote || (j.location && /remote/i.test(j.location)));
+          if (externalScope === 'local') return isLoc;
+          if (externalScope === 'remote') return isRem;
+          if (externalScope === 'nationwide') return !isLoc && !isRem;
+          return true;
+        });
+      }
+
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
         jobs = jobs.filter(j =>
@@ -1333,7 +1393,29 @@ export async function renderJobs(container) {
     }
     emptyEl.style.display = 'none';
     if (currentFilter === 'external') {
-      cardsEl.innerHTML = jobs.map((j, i) => externalCard(j, i)).join('');
+      const visible = jobs.slice(0, externalVisibleCount);
+      let html = visible.map((j, i) => externalCard(j, i)).join('');
+
+      if (jobs.length > externalVisibleCount) {
+        html += `
+          <div class="jm-load-more-wrap" style="grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 28px 16px 20px; gap: 8px;">
+            <button class="btn btn--primary" id="jm-load-more-btn" style="height: 42px; padding: 0 24px; font-weight: 700; border-radius: 10px; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 14px rgba(0, 89, 48, 0.22); cursor: pointer;">
+              ${icon('chevronDown', 15)} Load More Opportunities (${visible.length} of ${jobs.length})
+            </button>
+            <span style="font-size: 0.78rem; color: var(--text-secondary); font-weight: 500;">
+              Showing top ${visible.length} of ${jobs.length} external positions
+            </span>
+          </div>`;
+      }
+      cardsEl.innerHTML = html;
+
+      const loadMoreBtn = cardsEl.querySelector('#jm-load-more-btn');
+      if (loadMoreBtn) {
+        loadMoreBtn.addEventListener('click', () => {
+          externalVisibleCount += 16;
+          _insertCards(jobs);
+        });
+      }
     } else {
       cardsEl.innerHTML = jobs.map((j, i) => internalCard(j, i, appliedIds)).join('');
     }
@@ -2069,16 +2151,34 @@ export async function renderJobs(container) {
     // Hide company and department filters on external tab if needed
     if (companyGroup) companyGroup.style.display = filter === 'external' ? 'none' : '';
 
+    const extSubtabs = container.querySelector('#external-subtabs');
+    if (extSubtabs) extSubtabs.style.display = filter === 'external' ? 'flex' : 'none';
+
     filterBar.querySelectorAll('.jm-tabs__btn').forEach(b => b.classList.remove('jm-tabs__btn--active'));
     btn.classList.add('jm-tabs__btn--active');
 
     if (filter === 'external') {
+      externalVisibleCount = 16;
+      updateExternalScopeCounts();
       if (externalJobs === null || (searchQuery && lastExternalSearchQuery !== searchQuery)) {
         await fetchExternalJobs(searchQuery);
       }
     }
     renderCards();
     updateFilterBadge();
+  });
+
+  /* Scope subtabs listener */
+  container.querySelector('#external-subtabs')?.addEventListener('click', (e) => {
+    const pill = e.target.closest('.jm-scope-pill');
+    if (!pill) return;
+    const scope = pill.dataset.scope;
+    if (scope === externalScope) return;
+    externalScope = scope;
+    container.querySelectorAll('.jm-scope-pill').forEach(p => p.classList.remove('jf-pill--active'));
+    pill.classList.add('jf-pill--active');
+    externalVisibleCount = 16;
+    renderCards(false);
   });
 
   /* Sort */
