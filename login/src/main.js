@@ -24,6 +24,49 @@ function escapeHtml(str) {
     .replace(/'/g, '&#039;');
 }
 
+/* ── CHMSU Student ID Generator ── */
+function generateChmsuStudentId(fullName, birthDate, middleName) {
+  if (!birthDate) return '';
+  const partsDate = String(birthDate).split('-');
+  if (partsDate.length !== 3) return '';
+  const yyyy = partsDate[0];
+  const mm   = partsDate[1].padStart(2, '0');
+  const dd   = partsDate[2].padStart(2, '0');
+  const yy   = yyyy.slice(-2);
+  const datePart = `${mm}${dd}${yy}`;
+
+  const cleanName = (fullName || '').trim();
+  const parts = cleanName.split(/\s+/).filter(Boolean);
+  let firstInitial = 'X';
+  let middleInitial = 'X';
+  let lastInitial = 'X';
+
+  if (parts.length === 1) {
+    lastInitial = parts[0][0].toUpperCase();
+    firstInitial = lastInitial;
+  } else if (parts.length === 2) {
+    firstInitial = parts[0][0].toUpperCase();
+    lastInitial = parts[1][0].toUpperCase();
+    if (middleName && middleName.trim()) {
+      middleInitial = middleName.trim()[0].toUpperCase();
+    }
+  } else if (parts.length >= 3) {
+    firstInitial = parts[0][0].toUpperCase();
+    lastInitial = parts[parts.length - 1][0].toUpperCase();
+    if (middleName && middleName.trim()) {
+      middleInitial = middleName.trim()[0].toUpperCase();
+    } else {
+      const candidateMiddle = parts[1].replace(/[^A-Za-z]/g, '');
+      if (candidateMiddle) {
+        middleInitial = candidateMiddle[0].toUpperCase();
+      }
+    }
+  }
+
+  const initials = `${lastInitial}${firstInitial}${middleInitial}`;
+  return `${initials}${datePart}00`;
+}
+
 /* ── State ── */
 const urlParams = new URLSearchParams(window.location.search);
 const validViews = ['signin', 'signup', 'company-signup', 'company-success', 'forgot', 'forgot-success'];
@@ -244,6 +287,33 @@ function renderStandardForm(isSignin, isSignup) {
           <label class="lf-field__label" for="name">Full Name</label>
         </div>
         <span class="lf-field__error" id="err-name"></span>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 10px;">
+        <div class="lf-field">
+          <div class="lf-field__wrap" id="wrap-birth-date">
+            <span class="lf-field__icon">${icon('calendar', 18)}</span>
+            <input class="lf-field__input" type="date" id="birth-date" name="birth_date"
+              placeholder="x" />
+            <label class="lf-field__label lf-field__label--float" for="birth-date">Birthdate</label>
+          </div>
+          <span class="lf-field__error" id="err-birth-date"></span>
+        </div>
+
+        <div class="lf-field">
+          <div class="lf-field__wrap" id="wrap-middle-name">
+            <span class="lf-field__icon">${icon('user', 18)}</span>
+            <input class="lf-field__input" type="text" id="middle-name" name="middle_name" maxlength="30"
+              placeholder="x" />
+            <label class="lf-field__label" for="middle-name">Middle Initial</label>
+          </div>
+          <span class="lf-field__error" id="err-middle-name"></span>
+        </div>
+      </div>
+
+      <div id="signup-id-preview" style="display:none; margin: -2px 0 10px; padding: 9px 12px; background: rgba(0, 89, 48, 0.06); border: 1.5px solid rgba(0, 89, 48, 0.2); border-radius: 12px; font-size: 0.78rem; color: var(--color-primary); align-items: center; justify-content: space-between;">
+        <span>💡 Suggested Student ID: <strong id="signup-preview-val" style="font-family: monospace; letter-spacing: 0.6px; font-size: 0.88rem;"></strong></span>
+        <span style="font-size: 0.68rem; color: var(--text-tertiary);">CHMSU format</span>
       </div>
       ` : ''}
 
@@ -755,6 +825,35 @@ function attachEvents() {
   // Form submit — standard
   document.getElementById('login-form')?.addEventListener('submit', handleSubmit);
 
+  // Live CHMSU Student ID Suggestion preview on signup
+  const nameInput   = document.getElementById('name');
+  const birthInput  = document.getElementById('birth-date');
+  const middleInput = document.getElementById('middle-name');
+  const previewBox  = document.getElementById('signup-id-preview');
+  const previewVal  = document.getElementById('signup-preview-val');
+
+  function updateSignupIdPreview() {
+    const n = nameInput?.value.trim() || '';
+    const b = birthInput?.value || '';
+    const m = middleInput?.value.trim() || '';
+    if (n && b) {
+      const candidate = generateChmsuStudentId(n, b, m);
+      if (candidate && previewBox && previewVal) {
+        previewVal.textContent = candidate;
+        previewBox.style.display = 'flex';
+        return;
+      }
+    }
+    if (previewBox) {
+      previewBox.style.display = 'none';
+    }
+  }
+
+  nameInput?.addEventListener('input', updateSignupIdPreview);
+  birthInput?.addEventListener('input', updateSignupIdPreview);
+  birthInput?.addEventListener('change', updateSignupIdPreview);
+  middleInput?.addEventListener('input', updateSignupIdPreview);
+
   // Form submit — company
   document.getElementById('company-form')?.addEventListener('submit', handleCompanySubmit);
 
@@ -1010,8 +1109,15 @@ async function handleSubmit(e) {
   const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   if (currentView === 'signup') {
+    const birthDate  = document.getElementById('birth-date')?.value || '';
+    const middleName = document.getElementById('middle-name')?.value.trim() || '';
+
     if (!name) {
       showError('name', 'Please enter your full name.');
+      valid = false;
+    }
+    if (!birthDate) {
+      showError('birth-date', 'Please enter your birthdate.');
       valid = false;
     }
     if (!email || !emailRe.test(email)) {
@@ -1034,8 +1140,18 @@ async function handleSubmit(e) {
     btn.disabled = true;
     lbl.innerHTML = '<span class="login-spinner"></span> Please wait…';
 
+    const suggestedId = generateChmsuStudentId(name, birthDate, middleName);
+
     // Store credentials temporarily — role + profile collected on onboarding
-    sessionStorage.setItem('hireme-signup', JSON.stringify({ name, email, password, terms_accepted: true }));
+    sessionStorage.setItem('hireme-signup', JSON.stringify({
+      name,
+      email,
+      password,
+      birth_date: birthDate,
+      middle_name: middleName,
+      student_id: suggestedId,
+      terms_accepted: true,
+    }));
     window.location.href = './onboarding.html';
     return;
   }

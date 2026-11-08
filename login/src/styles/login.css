@@ -477,7 +477,8 @@
   white-space: nowrap;
 }
 .lf-field__input:focus ~ .lf-field__label,
-.lf-field__input:not(:placeholder-shown) ~ .lf-field__label {
+.lf-field__input:not(:placeholder-shown) ~ .lf-field__label,
+.lf-field__label--float {
   top: 8px;
   font-size: 0.68rem;
   color: var(--color-primary);

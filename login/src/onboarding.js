@@ -617,6 +617,19 @@ function render(animate = true) {
     cachedUser = cachedUserStr ? JSON.parse(cachedUserStr) : null;
   } catch (_) {}
 
+  // Hydrate registration data from signup step if available
+  const signupStr = sessionStorage.getItem('hireme-signup');
+  let signupData = null;
+  try {
+    signupData = signupStr ? JSON.parse(signupStr) : null;
+  } catch (_) {}
+
+  if (signupData) {
+    if (signupData.birth_date && !formData.birthDate)   formData.birthDate  = signupData.birth_date;
+    if (signupData.middle_name && !formData.middleName) formData.middleName = signupData.middle_name;
+    if (signupData.student_id && !formData.studentId)   formData.studentId  = signupData.student_id;
+  }
+
   if (cachedUser && cachedUser.role && !formData.userType) {
     if (cachedUser.role === 'student' || cachedUser.role === 'graduate') {
       formData.userType = cachedUser.role;
@@ -916,6 +929,7 @@ function renderStudentInfo() {
           </div>
         </div>
 
+        ${!formData.birthDate ? `
         <div class="ob-field ob-reveal" style="--delay:.34s">
           <div class="ob-field__input-wrap">
             <span class="ob-field__icon">${icon('calendar', 16)}</span>
@@ -931,6 +945,10 @@ function renderStudentInfo() {
             <label class="ob-field__label" for="middle-name">Middle Initial / Name</label>
           </div>
         </div>
+        ` : `
+        <input type="hidden" id="birth-date" value="${formData.birthDate || ''}" />
+        <input type="hidden" id="middle-name" value="${formData.middleName || ''}" />
+        `}
 
         <div class="ob-field ob-field--full ob-reveal" style="--delay:.38s">
           <div class="ob-field__input-wrap">
@@ -939,7 +957,12 @@ function renderStudentInfo() {
             <label class="ob-field__label" for="student-id">Student ID <span style="color:#ef4444;font-weight:700;">*</span></label>
           </div>
           <div id="student-id-helper" style="font-size:0.75rem; color:#6b7280; margin-top:5px; padding-left:4px;">
-            💡 <em>Enter your birthdate above to auto-generate your CHMSU Student ID.</em>
+            ${formData.studentId ? `
+              <span style="color:#10b981; font-weight:600;">✓ Auto-generated from your signup birthdate (<code>${formData.studentId}</code>)</span>
+              <span style="color:#9ca3af; font-size:0.7rem; display:block; margin-top:2px;">Editable if your physical CHMSU school ID card ends in a different number.</span>
+            ` : `
+              💡 <em>Enter your birthdate above to auto-generate your CHMSU Student ID.</em>
+            `}
           </div>
         </div>
 
@@ -1460,9 +1483,9 @@ function saveStepData() {
     const rawSec        = document.getElementById('section')?.value || '';
     formData.section    = rawSec.trim().toUpperCase().slice(-1);
     formData.batch      = document.getElementById('batch')?.value || AUTO_BATCH;
-    formData.birthDate  = document.getElementById('birth-date')?.value || '';
-    formData.middleName = document.getElementById('middle-name')?.value || '';
-    formData.studentId  = (document.getElementById('student-id')?.value || '').trim().toUpperCase();
+    formData.birthDate  = document.getElementById('birth-date')?.value || formData.birthDate || '';
+    formData.middleName = document.getElementById('middle-name')?.value || formData.middleName || '';
+    formData.studentId  = (document.getElementById('student-id')?.value || formData.studentId || '').trim().toUpperCase();
   } else if (stepId === 'graduate-info') {
     formData.graduateYearGraduated = document.getElementById('graduate-year')?.value || '';
     formData.graduateCampus        = document.getElementById('graduate-campus')?.value || '';
