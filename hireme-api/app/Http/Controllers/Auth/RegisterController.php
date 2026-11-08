@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\AuthCookieService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
@@ -47,6 +48,6 @@ class RegisterController extends Controller
                 'terms_accepted_at'    => $user->terms_accepted_at?->toIso8601String(),
                 'has_accepted_terms'   => true,
             ],
-        ], 201);
+        ], 201)->withCookie(AuthCookieService::make($token));
     }
 }

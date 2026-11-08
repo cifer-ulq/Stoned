@@ -209,7 +209,8 @@ export function createNavbar() {
     if (action === 'logout') {
       fetch('/api/auth/logout', {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('hireme_token')}`, 'Accept': 'application/json' },
+        headers: { 'Accept': 'application/json' },
+        credentials: 'include',
       }).catch(() => {});
       clearAuth();
       window.location.href = '../login/';

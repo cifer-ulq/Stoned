@@ -38,6 +38,7 @@ return [
 
     'allowed_origins_patterns' => [
         '#^https://.*\.trycloudflare\.com$#',
+        '#^https://.*\.vercel\.app$#',
     ],
 
     'allowed_headers' => ['*'],
@@ -46,6 +47,6 @@ return [
 
     'max_age' => 0,
 
-    'supports_credentials' => false,
+    'supports_credentials' => true,
 
 ];

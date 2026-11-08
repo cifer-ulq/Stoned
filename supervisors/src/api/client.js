@@ -13,7 +13,7 @@ const API_BASE = 'http://localhost:8000/api';
 
 /* ── Auth helpers ── */
 export function getToken() {
-  return localStorage.getItem('hireme_token');
+  return null; // Session token is handled securely via HttpOnly cookie
 }
 
 export function clearAuth() {
@@ -21,7 +21,6 @@ export function clearAuth() {
   try {
     window.dispatchEvent(new CustomEvent('hireme:clear-views'));
   } catch { /* ignore */ }
-  localStorage.removeItem('hireme_token');
   localStorage.removeItem('hireme_user');
 }
 
@@ -68,7 +67,7 @@ export async function apiRequest(method, path, body = null, options = {}) {
   const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const opts = { method, headers };
+  const opts = { method, headers, credentials: 'include' };
   if (body) opts.body = JSON.stringify(body);
 
   const endpoint = path;
@@ -182,7 +181,7 @@ export async function apiUpload(path, formData) {
   const headers = { 'Accept': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const res = await fetch(`${API_BASE}${path}`, { method: 'POST', headers, body: formData });
+  const res = await fetch(`${API_BASE}${path}`, { method: 'POST', headers, body: formData, credentials: 'include' });
   if (res.status === 401) { clearAuth(); window.location.href = '../login/'; return null; }
 
   const data = await res.json();

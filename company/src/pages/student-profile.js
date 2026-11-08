@@ -12,7 +12,6 @@ import '../styles/portfolio.css';
 import { icon } from '../components/icons.js';
 
 const BASE  = 'http://localhost:8000/api';
-const token = localStorage.getItem('hireme_token');
 
 function storageUrl(path) {
   if (!path) return '';
@@ -20,14 +19,18 @@ function storageUrl(path) {
 }
 
 async function apiFetch(path, options = {}) {
+  const token = localStorage.getItem('hireme_token');
+  const headers = {
+    Accept:        'application/json',
+    'Content-Type': 'application/json',
+    ...(options.headers || {}),
+  };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
   const res = await fetch(BASE + path, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept:        'application/json',
-      'Content-Type': 'application/json',
-      ...(options.headers || {}),
-    },
+    credentials: 'include',
     ...options,
+    headers,
   });
   return res.json();
 }

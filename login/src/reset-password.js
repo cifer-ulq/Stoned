@@ -432,6 +432,7 @@ async function handleResetSubmit(e) {
   try {
     const res = await fetch('http://localhost:8000/api/auth/reset-password', {
       method: 'POST',
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -473,9 +474,9 @@ async function handleResetSubmit(e) {
       return;
     }
 
-    if (data.token) {
-      localStorage.setItem('hireme_token', data.token);
-      localStorage.setItem('hireme_user', JSON.stringify(data.user));
+    if (data.token || data.user) {
+      localStorage.removeItem('hireme_token');
+      if (data.user) localStorage.setItem('hireme_user', JSON.stringify(data.user));
 
       const destinations = {
         student:    '/main/',

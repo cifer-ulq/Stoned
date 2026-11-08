@@ -1,4 +1,4 @@
-﻿/**
+/**
  * CHMSU HireMe — Company Profile Setup (Single-Step)
  * Collects company info and saves to DB via API.
  */
@@ -232,10 +232,13 @@ async function handleSubmit(container) {
     if (description) fd.append('description', description);
     if (logoFile)    fd.append('logo', logoFile);
 
+    const headers = { 'Accept': 'application/json' };
     const token = localStorage.getItem('hireme_token');
+    if (token) headers['Authorization'] = `Bearer ${token}`;
     const res = await fetch('http://localhost:8000/api/company/profile', {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
+      headers,
+      credentials: 'include',
       body: fd,
     });
     const json = await res.json();

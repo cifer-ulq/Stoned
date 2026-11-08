@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Mail\CompanyRegistrationConfirmation;
 use App\Models\CompanyProfile;
 use App\Models\User;
+use App\Services\AuthCookieService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
@@ -119,6 +120,6 @@ class CompanyRegisterController extends Controller
                     'moa_status' => 'Pending',
                 ],
             ],
-        ], 201);
+        ], 201)->withCookie(AuthCookieService::make($token));
     }
 }

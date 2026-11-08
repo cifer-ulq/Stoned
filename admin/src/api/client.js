@@ -45,7 +45,7 @@ function clone(obj) {
 
 /* ── Real API helpers ── */
 export function getToken() {
-  return localStorage.getItem('hireme_token');
+  return null; // Session token is handled securely via HttpOnly cookie
 }
 
 let _redirecting = false;
@@ -54,7 +54,6 @@ function redirectToLogin() {
   if (_redirecting) return;
   _redirecting = true;
   clearCache();
-  localStorage.removeItem('hireme_token');
   localStorage.removeItem('hireme_user');
   window.location.href = '../login/';
 }
@@ -109,7 +108,7 @@ export async function apiRequest(method, path, body = null) {
   const token = getToken();
   const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
-  const opts = { method, headers };
+  const opts = { method, headers, credentials: 'include' };
   if (body) opts.body = JSON.stringify(body);
   const res = await fetch(`${API_BASE}${path}`, opts);
 
@@ -211,7 +210,7 @@ export async function apiPostForm(path, formData) {
   const token = getToken();
   const headers = { 'Accept': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
-  const res = await fetch(`${API_BASE}${path}`, { method: 'POST', headers, body: formData });
+  const res = await fetch(`${API_BASE}${path}`, { method: 'POST', headers, body: formData, credentials: 'include' });
   if (res.status === 401) {
     redirectToLogin();
     return null;

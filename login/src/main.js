@@ -1043,6 +1043,7 @@ async function handleCompanySubmit(e) {
     const res = await fetch('http://localhost:8000/api/auth/register/company', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({
         company_name:          company,
         industry,
@@ -1073,8 +1074,8 @@ async function handleCompanySubmit(e) {
       return;
     }
 
-    // Save token + user
-    localStorage.setItem('hireme_token', data.token);
+    // Save user (session token is stored in HttpOnly cookie)
+    localStorage.removeItem('hireme_token');
     localStorage.setItem('hireme_user', JSON.stringify(data.user));
 
     // Store info for success page
@@ -1173,6 +1174,7 @@ async function handleSubmit(e) {
     const res = await fetch('http://localhost:8000/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ email, password }),
     });
     const data = await res.json();
@@ -1220,7 +1222,7 @@ async function handleSubmit(e) {
       return;
     }
 
-    localStorage.setItem('hireme_token', data.token);
+    localStorage.removeItem('hireme_token');
     localStorage.setItem('hireme_user', JSON.stringify(data.user));
 
     if (data.user?.must_change_password) {
@@ -1413,11 +1415,13 @@ async function checkOAuthCallback() {
   }
 
   if (oauthToken) {
-    localStorage.setItem('hireme_token', oauthToken);
+    localStorage.removeItem('hireme_token');
+    history.replaceState(null, '', window.location.pathname);
 
     try {
       showToast('Authenticating with social account…');
       const res = await fetch('http://localhost:8000/api/auth/me', {
+        credentials: 'include',
         headers: {
           'Authorization': `Bearer ${oauthToken}`,
           'Accept': 'application/json',

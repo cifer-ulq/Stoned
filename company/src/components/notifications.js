@@ -8,14 +8,14 @@ import { apiCache } from '../api/client.js';
 const API_BASE = 'http://localhost:8000/api';
 
 function getToken() {
-  return localStorage.getItem('hireme_token');
+  return null;
 }
 
 async function apiNotif(method, path, body = null) {
   const token = getToken();
   const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
-  const opts = { method, headers };
+  const opts = { method, headers, credentials: 'include' };
   if (body) opts.body = JSON.stringify(body);
   try {
     const res = await fetch(`${API_BASE}${path}`, opts);

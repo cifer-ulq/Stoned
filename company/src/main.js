@@ -227,8 +227,8 @@ async function initApp() {
   const app = document.getElementById('app');
 
   // ── Auth + Role guard ──────────────────────────────────────────────────
-  const token = localStorage.getItem('hireme_token');
-  if (!token) { window.location.href = '../login/'; return; }
+  const cachedUser = localStorage.getItem('hireme_user') || localStorage.getItem('hireme_company_user');
+  if (!cachedUser) { window.location.href = '../login/'; return; }
 
   // Load company identity: try real API first, then localStorage, then dev fallback
   let identity;

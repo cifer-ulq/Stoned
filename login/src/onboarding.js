@@ -129,8 +129,8 @@ function shouldShowSecurityStep() {
 
   const cachedUserStr = localStorage.getItem('hireme_user');
   if (!cachedUserStr) {
-    oauthSecurityStepActive = Boolean(localStorage.getItem('hireme_token'));
-    return oauthSecurityStepActive;
+    oauthSecurityStepActive = false;
+    return false;
   }
   try {
     const user = JSON.parse(cachedUserStr);
@@ -138,7 +138,7 @@ function shouldShowSecurityStep() {
       oauthSecurityStepActive = false;
       return false;
     }
-    oauthSecurityStepActive = Boolean(user.provider || localStorage.getItem('hireme_token'));
+    oauthSecurityStepActive = Boolean(user.provider);
     return oauthSecurityStepActive;
   } catch (_) {
     oauthSecurityStepActive = false;
@@ -286,9 +286,8 @@ function escapeHtml(str) {
 
 function renderTemporaryPasswordFlow(cachedUser) {
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-  const token = localStorage.getItem('hireme_token');
 
-  if (!token) {
+  if (!cachedUser) {
     window.location.href = './';
     return;
   }
@@ -534,10 +533,11 @@ function attachTemporaryPasswordEvents(cachedUser) {
       const token = localStorage.getItem('hireme_token');
       const res = await fetch('/api/auth/change-temporary-password', {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
           password: p1,
@@ -608,7 +608,7 @@ function render(animate = true) {
   const urlParams = new URLSearchParams(window.location.search);
   const oauthToken = urlParams.get('oauth_token');
   if (oauthToken) {
-    localStorage.setItem('hireme_token', oauthToken);
+    localStorage.removeItem('hireme_token');
   }
 
   const cachedUserStr = localStorage.getItem('hireme_user');
@@ -1218,10 +1218,11 @@ async function handleNext() {
       const token = localStorage.getItem('hireme_token');
       const res = await fetch('http://localhost:8000/api/auth/set-backup-password', {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
           password: p1,
@@ -1289,7 +1290,7 @@ async function handleNext() {
 
     if (signup) {
       await completeRegistration(JSON.parse(signup));
-    } else if (localStorage.getItem('hireme_token')) {
+    } else if (localStorage.getItem('hireme_user')) {
       await completeOAuthOnboarding();
     } else {
       // Already logged in — just save locally (fallback)
@@ -1306,6 +1307,7 @@ async function completeRegistration(credentials) {
     // 1. Register
     const regRes = await fetch('http://localhost:8000/api/auth/register', {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
       body: JSON.stringify({
         name:           credentials.name,
@@ -1325,7 +1327,7 @@ async function completeRegistration(credentials) {
     }
 
     const token = regData.token;
-    localStorage.setItem('hireme_token', token);
+    localStorage.removeItem('hireme_token');
     localStorage.setItem('hireme_user', JSON.stringify(regData.user));
     sessionStorage.removeItem('hireme-signup');
 
@@ -1333,10 +1335,11 @@ async function completeRegistration(credentials) {
     const profilePayload = buildProfilePayload();
     const onbRes = await fetch('http://localhost:8000/api/auth/onboarding', {
       method: 'POST',
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        'Authorization': `Bearer ${token}`,
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       },
       body: JSON.stringify(profilePayload),
     });
@@ -1384,10 +1387,11 @@ async function completeOAuthOnboarding() {
     const profilePayload = buildProfilePayload();
     const onbRes = await fetch('http://localhost:8000/api/auth/onboarding', {
       method: 'POST',
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        'Authorization': `Bearer ${token}`,
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       },
       body: JSON.stringify(profilePayload),
     });

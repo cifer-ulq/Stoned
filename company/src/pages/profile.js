@@ -782,10 +782,13 @@ function openEditModal() {
       if (!form.company_location.value.trim()) throw new Error('Address is required.');
       if (!form.contact_email.value.trim()) throw new Error('Contact email is required.');
 
+      const headers = { 'Accept': 'application/json' };
       const token = localStorage.getItem('hireme_token');
+      if (token) headers['Authorization'] = `Bearer ${token}`;
       const res = await fetch('http://localhost:8000/api/company/profile', {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
+        headers,
+        credentials: 'include',
         body: data,
       });
       const json = await res.json();
@@ -1132,14 +1135,16 @@ function openAboutCompanyModal() {
     saveBtn.innerHTML = `${icon('loader', 16)} <span>Saving…</span>`;
 
     try {
+      const headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      };
       const token = localStorage.getItem('hireme_token');
+      if (token) headers['Authorization'] = `Bearer ${token}`;
       const res = await fetch('http://localhost:8000/api/company/profile', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+        headers,
+        credentials: 'include',
         body: JSON.stringify(payload),
       });
 

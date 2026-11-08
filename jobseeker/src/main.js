@@ -42,24 +42,21 @@ const app = document.getElementById('app');
    AUTH GUARD — check token, load user
    ───────────────────────────────────────── */
 async function initAuth() {
-  const token = localStorage.getItem('hireme_token');
-  if (!token) {
+  const cached = localStorage.getItem('hireme_user');
+  if (!cached) {
     window.location.href = '../login/';
     return false;
   }
 
   // Use cached user immediately for instant render
-  const cached = localStorage.getItem('hireme_user');
-  if (cached) {
-    try {
-      const u = JSON.parse(cached);
-      if (u.must_change_password) {
-        window.location.href = '../login/onboarding.html?mode=temporary-password';
-        return false;
-      }
-      applyUserToStore(u);
-    } catch (_) { /* ignore */ }
-  }
+  try {
+    const u = JSON.parse(cached);
+    if (u.must_change_password) {
+      window.location.href = '../login/onboarding.html?mode=temporary-password';
+      return false;
+    }
+    applyUserToStore(u);
+  } catch (_) { /* ignore */ }
 
   // Verify + refresh from API
   try {

@@ -229,8 +229,8 @@ function buildShell() {
 
 async function initApp() {
   // ── Auth + Role guard ──────────────────────────────────────────────────
-  const token = localStorage.getItem('hireme_token');
-  if (!token) { window.location.href = '../login/'; return; }
+  const cachedUser = localStorage.getItem('hireme_user');
+  if (!cachedUser) { window.location.href = '../login/'; return; }
 
   try {
     const me = await apiGet('/auth/me');

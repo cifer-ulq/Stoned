@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\StudentOjtInterest;
 use App\Models\OjtRecord;
+use App\Services\AuthCookieService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -226,11 +227,13 @@ class SocialAuthController extends Controller
 
             // Route user: if new student who needs profile completion, pass new_account flag
             if ($isNewUser || ! $user->onboarding_completed) {
-                return redirect($frontendUrl . '/?oauth_token=' . urlencode($token) . '&new_account=1');
+                return redirect($frontendUrl . '/?oauth_token=' . urlencode($token) . '&new_account=1')
+                    ->withCookie(AuthCookieService::make($token));
             }
 
             // Otherwise, redirect to login page with token to complete session hydration
-            return redirect($frontendUrl . '/?oauth_token=' . urlencode($token));
+            return redirect($frontendUrl . '/?oauth_token=' . urlencode($token))
+                ->withCookie(AuthCookieService::make($token));
 
         } catch (\Throwable $e) {
             \Log::error("[SocialAuth] Callback error for {$normalizedProvider}: " . $e->getMessage(), ['trace' => $e->getTraceAsString()]);

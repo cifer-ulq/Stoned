@@ -239,12 +239,11 @@ document.addEventListener('visibilitychange', () => {
 
 async function initApp() {
   // ── Auth + Role check ──────────────────────────────────────────────────
-  const token = localStorage.getItem('hireme_token');
   const cachedUser = (() => {
     try { return JSON.parse(localStorage.getItem('hireme_user') || 'null'); } catch { return null; }
   })();
 
-  if (!token && !cachedUser) {
+  if (!cachedUser) {
     window.location.href = '/login/';
     return;
   }

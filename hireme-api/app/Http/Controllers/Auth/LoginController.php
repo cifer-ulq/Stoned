@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\StudentOjtInterest;
 use App\Models\OjtRecord;
 use App\Mail\ResetPasswordMail;
+use App\Services\AuthCookieService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
@@ -99,7 +100,7 @@ class LoginController extends Controller
                     'jobseeker_profile'    => $user->jobseekerProfile,
                     'graduate_profile'     => $user->graduateProfile,
                 ],
-            ]);
+            ])->withCookie(AuthCookieService::make($token));
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error('Login error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             return response()->json([
@@ -138,14 +139,17 @@ class LoginController extends Controller
                 'email' => $user->email,
                 'role'  => $user->role,
             ],
-        ]);
+        ])->withCookie(AuthCookieService::make($token));
     }
 
     public function logout(Request $request)
     {
-        $request->user()->currentAccessToken()->delete();
+        if ($request->user() && $request->user()->currentAccessToken()) {
+            $request->user()->currentAccessToken()->delete();
+        }
 
-        return response()->json(['message' => 'Logged out']);
+        return response()->json(['message' => 'Logged out'])
+            ->withCookie(AuthCookieService::forget());
     }
 
     public function me(Request $request)
@@ -312,7 +316,7 @@ class LoginController extends Controller
                 'must_change_password' => false,
                 'onboarding_completed' => $user->onboarding_completed,
             ],
-        ]);
+        ])->withCookie(AuthCookieService::make($token));
     }
 
     /* ── POST /api/auth/change-temporary-password ── (authenticated via Sanctum token) */
@@ -539,6 +543,6 @@ class LoginController extends Controller
                 'jobseeker_profile'    => $user->jobseekerProfile,
                 'graduate_profile'     => $user->graduateProfile,
             ],
-        ]);
+        ])->withCookie(AuthCookieService::make($token));
     }
 }

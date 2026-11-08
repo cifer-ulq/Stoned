@@ -511,8 +511,9 @@ async function renderStep2() {
   // Try to pre-fill available profile data from API
   try {
     const res = await fetch('http://localhost:8000/api/company/profile', {
+      credentials: 'include',
       headers: {
-        'Authorization': `Bearer ${authToken}`,
+        ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {}),
         'Accept': 'application/json',
       },
     });
@@ -747,6 +748,7 @@ async function handleStep1Submit(e) {
   try {
     const res = await fetch('http://localhost:8000/api/auth/set-password', {
       method: 'POST',
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -773,7 +775,7 @@ async function handleStep1Submit(e) {
 
     authToken = data.token;
     authUser  = data.user;
-    localStorage.setItem('hireme_token', authToken);
+    localStorage.removeItem('hireme_token');
     localStorage.setItem('hireme_user', JSON.stringify(authUser));
 
     // Transition straight to Step 2 (Company Profile) without MOA prompt
@@ -863,10 +865,11 @@ async function handleStep2Submit(e) {
   try {
     const res = await fetch('http://localhost:8000/api/company/profile/complete', {
       method: 'POST',
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        'Authorization': `Bearer ${authToken}`,
+        ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {}),
       },
       body: JSON.stringify({
         moa_accepted:   true,

@@ -36,6 +36,10 @@ export default defineConfig({
 (function() {
   const origFetch = window.fetch;
   window.fetch = async function(input, init) {
+    init = init || {};
+    if (!init.credentials) {
+      init.credentials = 'include';
+    }
     if (typeof input === 'string') {
       input = input.replace(/^https?:\\/\\/(localhost|127\\.0\\.0\\.1):8000/, '');
     }

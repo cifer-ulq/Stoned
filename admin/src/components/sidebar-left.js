@@ -112,10 +112,10 @@ export function initSidebarLeft() {
     if (e.target.closest('#sidebar-logout')) {
       fetch('http://localhost:8000/api/auth/logout', {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('hireme_token')}`, 'Accept': 'application/json' },
+        headers: { 'Accept': 'application/json' },
+        credentials: 'include',
       }).catch(() => {});
       clearCache();
-      localStorage.removeItem('hireme_token');
       localStorage.removeItem('hireme_user');
       window.location.href = '../login/';
     }

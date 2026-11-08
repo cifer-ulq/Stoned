@@ -181,10 +181,11 @@ export function showPromotionCelebrationModal(notification = {}) {
         const token = localStorage.getItem('hireme_token');
         fetch(`http://localhost:8000/api/notifications/${notification.id}/read`, {
           method: 'PATCH',
+          credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
-            'Authorization': token ? `Bearer ${token}` : '',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
           },
         }).catch(() => {});
       }

@@ -148,6 +148,7 @@ async function handleSubmit(e) {
     const res = await fetch('http://localhost:8000/api/auth/admin-login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ email, password }),
     });
     const data = await res.json();
@@ -167,7 +168,7 @@ async function handleSubmit(e) {
       return;
     }
 
-    localStorage.setItem('hireme_token', data.token);
+    localStorage.removeItem('hireme_token');
     localStorage.setItem('hireme_user', JSON.stringify(data.user));
     window.location.href = '/admin/';
   } catch {

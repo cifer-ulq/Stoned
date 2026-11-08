@@ -753,6 +753,7 @@ export function openTermsModal({
         const token = localStorage.getItem('hireme_token');
         const res = await fetch('/api/auth/accept-terms', {
           method: 'POST',
+          credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
