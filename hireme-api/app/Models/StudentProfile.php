@@ -16,6 +16,7 @@ class StudentProfile extends Model
         'program',
         'year_level',
         'student_id',
+        'birth_date',
         'headline',
         'bio',
         'location',

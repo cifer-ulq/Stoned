@@ -44,8 +44,8 @@ function downloadCredentialsCSV(creds) {
 function downloadTemplate() {
   const csv = [
     'name,email,student_id,course,year,section,campus,batch',
-    'Juan Dela Cruz,jdelacruz@chmsu.edu.ph,20230001,Bachelor of Science in Information Technology,3rd Year,IT-3A,Main Campus,2023-2024',
-    'Maria Santos,msantos@chmsu.edu.ph,20230002,Bachelor of Science in Computer Science,2nd Year,CS-2B,Alijis Campus,2023-2024',
+    'Juan Dela Cruz,jdelacruz@chmsu.edu.ph,DJM01030400,Bachelor of Science in Information Technology,4th Year,A,Alijis Campus,2024-2025',
+    'Maria Santos,msantos@chmsu.edu.ph,SMA02140400,Bachelor of Science in Information Technology,4th Year,B,Alijis Campus,2024-2025',
   ].join('\r\n');
 
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });

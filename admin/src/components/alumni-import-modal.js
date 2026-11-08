@@ -45,9 +45,9 @@ function downloadCredentialsCSV(creds) {
 function downloadTemplate() {
   const csv = [
     'batch,section,name,studentid,email,course',
-    '2023-2024,IT-4A,Juan Dela Cruz,20200001,jdelacruz@gmail.com,Bachelor of Science in Information Technology',
-    '2023-2024,IT-4B,Maria Santos,20200002,msantos@gmail.com,Bachelor of Science in Information Systems',
-    '2022-2023,CS-4A,Carlo Reyes,20190003,creyes@gmail.com,Bachelor of Science in Computer Science',
+    '2023-2024,A,Juan Dela Cruz,DJM01030400,jdelacruz@gmail.com,Bachelor of Science in Information Technology',
+    '2023-2024,B,Maria Santos,SMA02140400,msantos@gmail.com,Bachelor of Science in Information Systems',
+    '2022-2023,A,Carlo Reyes,RCA05100300,creyes@gmail.com,Bachelor of Science in Computer Science',
   ].join('\r\n');
 
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });

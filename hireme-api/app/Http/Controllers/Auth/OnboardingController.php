@@ -7,6 +7,10 @@ use App\Models\AppNotification;
 use App\Models\StudentProfile;
 use App\Models\User;
 use App\Services\CourseNormalizer;
+use App\Services\SectionNormalizer;
+use App\Services\YearLevelNormalizer;
+use App\Services\StudentIdHelper;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -66,7 +70,7 @@ class OnboardingController extends Controller
 
     private function saveStudentProfile($user, Request $request): bool
     {
-        $studentId = trim((string) $request->input('student_id', ''));
+        $studentId = StudentIdHelper::sanitize($request->input('student_id', ''));
         if (empty($studentId)) {
             abort(response()->json([
                 'message' => 'Student ID is required.',
@@ -86,10 +90,27 @@ class OnboardingController extends Controller
             ], 422));
         }
 
-        $data = $request->only(['school', 'campus', 'program', 'year_level', 'section', 'batch']);
+        $data = $request->only(['school', 'campus', 'program', 'year_level', 'section', 'batch', 'birth_date']);
         if (isset($data['program'])) {
             $data['program'] = CourseNormalizer::normalize($data['program']);
         }
+        if (isset($data['section'])) {
+            $data['section'] = SectionNormalizer::normalize($data['section']);
+        }
+        if (isset($data['year_level'])) {
+            $data['year_level'] = YearLevelNormalizer::normalize($data['year_level'], '4th Year');
+        }
+        if (!empty($data['batch'])) {
+            $data['batch'] = preg_replace('/\s*-\s*/', '-', trim($data['batch']));
+        }
+        if (!empty($data['birth_date'])) {
+            try {
+                $data['birth_date'] = Carbon::parse($data['birth_date'])->format('Y-m-d');
+            } catch (\Throwable $e) {
+                unset($data['birth_date']);
+            }
+        }
+
         $data['student_id']         = $studentId;
         $data['status']             = 'pending';
         $data['approval_status']     = 'pending';
@@ -151,10 +172,29 @@ class OnboardingController extends Controller
         if (isset($data['course'])) {
             $data['course'] = CourseNormalizer::normalize($data['course']);
         }
+        if (isset($data['section'])) {
+            $data['section'] = SectionNormalizer::normalize($data['section']);
+        }
         $user->graduateProfile()->updateOrCreate(
             ['user_id' => $user->id],
             $data
         );
+    }
+
+    /**
+     * Suggest a CHMSU candidate Student ID from name, birthdate, and middle name.
+     */
+    public function suggestStudentId(Request $request)
+    {
+        $name       = $request->query('name') ?? $request->user()?->name ?? '';
+        $birthDate  = $request->query('birth_date');
+        $middleName = $request->query('middle_name');
+
+        $suggested = StudentIdHelper::generateCandidate((string)$name, (string)$birthDate, (string)$middleName);
+
+        return response()->json([
+            'suggested_id' => $suggested,
+        ]);
     }
 
     private function saveCompanyProfile($user, Request $request): void

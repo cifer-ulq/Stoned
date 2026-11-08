@@ -18,6 +18,10 @@ use App\Models\JobApplication;
 use App\Models\AppNotification;
 use App\Models\StudentEvaluation;
 use App\Services\PeoAnalyticsService;
+use App\Services\CourseNormalizer;
+use App\Services\SectionNormalizer;
+use App\Services\YearLevelNormalizer;
+use App\Services\StudentIdHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -2635,14 +2639,17 @@ class AdminController extends Controller
             $rowNum = $i + 1;  // 1-indexed for human display (row 2 = first data row)
             $values = str_getcsv($lines[$i]);
 
-            $name      = $get($values, 'name');
-            $email     = $get($values, 'email');
-            $studentId = $get($values, 'student_id');
-            $course    = \App\Services\CourseNormalizer::normalize($get($values, 'course'));
-            $year      = $get($values, 'year');
-            $section   = $get($values, 'section');
-            $campus    = $get($values, 'campus');
-            $batch     = $get($values, 'batch');
+            $nameRaw   = $get($values, 'name');
+            $name      = $nameRaw ? preg_replace('/\s+/', ' ', trim($nameRaw)) : null;
+            $emailRaw  = $get($values, 'email');
+            $email     = $emailRaw ? strtolower(trim($emailRaw)) : null;
+            $studentId = StudentIdHelper::sanitize($get($values, 'student_id'));
+            $course    = CourseNormalizer::normalize($get($values, 'course'));
+            $year      = YearLevelNormalizer::normalize($get($values, 'year'), '4th Year');
+            $section   = SectionNormalizer::normalize($get($values, 'section'));
+            $campus    = $get($values, 'campus') ?: 'Alijis Campus';
+            $batchRaw  = $get($values, 'batch');
+            $batch     = $batchRaw ? preg_replace('/\s*-\s*/', '-', trim($batchRaw)) : null;
 
             // ── Per-row validation ───────────────────────────────────────────
             if (! $name) {
@@ -3044,13 +3051,16 @@ class AdminController extends Controller
             $rowNum = $i + 1;
             $values = str_getcsv($lines[$i]);
 
-            $name      = $get($values, 'name');
-            $email     = $get($values, 'email');
-            $studentId = $get($values, 'student_id');
+            $nameRaw   = $get($values, 'name');
+            $name      = $nameRaw ? preg_replace('/\s+/', ' ', trim($nameRaw)) : null;
+            $emailRaw  = $get($values, 'email');
+            $email     = $emailRaw ? strtolower(trim($emailRaw)) : null;
+            $studentId = StudentIdHelper::sanitize($get($values, 'student_id'));
             $courseRaw = $get($values, 'course');
-            $course    = $courseRaw ? \App\Services\CourseNormalizer::normalize($courseRaw) : null;
-            $batch     = $get($values, 'batch');
-            $section   = $get($values, 'section') ?? '—';
+            $course    = $courseRaw ? CourseNormalizer::normalize($courseRaw) : null;
+            $batchRaw  = $get($values, 'batch');
+            $batch     = $batchRaw ? preg_replace('/\s*-\s*/', '-', trim($batchRaw)) : null;
+            $section   = SectionNormalizer::normalize($get($values, 'section')) ?? '—';
             $campus    = $get($values, 'campus') ?? 'Alijis Campus';
 
             // ── Per-row validation ───────────────────────────────────────────

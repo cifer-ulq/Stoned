@@ -32,6 +32,50 @@ const svg = {
 const savedTheme = localStorage.getItem('hireme-theme') || 'light';
 document.documentElement.setAttribute('data-theme', savedTheme);
 
+/* ── CHMSU Student ID Generator ── */
+function generateChmsuStudentId(fullName, birthDate, middleName) {
+  if (!birthDate) return '';
+  // Support YYYY-MM-DD input
+  const partsDate = String(birthDate).split('-');
+  if (partsDate.length !== 3) return '';
+  const yyyy = partsDate[0];
+  const mm   = partsDate[1].padStart(2, '0');
+  const dd   = partsDate[2].padStart(2, '0');
+  const yy   = yyyy.slice(-2);
+  const datePart = `${mm}${dd}${yy}`;
+
+  const cleanName = (fullName || '').trim();
+  const parts = cleanName.split(/\s+/).filter(Boolean);
+  let firstInitial = 'X';
+  let middleInitial = 'X';
+  let lastInitial = 'X';
+
+  if (parts.length === 1) {
+    lastInitial = parts[0][0].toUpperCase();
+    firstInitial = lastInitial;
+  } else if (parts.length === 2) {
+    firstInitial = parts[0][0].toUpperCase();
+    lastInitial = parts[1][0].toUpperCase();
+    if (middleName && middleName.trim()) {
+      middleInitial = middleName.trim()[0].toUpperCase();
+    }
+  } else if (parts.length >= 3) {
+    firstInitial = parts[0][0].toUpperCase();
+    lastInitial = parts[parts.length - 1][0].toUpperCase();
+    if (middleName && middleName.trim()) {
+      middleInitial = middleName.trim()[0].toUpperCase();
+    } else {
+      const candidateMiddle = parts[1].replace(/[^A-Za-z]/g, '');
+      if (candidateMiddle) {
+        middleInitial = candidateMiddle[0].toUpperCase();
+      }
+    }
+  }
+
+  const initials = `${lastInitial}${firstInitial}${middleInitial}`;
+  return `${initials}${datePart}00`;
+}
+
 /* ── State ── */
 let currentStep = 0;
 let direction = 1;
@@ -46,6 +90,8 @@ const formData = {
   yearLevel: '4th Year',
   section: '',
   batch: AUTO_BATCH,
+  birthDate: '',
+  middleName: '',
   studentId: '',
   // Graduate
   graduateYearGraduated: '',
@@ -847,8 +893,8 @@ function renderStudentInfo() {
         <div class="ob-field ob-reveal" style="--delay:.22s">
           <div class="ob-field__input-wrap">
             <span class="ob-field__icon">${icon('hash', 16)}</span>
-            <input class="ob-field__input" type="text" id="section" placeholder=" " value="${formData.section}" />
-            <label class="ob-field__label" for="section">Section</label>
+            <input class="ob-field__input" type="text" id="section" maxlength="1" style="text-transform:uppercase; font-weight:700;" placeholder=" " value="${formData.section}" />
+            <label class="ob-field__label" for="section">Section (e.g. A or B)</label>
           </div>
         </div>
 
@@ -861,7 +907,7 @@ function renderStudentInfo() {
           </div>
         </div>
 
-        <div class="ob-field ob-reveal" style="--delay:.30s">
+        <div class="ob-field ob-field--full ob-reveal" style="--delay:.30s">
           <div class="ob-field__input-wrap ob-field__input-wrap--accent">
             <span class="ob-field__icon">${icon('target', 16)}</span>
             <input class="ob-field__input" type="text" id="batch" placeholder=" " value="${formData.batch}" />
@@ -870,11 +916,30 @@ function renderStudentInfo() {
           </div>
         </div>
 
-        <div class="ob-field ob-field--full ob-reveal" style="--delay:.34s">
+        <div class="ob-field ob-reveal" style="--delay:.34s">
+          <div class="ob-field__input-wrap">
+            <span class="ob-field__icon">${icon('calendar', 16)}</span>
+            <input class="ob-field__input" type="date" id="birth-date" value="${formData.birthDate || ''}" />
+            <label class="ob-field__label ob-field__label--float" for="birth-date">Birthdate <span style="color:#ef4444;font-weight:700;">*</span></label>
+          </div>
+        </div>
+
+        <div class="ob-field ob-reveal" style="--delay:.36s">
+          <div class="ob-field__input-wrap">
+            <span class="ob-field__icon">${icon('user', 16)}</span>
+            <input class="ob-field__input" type="text" id="middle-name" maxlength="30" placeholder=" " value="${formData.middleName || ''}" />
+            <label class="ob-field__label" for="middle-name">Middle Initial / Name</label>
+          </div>
+        </div>
+
+        <div class="ob-field ob-field--full ob-reveal" style="--delay:.38s">
           <div class="ob-field__input-wrap">
             <span class="ob-field__icon">${icon('hash', 16)}</span>
-            <input class="ob-field__input" type="text" id="student-id" placeholder=" " value="${formData.studentId}" />
+            <input class="ob-field__input" type="text" id="student-id" placeholder=" " value="${formData.studentId}" style="text-transform:uppercase; letter-spacing:1px; font-weight:700;" />
             <label class="ob-field__label" for="student-id">Student ID <span style="color:#ef4444;font-weight:700;">*</span></label>
+          </div>
+          <div id="student-id-helper" style="font-size:0.75rem; color:#6b7280; margin-top:5px; padding-left:4px;">
+            💡 <em>Enter your birthdate above to auto-generate your CHMSU Student ID.</em>
           </div>
         </div>
 
@@ -945,8 +1010,8 @@ function renderGraduateInfo() {
         <div class="ob-field ob-reveal" style="--delay:.22s">
           <div class="ob-field__input-wrap">
             <span class="ob-field__icon">${icon('hash', 16)}</span>
-            <input class="ob-field__input" type="text" id="graduate-section" placeholder=" " value="${formData.graduateSection}" />
-            <label class="ob-field__label" for="graduate-section">Section</label>
+            <input class="ob-field__input" type="text" id="graduate-section" maxlength="1" style="text-transform:uppercase; font-weight:700;" placeholder=" " value="${formData.graduateSection}" />
+            <label class="ob-field__label" for="graduate-section">Section (e.g. A or B)</label>
           </div>
         </div>
 
@@ -1345,6 +1410,7 @@ function buildProfilePayload() {
       year_level: formData.yearLevel,
       section:    formData.section,
       batch:      formData.batch,
+      birth_date: formData.birthDate,
       student_id: formData.studentId,
     };
   }
@@ -1387,18 +1453,22 @@ function saveStepData() {
   const stepId = getCurrentStepId();
 
   if (stepId === 'student-info') {
-    formData.school    = document.getElementById('school')?.value || formData.school;
-    formData.campus    = document.getElementById('campus')?.value || '';
-    formData.yearLevel = '4th Year';
-    formData.program   = 'Bachelor of Science in Information Technology';
-    formData.section   = document.getElementById('section')?.value || '';
-    formData.batch     = document.getElementById('batch')?.value || AUTO_BATCH;
-    formData.studentId = document.getElementById('student-id')?.value || '';
+    formData.school     = document.getElementById('school')?.value || formData.school;
+    formData.campus     = document.getElementById('campus')?.value || '';
+    formData.yearLevel  = '4th Year';
+    formData.program    = 'Bachelor of Science in Information Technology';
+    const rawSec        = document.getElementById('section')?.value || '';
+    formData.section    = rawSec.trim().toUpperCase().slice(-1);
+    formData.batch      = document.getElementById('batch')?.value || AUTO_BATCH;
+    formData.birthDate  = document.getElementById('birth-date')?.value || '';
+    formData.middleName = document.getElementById('middle-name')?.value || '';
+    formData.studentId  = (document.getElementById('student-id')?.value || '').trim().toUpperCase();
   } else if (stepId === 'graduate-info') {
     formData.graduateYearGraduated = document.getElementById('graduate-year')?.value || '';
     formData.graduateCampus        = document.getElementById('graduate-campus')?.value || '';
     formData.graduateCourse        = document.getElementById('graduate-course')?.value || '';
-    formData.graduateSection       = document.getElementById('graduate-section')?.value || '';
+    const rawGradSec               = document.getElementById('graduate-section')?.value || '';
+    formData.graduateSection       = rawGradSec.trim().toUpperCase().slice(-1);
     // graduateEmploymentStatus set via chip clicks
   }
 }
@@ -1428,6 +1498,70 @@ function attachFormFieldEvents() {
 /* ── Option picker events ── */
 function attachPickerEvents() {
   attachFormFieldEvents();
+
+  // Section input constraint (single uppercase letter)
+  const secInput = document.getElementById('section');
+  if (secInput) {
+    secInput.addEventListener('input', (e) => {
+      let val = e.target.value.replace(/[^a-zA-Z]/g, '');
+      if (val.length > 1) val = val.slice(-1);
+      e.target.value = val.toUpperCase();
+      formData.section = e.target.value;
+    });
+  }
+
+  const gradSecInput = document.getElementById('graduate-section');
+  if (gradSecInput) {
+    gradSecInput.addEventListener('input', (e) => {
+      let val = e.target.value.replace(/[^a-zA-Z]/g, '');
+      if (val.length > 1) val = val.slice(-1);
+      e.target.value = val.toUpperCase();
+      formData.graduateSection = e.target.value;
+    });
+  }
+
+  // Live CHMSU Student ID Generator from Birthdate & Middle Initial
+  const birthInput = document.getElementById('birth-date');
+  const midInput   = document.getElementById('middle-name');
+  const sIdInput   = document.getElementById('student-id');
+  const helper     = document.getElementById('student-id-helper');
+
+  function updateSuggestedId() {
+    const dob = birthInput?.value;
+    const mid = midInput?.value;
+    if (!dob) return;
+
+    let userName = '';
+    try {
+      const u = JSON.parse(localStorage.getItem('hireme_user') || '{}');
+      const s = JSON.parse(sessionStorage.getItem('hireme-signup') || '{}');
+      userName = u.name || s.name || '';
+    } catch (_) {}
+
+    const candidate = generateChmsuStudentId(userName, dob, mid);
+    if (candidate) {
+      if (sIdInput) {
+        sIdInput.value = candidate;
+        formData.studentId = candidate;
+        const wrap = sIdInput.closest('.ob-field__input-wrap');
+        wrap?.classList.add('ob-field--focused');
+      }
+      if (helper) {
+        helper.innerHTML = `<span style="color:#10b981; font-weight:600;">✓ Suggested CHMSU Student ID: <code>${candidate}</code></span> <span style="color:#9ca3af; font-size:0.7rem;">(Auto-filled. Editable if yours ends in 01 or differs)</span>`;
+      }
+    }
+  }
+
+  birthInput?.addEventListener('input', updateSuggestedId);
+  birthInput?.addEventListener('change', updateSuggestedId);
+  midInput?.addEventListener('input', updateSuggestedId);
+
+  // Student ID uppercase & whitespace mask
+  sIdInput?.addEventListener('input', (e) => {
+    e.target.value = e.target.value.toUpperCase().replace(/\s+/g, '');
+    formData.studentId = e.target.value;
+  });
+
   document.querySelectorAll('[data-pick]').forEach(btn => {
     btn.addEventListener('click', () => {
       const key = btn.dataset.pick;
