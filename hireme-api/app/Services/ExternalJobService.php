@@ -37,7 +37,7 @@ class ExternalJobService
         $userCity = self::resolveUserCity($user);
 
         // 3. Personalized Cache Management (2-hour TTL per candidate)
-        $cacheKey = 'ext_pers_jobs_v10_' . $user->id . '_' . md5($searchTerm . '_' . $vector['searchable_pool'] . '_' . $userCity);
+        $cacheKey = 'ext_pers_jobs_v12_' . $user->id . '_' . md5($searchTerm . '_' . $vector['searchable_pool'] . '_' . $userCity);
         $cached = Cache::get($cacheKey);
         if ($cached !== null && is_array($cached) && !empty($cached)) {
             return $cached;
@@ -70,8 +70,8 @@ class ExternalJobService
         // 4. Provider A: JSearch RapidAPI (Bacolod City & Philippine Live Network)
         $apiKey = config('services.jsearch.key');
         if (!empty($apiKey)) {
-            // A1: City & Provincial specific postings (Bacolod / Negros Occidental)
-            $localRaw = self::fetchFromJSearchLocal($apiKey, $searchTerm, $userCity);
+            // A1: City & Provincial specific postings (Bacolod / Negros Occidental) tailored to candidate archetype
+            $localRaw = self::fetchFromJSearchLocal($apiKey, $searchTerm, $userCity, $vector['search_query_term'], $vector['archetype']);
             foreach ($localRaw as $job) {
                 $normalized = self::normalizeJSearchJob($job, $vector['canonical_skills'], 'local');
                 $addRawJob($normalized);
@@ -367,29 +367,59 @@ class ExternalJobService
         }
 
         // ── STRICT GATEKEEPER ──
-        // For Remote Jobs: Discard any job that has NO technical relevance to software, web, IT, or the student's skills.
-        // This permanently eliminates overseas non-tech jobs like Australian maps raters or patient advocates.
-        if ($isRemote) {
-            $isTechRemote = str_contains($jobText, 'developer') || str_contains($jobText, 'software') || str_contains($jobText, 'engineer')
-                || str_contains($jobText, 'programmer') || str_contains($jobText, 'frontend') || str_contains($jobText, 'backend')
-                || str_contains($jobText, 'qa') || str_contains($jobText, 'data') || str_contains($jobText, 'tech')
-                || str_contains($jobText, 'full stack') || str_contains($jobText, 'fullstack');
+        $techArchetypes = ['qa', 'fullstack', 'frontend', 'network_sysadmin', 'mobile', 'data'];
+        $isTechCandidate = in_array($vector['archetype'], $techArchetypes);
 
-            if (!$isTechRemote && empty($matched)) {
+        // 1. Explicit Non-Technical Blacklist for Tech Candidates
+        // Permanently prevents maintenance, HVAC, tax accountants, care coordinators, food cart handlers, retail managers, etc.
+        if ($isTechCandidate) {
+            $nonTechBlacklist = [
+                'hvac', 'maintenance technician', 'in-house maintenance', 'real estate', 'property consultant',
+                'property specialist', 'tax accountant', 'tax associate', 'care coordinator', 'case manager',
+                'food cart', 'cart handler', 'area operations manager', 'retail manager', 'store supervisor',
+                'cashier', 'housekeeping', 'delivery rider', 'cook', 'waiter', 'barista', 'sales associate',
+                'driver', 'receptionist', 'clinic', 'nursing', 'medical assistant', 'patient advocate',
+                'cleaning', 'janitor', 'security guard', 'warehouse worker', 'team assistant', 'office clerk',
+                'admin clerk', 'administrative assistant'
+            ];
+            foreach ($nonTechBlacklist as $blacklisted) {
+                if (str_contains($jobTitleLower, $blacklisted)) {
+                    return null;
+                }
+            }
+        }
+
+        // Technical relevance checker
+        $isTechField = str_contains($jobText, 'developer') || str_contains($jobText, 'software') || str_contains($jobText, 'engineer')
+            || str_contains($jobText, 'programmer') || str_contains($jobText, 'it') || str_contains($jobText, 'support')
+            || str_contains($jobText, 'tech') || str_contains($jobText, 'analyst') || str_contains($jobText, 'qa')
+            || str_contains($jobText, 'network') || str_contains($jobText, 'web') || str_contains($jobText, 'data')
+            || str_contains($jobText, 'system') || str_contains($jobText, 'helpdesk') || str_contains($jobText, 'frontend')
+            || str_contains($jobText, 'backend') || str_contains($jobText, 'fullstack') || str_contains($jobText, 'full stack')
+            || str_contains($jobText, 'testing') || str_contains($jobText, 'tester') || str_contains($jobText, 'test')
+            || str_contains($jobText, 'quality') || str_contains($jobText, 'cloud') || str_contains($jobText, 'devops')
+            || str_contains($jobText, 'code') || str_contains($jobText, 'coding');
+
+        // 2. Strict Filter for Remote Jobs: Discard non-tech roles
+        if ($isRemote) {
+            if (!$isTechField && empty($matched)) {
                 return null;
             }
         }
 
-        // For Nationwide Jobs: Must align with technical or degree archetype
+        // 3. Strict Filter for Nationwide Jobs: Must align with technical or degree archetype
         if (!$isLocal && !$isRemote) {
-            $isTechPh = str_contains($jobText, 'developer') || str_contains($jobText, 'software') || str_contains($jobText, 'engineer')
-                || str_contains($jobText, 'programmer') || str_contains($jobText, 'it') || str_contains($jobText, 'support')
-                || str_contains($jobText, 'tech') || str_contains($jobText, 'analyst') || str_contains($jobText, 'qa')
-                || str_contains($jobText, 'network') || str_contains($jobText, 'web') || str_contains($jobText, 'data')
-                || str_contains($jobText, 'system') || str_contains($jobText, 'helpdesk');
-
-            if (!$isTechPh && empty($matched) && !$archetypeMatch) {
+            if ($isTechCandidate && !$isTechField && empty($matched) && !$archetypeMatch) {
                 return null;
+            }
+        }
+
+        // 4. Strict Filter for Local (Bacolod & Negros) Jobs: Tech students only see genuine tech roles
+        if ($isLocal) {
+            if ($isTechCandidate) {
+                if (empty($matched) && !$archetypeMatch && !$isTechField) {
+                    return null;
+                }
             }
         }
 
@@ -497,25 +527,55 @@ class ExternalJobService
      * Fetch local city opportunities via JSearch (Bacolod City & Negros Occidental).
      * Enforces IPv4 resolution to prevent Windows timeouts and keeps long-term fallback.
      */
-    protected static function fetchFromJSearchLocal(string $apiKey, string $searchTerm, string $city): array
-    {
+    protected static function fetchFromJSearchLocal(
+        string $apiKey,
+        string $searchTerm,
+        string $city,
+        string $searchQueryTerm = '',
+        string $archetype = 'fullstack'
+    ): array {
         $cityClean = !empty($city) ? preg_replace('/[^a-zA-Z0-9\s]/', '', $city) : 'Bacolod';
         if (stripos($cityClean, 'Bacolod') !== false || stripos($cityClean, 'Negros') !== false) {
             $cityClean = 'Bacolod';
         }
 
-        $cacheKey = 'jsearch_local_pool_v9_' . md5($searchTerm . '_' . $cityClean);
-        $fallbackKey = 'jsearch_local_pool_fallback_v9';
+        // Map archetype to targeted search keyword for local hub
+        switch ($archetype) {
+            case 'qa':
+                $localArchetypeTerm = 'QA';
+                break;
+            case 'network_sysadmin':
+                $localArchetypeTerm = 'IT support';
+                break;
+            case 'frontend':
+                $localArchetypeTerm = 'frontend developer';
+                break;
+            case 'mobile':
+                $localArchetypeTerm = 'mobile developer';
+                break;
+            case 'data':
+                $localArchetypeTerm = 'data analyst';
+                break;
+            case 'business':
+                $localArchetypeTerm = 'business operations';
+                break;
+            default: // fullstack / IT
+                $localArchetypeTerm = 'software developer';
+                break;
+        }
+
+        $query = !empty($searchTerm)
+            ? $searchTerm . ' in ' . $cityClean
+            : $localArchetypeTerm . ' in ' . $cityClean;
+
+        $cacheKey = 'jsearch_local_pool_v12_' . md5($query . '_' . $cityClean);
+        $fallbackKey = 'jsearch_local_pool_fallback_v12_' . md5($localArchetypeTerm . '_' . $cityClean);
 
         // 1. Check fresh cache (4 hours)
         $cached = Cache::get($cacheKey);
         if (!empty($cached) && is_array($cached)) {
             return $cached;
         }
-
-        $query = !empty($searchTerm)
-            ? $searchTerm . ' in ' . $cityClean
-            : 'jobs in ' . $cityClean;
 
         try {
             $r = Http::timeout(20)
@@ -544,7 +604,7 @@ class ExternalJobService
             Log::warning('[ExternalJobService] JSearch local fetch timed out/failed: ' . $e->getMessage());
         }
 
-        // Return long-term fallback if available (Guarantees local jobs are NEVER 0!)
+        // Return long-term fallback if available
         $fallback = Cache::get($fallbackKey);
         if (!empty($fallback) && is_array($fallback)) {
             Log::info('[ExternalJobService] Served fallback local Bacolod jobs after network timeout.');
@@ -564,9 +624,9 @@ class ExternalJobService
             ? $searchTerm
             : (!empty($searchQueryTerm) ? $searchQueryTerm : 'software developer');
 
-        $cacheKey = 'jsearch_ph_pool_v9_' . md5($queryKeyword);
-        $keywordFallbackKey = 'jsearch_ph_pool_fallback_v9_' . md5($queryKeyword);
-        $sharedFallbackKey = 'jsearch_ph_pool_shared_fallback_v9';
+        $cacheKey = 'jsearch_ph_pool_v12_' . md5($queryKeyword);
+        $keywordFallbackKey = 'jsearch_ph_pool_fallback_v12_' . md5($queryKeyword);
+        $sharedFallbackKey = 'jsearch_ph_pool_shared_fallback_v12';
 
         $cached = Cache::get($cacheKey);
         if (!empty($cached) && is_array($cached)) {

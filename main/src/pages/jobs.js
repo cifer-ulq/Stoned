@@ -257,6 +257,10 @@ function externalCard(job, idx) {
     : escapeHtml(job.company_initial || (job.company || 'C').charAt(0));
 
   const isLocal = Boolean(job.is_local || job.location_scope === 'local' || (job.location && /bacolod|negros|talisay|silay/i.test(job.location)));
+  const isHighlyRec = (job.match_score >= 71) || (job.match_recommendation?.tier === 'highly_recommended');
+  const badgeClass = isHighlyRec ? 'jm-card__hot-badge' : 'jm-card__rec-badge';
+  const badgeIcon = isHighlyRec ? icon('award', 11) : icon('sparkles', 11);
+  const badgeText = isHighlyRec ? 'Highly Recommended' : 'Recommended';
 
   return `
     <article class="jm-card jm-card--external" style="--enter-delay:${Math.min(idx * 25, 350)}ms;" data-job-id="${job.id}">
@@ -278,7 +282,7 @@ function externalCard(job, idx) {
           </div>
         </div>
         <div class="jm-card__status-col">
-          <span class="jm-card__hot-badge" title="Highly Recommended">${icon('award', 11)} Highly Recommended</span>
+          <span class="${badgeClass}" title="${badgeText}">${badgeIcon} ${badgeText}</span>
         </div>
       </div>
 
@@ -1393,6 +1397,30 @@ export async function renderJobs(container) {
             if (searchInput) searchInput.value = '';
             updateFilterBadge();
             fetchExternalJobs('');
+          });
+        } else if (externalScope === 'local') {
+          emptyEl.innerHTML = `
+            <div class="jm-empty__icon">${icon('mapPin', 48)}</div>
+            <h3>No matching local jobs in Bacolod &amp; Negros</h3>
+            <p style="margin-bottom:16px;">There are currently no open positions matching your career profile in the local hub. Explore Nationwide PH or Global Remote for tailored opportunities!</p>
+            <button class="btn btn--primary btn--sm" id="ext-switch-nationwide-btn">${icon('globe', 14)} Explore Nationwide PH</button>`;
+          emptyEl.style.display = 'flex';
+          const switchBtn = emptyEl.querySelector('#ext-switch-nationwide-btn');
+          if (switchBtn) switchBtn.addEventListener('click', () => {
+            const nwChip = container.querySelector('.jm-scope-chip[data-scope="nationwide"]');
+            if (nwChip) nwChip.click();
+          });
+        } else if (externalScope === 'nationwide') {
+          emptyEl.innerHTML = `
+            <div class="jm-empty__icon">${icon('globe', 48)}</div>
+            <h3>No matching nationwide jobs found</h3>
+            <p style="margin-bottom:16px;">We could not find nationwide opportunities matching your profile right now. Try exploring Global Remote or refreshing.</p>
+            <button class="btn btn--primary btn--sm" id="ext-switch-remote-btn">${icon('globe', 14)} Explore Global Remote</button>`;
+          emptyEl.style.display = 'flex';
+          const switchBtn = emptyEl.querySelector('#ext-switch-remote-btn');
+          if (switchBtn) switchBtn.addEventListener('click', () => {
+            const remChip = container.querySelector('.jm-scope-chip[data-scope="remote"]');
+            if (remChip) remChip.click();
           });
         } else {
           emptyEl.innerHTML = `
