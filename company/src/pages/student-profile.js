@@ -148,30 +148,58 @@ function groupSkillsForResume(skills) {
   return [{ label: 'Technical & Domain Skills', items: skills.map(s => s.name).join(', ') }];
 }
 
-// ── Bootstrap ────────────────────────────────────────────────────────────────
+// ── Bootstrap & Safety Error Boundary ───────────────────────────────────────
 
 const app = document.getElementById('app');
 
-if (!token) {
-  window.location.replace('../login/');
-} else {
-  const params   = new URLSearchParams(window.location.search);
-  const userId   = params.get('student') || params.get('id');
+window.addEventListener('error', (event) => {
+  console.error('[Student Profile Error]', event.error || event.message);
+  if (app && (!app.children.length || app.querySelector('.sp-review-bar') === null)) {
+    renderError(event.message || 'An unexpected script error occurred while displaying the candidate portfolio.');
+  }
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('[Student Profile Unhandled Promise]', event.reason);
+  if (app && (!app.children.length || app.querySelector('.sp-review-bar') === null)) {
+    renderError('Unable to communicate with the server. Please check your connection and try again.');
+  }
+});
+
+async function init() {
+  const cachedUser = localStorage.getItem('hireme_user') || localStorage.getItem('hireme_company_user') || localStorage.getItem('hireme_token');
+  if (!cachedUser) {
+    window.location.replace('../login/');
+    return;
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const userId = params.get('student') || params.get('id');
 
   if (!userId) {
     renderError('No student or candidate ID specified in the URL.');
-  } else {
-    renderLoading();
-    apiFetch(`/students/${userId}/public-profile`)
-      .then(res => {
-        if (!res?.success || !res?.data) {
-          renderError(res?.message || 'Candidate not found or profile is unavailable.');
-        } else {
-          renderProfile(res.data, params);
-        }
-      })
-      .catch(() => renderError('Network error. Please check your connection and try again.'));
+    return;
   }
+
+  renderLoading();
+
+  try {
+    const res = await apiFetch(`/students/${userId}/public-profile`);
+    if (!res?.success || !res?.data) {
+      renderError(res?.message || 'Candidate not found or profile is unavailable.');
+      return;
+    }
+    renderProfile(res.data, params);
+  } catch (err) {
+    console.error('Error loading candidate profile:', err);
+    renderError('Network error. Please check your connection and try again.');
+  }
+}
+
+try {
+  init();
+} catch (err) {
+  renderError(err?.message || 'An unexpected initialization error occurred.');
 }
 
 // ── Error & Loading States ───────────────────────────────────────────────────
@@ -197,10 +225,13 @@ function renderError(msg) {
         </div>
         <h2 style="font-size:1.35rem;font-weight:800;color:#0f172a;margin:0 0 10px;">Portfolio Unavailable</h2>
         <p style="color:#64748b;font-size:0.9rem;line-height:1.6;margin:0 0 24px;">${msg}</p>
-        <div style="display:flex;gap:12px;justify-content:center;">
+        <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
           <button onclick="window.close()" style="background:#005930;color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:0.88rem;font-weight:600;cursor:pointer;">
             Close Tab
           </button>
+          <a href="./#applicants" style="background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;border-radius:8px;padding:10px 20px;font-size:0.88rem;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;">
+            Back to Applicants
+          </a>
           <button onclick="window.location.reload()" style="background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;border-radius:8px;padding:10px 20px;font-size:0.88rem;font-weight:600;cursor:pointer;">
             Retry
           </button>

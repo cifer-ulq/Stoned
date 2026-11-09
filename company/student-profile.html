@@ -7,7 +7,16 @@
   <link rel="icon" href="./favicon.ico" />
 </head>
 <body>
-  <div id="app"></div>
+  <div id="app">
+    <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f8fafc;font-family:system-ui,-apple-system,sans-serif;">
+      <div style="text-align:center;padding:32px;">
+        <div style="width:48px;height:48px;border-radius:50%;border:4px solid #005930;border-top-color:transparent;animation:sp-spin 0.8s linear infinite;margin:0 auto 16px;"></div>
+        <p style="color:#334155;font-weight:700;font-size:1rem;margin:0 0 6px;">Loading Candidate Portfolio...</p>
+        <p style="color:#64748b;font-size:0.84rem;margin:0;">Fetching academic, project, and resume records from CHMSU HireMe…</p>
+      </div>
+    </div>
+    <style>@keyframes sp-spin{to{transform:rotate(360deg)}}</style>
+  </div>
   <script type="module" src="./src/pages/student-profile.js"></script>
 </body>
 </html>
