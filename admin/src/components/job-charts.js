@@ -63,6 +63,14 @@ function getEmploymentTypeExpr(typeName, idx = 0) {
   return TYPE_FALLBACK_EXPRS[idx % TYPE_FALLBACK_EXPRS.length];
 }
 
+function getEmploymentTypeColor(tokens, typeName, idx = 0) {
+  if (tokens.typeColors[typeName]) return tokens.typeColors[typeName];
+  const lower = String(typeName || '').toLowerCase();
+  const matchedKey = Object.keys(tokens.typeColors).find(k => k.toLowerCase() === lower);
+  if (matchedKey) return tokens.typeColors[matchedKey];
+  return tokens.typeFallbackColors[idx % tokens.typeFallbackColors.length];
+}
+
 /**
  * Evaluate existing CSS variables & CSS color-mix() expressions dynamically against active theme.
  * Contains zero hardcoded hex/rgb values.
@@ -83,6 +91,11 @@ function resolveThemeTokens() {
 
   try {
     const rootStyle = getComputedStyle(document.documentElement);
+    const typeColors = {};
+    Object.entries(TYPE_COLOR_EXPRS).forEach(([label, expr]) => {
+      typeColors[label] = readColor(expr);
+    });
+
     return {
       fontFamily: rootStyle.getPropertyValue('--font-body').trim() || 'sans-serif',
       textPrimary: readColor('var(--text-primary)'),
@@ -101,7 +114,8 @@ function resolveThemeTokens() {
       hoverBg: readColor('var(--color-primary-bg)'),
       stemColor: readColor('color-mix(in srgb, var(--color-primary-light) 55%, var(--color-gray-400))'),
       skillRamp: SKILL_RAMP_EXPRS.map(expr => readColor(expr)),
-      resolveExpr: readColor,
+      typeColors,
+      typeFallbackColors: TYPE_FALLBACK_EXPRS.map(expr => readColor(expr)),
     };
   } finally {
     probe.remove();
@@ -461,7 +475,7 @@ export function renderEmploymentDonutChart(container, jobs) {
           name: typeName,
           value: count,
           itemStyle: {
-            color: t.resolveExpr(getEmploymentTypeExpr(typeName, idx)),
+            color: getEmploymentTypeColor(t, typeName, idx),
           },
         })),
       },
