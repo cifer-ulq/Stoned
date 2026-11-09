@@ -991,6 +991,8 @@ class CompanyController extends Controller
      */
     public function dashboard(Request $request)
     {
+        app(\App\Services\OjtAbsenceService::class)->triggerSafely();
+
         $userId = $request->user()->id;
         $today  = Carbon::today();
 
@@ -1420,6 +1422,8 @@ class CompanyController extends Controller
      */
     public function ojtTrainees(Request $request)
     {
+        app(\App\Services\OjtAbsenceService::class)->triggerSafely();
+
         $userId = $request->user()->id;
         $today  = now()->toDateString();
 
@@ -1443,7 +1447,7 @@ class CompanyController extends Controller
 
         $todayLogsByStudent = $studentIds->isNotEmpty()
             ? \App\Models\TimeLog::whereIn('user_id', $studentIds)
-                ->where('log_date', $today)
+                ->whereDate('log_date', $today)
                 ->get()
                 ->keyBy('user_id')
             : collect();
@@ -1599,7 +1603,19 @@ class CompanyController extends Controller
             ? ((float) $log->distance_meters <= 100 ? 'In Site' : 'Too Far')
             : ($log->location_validity === 'valid' ? 'In Site' : $log->location_validity);
 
-        if ($aIn && !$aOut) {
+        if ($log->status === 'absent') {
+            $state = 'absent';
+            $label = 'Absent Today';
+        } elseif ($log->status === 'excused') {
+            $state = 'excused';
+            $label = 'Excused Today';
+        } elseif ($log->status === 'half_day_am') {
+            $state = 'half_day';
+            $label = "Half Day (AM) · {$hrs}h";
+        } elseif ($log->status === 'half_day_pm') {
+            $state = 'half_day';
+            $label = "Half Day (PM) · {$hrs}h";
+        } elseif ($aIn && !$aOut) {
             $state = 'in_afternoon';
             $label = "Timed In (PM) · {$aIn}";
         } elseif ($aOut || (!$hasLunch && $tOut)) {
@@ -1643,6 +1659,8 @@ class CompanyController extends Controller
      */
     public function traineeTimeLogs(Request $request, $studentId)
     {
+        app(\App\Services\OjtAbsenceService::class)->triggerSafely();
+
         $userId = $request->user()->id;
 
         $companyPostingIds = OjtPosting::where('company_user_id', $userId)->pluck('id');
@@ -3789,7 +3807,7 @@ class CompanyController extends Controller
             $ojtRecord = $student->ojtRecord ?? OjtRecord::where('user_id', $student->id)->latest()->first();
 
             $existingLog = TimeLog::where('user_id', $student->id)
-                ->where('log_date', $closeDate)
+                ->whereDate('log_date', $closeDate)
                 ->first();
 
             if ($existingLog) {

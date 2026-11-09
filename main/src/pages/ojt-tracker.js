@@ -1472,6 +1472,12 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
         ${icon('clock', 15)} Shift starts at ${sched.shiftStart || '8:00 AM'} &middot; Morning time-in opens soon
       </div>
     `;
+  } else if (sessionState === 'excused_today') {
+    punchClockHtml = `
+      <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(2,132,199,0.1);color:#0284c7;border:1px solid rgba(2,132,199,0.25);padding:8px 16px;border-radius:99px;font-size:0.83rem;font-weight:600;">
+        ${icon('shieldCheck', 15)} Approved Leave &middot; Excused Today
+      </div>
+    `;
   } else if (sessionState === 'shift_ended') {
     const amNote = todayLog?.morningIn ? `AM: ${todayLog.morningIn} – ${todayLog.morningOut || '12:00'}` : null;
     punchClockHtml = `
@@ -1482,7 +1488,7 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
           </span>
         ` : ''}
         <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(239,68,68,0.1);color:#dc2626;border:1px solid rgba(239,68,68,0.25);padding:8px 16px;border-radius:99px;font-size:0.83rem;font-weight:600;" title="Today's scheduled shift has ended. You can time in again tomorrow morning.">
-          ${icon('alertCircle', 15)} Shift Ended (${sched.shiftEnd || '5:00 PM'}) &middot; Time-in Closed for Today
+          ${icon('alertCircle', 15)} ${todayLog?.status === 'absent' ? `Marked Absent (${sched.shiftEnd || '5:00 PM'})` : `Shift Ended (${sched.shiftEnd || '5:00 PM'})`} &middot; Time-in Closed for Today
         </div>
       </div>
     `;
@@ -1640,19 +1646,19 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
           <div class="ojt-deploy-details-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
             <div>
               <p class="text-xs text-tertiary" style="margin-bottom:3px;">Company</p>
-              <p class="text-sm" style="font-weight:600;">${ojt.company}</p>
+              <p class="text-sm" style="font-weight:600;">${esc(ojt.company || 'Host Company')}</p>
             </div>
             <div>
               <p class="text-xs text-tertiary" style="margin-bottom:3px;">Supervisor</p>
-              <p class="text-sm" style="font-weight:600;">${ojt.supervisor}</p>
+              <p class="text-sm" style="font-weight:600;">${esc(ojt.supervisor || ojt.supervisorEmail || 'Assigned upon reporting')}</p>
             </div>
             <div>
               <p class="text-xs text-tertiary" style="margin-bottom:3px;">Start Date</p>
-              <p class="text-sm" style="font-weight:600;">${ojt.startDate}</p>
+              <p class="text-sm" style="font-weight:600;">${esc(ojt.startDate || '—')}</p>
             </div>
             <div>
               <p class="text-xs text-tertiary" style="margin-bottom:3px;">${sched.estimatedEndDate ? 'Target End Date' : 'End Date'}</p>
-              <p class="text-sm" style="font-weight:600;">${sched.estimatedEndDate || ojt.endDate}</p>
+              <p class="text-sm" style="font-weight:600;">${esc(sched.estimatedEndDate || ojt.endDate || '—')}</p>
             </div>
             ${schedDays ? `
             <div>

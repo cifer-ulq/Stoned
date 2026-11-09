@@ -1010,6 +1010,8 @@ class StudentController extends Controller
      */
     public function ojtTracker(Request $request)
     {
+        app(\App\Services\OjtAbsenceService::class)->triggerSafely();
+
         $user = $request->user();
 
         // Find active, confirmed, emergency-paused, or pull-out pending OJT interest
@@ -1120,8 +1122,8 @@ class StudentController extends Controller
         $totalDays = (int) ceil($totalHours / 8);
 
         // Calculate start/end dates
-        $startDate = $ojtRecord?->start_date ?? $interest->updated_at;
-        $endDate = $ojtRecord?->end_date ?? (clone \Carbon\Carbon::parse($startDate))->addMonths($durationMonths);
+        $startDate = $ojtRecord?->start_date ?? $interest->ojt_start_date ?? $interest->updated_at;
+        $endDate = $ojtRecord?->end_date ?? $ojtRecord?->estimated_end_date ?? $interest->estimated_end_date ?? (clone \Carbon\Carbon::parse($startDate))->addMonths($durationMonths);
 
         // Schedule & Session parameters
         $scheduleDays = $interest->schedule_days ?? $ojtRecord?->schedule_days ?? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
@@ -1162,7 +1164,7 @@ class StudentController extends Controller
         // 2. Auto-close today's morning or afternoon if cutoff passed
         $todayLogRecord = TimeLog::where('user_id', $user->id)
             ->when($ojtRecord, fn($q) => $q->where('ojt_record_id', $ojtRecord->id))
-            ->where('log_date', $todayStr)
+            ->whereDate('log_date', $todayStr)
             ->first();
 
         if ($todayLogRecord) {
@@ -1253,7 +1255,7 @@ class StudentController extends Controller
         $daysCompleted = $timeLogs->where('status', '!=', 'absent')->filter(fn($l) => ($l['hours'] ?? 0) > 0)->unique('date')->count();
 
         // Supervisor name
-        $supervisorName = $ojtRecord?->supervisor_name ?? ($endorser ? $endorser->name : 'N/A');
+        $supervisorName = ($ojtRecord?->supervisor_name ?: null) ?? ($endorser ? $endorser->name : 'N/A');
 
         // Student's last known location from time logs (time-in coords)
         $lastGeo = TimeLog::where('user_id', $user->id)
@@ -1275,6 +1277,10 @@ class StudentController extends Controller
         $sessionState = 'ready_morning_in';
         if (!$isWorkDay) {
             $sessionState = 'off_day';
+        } elseif ($todayLogRecord?->status === 'absent') {
+            $sessionState = 'shift_ended';
+        } elseif ($todayLogRecord?->status === 'excused') {
+            $sessionState = 'excused_today';
         } elseif (!$todayLogRecord) {
             if ($nowTime < $earlyGateHM) {
                 $sessionState = 'before_shift';
@@ -1367,8 +1373,10 @@ class StudentController extends Controller
                 'postingTitle'    => $posting->title,
                 'duration'        => $posting->duration,
                 'scheduleType'    => $posting->schedule_type ?? 'Full Day · Mon–Fri',
-                'supervisor'       => $ojtRecord?->supervisor_name ?? null,
+                'supervisor'       => $supervisorName,
                 'supervisorEmail'  => $ojtRecord?->supervisor_email ?? null,
+                'startDate'        => $startDate ? ($startDate instanceof \DateTimeInterface ? $startDate->format('M d, Y') : \Carbon\Carbon::parse($startDate)->format('M d, Y')) : null,
+                'endDate'          => $endDate ? ($endDate instanceof \DateTimeInterface ? $endDate->format('M d, Y') : \Carbon\Carbon::parse($endDate)->format('M d, Y')) : null,
                 'requiredHours'    => (int) $totalHours,
                 'curriculumTarget' => (float) $curriculumTarget,
                 'accreditedHours'  => (float) $accreditedHours,
@@ -1839,7 +1847,20 @@ class StudentController extends Controller
         $logStatus = $hasExemption ? 'pending_approval' : 'valid';
 
         // 4. Session processing & Lunch Break Validation
-        $log = TimeLog::where('user_id', $user->id)->where('log_date', $today)->first();
+        $log = TimeLog::where('user_id', $user->id)->whereDate('log_date', $today)->first();
+
+        if ($log && $log->status === 'absent') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Today\'s attendance has already been marked absent after shift end. You can time in again on your next scheduled workday.',
+            ], 422);
+        }
+        if ($log && $log->status === 'excused') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Today is already marked as an approved excused leave day.',
+            ], 422);
+        }
 
         $sessionRequested = $request->session ?? 'auto';
         $timeInFormatted  = \Carbon\Carbon::createFromFormat('H:i', $request->time_in)->format('g:i A');

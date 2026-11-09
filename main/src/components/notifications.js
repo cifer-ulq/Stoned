@@ -42,6 +42,8 @@ const TYPE_CFG = {
   ojt_started:                    { ic: 'graduationCap',     color: '#8B5CF6', defaultRoute: '#/ojt-tracker' },
   student_time_in:                { ic: 'clock',            color: '#10B981', defaultRoute: '#/ojt-tracker' },
   student_time_out:               { ic: 'logOut',           color: '#6B7280', defaultRoute: '#/ojt-tracker' },
+  attendance_absent:              { ic: 'alertTriangle',    color: '#EF4444', defaultRoute: '#/ojt-tracker' },
+  attendance_excused:             { ic: 'shieldCheck',      color: '#475569', defaultRoute: '#/ojt-tracker' },
   requirements_assigned:          { ic: 'folder',           color: '#0284C7', defaultRoute: '#/portfolio' },
   requirements_verified:          { ic: 'checkCircle',      color: '#10B981', defaultRoute: '#/portfolio' },
   requirements_revision:          { ic: 'alertTriangle',    color: '#EF4444', defaultRoute: '#/portfolio' },
@@ -78,7 +80,7 @@ function normalizeStudentRoute(rawRoute, notifType = '') {
   const clean = src.replace(/^#\/?/, '').replace(/^\//, '');
   if (!clean || clean === 'home' || clean === 'dashboard') return '#/';
   if (clean === 'interviews') return '#/interview';
-  if (clean === 'ojt' && ['ojt_started', 'ojt_confirmed', 'ojt_approved', 'student_time_in', 'student_time_out', 'emergency_leave_approved', 'emergency_request_rejected', 'fit_to_work_cleared', 'consultation_requested'].includes(notifType)) {
+  if (clean === 'ojt' && ['ojt_started', 'ojt_confirmed', 'ojt_approved', 'student_time_in', 'student_time_out', 'attendance_absent', 'attendance_excused', 'emergency_leave_approved', 'emergency_request_rejected', 'fit_to_work_cleared', 'consultation_requested'].includes(notifType)) {
     return '#/ojt-tracker';
   }
   return `#/${clean}`;
@@ -519,7 +521,7 @@ export function initNotifications(triggerBtn) {
         invalidationPatterns.add('/ojt/my-interests*');
         invalidationPatterns.add('/student/dashboard*');
       }
-      if (t.includes('ojt') || t.includes('endorsement') || t.includes('time_') || t.includes('evaluation') || t.includes('pull_out')) {
+      if (t.includes('ojt') || t.includes('endorsement') || t.includes('time_') || t.includes('evaluation') || t.includes('pull_out') || t.includes('absent') || t.includes('attendance_')) {
         window.dispatchEvent(new CustomEvent('hireme:ojt-updated', { detail: n }));
         window.dispatchEvent(new CustomEvent('hireme:trainees-refresh', { detail: n }));
         invalidationPatterns.add('/student/ojt-tracker*');

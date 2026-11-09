@@ -2514,6 +2514,33 @@ function renderTodayDtrBadge(todayDtr) {
     ? ` &bull; In Site${distSuffix}`
     : (todayDtr.location_validity === 'Too Far' ? ` &bull; Too Far${distSuffix}` : '');
 
+  if (state === 'absent') {
+    return `
+      <span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:0.68rem;font-weight:700;background:#FEF2F2;color:#DC2626;border:1px solid #FECACA;" title="Marked as unexcused absence for today">
+        ${icon('x', 11)}
+        ${escapeHtml(todayDtr.label || 'Absent Today')}
+      </span>
+    `;
+  }
+
+  if (state === 'excused') {
+    return `
+      <span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:0.68rem;font-weight:700;background:#F1F5F9;color:#475569;border:1px solid #CBD5E1;" title="Absence excused for today">
+        ${icon('shieldCheck', 11)}
+        ${escapeHtml(todayDtr.label || 'Excused Today')}
+      </span>
+    `;
+  }
+
+  if (state === 'half_day') {
+    return `
+      <span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:0.68rem;font-weight:700;background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE;" title="Half-day attendance recorded today">
+        ${icon('clock', 11)}
+        ${escapeHtml(todayDtr.label)}${escapeHtml(locPill)}
+      </span>
+    `;
+  }
+
   if (state === 'in_morning' || state === 'in_afternoon') {
     return `
       <span style="display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:99px;font-size:0.68rem;font-weight:700;background:#ECFDF5;color:#047857;border:1px solid #A7F3D0;" title="Student is currently timed in today">

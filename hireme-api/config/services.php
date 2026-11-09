@@ -43,6 +43,10 @@ return [
         'key' => env('JOOBLE_API_KEY'),
     ],
 
+    'cron' => [
+        'secret' => env('CRON_SECRET'),
+    ],
+
     'google' => [
         'client_id'     => env('GOOGLE_CLIENT_ID'),
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),

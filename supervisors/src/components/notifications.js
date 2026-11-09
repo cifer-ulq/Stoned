@@ -35,6 +35,8 @@ const TYPE_CFG = {
   ojt_started:                    { ic: 'graduationCap',     color: '#8B5CF6', defaultRoute: '#/trainees' },
   student_time_in:                { ic: 'clock',            color: '#10B981', defaultRoute: '#/map' },
   student_time_out:               { ic: 'logOut',           color: '#6B7280', defaultRoute: '#/map' },
+  trainee_absent:                 { ic: 'alertTriangle',    color: '#EF4444', defaultRoute: '#/trainees' },
+  attendance_excused:             { ic: 'shieldCheck',      color: '#475569', defaultRoute: '#/trainees' },
   requirements_assigned:          { ic: 'folder',           color: '#0284C7', defaultRoute: '#/trainees' },
   requirements_verified:          { ic: 'checkCircle',      color: '#10B981', defaultRoute: '#/trainees' },
   requirements_revision:          { ic: 'alertTriangle',    color: '#EF4444', defaultRoute: '#/trainees' },
@@ -66,6 +68,8 @@ function normalizeSupervisorRoute(rawRoute, notifType = '', notifData = {}) {
     notifType === 'endorsement_requested' ||
     notifType === 'student_time_in' ||
     notifType === 'student_time_out' ||
+    notifType === 'trainee_absent' ||
+    notifType === 'attendance_excused' ||
     notifType === 'ojt_evaluation_completed' ||
     notifType === 'ojt_evaluation_request' ||
     notifType === 'ojt_evaluation_reminder'
@@ -464,7 +468,7 @@ export function initNotifications(triggerBtn) {
 
     notifs.forEach(n => {
       const t = n.type || '';
-      if (t.includes('requirements_') || t.includes('endorsement') || t.includes('time_') || t.includes('ojt') || t.includes('pull_out')) {
+      if (t.includes('requirements_') || t.includes('endorsement') || t.includes('time_') || t.includes('ojt') || t.includes('pull_out') || t.includes('absent') || t.includes('attendance_')) {
         window.dispatchEvent(new CustomEvent('hireme:trainees-refresh', { detail: n }));
         invalidationPatterns.add('/supervisor/trainees*');
         invalidationPatterns.add('/supervisor/pull-out-requests*');

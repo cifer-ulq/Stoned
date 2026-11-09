@@ -44,6 +44,8 @@ const TYPE_CFG = {
   trainee_resumed_ojt:               { ic: 'checkCircle',      color: '#10B981', defaultRoute: '#/ojt-trainees' },
   student_time_in:                   { ic: 'clock',            color: '#10B981', defaultRoute: '#/ojt-trainees' },
   student_time_out:                  { ic: 'logOut',           color: '#6B7280', defaultRoute: '#/ojt-trainees' },
+  trainee_absent:                    { ic: 'alertTriangle',    color: '#EF4444', defaultRoute: '#/ojt-trainees' },
+  attendance_excused:                { ic: 'shieldCheck',      color: '#475569', defaultRoute: '#/ojt-trainees' },
   ojt_evaluation_request:            { ic: 'star',             color: '#F59E0B', defaultRoute: '#/ojt-trainees' },
   ojt_evaluation_reminder:           { ic: 'bell',             color: '#D97706', defaultRoute: '#/ojt-trainees' },
   moa_approved:                      { ic: 'shieldCheck',      color: '#10B981', defaultRoute: '#/profile' },
@@ -62,7 +64,7 @@ function normalizeActionUrl(rawRoute, notifType = '') {
     return '#/applicants';
   }
   if (notifType === 'moa_approved') return '#/profile';
-  if (notifType === 'ojt_evaluation_request' || notifType === 'ojt_evaluation_reminder') return '#/ojt-trainees';
+  if (notifType === 'ojt_evaluation_request' || notifType === 'ojt_evaluation_reminder' || notifType === 'trainee_absent' || notifType === 'attendance_excused') return '#/ojt-trainees';
   if (!rawRoute) return TYPE_CFG[notifType]?.defaultRoute || '#/';
   if (rawRoute.startsWith('http')) return rawRoute;
   const clean = rawRoute.replace(/^#\/?/, '').trim();
@@ -80,7 +82,7 @@ function navigateCompanyNotification(actionUrl, notif = {}) {
     return;
   }
   const studentId = notif.data?.student_id;
-  if (studentId && (nType === 'student_time_in' || nType === 'student_time_out')) {
+  if (studentId && (nType === 'student_time_in' || nType === 'student_time_out' || nType === 'trainee_absent' || nType === 'attendance_excused')) {
     sessionStorage.setItem('co_open_dtr_student_id', String(studentId));
     window.dispatchEvent(new CustomEvent('hireme:open-student-dtr', { detail: { studentId } }));
   }
@@ -475,7 +477,7 @@ export function initNotifications(triggerBtn) {
         invalidationPatterns.add('/company/applications*');
         invalidationPatterns.add('/company/dashboard*');
       }
-      if (t.includes('endorsement') || t.includes('ojt') || t.includes('time_') || t.includes('evaluation')) {
+      if (t.includes('endorsement') || t.includes('ojt') || t.includes('time_') || t.includes('evaluation') || t.includes('absent') || t.includes('attendance_')) {
         window.dispatchEvent(new CustomEvent('hireme:ojt-trainees-refresh', { detail: n }));
         invalidationPatterns.add('/company/ojt-trainees*');
         invalidationPatterns.add('/company/applications*');

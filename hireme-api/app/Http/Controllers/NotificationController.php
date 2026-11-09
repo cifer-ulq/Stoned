@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AppNotification;
+use App\Services\OjtAbsenceService;
 use Illuminate\Http\Request;
 
 class NotificationController extends Controller
@@ -13,6 +14,8 @@ class NotificationController extends Controller
      */
     public function index(Request $request)
     {
+        app(OjtAbsenceService::class)->triggerSafely();
+
         $notifications = AppNotification::where('user_id', $request->user()->id)
             ->latest()
             ->take(50)
@@ -51,6 +54,8 @@ class NotificationController extends Controller
      */
     public function sync(Request $request)
     {
+        app(OjtAbsenceService::class)->triggerSafely();
+
         $userId = $request->user()->id;
         $hasSince = $request->has('since_id');
         $sinceId = (int) $request->query('since_id', 0);

@@ -59,3 +59,5 @@ services:
         sync: false
       - key: LINKEDIN_REDIRECT_URI
         value: "https://stoned.onrender.com/api/auth/linkedin/callback"
+      - key: CRON_SECRET
+        sync: false

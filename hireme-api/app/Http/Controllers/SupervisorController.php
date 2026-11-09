@@ -39,6 +39,8 @@ class SupervisorController extends Controller
      */
     public function dashboard(Request $request)
     {
+        app(\App\Services\OjtAbsenceService::class)->triggerSafely();
+
         $userId  = $request->user()->id;
         $user    = $request->user();
         $profile = $user->supervisorProfile;
@@ -615,6 +617,8 @@ class SupervisorController extends Controller
      */
     public function trainees(Request $request)
     {
+        app(\App\Services\OjtAbsenceService::class)->triggerSafely();
+
         $course = $this->getSupervisorCourse($request);
         $studentsQuery = User::where('role', 'student')
             ->whereDoesntHave('graduateProfile')
@@ -883,6 +887,8 @@ class SupervisorController extends Controller
      */
     public function monitoringOverview(Request $request)
     {
+        app(\App\Services\OjtAbsenceService::class)->triggerSafely();
+
         $course = $this->getSupervisorCourse($request);
         // Include both legacy 'accepted' and current 'ojt_started' — they both mean the trainee is actively doing OJT
         $interestsQuery = StudentOjtInterest::whereIn('status', ['ojt_started', 'accepted'])

@@ -20,6 +20,48 @@ use App\Http\Controllers\SkillController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Route;
+use App\Services\OjtAbsenceService;
+
+// ── External Scheduler Webhook (Fail-Closed Cron Trigger for Render Free Tier) ─
+Route::get('system/cron/absences', function (Request $request, OjtAbsenceService $absenceService) {
+    $expectedSecret = (string) config('services.cron.secret');
+    if ($expectedSecret === '') {
+        return response()->json([
+            'success' => false,
+            'message' => 'Cron secret is not configured on the server.',
+        ], 503);
+    }
+
+    $provided = (string) (
+        $request->bearerToken()
+        ?: $request->header('X-Cron-Secret')
+        ?: $request->query('token', '')
+    );
+
+    if ($provided === '' || !hash_equals($expectedSecret, $provided)) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Forbidden.',
+        ], 403);
+    }
+
+    $validated = $request->validate([
+        'days'  => 'nullable|integer|min:0|max:30',
+        'date'  => 'nullable|date_format:Y-m-d',
+        'force' => 'nullable|boolean',
+    ]);
+
+    $stats = $absenceService->runSweep(
+        force: (bool) ($validated['force'] ?? false),
+        lookbackDays: (int) ($validated['days'] ?? 7),
+        targetDate: $validated['date'] ?? null
+    );
+
+    return response()->json([
+        'success' => true,
+        'data'    => $stats,
+    ]);
+});
 
 // ── Email Diagnostics & Self-Test ───────────────────────────────────────────
 Route::get('mail-diagnostic', function (Request $request) {
