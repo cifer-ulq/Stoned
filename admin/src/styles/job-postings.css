@@ -749,6 +749,29 @@
 }
 
 /* Read-only Job Details Modal */
+.jp-modal {
+  display: flex;
+  flex-direction: column;
+  max-height: 88vh;
+  overflow: hidden;
+  background: var(--bg-elevated);
+}
+
+.jp-modal .cvm-hero,
+.jp-modal .modal__footer {
+  flex-shrink: 0;
+}
+
+.jp-modal__company-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.jp-modal__company-chip svg {
+  flex-shrink: 0;
+}
+
 .jp-modal__hero-top {
   display: flex;
   align-items: flex-start;
@@ -782,6 +805,9 @@
 }
 
 .jp-modal__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   padding: var(--space-5);
   display: flex;
   flex-direction: column;

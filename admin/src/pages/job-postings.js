@@ -271,7 +271,7 @@ function openJobDetailModal(job, triggerEl = null) {
             <div style="min-width:0;">
               <h2 class="cvm-hero__name" id="jp-modal-title">${escapeHtml(job.title || 'Untitled Position')}</h2>
               <p class="cvm-hero__sub">
-                <span>${icon('building-2', 13)} ${escapeHtml(company)}</span>
+                <span class="jp-modal__company-chip">${icon('building-2', 13)} <span>${escapeHtml(company)}</span></span>
                 ${job.department ? `<span>&bull;</span><span>${escapeHtml(job.department)}</span>` : ''}
               </p>
             </div>
@@ -690,21 +690,22 @@ export default async function JobPostingsPage(container) {
   apiGetCached('/admin/jobs', {
     onUpdate: (fresh) => {
       if (!tableContainer || !tableContainer.isConnected) return;
+      if (!Array.isArray(fresh)) return;
       loadError = false;
-      jobs = Array.isArray(fresh) ? fresh : [];
+      jobs = fresh;
       renderJobAnalytics(jobs, analytics);
       applyFilters(false);
     },
   }).then(res => {
     if (cached || !tableContainer || !tableContainer.isConnected) return;
-    if (!res) {
+    if (!Array.isArray(res)) {
       loadError = true;
       analytics.innerHTML = '';
       renderTablePage();
       return;
     }
     loadError = false;
-    jobs = Array.isArray(res) ? res : [];
+    jobs = res;
     renderJobAnalytics(jobs, analytics);
     applyFilters(false);
   }).catch(() => {
