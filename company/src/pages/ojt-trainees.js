@@ -683,7 +683,7 @@ export async function renderOjtTrainees(container) {
       <!-- ═══ 2. Urgent Action Alert Ribbon (Appears when evaluations are pending) ═══ -->
       <div class="co-action-ribbon" id="co-action-ribbon">
         <div class="co-action-ribbon__left">
-          <div class="co-action-ribbon__icon">★</div>
+          <div class="co-action-ribbon__icon">${icon('star', 18)}</div>
           <div>
             <div style="font-weight:700;font-size:0.9rem;color:#92400E;">
               <span id="ribbon-pending-count">0</span> Performance Evaluation(s) Awaiting Your Review
@@ -743,7 +743,7 @@ export async function renderOjtTrainees(container) {
         <div class="co-pulse-card" data-pulse-filter="action_required">
           <div class="co-pulse-card__header">
             <div class="co-pulse-card__icon-box" style="background:rgba(245,158,11,0.12);color:#B45309;">
-              <span style="font-weight:800;">★</span>
+              <span style="display:inline-flex;align-items:center;justify-content:center;">${icon('star', 16)}</span>
             </div>
             <span class="co-pulse-card__label-tag" style="color:#B45309;">Action Required</span>
           </div>
@@ -764,7 +764,7 @@ export async function renderOjtTrainees(container) {
           <!-- Stage Filter -->
           <select class="co-select-compact" id="co-stage-filter" title="Filter by Practicum / Appraisal State">
             <option value="all">All Interns</option>
-            <option value="action_required">★ Action Required (Pending Appraisal)</option>
+            <option value="action_required">Action Required (Pending Appraisal)</option>
             <option value="hours_completed">Hours Completed (100%)</option>
             <option value="in_progress">Currently Rendering Hours</option>
             <option value="evaluated">Certified & Evaluated</option>
@@ -1167,7 +1167,7 @@ export async function renderOjtTrainees(container) {
       } else if (t.status === 'stoppage_requested' || t.emergency_request?.coordinator_status === 'pending') {
         statusBadge = `<span class="co-status-pill co-status-pill--action" style="background:#FEF3C7;color:#92400e;border-color:rgba(245,158,11,0.35);">${icon('clock', 11)} Emergency Notice Filed</span>`;
       } else if (t.evaluation?.status === 'submitted') {
-        statusBadge = `<span class="co-status-pill co-status-pill--done">${icon('checkCircle', 11)} Graded (★ ${Number(t.evaluation.overall_score).toFixed(1)})</span>`;
+        statusBadge = `<span class="co-status-pill co-status-pill--done">${icon('checkCircle', 11)} Graded (<span style="display:inline-flex;align-items:center;color:#F59E0B;">${icon('star', 11)}</span> ${Number(t.evaluation.overall_score).toFixed(1)})</span>`;
       } else if (t.evaluation?.status === 'pending') {
         statusBadge = `<span class="co-status-pill co-status-pill--action">${icon('clock', 11)} Action Needed</span>`;
       } else if (completed >= required) {
@@ -1186,7 +1186,7 @@ export async function renderOjtTrainees(container) {
       } else if (t.evaluation?.status === 'pending') {
         actionBtn = `
           <button class="btn btn--primary btn--sm btn-trigger-eval" data-eval-id="${t.evaluation.id}" style="padding:4px 10px;font-size:0.75rem;background:#F59E0B;border-color:#F59E0B;gap:4px;">
-            ★ Evaluate
+            ${icon('star', 12)} Evaluate
           </button>`;
       } else if (t.evaluation?.status === 'submitted') {
         actionBtn = `
@@ -1296,7 +1296,7 @@ export async function renderOjtTrainees(container) {
     } else if (t.evaluation?.status === 'pending') {
       actionBtn = `
         <button class="btn btn--primary btn--sm btn-trigger-eval" data-eval-id="${t.evaluation.id}" style="background:#F59E0B;border-color:#F59E0B;gap:4px;font-size:0.75rem;padding:4px 11px;font-weight:700;">
-          ★ Complete Evaluation
+          ${icon('star', 12)} Complete Evaluation
         </button>`;
     } else if (t.evaluation?.status === 'submitted') {
       actionBtn = `
@@ -1529,13 +1529,13 @@ export async function renderOjtTrainees(container) {
       actionSectionHtml = `
         <div style="background:#FFFBEB;border:1px solid rgba(245,158,11,0.3);border-radius:10px;padding:14px;text-align:center;">
           <div style="color:#B45309;font-weight:700;font-size:0.85rem;margin-bottom:4px;display:flex;align-items:center;justify-content:center;gap:6px;">
-            ★ Official Performance Appraisal Required
+            ${icon('star', 14)} Official Performance Appraisal Required
           </div>
           <p style="font-size:0.75rem;color:var(--text-secondary);margin:0 0 10px;">
             The academic coordinator has dispatched this evaluation for your review. Your ratings are essential for certifying this intern's practicum.
           </p>
           <button class="btn btn--primary btn--sm" id="btn-dossier-eval-action" style="width:100%;background:#F59E0B;border-color:#F59E0B;color:#fff;font-weight:700;font-size:0.82rem;">
-            ★ Complete Appraisal Now
+            <span style="display:inline-flex;align-items:center;justify-content:center;gap:5px;">${icon('star', 13)} Complete Appraisal Now</span>
           </button>
         </div>`;
     } else if (t.evaluation?.status === 'submitted') {
@@ -1557,7 +1557,7 @@ export async function renderOjtTrainees(container) {
       actionSectionHtml = `
         <div style="background:#F0F7F4;border:1px solid rgba(0,89,48,0.2);border-radius:10px;padding:12px;text-align:center;">
           <div style="color:var(--color-primary, #005930);font-weight:700;font-size:0.82rem;margin-bottom:2px;">
-            ✓ 100% Practicum Hours Rendered
+            <span style="display:inline-flex;align-items:center;justify-content:center;gap:5px;">${icon('check', 13)} 100% Practicum Hours Rendered</span>
           </div>
           <div style="font-size:0.74rem;color:var(--text-secondary);">
             Awaiting evaluation dispatch from CHMSU Academic Coordinator.
@@ -1567,9 +1567,9 @@ export async function renderOjtTrainees(container) {
 
     const dtr = t.today_dtr || {};
     const dtrLocBadge = dtr.location_validity === 'In Site'
-      ? `<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:99px;font-size:0.68rem;font-weight:700;background:#ECFDF5;color:#047857;border:1px solid #A7F3D0;">✓ In Site${dtr.distance_meters != null ? ` (${dtr.distance_meters}m)` : ''}</span>`
+      ? `<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:99px;font-size:0.68rem;font-weight:700;background:#ECFDF5;color:#047857;border:1px solid #A7F3D0;">${icon('check', 11)} In Site${dtr.distance_meters != null ? ` (${dtr.distance_meters}m)` : ''}</span>`
       : (dtr.location_validity === 'Too Far'
-        ? `<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:99px;font-size:0.68rem;font-weight:700;background:#FEF2F2;color:#B91C1C;border:1px solid #FECACA;">⚠ Too Far${dtr.distance_meters != null ? ` (${dtr.distance_meters}m)` : ''}</span>`
+        ? `<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:99px;font-size:0.68rem;font-weight:700;background:#FEF2F2;color:#B91C1C;border:1px solid #FECACA;">${icon('alertTriangle', 11)} Too Far${dtr.distance_meters != null ? ` (${dtr.distance_meters}m)` : ''}</span>`
         : '');
 
     dossierBody.innerHTML = `
@@ -1611,7 +1611,7 @@ export async function renderOjtTrainees(container) {
           ` : ''}
           <div style="margin-top:8px;padding-top:8px;border-top:1px dashed rgba(245,158,11,0.3);display:flex;align-items:center;justify-content:space-between;gap:8px;">
             <span style="font-size:0.72rem;color:var(--text-secondary);">
-              Assets Returned: <strong>${t.emergency_request.assets_returned ? 'Yes ✓' : 'Pending ⏳'}</strong>
+              Assets Returned: <strong style="display:inline-flex;align-items:center;gap:3px;">${t.emergency_request.assets_returned ? `Yes ${icon('check', 11)}` : `Pending ${icon('hourglass', 11)}`}</strong>
             </span>
             <button class="btn btn--outline btn--xs" id="btn-dossier-clearance" style="font-size:0.72rem;padding:3px 8px;color:#b45309;border-color:rgba(245,158,11,0.4);">
               ${icon('checkSquare', 11)} Exit Clearance
@@ -1712,7 +1712,7 @@ export async function renderOjtTrainees(container) {
             ${icon('shield', 13)} Course OJT Coordinator${coords.length > 1 ? `s (${coords.length})` : ''}
           </span>
           <span style="font-size:0.66rem;color:var(--color-primary, #005930);font-weight:700;">
-            ✓ Endorsed
+            <span style="display:inline-flex;align-items:center;gap:3px;">${icon('check', 11)} Endorsed</span>
           </span>
         </div>
         ${coords.length > 0 ? `
@@ -1999,7 +1999,7 @@ async function openCompanyEvaluationModal(evalId, onComplete) {
         <div class="modal__header" style="border-bottom:1px solid #E2E8F0;background:#FAFBFD;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
           <div style="display:flex;align-items:center;gap:12px;">
             <div style="width:42px;height:42px;border-radius:10px;background:rgba(245,158,11,0.12);color:#B45309;display:flex;align-items:center;justify-content:center;font-size:1.3rem;font-weight:700;">
-              ★
+              ${icon('star', 20)}
             </div>
             <div>
               <div style="display:flex;align-items:center;">
@@ -2053,8 +2053,8 @@ async function openCompanyEvaluationModal(evalId, onComplete) {
                     <div class="star-rating-control" data-qid="${q.id}" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                       <div class="star-buttons-wrap" style="display:flex;gap:5px;">
                         ${[1, 2, 3, 4, 5].map(starNum => `
-                          <button type="button" class="eval-star-btn" data-val="${starNum}" style="width:38px;height:38px;border-radius:6px;border:1px solid #CBD5E1;background:#fff;font-size:1.15rem;color:#94A3B8;cursor:pointer;transition:all 0.15s ease;">
-                            ★
+                          <button type="button" class="eval-star-btn" data-val="${starNum}" style="width:38px;height:38px;border-radius:6px;border:1px solid #CBD5E1;background:#fff;color:#94A3B8;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all 0.15s ease;">
+                            ${icon('starEmpty', 18)}
                           </button>
                         `).join('')}
                       </div>
@@ -2140,14 +2140,14 @@ async function openCompanyEvaluationModal(evalId, onComplete) {
 
         btn.addEventListener('mouseenter', () => {
           buttons.forEach((b, i) => {
-            b.style.color = (i + 1 <= val) ? '#F59E0B' : '#94A3B8';
+            const on = (i + 1 <= val); b.style.color = on ? '#F59E0B' : '#94A3B8'; b.innerHTML = on ? icon('star', 18) : icon('starEmpty', 18);
           });
         });
 
         btn.addEventListener('mouseleave', () => {
           const current = parseInt(hiddenInput.value) || 0;
           buttons.forEach((b, i) => {
-            b.style.color = (i + 1 <= current) ? '#F59E0B' : '#94A3B8';
+            const on = (i + 1 <= current); b.style.color = on ? '#F59E0B' : '#94A3B8'; b.innerHTML = on ? icon('star', 18) : icon('starEmpty', 18);
           });
         });
 
@@ -2155,7 +2155,7 @@ async function openCompanyEvaluationModal(evalId, onComplete) {
           hiddenInput.value = val;
           buttons.forEach((b, i) => {
             const isFilled = (i + 1 <= val);
-            b.style.color = isFilled ? '#F59E0B' : '#94A3B8';
+            b.style.color = isFilled ? '#F59E0B' : '#94A3B8'; b.innerHTML = isFilled ? icon('star', 18) : icon('starEmpty', 18);
             b.style.background = isFilled ? 'rgba(245,158,11,0.08)' : '#fff';
             b.style.borderColor = isFilled ? '#F59E0B' : '#CBD5E1';
           });
@@ -2336,7 +2336,7 @@ async function openCompanyViewSubmittedModal(evalId) {
                   <div style="font-size:0.85rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">${idx + 1}. ${escapeHtml(q.question_text)}</div>
                   ${q.question_type === 'rating' ? `
                     <div style="display:flex;align-items:center;gap:6px;font-size:0.9rem;font-weight:700;color:#F59E0B;">
-                      <span>★</span> ${ans?.rating_value || '—'} / 5
+                      <span style="display:inline-flex;align-items:center;">${icon('star', 15)}</span> ${ans?.rating_value || '—'} / 5
                     </div>
                   ` : `
                     <div style="font-size:0.84rem;color:var(--text-secondary);font-style:italic;">
@@ -2853,12 +2853,12 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
     } else if (val === 'In Site') {
       badgeHtml = `
         <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:99px;font-size:0.72rem;font-weight:700;background:#ECFDF5;color:#047857;border:1px solid #A7F3D0;">
-          ✓ In Site${dist ? ` (${dist})` : ''}
+          ${icon('check', 11)} In Site${dist ? ` (${dist})` : ''}
         </span>`;
     } else if (val === 'Too Far') {
       badgeHtml = `
         <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:99px;font-size:0.72rem;font-weight:700;background:#FEF2F2;color:#B91C1C;border:1px solid #FECACA;">
-          ⚠ Too Far${dist ? ` (${dist})` : ''}
+          ${icon('alertTriangle', 11)} Too Far${dist ? ` (${dist})` : ''}
         </span>`;
     } else {
       badgeHtml = `
@@ -3151,8 +3151,8 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
           <div style="background:#fff;border:1px solid #E2E8F0;border-radius:10px;padding:10px 14px;">
             <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;color:var(--text-tertiary);">Location Compliance (100m)</div>
             <div style="display:flex;align-items:center;gap:10px;margin-top:3px;font-size:0.82rem;font-weight:700;">
-              <span style="color:#047857;">✓ ${summaryInfo.inSiteCount ?? 0} In Site</span>
-              <span style="color:#B91C1C;">⚠ ${summaryInfo.tooFarCount ?? 0} Too Far</span>
+              <span style="color:#047857;display:inline-flex;align-items:center;gap:4px;">${icon('check', 12)} ${summaryInfo.inSiteCount ?? 0} In Site</span>
+              <span style="color:#B91C1C;display:inline-flex;align-items:center;gap:4px;">${icon('alertTriangle', 12)} ${summaryInfo.tooFarCount ?? 0} Too Far</span>
             </div>
           </div>
           <div style="background:${(summaryInfo.unexcusedAbsenceCount > 0 ? '#FEF2F2' : '#fff')};border:1px solid ${(summaryInfo.unexcusedAbsenceCount > 0 ? '#FECACA' : '#E2E8F0')};border-radius:10px;padding:10px 14px;">
@@ -3231,7 +3231,7 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
         <!-- Modal Footer -->
         <div style="border-top:1px solid #E2E8F0;background:#FAFBFD;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
           <span style="font-size:0.74rem;color:var(--text-secondary);">
-            💡 Real-time sync active &mdash; this table updates automatically when the trainee logs Time-In or Time-Out.
+            <span style="display:inline-flex;align-items:center;gap:5px;">${icon('lightbulb', 13)} Real-time sync active &mdash; this table updates automatically when the trainee logs Time-In or Time-Out.</span>
           </span>
           <button type="button" class="btn btn--outline btn--sm" id="dtr-modal-footer-close">Close</button>
         </div>

@@ -97,10 +97,10 @@ export async function renderInterviews(container) {
                 All Interviews <span class="iv-cat-count" id="count-all">0</span>
               </button>
               <button type="button" class="iv-cat-tab" data-cat="job">
-                💼 Job Interviews <span class="iv-cat-count" id="count-job">0</span>
+                ${icon('briefcase', 14)} Job Interviews <span class="iv-cat-count" id="count-job">0</span>
               </button>
               <button type="button" class="iv-cat-tab" data-cat="ojt">
-                🎓 OJT Interviews <span class="iv-cat-count" id="count-ojt">0</span>
+                ${icon('graduationCap', 14)} OJT Interviews <span class="iv-cat-count" id="count-ojt">0</span>
               </button>
             </div>
           </div>
@@ -286,8 +286,8 @@ function renderTodaySchedule(container, interviews) {
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;">
         <span class="iv-schedule__time" style="font-weight:700;font-size:0.8rem;color:var(--color-primary);">${iv.time}</span>
         ${iv.category === 'ojt'
-          ? `<span class="badge badge--ojt" style="font-size:0.65rem;padding:1px 6px;">🎓 OJT</span>`
-          : `<span class="badge badge--job" style="font-size:0.65rem;padding:1px 6px;">💼 JOB</span>`
+          ? `<span class="badge badge--ojt" style="font-size:0.65rem;padding:1px 6px;">${icon('graduationCap', 11)} OJT</span>`
+          : `<span class="badge badge--job" style="font-size:0.65rem;padding:1px 6px;">${icon('briefcase', 11)} JOB</span>`
         }
       </div>
       <div class="iv-schedule__content">
@@ -335,7 +335,7 @@ function renderInterviewCards(container, interviews, category = 'all', timeFilte
     const catText = category === 'job' ? 'Job' : category === 'ojt' ? 'OJT' : '';
     cardsEl.innerHTML = `
       <div class="empty-state" style="padding:48px 16px;text-align:center;">
-        <div style="font-size:2.5rem;margin-bottom:12px;opacity:0.6;">📅</div>
+        <div style="width:56px;height:56px;border-radius:50%;background:var(--bg-secondary);color:var(--text-tertiary);display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px;">${icon('calendar', 28)}</div>
         <h3 class="empty-state__title" style="font-size:1.05rem;font-weight:600;margin-bottom:6px;">No ${catText} interviews found</h3>
         <p class="empty-state__text text-secondary text-sm" style="max-width:420px;margin:0 auto;line-height:1.5;">
           ${category === 'ojt'
@@ -375,8 +375,8 @@ function renderInterviewCards(container, interviews, category = 'all', timeFilte
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:2px;">
             <h4 class="iv-card__name" style="margin:0;">${iv.candidate?.name || 'Candidate'}</h4>
             ${isOjt
-              ? '<span class="badge badge--ojt">🎓 OJT Internship</span>'
-              : '<span class="badge badge--job">💼 Job Opening</span>'
+              ? `<span class="badge badge--ojt">${icon('graduationCap', 12)} OJT Internship</span>`
+              : `<span class="badge badge--job">${icon('briefcase', 12)} Job Opening</span>`
             }
           </div>
           <p class="iv-card__role text-sm text-secondary" style="margin:0;">
@@ -565,8 +565,8 @@ function openRescheduleModal(iv, allInterviews, container, currentCat, currentTi
           <div>
             <div style="display:flex;align-items:center;gap:8px;">
               <h3 style="color:#fff;font-size:1rem;font-weight:700;margin:0;">${icon('calendar', 16)} Reschedule Interview</h3>
-              <span style="background:rgba(255,255,255,0.2);color:#fff;font-size:0.68rem;padding:2px 8px;border-radius:99px;font-weight:600;">
-                ${isOjt ? '🎓 OJT' : '💼 JOB'}
+              <span style="background:rgba(255,255,255,0.2);color:#fff;font-size:0.68rem;padding:2px 8px;border-radius:99px;font-weight:600;display:inline-flex;align-items:center;gap:4px;">
+                ${isOjt ? `${icon('graduationCap', 11)} OJT` : `${icon('briefcase', 11)} JOB`}
               </span>
             </div>
             <p style="color:rgba(255,255,255,.9);font-size:.8rem;margin:2px 0 0;">
@@ -603,8 +603,8 @@ function openRescheduleModal(iv, allInterviews, container, currentCat, currentTi
           <div>
             <label style="display:block;font-size:.78rem;font-weight:600;color:var(--text-secondary);margin-bottom:5px;">Interview Format *</label>
             <select name="interview_type" id="rs-format-select" class="form-input form-select" required style="width:100%;">
-              <option value="online" ${initialFormat === 'online' ? 'selected' : ''}>🌐 Online Video</option>
-              <option value="face_to_face" ${initialFormat === 'face_to_face' ? 'selected' : ''}>🏢 Face-to-Face / On-site</option>
+              <option value="online" ${initialFormat === 'online' ? 'selected' : ''}>Online Video</option>
+              <option value="face_to_face" ${initialFormat === 'face_to_face' ? 'selected' : ''}>Face-to-Face / On-site</option>
             </select>
           </div>
         </div>

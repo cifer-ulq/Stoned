@@ -1129,7 +1129,7 @@ function studentDetailCard(s, state) {
         <div style="display:flex;align-items:center;gap:8px;">
           ${driveUrl ? `
             <a href="${driveUrl}" target="_blank" rel="noopener" style="font-size:0.77rem;color:#0284c7;text-decoration:underline;font-weight:600;display:inline-flex;align-items:center;gap:3px;">
-              ${icon('externalLink', 11)} Cloud Drive ↗
+              ${icon('externalLink', 11)} Cloud Drive
             </a>
           ` : ''}
           <button type="button" class="btn--open-reqs"

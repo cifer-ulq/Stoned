@@ -5351,7 +5351,7 @@
 }
 
 .jf-quick-chip__icon {
-  font-size: 0.85em;
+  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.85em;
 }
 
 /* â”€â”€ Active Filters Tag Summary Bar â”€â”€ */
@@ -5687,7 +5687,7 @@
 
 .jf-pill__emoji {
   margin-right: 6px;
-  font-size: 0.9em;
+  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.9em;
 }
 
 .jf-pill__text {
@@ -5998,7 +5998,7 @@
   gap: 4px;
 }
 
-.jf-preset-btn {
+.jf-preset-btn { display: inline-flex; align-items: center; justify-content: center; gap: 4px;
   flex: 1;
   padding: 3px 0;
   border-radius: var(--radius-md);

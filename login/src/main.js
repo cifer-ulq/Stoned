@@ -128,21 +128,21 @@ function render() {
           ${isCompanySignup || isSuccess ? `
           <div class="lp-company-perks">
             <div class="lp-perk">
-              <div class="lp-perk__icon">🎯</div>
+              <div class="lp-perk__icon" style="color:#34d399">${icon('target', 20)}</div>
               <div class="lp-perk__text">
                 <div class="lp-perk__title">Access Top Talent</div>
                 <div class="lp-perk__desc">Recruit from 1,200+ qualified CHMSU students</div>
               </div>
             </div>
             <div class="lp-perk">
-              <div class="lp-perk__icon">📋</div>
+              <div class="lp-perk__icon" style="color:#60a5fa">${icon('clipboard-list', 20)}</div>
               <div class="lp-perk__text">
                 <div class="lp-perk__title">Post OJT Slots</div>
                 <div class="lp-perk__desc">Easily manage internship openings and applications</div>
               </div>
             </div>
             <div class="lp-perk">
-              <div class="lp-perk__icon">🤝</div>
+              <div class="lp-perk__icon" style="color:#fbbf24">${icon('handshake', 20)}</div>
               <div class="lp-perk__text">
                 <div class="lp-perk__title">MOA Partnership</div>
                 <div class="lp-perk__desc">Formalize your partnership with CHMSU CIER</div>
@@ -152,7 +152,7 @@ function render() {
           ` : `
           <div class="lp-deck">
             <div class="lp-deck-card" style="--dur:4.5s;--delay:0s">
-              <div class="lp-deck-card__icon" style="background:rgba(74,108,247,0.15);color:#818CF8">🎓</div>
+              <div class="lp-deck-card__icon" style="background:rgba(74,108,247,0.15);color:#818CF8">${icon('graduation-cap', 19)}</div>
               <div class="lp-deck-card__text">
                 <div class="lp-deck-card__title">Students</div>
                 <div class="lp-deck-card__desc">Track OJT, build portfolio, find placements</div>
@@ -160,7 +160,7 @@ function render() {
               <div class="lp-deck-card__pill">Active</div>
             </div>
             <div class="lp-deck-card" style="--dur:5s;--delay:-1.5s">
-              <div class="lp-deck-card__icon" style="background:rgba(6,182,212,0.15);color:#38bdf8">🛡️</div>
+              <div class="lp-deck-card__icon" style="background:rgba(6,182,212,0.15);color:#38bdf8">${icon('shield', 19)}</div>
               <div class="lp-deck-card__text">
                 <div class="lp-deck-card__title">Supervisors</div>
                 <div class="lp-deck-card__desc">Evaluate interns, submit assessments</div>
@@ -168,7 +168,7 @@ function render() {
               <div class="lp-deck-card__pill">Ready</div>
             </div>
             <div class="lp-deck-card" style="--dur:3.8s;--delay:-3s">
-              <div class="lp-deck-card__icon" style="background:rgba(245,158,11,0.15);color:#fbbf24">🏢</div>
+              <div class="lp-deck-card__icon" style="background:rgba(245,158,11,0.15);color:#fbbf24">${icon('building-2', 19)}</div>
               <div class="lp-deck-card__text">
                 <div class="lp-deck-card__title">Companies</div>
                 <div class="lp-deck-card__desc">Post OJT slots, manage applicants</div>
@@ -227,7 +227,7 @@ function renderStandardForm(isSignin, isSignup) {
   return `
     ${resetSuccess && isSignin ? `
     <div style="background: rgba(16, 185, 129, 0.12); border: 1.5px solid #10B981; border-radius: 12px; padding: 14px 16px; margin-bottom: 1.25rem; display: flex; align-items: flex-start; gap: 10px; color: #065F46; font-size: 0.84rem; line-height: 1.5;">
-      <span style="font-size: 1.15rem; flex-shrink: 0; line-height: 1;">✓</span>
+      <span style="flex-shrink: 0; display: inline-flex; align-items: center; color: #10B981; margin-top: 1px;">${icon('check', 18)}</span>
       <div>
         <strong style="display: block; color: #047857; margin-bottom: 2px; font-size: 0.88rem;">Password Reset Successful!</strong>
         Your password has been updated. You can now sign in with your new password.
@@ -312,7 +312,7 @@ function renderStandardForm(isSignin, isSignup) {
       </div>
 
       <div id="signup-id-preview" style="display:none; margin: -2px 0 10px; padding: 9px 12px; background: rgba(0, 89, 48, 0.06); border: 1.5px solid rgba(0, 89, 48, 0.2); border-radius: 12px; font-size: 0.78rem; color: var(--color-primary); align-items: center; justify-content: space-between;">
-        <span>💡 Suggested Student ID: <strong id="signup-preview-val" style="font-family: monospace; letter-spacing: 0.6px; font-size: 0.88rem;"></strong></span>
+        <span style="display:inline-flex;align-items:center;gap:6px;">${icon('lightbulb', 14)} Suggested Student ID: <strong id="signup-preview-val" style="font-family: monospace; letter-spacing: 0.6px; font-size: 0.88rem;"></strong></span>
         <span style="font-size: 0.68rem; color: var(--text-tertiary);">CHMSU format</span>
       </div>
       ` : ''}
@@ -375,7 +375,7 @@ function renderStandardForm(isSignin, isSignup) {
     ${!isSignin ? `
     <!-- Company Registration CTA -->
     <div class="cr-cta-banner" id="company-cta">
-      <div class="cr-cta-banner__icon">🏢</div>
+      <div class="cr-cta-banner__icon" style="display:inline-flex;align-items:center;justify-content:center;color:#D97706;">${icon('building-2', 22)}</div>
       <div class="cr-cta-banner__text">
         <span class="cr-cta-banner__title">Are you a company?</span>
         <span class="cr-cta-banner__desc">Register your business to post OJT slots and job openings</span>
@@ -596,11 +596,11 @@ function renderSuccessView() {
       <div class="cr-success__status-card">
         <div class="cr-success__status-row">
           <span class="cr-success__status-label">Account Status</span>
-          <span class="cr-success__badge cr-success__badge--pending">⏳ Pending Review</span>
+          <span class="cr-success__badge cr-success__badge--pending">${icon('hourglass', 13)} Pending Review</span>
         </div>
         <div class="cr-success__status-row">
           <span class="cr-success__status-label">MOA Status</span>
-          <span class="cr-success__badge cr-success__badge--moa">📋 Not Yet Established</span>
+          <span class="cr-success__badge cr-success__badge--moa">${icon('clipboard-list', 13)} Not Yet Established</span>
         </div>
         <div class="cr-success__status-row">
           <span class="cr-success__status-label">Email Sent To</span>
@@ -610,7 +610,7 @@ function renderSuccessView() {
 
       <div class="cr-success__steps">
         <div class="cr-success__step">
-          <div class="cr-success__step-dot cr-success__step-dot--done">✓</div>
+          <div class="cr-success__step-dot cr-success__step-dot--done">${icon('check', 13)}</div>
           <div class="cr-success__step-text">Account created &amp; confirmation email sent</div>
         </div>
         <div class="cr-success__step">
@@ -659,8 +659,9 @@ function renderForgotPasswordForm() {
         <span class="lf-field__error" id="err-forgot-email"></span>
       </div>
 
-      <div style="font-size: 0.76rem; color: var(--text-tertiary); line-height: 1.5; padding: 0 2px;">
-        💡 Works for students, supervisors, company partners, and alumni. Make sure to enter your official registered email.
+      <div style="font-size: 0.76rem; color: var(--text-tertiary); line-height: 1.5; padding: 0 2px; display: flex; align-items: flex-start; gap: 6px;">
+        <span style="display: inline-flex; flex-shrink: 0; color: var(--color-primary); margin-top: 1px;">${icon('lightbulb', 14)}</span>
+        <span>Works for students, supervisors, company partners, and alumni. Make sure to enter your official registered email.</span>
       </div>
 
       <button class="login-submit" id="forgot-submit-btn" type="submit">
@@ -680,8 +681,8 @@ function renderForgotPasswordForm() {
 function renderForgotPasswordSuccess() {
   return `
     <div style="text-align: center; padding: 0.5rem 0;">
-      <div style="width: 68px; height: 68px; border-radius: 50%; background: rgba(0, 89, 48, 0.1); color: var(--color-primary); display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; font-size: 1.8rem; box-shadow: 0 4px 16px rgba(0, 89, 48, 0.12);">
-        ✉️
+      <div style="width: 68px; height: 68px; border-radius: 50%; background: rgba(0, 89, 48, 0.1); color: var(--color-primary); display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; box-shadow: 0 4px 16px rgba(0, 89, 48, 0.12);">
+        ${icon('mail', 28)}
       </div>
 
       <h2 class="login-header__title" style="margin-bottom: 0.5rem;">Check Your Email</h2>
@@ -692,7 +693,7 @@ function renderForgotPasswordSuccess() {
 
       <div style="background: var(--bg-secondary); border: 1.5px solid var(--border-default); border-radius: 12px; padding: 14px 16px; margin-bottom: 1.5rem; text-align: left; font-size: 0.82rem; color: var(--text-secondary); line-height: 1.55;">
         <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
-          <span>⏱️</span> Link expires in 60 minutes
+          <span style="display: inline-flex; color: var(--color-primary);">${icon('timer', 15)}</span> Link expires in 60 minutes
         </div>
         Click the link in your email to choose a new password. If you don't see it within a minute, please check your <strong>Spam</strong> or <strong>Junk</strong> folder.
       </div>
@@ -1190,7 +1191,7 @@ async function handleSubmit(e) {
         }
         if (alertBox) {
           alertBox.style.cssText = `background:#EFF6FF;border:1.5px solid #3B82F6;border-radius:10px;padding:14px 16px;margin-bottom:18px;display:flex;align-items:flex-start;gap:12px;color:#1E40AF;font-size:0.83rem;line-height:1.5;`;
-          alertBox.innerHTML = `<div><span style="font-size:1.2rem;display:inline-block;">ℹ️</span></div><div><strong style="display:block;margin-bottom:2px;font-size:0.88rem;color:#1E3A8A;">Social Account Detected</strong>${escapeHtml(data.message)}</div>`;
+          alertBox.innerHTML = `<div style="display:inline-flex;flex-shrink:0;margin-top:1px;color:#2563EB;">${icon('info', 18)}</div><div><strong style="display:block;margin-bottom:2px;font-size:0.88rem;color:#1E3A8A;">Social Account Detected</strong>${escapeHtml(data.message)}</div>`;
         }
         btn.disabled = false;
         lbl.textContent = 'Sign In';
@@ -1208,7 +1209,7 @@ async function handleSubmit(e) {
         }
         if (alertBox) {
           alertBox.style.cssText = `background:${isPending ? '#FEF3C7' : '#FEE2E2'};border:1.5px solid ${isPending ? '#F59E0B' : '#EF4444'};border-radius:10px;padding:14px 16px;margin-bottom:18px;display:flex;align-items:flex-start;gap:12px;color:${isPending ? '#92400E' : '#991B1B'};font-size:0.83rem;line-height:1.5;`;
-          alertBox.innerHTML = `<div><span style="font-size:1.2rem;display:inline-block;">${isPending ? '⏳' : '⚠️'}</span></div><div><strong style="display:block;margin-bottom:2px;font-size:0.88rem;color:${isPending ? '#78350F' : '#7F1D1D'};">${isPending ? 'Account Approval Pending' : 'Account Registration Notice'}</strong>${escapeHtml(data.message)}</div>`;
+          alertBox.innerHTML = `<div style="display:inline-flex;flex-shrink:0;margin-top:1px;color:${isPending ? '#D97706' : '#DC2626'};">${isPending ? icon('hourglass', 18) : icon('alert-triangle', 18)}</div><div><strong style="display:block;margin-bottom:2px;font-size:0.88rem;color:${isPending ? '#78350F' : '#7F1D1D'};">${isPending ? 'Account Approval Pending' : 'Account Registration Notice'}</strong>${escapeHtml(data.message)}</div>`;
         }
         btn.disabled = false;
         lbl.textContent = 'Sign In';

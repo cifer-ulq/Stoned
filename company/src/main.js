@@ -12,6 +12,7 @@ import './styles/responsive.css';
 
 import { createNavbar, createMobileBottomNav } from './components/navbar.js';
 import { createLeftSidebar } from './components/sidebar-left.js';
+import { icon } from './components/icons.js';
 import { registerRoute, initRouter } from './router.js';
 import { getState, setState } from './store.js';
 import { apiGet, apiCache, revalidateEndpoint } from './api/client.js';
@@ -390,7 +391,7 @@ function showProfileIncompleteModal() {
   overlay.className = 'modal-overlay';
   overlay.innerHTML = `
     <div class="modal-box modal-box--sm" role="dialog" aria-modal="true" style="max-width:420px;text-align:center;padding:2rem;">
-      <div style="font-size:3rem;margin-bottom:1rem;">🏢</div>
+      <div style="width:60px;height:60px;border-radius:50%;background:var(--color-primary-bg,rgba(0,89,48,0.1));color:var(--color-primary,#10b981);display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;">${icon('building2', 28)}</div>
       <h2 style="font-size:1.25rem;font-weight:700;margin-bottom:.5rem;color:var(--text-primary)">Complete Your Company Profile</h2>
       <p style="color:var(--text-secondary);margin-bottom:1.5rem;font-size:.95rem;">
         You need to set up your company profile before you can post jobs, OJT slots, or access other features.

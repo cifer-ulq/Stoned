@@ -61,7 +61,7 @@ function renderOjtFunnel(funnel) {
               <div style="height:100%;width:${barPct}%;background:${s.color};border-radius:var(--radius-sm);transition:width 0.7s ease;"></div>
             </div>
           </div>
-          ${i < stages.length - 1 ? '<div style="text-align:center;color:var(--text-tertiary);font-size:0.7rem;margin:-2px 0;">&#x25BC;</div>' : ''}
+          ${i < stages.length - 1 ? `<div style="display:flex;align-items:center;justify-content:center;color:var(--text-tertiary);margin:-2px 0;">${icon('chevron-down', 14)}</div>` : ''}
         `;
       }).join('')}
       ${funnel.completed ? `

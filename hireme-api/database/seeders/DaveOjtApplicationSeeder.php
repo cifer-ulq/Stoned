@@ -357,7 +357,7 @@ class DaveOjtApplicationSeeder extends Seeder
             [
                 'user_id'    => $dave->id,
                 'type'       => 'interview_scheduled',
-                'title'      => 'Interview Scheduled 📅',
+                'title'      => 'Interview Scheduled',
                 'message'    => "{$posting->company_name} scheduled a Face-to-Face interview on Oct 24, 2026 at 10:00 AM at Na Ah Tech Tower.",
                 'data'       => json_encode(['route' => '/applications', 'posting_id' => $posting->id]),
                 'created_at' => Carbon::parse('2026-10-22 14:00:00'),
@@ -366,7 +366,7 @@ class DaveOjtApplicationSeeder extends Seeder
             [
                 'user_id'    => $dave->id,
                 'type'       => 'company_accepted',
-                'title'      => 'Interview Result — Accepted! 🎉',
+                'title'      => 'Interview Result — Accepted!',
                 'message'    => "{$posting->company_name} accepted you after the interview for \"{$posting->title}\". Waiting for coordinator final approval.",
                 'data'       => json_encode(['route' => '/applications', 'posting_id' => $posting->id]),
                 'created_at' => Carbon::parse('2026-10-25 11:30:00'),
@@ -375,7 +375,7 @@ class DaveOjtApplicationSeeder extends Seeder
             [
                 'user_id'    => $dave->id,
                 'type'       => 'ojt_approved',
-                'title'      => 'OJT Approved by Coordinator! 🎓',
+                'title'      => 'OJT Approved by Coordinator!',
                 'message'    => "Coordinator {$coordinator->name} granted final approval for your OJT at {$posting->company_name}.",
                 'data'       => json_encode(['route' => '/applications', 'posting_id' => $posting->id]),
                 'created_at' => Carbon::parse('2026-10-26 15:00:00'),
@@ -393,7 +393,7 @@ class DaveOjtApplicationSeeder extends Seeder
             [
                 'user_id'    => $dave->id,
                 'type'       => 'ojt_started',
-                'title'      => 'Your OJT Has Officially Started! 🚀',
+                'title'      => 'Your OJT Has Officially Started!',
                 'message'    => "Congratulations Dave! Your OJT at {$posting->company_name} is active. Your geofenced punch clock is ready.",
                 'data'       => json_encode(['route' => '/ojt-tracker', 'posting_id' => $posting->id]),
                 'created_at' => Carbon::parse('2026-11-02 08:00:00'),

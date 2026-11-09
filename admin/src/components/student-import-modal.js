@@ -216,12 +216,12 @@ export function openStudentImportModal(onSuccess) {
           </button>
         </div>
         <div class="sim-format-columns">
-          ${['name ✦', 'email ✦', 'student_id ✦', 'course ✦', 'year', 'section', 'campus', 'batch'].map(c => {
-            const req = c.includes('✦');
-            return `<span class="sim-col-pill ${req ? 'sim-col-pill--req' : ''}">${c.replace(' ✦','')}</span>`;
+          ${['name *', 'email *', 'student_id *', 'course *', 'year', 'section', 'campus', 'batch'].map(c => {
+            const req = c.includes('*');
+            return `<span class="sim-col-pill ${req ? 'sim-col-pill--req' : ''}">${c.replace(' *', '')}${req ? ` ${icon('sparkles', 10)}` : ''}</span>`;
           }).join('')}
         </div>
-        <p class="sim-format-note">✦ Required &nbsp;·&nbsp; Column order doesn't matter &nbsp;·&nbsp; Extra columns are ignored</p>
+        <p class="sim-format-note" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;"><span style="display:inline-flex;align-items:center;gap:3px;color:var(--color-primary);font-weight:600;">${icon('sparkles', 11)} Required</span> &nbsp;·&nbsp; Column order doesn't matter &nbsp;·&nbsp; Extra columns are ignored</p>
       </div>
     `;
     renderIcons();

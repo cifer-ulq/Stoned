@@ -221,12 +221,12 @@ export function openAlumniImportModal(onSuccess) {
           </button>
         </div>
         <div class="sim-format-columns">
-          ${['batch ✦', 'section', 'name ✦', 'studentid ✦', 'email ✦', 'course ✦'].map(c => {
-            const req = c.includes('✦');
-            return `<span class="sim-col-pill ${req ? 'sim-col-pill--req' : ''}">${c.replace(' ✦','')}</span>`;
+          ${['batch *', 'section', 'name *', 'studentid *', 'email *', 'course *'].map(c => {
+            const req = c.includes('*');
+            return `<span class="sim-col-pill ${req ? 'sim-col-pill--req' : ''}">${c.replace(' *', '')}${req ? ` ${icon('sparkles', 10)}` : ''}</span>`;
           }).join('')}
         </div>
-        <p class="sim-format-note">✦ Required &nbsp;·&nbsp; Case-insensitive headers &nbsp;·&nbsp; "studentid" or "student_id" accepted</p>
+        <p class="sim-format-note" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;"><span style="display:inline-flex;align-items:center;gap:3px;color:var(--color-primary);font-weight:600;">${icon('sparkles', 11)} Required</span> &nbsp;·&nbsp; Case-insensitive headers &nbsp;·&nbsp; "studentid" or "student_id" accepted</p>
       </div>
     `;
     renderIcons();

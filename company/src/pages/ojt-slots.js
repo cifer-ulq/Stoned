@@ -373,7 +373,7 @@ function renderCourseMultiPicker(scopeEl, initialCourses = [], deptSelectEl, pre
     });
 
     suggsWrap.innerHTML = `
-      <button type="button" class="ojt-sugg-pill" data-course="Open to All Courses" style="font-weight:700;">★ Open to All Courses</button>
+      <button type="button" class="ojt-sugg-pill" data-course="Open to All Courses" style="font-weight:700;">${icon('star', 12)} Open to All Courses</button>
       ${sortedCourses.map(c => `
         <button type="button" class="ojt-sugg-pill ${recommendedCodes.includes(c.code) ? 'ojt-sugg-pill--dept-match' : ''}" data-course="${c.code}" title="${c.name}">
           + ${c.code}

@@ -384,7 +384,7 @@ class JobseekerController extends Controller
             AppNotification::send(
                 $app->jobListing->company_user_id,
                 'offer_accepted',
-                'Job Offer Accepted — Onboarding In Progress! 🎉',
+                'Job Offer Accepted — Onboarding In Progress!',
                 "{$user->name} has accepted your job offer for \"{$jobTitle}\" and is now in the pre-employment onboarding stage.",
                 ['application_id' => $app->id, 'job_title' => $jobTitle, 'applicant_name' => $user->name]
             );

@@ -425,7 +425,7 @@ export default async function OjtManagementPage(container) {
         try {
           const res = await apiPost(`/admin/supervisors/${id}/resend-welcome`, {});
           if (res?.success) {
-            alert(`✓ ${res.message}\n\nTemporary Password: ${res.temp_password}`);
+            alert(`${res.message}\n\nTemporary Password: ${res.temp_password}`);
           } else {
             alert(res?.message || 'Failed to resend welcome email.');
           }
@@ -732,7 +732,7 @@ export default async function OjtManagementPage(container) {
           const mc = i < 3 ? medalColors[i] : 'var(--text-tertiary)';
           const bg = i < 3 ? mc + '18' : 'var(--border-subtle)';
           return `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:${i===0 ? 'rgba(245,158,11,.06)' : 'transparent'};border:1px solid ${i===0 ? 'rgba(245,158,11,.15)' : 'transparent'};transition:background .2s;">
-            <div style="width:24px;height:24px;border-radius:50%;background:${bg};color:${mc};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex-shrink:0;">${i<3 ? ['🥇','🥈','🥉'][i] : i+1}</div>
+            <div style="width:24px;height:24px;border-radius:50%;background:${bg};color:${mc};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex-shrink:0;">${i<3 ? `<span style="display:inline-flex;align-items:center;justify-content:center;">${icon('medal', 14)}</span>` : i+1}</div>
             <span style="flex:1;font-size:var(--text-sm);font-weight:var(--weight-medium);">${title}</span>
             <span style="font-size:var(--text-xs);font-weight:var(--weight-bold);background:var(--border-subtle);padding:2px 8px;border-radius:10px;">${cnt}</span>
           </div>`;
@@ -1176,7 +1176,7 @@ export default async function OjtManagementPage(container) {
           const sucEl = backdrop.querySelector('#sup-success');
           const emailBadge = res.mail_sent
             ? `<div style="display:inline-flex;align-items:center;gap:6px;background:#ECFDF5;border:1px solid #A7F3D0;color:#047857;font-size:11.5px;font-weight:600;padding:4px 10px;border-radius:100px;margin-bottom:8px;">${icon('check', 12)} Welcome email sent to ${res.supervisor.email}</div>`
-            : `<div style="display:inline-flex;align-items:center;gap:6px;background:#FFFBEB;border:1px solid #FDE68A;color:#B45309;font-size:11.5px;font-weight:600;padding:4px 10px;border-radius:100px;margin-bottom:8px;">⚠️ Email skipped (relay offline) &bull; Please share credentials directly</div>`;
+            : `<div style="display:inline-flex;align-items:center;gap:6px;background:#FFFBEB;border:1px solid #FDE68A;color:#B45309;font-size:11.5px;font-weight:600;padding:4px 10px;border-radius:100px;margin-bottom:8px;">${icon('alert-triangle', 12)} Email skipped (relay offline) &bull; Please share credentials directly</div>`;
 
           sucEl.innerHTML = `
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
@@ -1203,9 +1203,14 @@ export default async function OjtManagementPage(container) {
           copyBtn?.addEventListener('click', () => {
             const textToCopy = `CHMSU HireMe Coordinator Credentials:\nEmail: ${res.supervisor.email}\nTemporary Password: ${res.temp_password}\nLogin URL: https://stoned-two.vercel.app/login/`;
             navigator.clipboard.writeText(textToCopy).then(() => {
-              const lbl = sucEl.querySelector('#lbl-copy-sup-cred');
-              if (lbl) lbl.textContent = '✓ Copied!';
-              setTimeout(() => { if (lbl) lbl.textContent = 'Copy'; }, 2000);
+              copyBtn.innerHTML = `${icon('check', 12)} <span id="lbl-copy-sup-cred">Copied!</span>`;
+              renderIcons();
+              setTimeout(() => {
+                if (copyBtn.isConnected) {
+                  copyBtn.innerHTML = `${icon('copy', 12)} <span id="lbl-copy-sup-cred">Copy</span>`;
+                  renderIcons();
+                }
+              }, 2000);
             });
           });
 

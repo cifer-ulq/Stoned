@@ -189,8 +189,8 @@ export async function renderCompanies(container) {
                 style="width: 100%; height: 44px; padding: 0 38px 0 42px; border-radius: 12px; border: 1.5px solid var(--border-default); background: var(--bg-secondary); color: var(--text-primary); font-size: 0.9rem; font-family: var(--font-body); outline: none; transition: all 0.2s;"
               />
               ${searchQuery ? `
-                <button id="cp-clear-search" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-tertiary); cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; font-size: 14px;">
-                  ✕
+                <button id="cp-clear-search" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-tertiary); cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center;">
+                  ${icon('x', 14)}
                 </button>
               ` : ''}
             </div>

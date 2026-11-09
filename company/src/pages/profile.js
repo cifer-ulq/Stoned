@@ -379,13 +379,13 @@ function renderAboutTab() {
         <div class="profile-section__header">
           <h3 class="profile-section__title">${icon('fileText', 20)} Memorandum of Agreement (MOA)</h3>
           ${(C.moaStatus || '').toLowerCase() === 'active' ? `
-            <span class="badge badge--success" style="font-weight:700;">✓ Active Partnership</span>
+            <span class="badge badge--success" style="font-weight:700;display:inline-flex;align-items:center;gap:4px;">${icon('check', 12)} Active Partnership</span>
           ` : ((C.moaStatus || '').toLowerCase() === 'grace period' ? `
             <button type="button" class="btn btn--primary btn--sm" id="btn-about-request-moa" style="background:#c2410c;border-color:#c2410c;gap:6px;font-weight:600;">
               ${icon('send', 13)} Request Renewal (Grace Period)
             </button>
           ` : (C.moaStatus === 'Requested' ? `
-            <span class="badge badge--warning" style="font-weight:700;background:#fef3c7;color:#b45309;">⏳ Under CIER Review</span>
+            <span class="badge badge--warning" style="font-weight:700;background:#fef3c7;color:#b45309;display:inline-flex;align-items:center;gap:4px;">${icon('hourglass', 12)} Under CIER Review</span>
           ` : ((C.moaStatus || '').toLowerCase() === 'expired' ? `
             <button type="button" class="btn btn--primary btn--sm" id="btn-about-request-moa" style="background:#b91c1c;border-color:#b91c1c;gap:6px;font-weight:600;">
               ${icon('send', 13)} Request Renewal
@@ -417,20 +417,24 @@ function renderAboutTab() {
           ` : ''}
 
           ${(C.moaStatus || '').toLowerCase() === 'active' ? `
-            <p style="margin:0;font-size:0.84rem;color:var(--color-success);line-height:1.5;">
-              ✓ Your company holds a verified Memorandum of Agreement with CHMSU CIER. OJT trainee slot and job vacancy postings are enabled.
+            <p style="margin:0;font-size:0.84rem;color:var(--color-success);line-height:1.5;display:flex;align-items:flex-start;gap:7px;">
+              <span style="display:inline-flex;flex-shrink:0;margin-top:2px;">${icon('checkCircle', 15)}</span>
+              <span>Your company holds a verified Memorandum of Agreement with CHMSU CIER. OJT trainee slot and job vacancy postings are enabled.</span>
             </p>
           ` : ((C.moaStatus || '').toLowerCase() === 'grace period' ? `
-            <p style="margin:0;font-size:0.84rem;color:#c2410c;line-height:1.5;">
-              ⏳ <strong>Active Trainees Grace Period:</strong> Your contract expired on June 30, but active trainees currently deployed at your company are protected to finish their hours. Please submit a renewal request to unlock postings for the upcoming academic year.
+            <p style="margin:0;font-size:0.84rem;color:#c2410c;line-height:1.5;display:flex;align-items:flex-start;gap:7px;">
+              <span style="display:inline-flex;flex-shrink:0;margin-top:2px;">${icon('hourglass', 15)}</span>
+              <span><strong>Active Trainees Grace Period:</strong> Your contract expired on June 30, but active trainees currently deployed at your company are protected to finish their hours. Please submit a renewal request to unlock postings for the upcoming academic year.</span>
             </p>
           ` : (C.moaStatus === 'Requested' ? `
-            <p style="margin:0;font-size:0.84rem;color:#b45309;line-height:1.5;">
-              ⏳ Your MOA partnership request is currently being reviewed by the CHMSU CIER administrative office. You will be notified once the agreement document is approved and uploaded.
+            <p style="margin:0;font-size:0.84rem;color:#b45309;line-height:1.5;display:flex;align-items:flex-start;gap:7px;">
+              <span style="display:inline-flex;flex-shrink:0;margin-top:2px;">${icon('hourglass', 15)}</span>
+              <span>Your MOA partnership request is currently being reviewed by the CHMSU CIER administrative office. You will be notified once the agreement document is approved and uploaded.</span>
             </p>
           ` : ((C.moaStatus || '').toLowerCase() === 'expired' ? `
-            <p style="margin:0;font-size:0.84rem;color:#b91c1c;line-height:1.5;">
-              ⚠ Your MOA agreement with CHMSU CIER has expired. Posting new opportunities is paused. Please request an agreement renewal with the administration.
+            <p style="margin:0;font-size:0.84rem;color:#b91c1c;line-height:1.5;display:flex;align-items:flex-start;gap:7px;">
+              <span style="display:inline-flex;flex-shrink:0;margin-top:2px;">${icon('alertTriangle', 15)}</span>
+              <span>Your MOA agreement with CHMSU CIER has expired. Posting new opportunities is paused. Please request an agreement renewal with the administration.</span>
             </p>
           ` : `
             <p style="margin:0;font-size:0.84rem;color:var(--text-secondary);line-height:1.5;">

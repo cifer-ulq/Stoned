@@ -1199,7 +1199,7 @@ function renderEvaluationBannerHtml(evaluation) {
           <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;">
             <div style="display:flex;align-items:center;gap:14px;">
               <div style="width:48px;height:48px;border-radius:50%;background:#005930;color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.3rem;font-weight:700;">
-                ★
+                ${icon('star', 22)}
               </div>
               <div>
                 <div style="display:flex;align-items:center;gap:8px;">

@@ -581,6 +581,15 @@ export function openTermsModal({
 
   let currentTab = initialTab === 'privacy' ? 'privacy' : 'terms';
 
+  const legalIcons = {
+    landmark: `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" x2="21" y1="22" y2="22"/><line x1="6" x2="6" y1="18" y2="11"/><line x1="10" x2="10" y1="18" y2="11"/><line x1="14" x2="14" y1="18" y2="11"/><line x1="18" x2="18" y1="18" y2="11"/><polygon points="12 2 20 7 4 7"/></svg>`,
+    x: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>`,
+    fileText: `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>`,
+    shieldCheck: `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>`,
+    mapPin: `<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>`,
+    check: `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>`,
+  };
+
   const overlay = document.createElement('div');
   overlay.className = 'chmsu-legal-overlay';
   overlay.id = 'chmsu-terms-overlay';
@@ -611,7 +620,7 @@ export function openTermsModal({
       <!-- Header -->
       <div class="chmsu-legal-header">
         <div class="chmsu-legal-header__branding">
-          <div class="chmsu-legal-header__seal">🏛️</div>
+          <div class="chmsu-legal-header__seal">${legalIcons.landmark}</div>
           <div class="chmsu-legal-header__title-group">
             <h2>
               <span>CHMSU HireMe Legal Framework</span>
@@ -621,23 +630,23 @@ export function openTermsModal({
           </div>
         </div>
         ${!gateMode ? `
-          <button class="chmsu-legal-header__close-btn" id="btn-legal-close" aria-label="Close modal">✕</button>
+          <button class="chmsu-legal-header__close-btn" id="btn-legal-close" aria-label="Close modal">${legalIcons.x}</button>
         ` : ''}
       </div>
 
       <!-- Tabs Bar -->
       <div class="chmsu-legal-tabs">
         <button class="chmsu-legal-tab-btn ${currentTab === 'terms' ? 'chmsu-legal-tab-btn--active' : ''}" id="tab-btn-terms">
-          📄 Terms of Service
+          ${legalIcons.fileText} Terms of Service
         </button>
         <button class="chmsu-legal-tab-btn ${currentTab === 'privacy' ? 'chmsu-legal-tab-btn--active' : ''}" id="tab-btn-privacy">
-          🛡️ Privacy Policy (R.A. 10173)
+          ${legalIcons.shieldCheck} Privacy Policy (R.A. 10173)
         </button>
       </div>
 
       <!-- Quick OJT & Geofence Notice Banner -->
       <div class="chmsu-legal-banner">
-        <span class="chmsu-legal-banner__icon">📍</span>
+        <span class="chmsu-legal-banner__icon" style="display:inline-flex;align-items:center;">${legalIcons.mapPin}</span>
         <div>
           <strong>Mandatory OJT GPS Verification & Privacy Notice:</strong> In compliance with the Philippine Data Privacy Act of 2012 (R.A. 10173) and CHED SIPP standards, CHMSU HireMe captures instantaneous GPS coordinates exclusively during Time-In and Time-Out to verify physical presence within the 100-meter Host Training Establishment radius. Continuous tracking is strictly disabled.
         </div>
@@ -788,7 +797,7 @@ export function openTermsModal({
             } catch (_) {}
           }
 
-          if (acceptLbl) acceptLbl.innerHTML = '✓ Agreement Recorded!';
+          if (acceptLbl) acceptLbl.innerHTML = `<span style="display:inline-flex;align-items:center;gap:6px;">${legalIcons.check} Agreement Recorded!</span>`;
           acceptBtn.style.background = '#10B981';
 
           setTimeout(() => {

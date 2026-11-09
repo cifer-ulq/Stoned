@@ -1454,7 +1454,7 @@ export default function evaluationsPage(container) {
       let midtermCell = '';
       if (t.midterm?.status === 'submitted') {
         const sc = Number(t.midterm.overall_score || 0).toFixed(1);
-        midtermCell = `<span class="eval-status-badge eval-status-badge--submitted" title="Midterm finalized">${icon('checkCircle', 12)} ${sc} ★</span>`;
+        midtermCell = `<span class="eval-status-badge eval-status-badge--submitted" title="Midterm finalized">${icon('checkCircle', 12)} ${sc} <span style="color:#F59E0B;display:inline-flex;">${icon('starFilled', 11)}</span></span>`;
       } else if (t.midterm?.status === 'waived' || t.midterm?.is_waived) {
         midtermCell = `<span class="eval-status-badge" style="background:#F3E8FF;color:#6B21A8;border:1px solid #D8B4FE;" title="Waived: ${t.midterm.waiver_reason || 'Officially waived'}">Waived</span>`;
       } else if (t.midterm?.status === 'pending') {
@@ -1481,7 +1481,7 @@ export default function evaluationsPage(container) {
       let endtermCell = '';
       if (t.endterm?.status === 'submitted') {
         const sc = Number(t.endterm.overall_score || 0).toFixed(1);
-        endtermCell = `<span class="eval-status-badge eval-status-badge--submitted" title="Endterm finalized">${icon('checkCircle', 12)} ${sc} ★</span>`;
+        endtermCell = `<span class="eval-status-badge eval-status-badge--submitted" title="Endterm finalized">${icon('checkCircle', 12)} ${sc} <span style="color:#F59E0B;display:inline-flex;">${icon('starFilled', 11)}</span></span>`;
       } else if (t.endterm?.status === 'pending') {
         endtermCell = `
           <div style="display:inline-flex;align-items:center;gap:4px;">
@@ -1504,7 +1504,7 @@ export default function evaluationsPage(container) {
         const chipClass = t.compositeScore >= 4.5 ? 'eval-score-chip--high' : 'eval-score-chip--mid';
         scoreDisplay = `
           <div class="eval-score-chip ${chipClass}" title="50% Midterm + 50% Endterm Academic Rating">
-            <span style="color:#F59E0B;font-size:0.85rem;">★</span> ${sc}
+            <span style="color:#F59E0B;display:inline-flex;align-items:center;">${icon('starFilled', 13)}</span> ${sc}
           </div>`;
       }
 
@@ -1572,9 +1572,9 @@ export default function evaluationsPage(container) {
 
       let scoreBadge = '';
       if (t.compositeScore) {
-        scoreBadge = `<div class="eval-score-chip eval-score-chip--high"><span style="color:#F59E0B;">★</span> ${Number(t.compositeScore).toFixed(2)}</div>`;
+        scoreBadge = `<div class="eval-score-chip eval-score-chip--high"><span style="color:#F59E0B;display:inline-flex;align-items:center;">${icon('starFilled', 12)}</span> ${Number(t.compositeScore).toFixed(2)}</div>`;
       } else if (t.endterm?.overall_score) {
-        scoreBadge = `<div class="eval-score-chip eval-score-chip--mid"><span style="color:#F59E0B;">★</span> ${Number(t.endterm.overall_score).toFixed(1)}</div>`;
+        scoreBadge = `<div class="eval-score-chip eval-score-chip--mid"><span style="color:#F59E0B;display:inline-flex;align-items:center;">${icon('starFilled', 12)}</span> ${Number(t.endterm.overall_score).toFixed(1)}</div>`;
       }
 
       return `
@@ -1612,13 +1612,13 @@ export default function evaluationsPage(container) {
             <div style="padding:6px;background:#FAFBFD;border-radius:6px;border:1px solid #E2E8F0;text-align:center;">
               <div style="color:var(--text-secondary);font-weight:600;">Midterm (50%)</div>
               <div style="font-weight:700;margin-top:2px;">
-                ${t.midterm?.status === 'submitted' ? `${Number(t.midterm.overall_score).toFixed(1)} ★` : t.midterm?.is_waived ? 'Waived' : t.midterm?.status === 'pending' ? 'Pending' : 'Not sent'}
+                ${t.midterm?.status === 'submitted' ? `<span style="display:inline-flex;align-items:center;gap:3px;">${Number(t.midterm.overall_score).toFixed(1)} <span style="color:#F59E0B;display:inline-flex;">${icon('starFilled', 11)}</span></span>` : t.midterm?.is_waived ? 'Waived' : t.midterm?.status === 'pending' ? 'Pending' : 'Not sent'}
               </div>
             </div>
             <div style="padding:6px;background:#FAFBFD;border-radius:6px;border:1px solid #E2E8F0;text-align:center;">
               <div style="color:var(--text-secondary);font-weight:600;">Endterm (50%)</div>
               <div style="font-weight:700;margin-top:2px;">
-                ${t.endterm?.status === 'submitted' ? `${Number(t.endterm.overall_score).toFixed(1)} ★` : t.endterm?.status === 'pending' ? 'Pending' : 'Not sent'}
+                ${t.endterm?.status === 'submitted' ? `<span style="display:inline-flex;align-items:center;gap:3px;">${Number(t.endterm.overall_score).toFixed(1)} <span style="color:#F59E0B;display:inline-flex;">${icon('starFilled', 11)}</span></span>` : t.endterm?.status === 'pending' ? 'Pending' : 'Not sent'}
               </div>
             </div>
           </div>
@@ -1812,7 +1812,7 @@ export default function evaluationsPage(container) {
         <div style="background:#FAFBFD;border:1px solid #E2E8F0;border-radius:8px;padding:12px;">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
             <strong style="font-size:0.82rem;color:var(--text-primary);">Midterm Evaluation (50%)</strong>
-            <span class="badge badge--success" style="font-size:0.68rem;">Score: ${Number(t.midterm.overall_score).toFixed(1)} ★</span>
+            <span class="badge badge--success" style="font-size:0.68rem;display:inline-flex;align-items:center;gap:3px;">Score: ${Number(t.midterm.overall_score).toFixed(1)} ${icon('starFilled', 10)}</span>
           </div>
           <div style="font-size:0.72rem;color:var(--text-secondary);margin-bottom:8px;">
             Evaluator: ${t.midterm.evaluator_name || 'HR Supervisor'} &bull; Submitted ${t.midterm.submitted_at || ''}
@@ -1876,7 +1876,7 @@ export default function evaluationsPage(container) {
         <div style="background:#FAFBFD;border:1px solid #E2E8F0;border-radius:8px;padding:12px;">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
             <strong style="font-size:0.82rem;color:var(--text-primary);">Final / Endterm Appraisal (50%)</strong>
-            <span class="badge badge--success" style="font-size:0.68rem;">Score: ${Number(t.endterm.overall_score).toFixed(1)} ★</span>
+            <span class="badge badge--success" style="font-size:0.68rem;display:inline-flex;align-items:center;gap:3px;">Score: ${Number(t.endterm.overall_score).toFixed(1)} ${icon('starFilled', 10)}</span>
           </div>
           <div style="font-size:0.72rem;color:var(--text-secondary);margin-bottom:8px;">
             Evaluator: ${t.endterm.evaluator_name || 'HR Supervisor'} &bull; Submitted ${t.endterm.submitted_at || ''}
@@ -2137,11 +2137,11 @@ export default function evaluationsPage(container) {
           ${qList.map(q => {
             let typeBadge = '';
             if (q.question_type === 'rating') {
-              typeBadge = `<span class="badge badge--warning" style="font-size:0.68rem;gap:4px;">★ Rating (1–${q.scale_max || 5})</span>`;
+              typeBadge = `<span class="badge badge--warning" style="font-size:0.68rem;display:inline-flex;align-items:center;gap:4px;">${icon('starFilled', 11)} Rating (1–${q.scale_max || 5})</span>`;
             } else if (q.question_type === 'multiple_choice') {
-              typeBadge = `<span class="badge badge--info" style="font-size:0.68rem;gap:4px;">🔘 Choice</span>`;
+              typeBadge = `<span class="badge badge--info" style="font-size:0.68rem;display:inline-flex;align-items:center;gap:4px;">${icon('circleDot', 11)} Choice</span>`;
             } else {
-              typeBadge = `<span class="badge badge--success" style="font-size:0.68rem;gap:4px;">📝 Qualitative Text</span>`;
+              typeBadge = `<span class="badge badge--success" style="font-size:0.68rem;display:inline-flex;align-items:center;gap:4px;">${icon('squarePen', 11)} Qualitative Text</span>`;
             }
 
             const optionsHtml = Array.isArray(q.options) && q.options.length ? `
@@ -2953,7 +2953,7 @@ export default function evaluationsPage(container) {
                 ${categories.map(c => `<option value="${c}" ${c === defaultCategory ? 'selected' : ''}>${c}</option>`).join('')}
               </optgroup>
               <optgroup label="Custom Category">
-                <option value="__custom__">✨ + Create New Custom Category...</option>
+                <option value="__custom__">+ Create New Custom Category...</option>
               </optgroup>
             </select>
 
@@ -2973,9 +2973,9 @@ export default function evaluationsPage(container) {
           <div class="form-group" style="margin-bottom:16px;">
             <label class="form-label" style="font-weight:700;font-size:0.85rem;margin-bottom:6px;display:block;">Response Type</label>
             <select class="form-select" id="q-type" style="width:100%;padding:9px 12px;border:1px solid var(--border-default);border-radius:8px;">
-              <option value="rating">★ 1 to 5 Rating Scale</option>
-              <option value="multiple_choice">🔘 Multiple Choice (Select One)</option>
-              <option value="text">📝 Open-ended Text Feedback</option>
+              <option value="rating">1 to 5 Rating Scale</option>
+              <option value="multiple_choice">Multiple Choice (Select One)</option>
+              <option value="text">Open-ended Text Feedback</option>
             </select>
           </div>
 
@@ -3133,7 +3133,7 @@ export default function evaluationsPage(container) {
                 ${categories.map(c => `<option value="${c}" ${c === currentCategory ? 'selected' : ''}>${c}</option>`).join('')}
               </optgroup>
               <optgroup label="Custom Category">
-                <option value="__custom__">✨ + Create New Custom Category...</option>
+                <option value="__custom__">+ Create New Custom Category...</option>
               </optgroup>
             </select>
 
@@ -3153,9 +3153,9 @@ export default function evaluationsPage(container) {
           <div class="form-group" style="margin-bottom:16px;">
             <label class="form-label" style="font-weight:700;font-size:0.85rem;margin-bottom:6px;display:block;">Response Type</label>
             <select class="form-select" id="edit-q-type" style="width:100%;padding:9px 12px;border:1px solid var(--border-default);border-radius:8px;">
-              <option value="rating" ${q.question_type === 'rating' ? 'selected' : ''}>★ 1 to 5 Star Rating Scale</option>
-              <option value="multiple_choice" ${isMcq ? 'selected' : ''}>🔘 Multiple Choice (Select One)</option>
-              <option value="text" ${q.question_type === 'text' ? 'selected' : ''}>📝 Open-ended Text Feedback</option>
+              <option value="rating" ${q.question_type === 'rating' ? 'selected' : ''}>1 to 5 Star Rating Scale</option>
+              <option value="multiple_choice" ${isMcq ? 'selected' : ''}>Multiple Choice (Select One)</option>
+              <option value="text" ${q.question_type === 'text' ? 'selected' : ''}>Open-ended Text Feedback</option>
             </select>
           </div>
 
@@ -3287,7 +3287,7 @@ export default function evaluationsPage(container) {
               ${q.question_type === 'rating' ? `
                 <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
                   ${[1, 2, 3, 4, 5].map(n => `
-                    <button type="button" style="border:1px solid var(--border-default);background:#FAFBFD;width:40px;height:40px;border-radius:8px;font-size:1.05rem;color:#D97706;cursor:default;">★</button>
+                    <button type="button" style="border:1px solid var(--border-default);background:#FAFBFD;width:40px;height:40px;border-radius:8px;color:#D97706;display:inline-flex;align-items:center;justify-content:center;cursor:default;">${icon('starFilled', 16)}</button>
                   `).join('')}
                   <span class="text-xs text-tertiary" style="margin-left:6px;">(1 = Poor, 5 = Excellent)</span>
                 </div>
@@ -3339,7 +3339,7 @@ export default function evaluationsPage(container) {
           <div class="modal__header" style="border-bottom:1px solid var(--border-default);background:#FAFBFD;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
             <div style="display:flex;align-items:center;gap:12px;">
               <div style="width:40px;height:40px;border-radius:8px;background:rgba(16,185,129,0.1);color:#065F46;display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:700;">
-                ★
+                ${icon('starFilled', 18)}
               </div>
               <div>
                 <h3 class="modal__title" style="margin:0;font-size:1.1rem;font-weight:700;">OJT Performance Appraisal Report</h3>
@@ -3398,12 +3398,12 @@ export default function evaluationsPage(container) {
                 <div style="display:flex;flex-direction:column;gap:8px;">
                   ${group.questions.map(q => {
                     if (q.question_type === 'rating') {
-                      const stars = '★'.repeat(q.rating_value || 0) + '☆'.repeat(Math.max(0, (q.scale_max || 5) - (q.rating_value || 0)));
+                      const stars = Array.from({ length: q.scale_max || 5 }, (_, si) => icon(si < (q.rating_value || 0) ? 'starFilled' : 'star', 13)).join('');
                       return `
                         <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#FAFBFD;border:1px solid #F1F4F9;border-radius:6px;gap:12px;">
                           <span style="font-size:0.85rem;color:var(--text-primary);">${q.question_text}</span>
                           <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
-                            <span style="color:#F59E0B;letter-spacing:2px;font-size:0.95rem;">${stars}</span>
+                            <span style="color:#F59E0B;display:inline-flex;align-items:center;gap:2px;">${stars}</span>
                             <span style="font-weight:700;font-size:0.85rem;color:var(--text-primary);">${q.rating_value}/${q.scale_max}</span>
                           </div>
                         </div>

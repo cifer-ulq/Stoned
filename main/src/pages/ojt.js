@@ -504,7 +504,7 @@ async function renderBrowsingState(container, empStatus = null) {
           <p class="text-xs text-tertiary" id="ojt-result-count"></p>
           <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
             <span style="font-size:0.7rem;color:var(--text-tertiary);">Quick:</span>
-            <button class="ojt-qf btn" data-type="rec" style="height:24px;padding:0 10px;font-size:0.67rem;font-weight:700;border-radius:99px;background:var(--color-primary-bg);color:var(--color-primary);border:1px solid rgba(0,89,48,0.3);">🌟 71%+ Match</button>
+            <button class="ojt-qf btn" data-type="rec" style="height:24px;padding:0 10px;font-size:0.67rem;font-weight:700;border-radius:99px;background:var(--color-primary-bg);color:var(--color-primary);border:1px solid rgba(0,89,48,0.3);display:inline-flex;align-items:center;gap:4px;">${icon('sparkles', 12)} 71%+ Match</button>
             <button class="ojt-qf btn" data-status="open" style="height:24px;padding:0 10px;font-size:0.67rem;font-weight:700;border-radius:99px;background:var(--color-success-bg);color:var(--color-success);border:1px solid rgba(52,199,89,0.3);">Open</button>
             <button class="ojt-qf btn" data-status="filling_up" style="height:24px;padding:0 10px;font-size:0.67rem;font-weight:700;border-radius:99px;background:var(--color-warning-bg);color:var(--color-warning);border:1px solid rgba(255,181,71,0.3);">Filling Up</button>
           </div>

@@ -805,7 +805,7 @@ class EvaluationController extends Controller
         $requiredHours  = (int) ($record?->required_hours ?? 600);
 
         $termLabel = $term === 'midterm' ? 'Midterm' : 'Final';
-        $evalTitle = "{$termLabel} OJT Performance Evaluation Request 📋";
+        $evalTitle = "{$termLabel} OJT Performance Evaluation Request";
         $evalDesc = $term === 'midterm'
             ? "Trainee {$student->name} has reached the Midterm stage ({$completedHours}/{$requiredHours} hrs). Please complete their midterm performance evaluation."
             : "Trainee {$student->name} has completed their required OJT hours ({$completedHours}/{$requiredHours} hrs). Please complete their final performance evaluation.";
@@ -829,7 +829,7 @@ class EvaluationController extends Controller
         AppNotification::send(
             $student->id,
             'ojt_evaluation_sent',
-            "{$termLabel} OJT Evaluation Request Sent 🚀",
+            "{$termLabel} OJT Evaluation Request Sent",
             "Your OJT Coordinator has requested your {$term} performance evaluation from {$companyName}. You will be notified once they submit it.",
             [
                 'evaluation_id' => $evaluation->id,
@@ -921,7 +921,7 @@ class EvaluationController extends Controller
         AppNotification::send(
             $student->id,
             'ojt_evaluation_waived',
-            ucfirst($term) . ' Evaluation Waived ℹ️',
+            ucfirst($term) . ' Evaluation Waived',
             "Your OJT Coordinator has officially waived your {$term} evaluation. Reason: {$reason}. Your Endterm evaluation will carry the full weight for final grading.",
             [
                 'evaluation_id' => $evaluation->id,
@@ -1050,7 +1050,7 @@ class EvaluationController extends Controller
             ]);
 
             $termLabel = $term === 'midterm' ? 'Midterm' : 'Final';
-            $evalTitle = "{$termLabel} OJT Performance Evaluation Request 📋";
+            $evalTitle = "{$termLabel} OJT Performance Evaluation Request";
             $evalDesc = $term === 'midterm'
                 ? "Trainee {$student->name} has reached the Midterm stage ({$completedHours}/{$requiredHours} hrs). Please complete their midterm performance evaluation."
                 : "Trainee {$student->name} has completed their required OJT hours ({$completedHours}/{$requiredHours} hrs). Please complete their final performance evaluation.";
@@ -1096,7 +1096,7 @@ class EvaluationController extends Controller
         AppNotification::send(
             $evaluation->company_user_id,
             'ojt_evaluation_reminder',
-            'Reminder: OJT Performance Evaluation Pending ⏰',
+            'Reminder: OJT Performance Evaluation Pending',
             "Kindly submit the performance evaluation for {$evaluation->student->name}. Your evaluation is essential for finalizing their OJT grade.",
             [
                 'evaluation_id' => $evaluation->id,
@@ -1372,7 +1372,7 @@ class EvaluationController extends Controller
                 AppNotification::send(
                     $evaluation->supervisor_user_id,
                     'ojt_evaluation_completed',
-                    "{$termLabel} OJT Evaluation Submitted! ⭐",
+                    "{$termLabel} OJT Evaluation Submitted!",
                     "{$compName} has submitted the {$evaluation->term} performance evaluation for {$evaluation->student->name} with an overall score of {$overallScore}/5.0.",
                     [
                         'evaluation_id' => $evaluation->id,
@@ -1406,7 +1406,7 @@ class EvaluationController extends Controller
             AppNotification::send(
                 $evaluation->student_user_id,
                 'ojt_evaluation_completed',
-                $evaluation->term === 'midterm' ? 'Midterm OJT Evaluation Submitted! 📝' : 'Your OJT Evaluation is Complete! 🎉',
+                $evaluation->term === 'midterm' ? 'Midterm OJT Evaluation Submitted!' : 'Your OJT Evaluation is Complete!',
                 $studentMsg,
                 [
                     'evaluation_id'   => $evaluation->id,

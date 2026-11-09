@@ -88,10 +88,10 @@ export async function renderApplicants(container) {
         All Applicants <span class="ap-cat-count" id="count-cat-all">0</span>
       </button>
       <button type="button" class="ap-cat-tab" data-cat="job">
-        💼 Job Applicants <span class="ap-cat-count" id="count-cat-job">0</span>
+        ${icon('briefcase', 14)} Job Applicants <span class="ap-cat-count" id="count-cat-job">0</span>
       </button>
       <button type="button" class="ap-cat-tab" data-cat="ojt">
-        🎓 OJT Applicants <span class="ap-cat-count" id="count-cat-ojt">0</span>
+        ${icon('graduationCap', 14)} OJT Applicants <span class="ap-cat-count" id="count-cat-ojt">0</span>
       </button>
     </div>
 
@@ -1438,7 +1438,7 @@ function openScheduleModal(app, allApps, container, parentBackdrop) {
             <div style="display:flex;align-items:center;gap:8px;">
               <h3 style="color:#fff;font-size:1rem;font-weight:700;margin:0;">${icon('video', 16)} Schedule Interview</h3>
               <span style="background:rgba(255,255,255,0.2);color:#fff;font-size:0.68rem;padding:2px 8px;border-radius:99px;font-weight:600;">
-                ${isOjt ? '🎓 OJT' : '💼 JOB'}
+                <span style="display:inline-flex;align-items:center;gap:4px;">${isOjt ? `${icon('graduationCap', 11)} OJT` : `${icon('briefcase', 11)} JOB`}</span>
               </span>
             </div>
             <p style="color:rgba(255,255,255,.9);font-size:.8rem;margin:2px 0 0;">
@@ -1480,8 +1480,8 @@ function openScheduleModal(app, allApps, container, parentBackdrop) {
           <div>
             <label style="display:block;font-size:.78rem;font-weight:600;color:var(--text-secondary);margin-bottom:5px;">Interview Format *</label>
             <select name="interview_type" id="ap-format-select" class="form-input form-select" required style="width:100%;">
-              <option value="online">🌐 Online Video Meeting</option>
-              <option value="face_to_face">🏢 Face-to-Face / On-site</option>
+              <option value="online">Online Video Meeting</option>
+              <option value="face_to_face">Face-to-Face / On-site</option>
             </select>
           </div>
         </div>
@@ -2063,7 +2063,7 @@ async function showResumeModal(app, allApps, container, newStatus) {
           <span style="color:#e2e8f0;font-weight:600;">${app.applicant.name}</span>
           <span style="opacity:.4;">·</span>
           <span>${isOjt ? 'Student_Profile.pdf' : 'Resume.pdf'}</span>
-          ${isOjt ? '<span class="ap-badge ap-badge--ojt" style="font-size:0.65rem;padding:1px 6px;">🎓 OJT</span>' : '<span class="ap-badge ap-badge--job" style="font-size:0.65rem;padding:1px 6px;">💼 JOB</span>'}
+          ${isOjt ? `<span class="ap-badge ap-badge--ojt" style="font-size:0.65rem;padding:1px 6px;">${icon('graduationCap', 11)} OJT</span>` : `<span class="ap-badge ap-badge--job" style="font-size:0.65rem;padding:1px 6px;">${icon('briefcase', 11)} JOB</span>`}
         </div>
         <div class="pdf-viewer-controls" style="display:flex;align-items:center;gap:10px;font-size:.77rem;color:#94a3b8;flex-wrap:wrap;">
           <span>Applied for <strong style="color:#e2e8f0;">${app.job.title}</strong></span>

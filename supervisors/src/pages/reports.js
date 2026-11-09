@@ -370,7 +370,7 @@ async function loadAnalytics(container) {
         <div class="an-insight-card__top">
           <div class="an-insight-card__header-left">
             <div class="an-insight-card__icon ${totalActionRequired > 0 ? 'an-insight-card__icon--warn' : 'an-insight-card__icon--forest'}">
-              ${icon(totalActionRequired > 0 ? 'alertTriangle' : 'checkCircle2', 18)}
+              ${icon(totalActionRequired > 0 ? 'alertTriangle' : 'checkCircle', 18)}
             </div>
             <span class="an-insight-card__title">Supervisory Priority</span>
           </div>
@@ -424,7 +424,7 @@ async function loadAnalytics(container) {
                   <div class="an-flag-card__info">
                     <span class="an-flag-card__name">${f.name}</span>
                     <span class="an-flag-card__company">${f.company || 'Assigned Host Partner'}</span>
-                    <span class="an-flag-card__reason">⚠️ Irregular time logs or missing entries</span>
+                    <span class="an-flag-card__reason">${icon('alertTriangle', 12)} Irregular time logs or missing entries</span>
                   </div>
                   <div class="an-flag-card__meta">
                     <span class="an-flag-card__pct">${f.pct}% Complete</span>
@@ -612,14 +612,14 @@ async function loadAnalytics(container) {
       ${topPerformers && topPerformers.length ? `
         <div class="an-top-stack">
           ${topPerformers.map((t, idx) => {
-            const medals = ['🥇', '🥈', '🥉'];
+            const medalColors = ['#F59E0B', '#94A3B8', '#CD7F32'];
             const ini = (t.name || 'Student').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
             const barColor = t.pct >= 80 ? '#059669' : t.pct >= 40 ? '#005930' : '#0284C7';
             const programCode = shortenProgram(t.course);
 
             return `
               <div class="an-top-row">
-                <div class="an-top-rank">${medals[idx] || `<span class="an-top-number">#${idx + 1}</span>`}</div>
+                <div class="an-top-rank" style="display:flex;align-items:center;justify-content:center;">${idx < 3 ? `<span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:${medalColors[idx]}20;color:${medalColors[idx]};">${icon('medal', 15)}</span>` : `<span class="an-top-number">#${idx + 1}</span>`}</div>
                 <div class="an-top-avatar"><span>${ini}</span></div>
                 <div class="an-top-details">
                   <span class="an-top-name" title="${t.name}">${t.name}</span>
@@ -1359,6 +1359,9 @@ function injectStyles() {
     color: var(--text-secondary);
   }
   .an-flag-card__reason {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
     font-size: 0.74rem;
     color: #D97706;
     font-weight: 500;

@@ -47,8 +47,8 @@ export function showPromotionCelebrationModal(notification = {}) {
         <div class="gpm-emblem">
           ${icon('graduationCap', 38)}
         </div>
-        <div class="gpm-sparkle gpm-sparkle--1">✨</div>
-        <div class="gpm-sparkle gpm-sparkle--2">🎓</div>
+        <div class="gpm-sparkle gpm-sparkle--1">${icon('sparkles', 20)}</div>
+        <div class="gpm-sparkle gpm-sparkle--2">${icon('award', 20)}</div>
       </div>
 
       <!-- Title & Subtitle -->
@@ -402,11 +402,13 @@ function injectCelebrationStyles() {
     }
     .gpm-sparkle {
       position: absolute;
-      font-size: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       animation: gpm-twinkle 1.8s ease-in-out infinite alternate;
     }
-    .gpm-sparkle--1 { top: -6px; right: -12px; }
-    .gpm-sparkle--2 { bottom: 2px; left: -14px; animation-delay: 0.9s; }
+    .gpm-sparkle--1 { top: -6px; right: -12px; color: #F59E0B; }
+    .gpm-sparkle--2 { bottom: 2px; left: -14px; animation-delay: 0.9s; color: #10B981; }
     @keyframes gpm-twinkle {
       0% { transform: scale(0.8) rotate(-10deg); opacity: 0.5; }
       100% { transform: scale(1.2) rotate(15deg); opacity: 1; }

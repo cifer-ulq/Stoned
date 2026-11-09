@@ -383,7 +383,7 @@ class SupervisorController extends Controller
         AppNotification::send(
             $interest->student_user_id,
             'ojt_approved',
-            'OJT Approved by Coordinator! 🎉',
+            'OJT Approved by Coordinator!',
             "The OJT Coordinator has approved your OJT at {$posting->company_name}. The company will contact you soon with your OJT start date and instructions. Stay tuned!",
             ['posting_id' => $posting->id, 'interest_id' => $interest->id]
         );
@@ -1813,7 +1813,7 @@ class SupervisorController extends Controller
                     AppNotification::send(
                         $student->id,
                         'emergency_leave_approved',
-                        '✅ Medical / Emergency Leave Approved',
+                        'Medical / Emergency Leave Approved',
                         "Your OJT Coordinator approved your leave until {$emergency->expected_return_date?->format('M d, Y')}. Attendance is safely paused; get well soon!",
                         ['emergency_id' => $emergency->id]
                     );
@@ -1822,7 +1822,7 @@ class SupervisorController extends Controller
                         AppNotification::send(
                             $posting->company_user_id,
                             'emergency_leave_approved_company',
-                            'ℹ️ Trainee Leave of Absence Authorized',
+                            'Trainee Leave of Absence Authorized',
                             "OJT Coordinator approved an emergency leave of absence for {$student->name} until {$emergency->expected_return_date?->format('M d, Y')}.",
                             ['emergency_id' => $emergency->id, 'student_id' => $student->id]
                         );
@@ -1897,7 +1897,7 @@ class SupervisorController extends Controller
                 AppNotification::send(
                     $student->id,
                     'fit_to_work_cleared',
-                    '🎉 Cleared to Resume OJT Training!',
+                    'Cleared to Resume OJT Training!',
                     "Your Fit-to-Work medical clearance was accepted by your Coordinator. Attendance time-in is now reactivated.",
                     ['emergency_id' => $emergency->id]
                 );
@@ -1945,7 +1945,7 @@ class SupervisorController extends Controller
                 AppNotification::send(
                     $student->id,
                     'consultation_requested',
-                    '⚠️ Consultation Requested by Coordinator',
+                    'Consultation Requested by Coordinator',
                     "Your OJT Coordinator requested a conference regarding your emergency notice: " . ($remarks ?: 'Please message your coordinator.'),
                     ['emergency_id' => $emergency->id]
                 );

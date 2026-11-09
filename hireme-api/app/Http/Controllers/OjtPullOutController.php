@@ -161,7 +161,7 @@ class OjtPullOutController extends Controller
             AppNotification::send(
                 $supId,
                 'pull_out_requested',
-                '⚠️ OJT Pull-Out Request Filed',
+                'OJT Pull-Out Request Filed',
                 "{$user->name} filed an OJT pull-out request from {$companyName} ({$catLabel}). Request letter submitted for recommendation.",
                 [
                     'pull_out_id'  => $pullOut->id,
@@ -178,7 +178,7 @@ class OjtPullOutController extends Controller
             AppNotification::send(
                 $companyUserId,
                 'trainee_pull_out_notice',
-                '⚠️ Trainee Pull-Out Request Notice',
+                'Trainee Pull-Out Request Notice',
                 "Trainee {$user->name} has requested an official pull-out from their OJT training. Academic coordinators are reviewing the case.",
                 [
                     'pull_out_id'  => $pullOut->id,
@@ -358,7 +358,7 @@ class OjtPullOutController extends Controller
                 AppNotification::send(
                     $adminId,
                     'pull_out_recommended',
-                    '📄 OJT Pull-Out Recommended',
+                    'OJT Pull-Out Recommended',
                     "Coordinator {$supervisor->name} recommended pull-out for {$student->name} ({$companyName}). Awaiting Program Chair & Dean approval.",
                     [
                         'pull_out_id'     => $pullOut->id,
@@ -373,7 +373,7 @@ class OjtPullOutController extends Controller
             AppNotification::send(
                 $student->id,
                 'pull_out_recommended_student',
-                '✅ OJT Pull-Out Recommended by Supervisor',
+                'OJT Pull-Out Recommended by Supervisor',
                 "Your academic coordinator recommended approval for your OJT pull-out from {$companyName}. Request forwarded to the Program Chair (Admin) for Dean's letter generation.",
                 ['pull_out_id' => $pullOut->id]
             );
@@ -400,7 +400,7 @@ class OjtPullOutController extends Controller
             AppNotification::send(
                 $student->id,
                 'pull_out_rejected_student',
-                '❌ OJT Pull-Out Request Not Recommended',
+                'OJT Pull-Out Request Not Recommended',
                 "Your coordinator did not recommend approval for your pull-out request. Remarks: " . ($remarks ?: 'None provided.'),
                 ['pull_out_id' => $pullOut->id]
             );
@@ -592,7 +592,7 @@ class OjtPullOutController extends Controller
         AppNotification::send(
             $pullOut->student_user_id,
             'pull_out_printed',
-            '📄 OJT Pull-Out Letter Printed',
+            'OJT Pull-Out Letter Printed',
             "Program Chair has generated and printed the official pull-out memorandum for the Dean's physical signature.",
             ['pull_out_id' => $pullOut->id]
         );
@@ -663,7 +663,7 @@ class OjtPullOutController extends Controller
         AppNotification::send(
             $pullOut->student_user_id,
             'pull_out_emailed',
-            '✉️ OJT Pull-Out Letter Dispatched to Dean',
+            'OJT Pull-Out Letter Dispatched to Dean',
             "Program Chair has emailed the official pull-out memorandum to Dean {$validated['dean_name']}. Awaiting Dean's email response.",
             ['pull_out_id' => $pullOut->id]
         );
@@ -742,7 +742,7 @@ class OjtPullOutController extends Controller
                 AppNotification::send(
                     $student->id,
                     'pull_out_finalized_student',
-                    '🎉 Dean Approved OJT Pull-Out',
+                    'Dean Approved OJT Pull-Out',
                     "Official pull-out from {$compName} approved. {$credited} hours credited. You are authorized for re-deployment to another host company.",
                     ['pull_out_id' => $pullOut->id, 'credited_hours' => $credited]
                 );
@@ -751,7 +751,7 @@ class OjtPullOutController extends Controller
                     AppNotification::send(
                         $posting->company_user_id,
                         'trainee_pulled_out_company',
-                        'ℹ️ Trainee OJT Pull-Out Finalized',
+                        'Trainee OJT Pull-Out Finalized',
                         "The College Dean officially approved the pull-out for {$student->name}. 1 training slot has been restored to your posting.",
                         ['pull_out_id' => $pullOut->id, 'student_id' => $student->id]
                     );
@@ -766,7 +766,7 @@ class OjtPullOutController extends Controller
                     AppNotification::send(
                         $supId,
                         'pull_out_approved_supervisor',
-                        '✅ Dean Approved Trainee Pull-Out',
+                        'Dean Approved Trainee Pull-Out',
                         "Dean approved official pull-out for {$student->name} ({$compName}). Student status updated to Undeployed and eligible for re-endorsement.",
                         ['pull_out_id' => $pullOut->id, 'student_id' => $student->id]
                     );
@@ -792,7 +792,7 @@ class OjtPullOutController extends Controller
                 AppNotification::send(
                     $student->id,
                     'pull_out_rejected_dean',
-                    '⚠️ Dean Declined OJT Pull-Out Request',
+                    'Dean Declined OJT Pull-Out Request',
                     "Dean did not authorize the pull-out. Remarks: " . ($remarks ?: 'Please consult your OJT Coordinator.'),
                     ['pull_out_id' => $pullOut->id]
                 );
@@ -807,7 +807,7 @@ class OjtPullOutController extends Controller
                     AppNotification::send(
                         $supId,
                         'pull_out_rejected_supervisor',
-                        '⚠️ Dean Declined Trainee Pull-Out Request',
+                        'Dean Declined Trainee Pull-Out Request',
                         "Dean declined official pull-out for {$student->name} ({$compName}). Active training status restored. Remarks: " . ($remarks ?: 'No remarks provided.'),
                         ['pull_out_id' => $pullOut->id, 'student_id' => $student->id]
                     );

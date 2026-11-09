@@ -1087,7 +1087,7 @@
 }
 .sim-download-tpl { margin-left: auto; }
 .sim-format-columns { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
-.sim-col-pill {
+.sim-col-pill { display: inline-flex; align-items: center; gap: 3px;
   padding: 2px 10px; border-radius: var(--radius-full);
   border: 1px solid var(--border-default); background: var(--bg-elevated);
   font-size: 0.72rem; font-weight: var(--weight-medium); color: var(--text-secondary); font-family: var(--font-mono);

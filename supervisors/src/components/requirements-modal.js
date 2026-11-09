@@ -365,7 +365,7 @@ export function openReviewRequirementsModal({
           </div>
           ${driveUrl ? `
             <a href="${driveUrl}" target="_blank" rel="noopener" class="btn btn--outline btn--sm" style="color:#0284c7;border-color:rgba(2,132,199,0.4);gap:5px;font-weight:600;white-space:nowrap;font-size:0.75rem;">
-              ${icon('externalLink', 12)} Open Folder ↗
+              ${icon('externalLink', 12)} Open Folder
             </a>
           ` : ''}
         </div>

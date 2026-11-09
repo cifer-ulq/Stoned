@@ -741,19 +741,19 @@ export async function renderJobs(container) {
         <span class="jf-quick-bar__title" id="jf-quick-title">${icon('sparkles', 13)} Quick Filters:</span>
         <div class="jf-quick-bar__chips" id="jf-quick-chips">
           <button class="jf-quick-chip" data-quick="top-match">
-            <span class="jf-quick-chip__icon">🌟</span> 71%+ Match
+            <span class="jf-quick-chip__icon">${icon('sparkles', 13)}</span> 71%+ Match
           </button>
           <button class="jf-quick-chip" data-quick="full-time">
-            <span class="jf-quick-chip__icon">🏢</span> Full-Time
+            <span class="jf-quick-chip__icon">${icon('building2', 13)}</span> Full-Time
           </button>
           <button class="jf-quick-chip" data-quick="remote">
-            <span class="jf-quick-chip__icon">🌐</span> Remote Only
+            <span class="jf-quick-chip__icon">${icon('globe', 13)}</span> Remote Only
           </button>
           <button class="jf-quick-chip" data-quick="salary-30k">
-            <span class="jf-quick-chip__icon">💰</span> ₱30k+
+            <span class="jf-quick-chip__icon">${icon('coins', 13)}</span> ₱30k+
           </button>
           <button class="jf-quick-chip" data-quick="recent-week">
-            <span class="jf-quick-chip__icon">⏱️</span> Past 7 Days
+            <span class="jf-quick-chip__icon">${icon('clock', 13)}</span> Past 7 Days
           </button>
         </div>
       </div>
@@ -801,10 +801,16 @@ export async function renderJobs(container) {
               <div class="jf-card__body">
                 <div class="jf-pill-group" id="jf-type-checks">
                   ${EMPLOYMENT_TYPES.map(t => {
-                    const emojis = { 'Full-time':'🏢', 'Part-time':'⏱️', 'Contract':'📄', 'Freelance':'💼', 'Remote':'🌐' };
+                    const typeIcons = {
+                      'Full-time': icon('building2', 14),
+                      'Part-time': icon('clock', 14),
+                      'Contract': icon('fileText', 14),
+                      'Freelance': icon('briefcase', 14),
+                      'Remote': icon('globe', 14),
+                    };
                     return `
                       <button class="jf-pill" data-value="${t}" type="button">
-                        <span class="jf-pill__emoji">${emojis[t] || '📌'}</span>
+                        <span class="jf-pill__emoji">${typeIcons[t] || icon('pin', 14)}</span>
                         <span class="jf-pill__text">${t}</span>
                         <span class="jf-pill__check">${icon('check', 11)}</span>
                       </button>
@@ -916,8 +922,8 @@ export async function renderJobs(container) {
                   <div class="jf-slider-presets">
                     <button class="jf-preset-btn jf-preset-btn--active" data-target="score" data-value="0" type="button">Any</button>
                     <button class="jf-preset-btn" data-target="score" data-value="50" type="button">50%+</button>
-                    <button class="jf-preset-btn" data-target="score" data-value="71" type="button">71%+ 🌟</button>
-                    <button class="jf-preset-btn" data-target="score" data-value="90" type="button">90%+ 🔥</button>
+                    <button class="jf-preset-btn" data-target="score" data-value="71" type="button">71%+ ${icon('sparkles', 11)}</button>
+                    <button class="jf-preset-btn" data-target="score" data-value="90" type="button">90%+ ${icon('flame', 11)}</button>
                   </div>
                 </div>
 
@@ -1022,19 +1028,19 @@ export async function renderJobs(container) {
       titleEl.innerHTML = `${icon('mapPin', 13)} Location Scope:`;
       chipsEl.innerHTML = `
         <button class="jf-quick-chip ${externalScope === 'local' ? 'jf-quick-chip--active' : ''} jm-scope-chip" data-scope="local">
-          <span class="jf-quick-chip__icon">📍</span> Bacolod &amp; Negros Local
+          <span class="jf-quick-chip__icon">${icon('mapPin', 13)}</span> Bacolod &amp; Negros Local
           <span class="jf-chip-count">${localC}</span>
         </button>
         <button class="jf-quick-chip ${externalScope === 'nationwide' ? 'jf-quick-chip--active' : ''} jm-scope-chip" data-scope="nationwide">
-          <span class="jf-quick-chip__icon">🇵🇭</span> Nationwide PH
+          <span class="jf-quick-chip__icon">${icon('flag', 13)}</span> Nationwide PH
           <span class="jf-chip-count">${phC}</span>
         </button>
         <button class="jf-quick-chip ${externalScope === 'remote' ? 'jf-quick-chip--active' : ''} jm-scope-chip" data-scope="remote">
-          <span class="jf-quick-chip__icon">💻</span> Global Remote
+          <span class="jf-quick-chip__icon">${icon('laptop', 13)}</span> Global Remote
           <span class="jf-chip-count">${remC}</span>
         </button>
         <button class="jf-quick-chip ${externalScope === 'all' ? 'jf-quick-chip--active' : ''} jm-scope-chip" data-scope="all">
-          <span class="jf-quick-chip__icon">🌐</span> All Roles
+          <span class="jf-quick-chip__icon">${icon('globe', 13)}</span> All Roles
           <span class="jf-chip-count">${list.length}</span>
         </button>
       `;
@@ -1042,19 +1048,19 @@ export async function renderJobs(container) {
       titleEl.innerHTML = `${icon('sparkles', 13)} Quick Filters:`;
       chipsEl.innerHTML = `
         <button class="jf-quick-chip ${filters.minScore >= 71 ? 'jf-quick-chip--active' : ''}" data-quick="top-match">
-          <span class="jf-quick-chip__icon">🌟</span> 71%+ Match
+          <span class="jf-quick-chip__icon">${icon('sparkles', 13)}</span> 71%+ Match
         </button>
         <button class="jf-quick-chip ${filters.types.has('Full-time') ? 'jf-quick-chip--active' : ''}" data-quick="full-time">
-          <span class="jf-quick-chip__icon">🏢</span> Full-Time
+          <span class="jf-quick-chip__icon">${icon('building2', 13)}</span> Full-Time
         </button>
         <button class="jf-quick-chip ${filters.types.has('Remote') ? 'jf-quick-chip--active' : ''}" data-quick="remote">
-          <span class="jf-quick-chip__icon">🌐</span> Remote Only
+          <span class="jf-quick-chip__icon">${icon('globe', 13)}</span> Remote Only
         </button>
         <button class="jf-quick-chip ${filters.minSalary >= 30000 ? 'jf-quick-chip--active' : ''}" data-quick="salary-30k">
-          <span class="jf-quick-chip__icon">💰</span> ₱30k+
+          <span class="jf-quick-chip__icon">${icon('coins', 13)}</span> ₱30k+
         </button>
         <button class="jf-quick-chip ${filters.datePosted === 'week' ? 'jf-quick-chip--active' : ''}" data-quick="recent-week">
-          <span class="jf-quick-chip__icon">⏱️</span> Past 7 Days
+          <span class="jf-quick-chip__icon">${icon('clock', 13)}</span> Past 7 Days
         </button>
       `;
     }
@@ -1117,7 +1123,7 @@ export async function renderJobs(container) {
         const msg = res?.message || 'External job listings are temporarily unavailable.';
         cardsEl.innerHTML = `
           <div style="grid-column:1/-1;display:flex;flex-direction:column;align-items:center;gap:12px;padding:60px 20px;text-align:center;">
-            <div style="width:56px;height:56px;border-radius:50%;background:var(--bg-secondary);display:flex;align-items:center;justify-content:center;font-size:1.6rem;">🌐</div>
+            <div style="width:56px;height:56px;border-radius:50%;background:var(--bg-secondary);display:flex;align-items:center;justify-content:center;color:var(--text-tertiary);">${icon('globe', 24)}</div>
             <p style="font-size:.925rem;font-weight:600;color:var(--text-primary);">No External Jobs Found</p>
             <p style="font-size:.825rem;color:var(--text-secondary);max-width:340px;line-height:1.6;">${cleanQ ? `No listings matched "${escapeHtml(cleanQ)}". Try broader search terms.` : msg}</p>
             ${cleanQ ? `
@@ -1143,7 +1149,7 @@ export async function renderJobs(container) {
       externalJobs = [];
       cardsEl.innerHTML = `
         <div style="grid-column:1/-1;display:flex;flex-direction:column;align-items:center;gap:12px;padding:60px 20px;text-align:center;">
-          <div style="width:56px;height:56px;border-radius:50%;background:var(--bg-secondary);display:flex;align-items:center;justify-content:center;font-size:1.6rem;">⚠️</div>
+          <div style="width:56px;height:56px;border-radius:50%;background:var(--bg-secondary);display:flex;align-items:center;justify-content:center;color:var(--color-warning, #f59e0b);">${icon('alertTriangle', 24)}</div>
           <p style="font-size:.925rem;font-weight:600;color:var(--text-primary);">Could Not Load External Jobs</p>
           <p style="font-size:.825rem;color:var(--text-secondary);max-width:340px;line-height:1.6;">Could not reach the server. Make sure the backend is running and try again.</p>
           <button id="ext-retry-btn2" style="margin-top:4px;padding:8px 18px;border-radius:8px;border:1.5px solid var(--border-default);background:var(--bg-elevated);font-size:.8rem;font-weight:600;cursor:pointer;color:var(--text-primary);">
@@ -1683,7 +1689,7 @@ export async function renderJobs(container) {
           appliedIds.add(job.id);
           renderCards(false);
         } else if (res?.id || res?.success || res?.message === 'Application sent.' || res?.application) {
-          showToast('Application sent! Good luck! 🎉', 'success');
+          showToast('Application sent! Good luck!', 'success');
           appliedIds.add(job.id);
           renderCards(false);
         } else {

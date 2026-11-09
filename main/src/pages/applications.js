@@ -378,7 +378,7 @@ function openApplicationDetailsModal(item, onWithdrawSuccess, existingOverlay = 
             <div class="app-details-note-box" style="border-left-color:#059669; background:rgba(5,150,105,0.08);">
               <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:6px;">
                 <strong style="color:#059669; display:flex; align-items:center; gap:6px;">
-                  ${icon('checkCircle', 14)} Direct Acceptance (Interview Waived) 🎉
+                  ${icon('checkCircle', 14)} Direct Acceptance (Interview Waived)
                 </strong>
                 <span style="font-size:0.75rem; background:#dcfce7; color:#15803d; padding:2px 10px; border-radius:99px; font-weight:700; display:inline-flex; align-items:center; gap:4px;">
                   ${icon('award', 12)} Direct Placement
@@ -407,7 +407,7 @@ function openApplicationDetailsModal(item, onWithdrawSuccess, existingOverlay = 
                 <strong style="color:${item.rawStatus === 'company_accepted' || item.rawStatus === 'accepted' || item.rawStatus === 'ojt_confirmed' || item.rawStatus === 'ojt_started' ? '#059669' : (isOjt && isOjtInterviewPast(item) ? '#059669' : 'var(--color-warning)')}; display:flex; align-items:center; gap:6px;">
                   ${icon(item.rawStatus === 'company_accepted' || item.rawStatus === 'accepted' || item.rawStatus === 'ojt_confirmed' || item.rawStatus === 'ojt_started' || (isOjt && isOjtInterviewPast(item)) ? 'checkCircle' : 'video', 14)} 
                   ${item.rawStatus === 'company_accepted' 
-                    ? 'Interview Completed · Accepted by Company 🎉' 
+                    ? 'Interview Completed · Accepted by Company' 
                     : (['accepted', 'ojt_confirmed', 'ojt_started'].includes(item.rawStatus)
                       ? 'Interview Completed · Accepted'
                       : (isOjt && isOjtInterviewPast(item) ? 'Interview Completed (Awaiting Company Result)' : 'Interview Scheduled'))}
@@ -592,11 +592,11 @@ function openApplicationDetailsModal(item, onWithdrawSuccess, existingOverlay = 
                     let pillText = 'Required';
 
                     if (st === 'approved') {
-                      pillBg = '#dcfce7'; pillColor = '#15803d'; pillText = 'Approved ✔';
+                      pillBg = '#dcfce7'; pillColor = '#15803d'; pillText = `Approved ${icon('check', 11)}`;
                     } else if (st === 'pending') {
                       pillBg = '#fef3c7'; pillColor = '#b45309'; pillText = 'Pending Review';
                     } else if (st === 'rejected') {
-                      pillBg = '#fee2e2'; pillColor = '#b91c1c'; pillText = 'Needs Correction ❌';
+                      pillBg = '#fee2e2'; pillColor = '#b91c1c'; pillText = `Needs Correction ${icon('x', 11)}`;
                     }
 
                     return `
@@ -605,7 +605,7 @@ function openApplicationDetailsModal(item, onWithdrawSuccess, existingOverlay = 
                           <div style="flex:1; min-width:240px;">
                             <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
                               <strong style="font-size:0.88rem; color:#0f172a;">${escapeHtml(d.title)}</strong>
-                              <span style="font-size:0.72rem; padding:2px 8px; border-radius:99px; background:${pillBg}; color:${pillColor}; font-weight:700;">
+                              <span style="font-size:0.72rem; padding:2px 8px; border-radius:99px; background:${pillBg}; color:${pillColor}; font-weight:700; display:inline-flex; align-items:center; gap:4px;">
                                 ${pillText}
                               </span>
                             </div>
@@ -944,7 +944,7 @@ function openApplicationDetailsModal(item, onWithdrawSuccess, existingOverlay = 
     btn.textContent = 'Confirming…';
     try {
       await apiPost(`/student/interviews/${ivId}/respond`, { response: 'confirmed' });
-      showToast('Interview attendance confirmed! See you then! 🎉', 'success');
+      showToast('Interview attendance confirmed! See you then!', 'success');
       closeModal();
       window.dispatchEvent(new CustomEvent('hireme:applications-refresh'));
     } catch (err) {
@@ -999,7 +999,7 @@ function openApplicationDetailsModal(item, onWithdrawSuccess, existingOverlay = 
         showToast('Uploading pre-employment document…', 'info');
         const res = await apiUpload(`/student/applications/${appId}/onboarding-upload`, formData);
         if (res?.success) {
-          showToast('Document uploaded successfully for review! 🎉', 'success');
+          showToast('Document uploaded successfully for review!', 'success');
           if (res.data?.onboarding_checklist) {
             item.onboardingChecklist = res.data.onboarding_checklist;
           }

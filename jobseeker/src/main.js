@@ -325,7 +325,7 @@ initAuth().then(async (authenticated) => {
   if (sessionStorage.getItem('hireme_just_promoted') === 'true') {
     sessionStorage.removeItem('hireme_just_promoted');
     setTimeout(() => {
-      showToast('🎓 Welcome to your Alumni & Career Portal! Your account and records are ready.', 'success', 6000);
+      showToast('Welcome to your Alumni & Career Portal! Your account and records are ready.', 'success', 6000);
     }, 600);
   }
 

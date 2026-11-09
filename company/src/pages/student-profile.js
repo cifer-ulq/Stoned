@@ -55,11 +55,11 @@ const typeColor = {
 };
 
 const CATEGORY_META = {
-  language:  { label: 'Languages',              emoji: '💻', color: '#3B82F6', bg: 'rgba(59, 130, 246, 0.12)' },
-  framework: { label: 'Frameworks & Libraries', emoji: '🧩', color: '#8B5CF6', bg: 'rgba(139, 92, 246, 0.12)' },
-  tool:      { label: 'Tools & Software',       emoji: '🔧', color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.12)' },
-  database:  { label: 'Databases',              emoji: '🗄️', color: '#06B6D4', bg: 'rgba(6, 182, 212, 0.12)' },
-  other:     { label: 'Other Competencies',     emoji: '✨', color: '#EC4899', bg: 'rgba(236, 72, 153, 0.12)' },
+  language:  { label: 'Languages',              icon: icon('codeXml', 15),  color: '#3B82F6', bg: 'rgba(59, 130, 246, 0.12)' },
+  framework: { label: 'Frameworks & Libraries', icon: icon('puzzle', 15),   color: '#8B5CF6', bg: 'rgba(139, 92, 246, 0.12)' },
+  tool:      { label: 'Tools & Software',       icon: icon('wrench', 15),   color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.12)' },
+  database:  { label: 'Databases',              icon: icon('database', 15), color: '#06B6D4', bg: 'rgba(6, 182, 212, 0.12)' },
+  other:     { label: 'Other Competencies',     icon: icon('sparkles', 15), color: '#EC4899', bg: 'rgba(236, 72, 153, 0.12)' },
 };
 
 const SKILL_LEVELS = [
@@ -705,7 +705,7 @@ function renderProfile(d, params) {
                 <div class="skill-category-card">
                   <div class="skill-category-card__header">
                     <div class="skill-category-card__badge" style="background:${meta.bg};color:${meta.color};">
-                      <span>${meta.emoji}</span>
+                      <span style="display:inline-flex;align-items:center;justify-content:center;">${meta.icon}</span>
                     </div>
                     <h4 class="skill-category-card__title">${meta.label}</h4>
                     <span class="skill-category-card__count">${groups[cat].length}</span>
@@ -1099,7 +1099,7 @@ function renderProfile(d, params) {
         <div style="flex:1;overflow:auto;padding:20px;background:#0d1117;display:flex;align-items:center;justify-content:center;min-height:360px;">
           ${isPdf ? `
             <div style="text-align:center;color:#fff;padding:32px;">
-              <div style="font-size:3.5rem;margin-bottom:12px;">📄</div>
+              <div style="margin-bottom:12px;color:#94a3b8;display:flex;justify-content:center;">${icon('fileText', 48)}</div>
               <h4 style="color:#fff;margin:0 0 6px;font-size:1.1rem;">Official PDF Certificate</h4>
               <p style="color:#94a3b8;font-size:0.85rem;margin-bottom:18px;">Authentic credential document stored in PDF format.</p>
               <a href="${fullUrl}" target="_blank" rel="noopener" class="profile-btn profile-btn--primary" style="display:inline-flex;">
@@ -1312,7 +1312,7 @@ function renderProfile(d, params) {
 <body>
   <div class="print-bar">
     <span><strong>1-Page Executive Resume</strong> &mdash; A4 Print Preview (${name})</span>
-    <button class="print-btn" onclick="window.print()">🖨️ Print / Save as PDF</button>
+    <button class="print-btn" style="display:inline-flex;align-items:center;gap:6px;" onclick="window.print()">${icon('printer', 14)} Print / Save as PDF</button>
   </div>
   ${card.outerHTML}
 </body>

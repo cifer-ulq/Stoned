@@ -620,7 +620,7 @@ class CompanyController extends Controller
         AppNotification::send(
             $interest->student_user_id,
             'company_accepted',
-            'Interview Result — Accepted! 🎉',
+            'Interview Result — Accepted!',
             "{$interest->posting->company_name} has accepted you after the interview for \"{$interest->posting->title}\". Message: {$validated['company_note']}. The OJT Coordinator will give final approval shortly.",
             ['posting_id' => $interest->ojt_posting_id, 'interest_id' => $interest->id]
         );
@@ -686,7 +686,7 @@ class CompanyController extends Controller
         AppNotification::send(
             $interest->student_user_id,
             'company_accepted',
-            'Application Accepted Directly! 🎉',
+            'Application Accepted Directly!',
             "{$compName} has directly accepted your OJT application for \"{$postTitle}\" based on your portfolio and university endorsement letter (no interview required). Message: \"{$validated['company_note']}\". The OJT Coordinator will review for final approval shortly.",
             ['posting_id' => $interest->ojt_posting_id, 'interest_id' => $interest->id]
         );
@@ -837,7 +837,7 @@ class CompanyController extends Controller
         AppNotification::send(
             $interest->student_user_id,
             'ojt_confirmed',
-            "OJT Start Date & Schedule Confirmed — {$startFormatted} 📅",
+            "OJT Start Date & Schedule Confirmed — {$startFormatted}",
             "{$posting->company_name} confirmed your start date: {$startFormatted}. Schedule: {$daysStr}, {$shiftStr}{$lunchStr}. Instructions: {$validated['ojt_instructions']}",
             ['posting_id' => $posting->id, 'interest_id' => $interest->id]
         );
@@ -922,7 +922,7 @@ class CompanyController extends Controller
         AppNotification::send(
             $interest->student_user_id,
             'ojt_started',
-            'Your OJT Has Started! 🎉',
+            'Your OJT Has Started!',
             "Congratulations! Your OJT at {$posting->company_name} for \"{$posting->title}\" has officially started. Good luck!",
             ['posting_id' => $posting->id, 'interest_id' => $interest->id]
         );
@@ -2494,7 +2494,7 @@ class CompanyController extends Controller
                 AppNotification::send(
                     $interest->student_user_id,
                     'company_accepted',
-                    'OJT Acceptance! 🎉',
+                    'OJT Acceptance!',
                     "{$companyName} has accepted you for the OJT position \"{$jobTitle}\". The OJT Coordinator will review for final approval.",
                     ['posting_id' => $interest->ojt_posting_id, 'interest_id' => $interest->id]
                 );
@@ -2535,7 +2535,7 @@ class CompanyController extends Controller
         $notifMap = [
             'reviewed'   => ['application_reviewed', 'Application Under Review',
                              "Your application for \"$jobTitle\" is now being reviewed by the company."],
-            'offered'    => ['application_offered',  'You Have a Job Offer! 🎉',
+            'offered'    => ['application_offered',  'You Have a Job Offer!',
                              "Congratulations! You received a job offer for \"$jobTitle\". Check your applications to respond."],
             'rejected'   => ['application_rejected', 'Application Status Update',
                              "Your application for \"$jobTitle\" was not shortlisted this time. Keep applying!"],
@@ -2943,7 +2943,7 @@ class CompanyController extends Controller
         AppNotification::send(
             $app->applicant_user_id,
             'hired_officially',
-            'Welcome to the Team! 🎓🎉',
+            'Welcome to the Team!',
             "All your onboarding documents have been verified and approved. You are officially enrolled in the Employee Roster as a {$offer['employment_status']} staff member for \"{$jobTitle}\"!",
             ['application_id' => $app->id, 'job_title' => $jobTitle]
         );

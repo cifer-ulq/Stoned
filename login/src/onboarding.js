@@ -359,8 +359,9 @@ function renderTemporaryPasswordFlow(cachedUser) {
                 <div style="display: inline-flex; align-items: center; gap: 8px; color: var(--color-primary); font-weight: 700; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px;">
                   ${icon('lock', 16)} Temporary Password Detected
                 </div>
-                <h1 style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary); margin-bottom: 6px;">
-                  Welcome, ${userName}! 👋
+                <h1 style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary); margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
+                  <span>Welcome, ${userName}!</span>
+                  <span style="display:inline-flex;align-items:center;color:var(--color-primary);">${icon('hand', 22)}</span>
                 </h1>
                 <p style="font-size: 0.86rem; color: var(--text-secondary); line-height: 1.5;">
                   ${descriptionText}
@@ -480,7 +481,7 @@ function attachTemporaryPasswordEvents(cachedUser) {
         strengthBadge.textContent = 'Too short (min 8 chars)';
         strengthBadge.style.color = '#EF4444';
       } else {
-        strengthBadge.textContent = '✓ Length OK';
+        strengthBadge.innerHTML = `<span style="display:inline-flex;align-items:center;gap:4px;">${icon('check', 13)} Length OK</span>`;
         strengthBadge.style.color = '#10B981';
       }
     } else {
@@ -492,10 +493,10 @@ function attachTemporaryPasswordEvents(cachedUser) {
       return;
     }
     if (val1 === val2) {
-      matchHint.textContent = '✓ Passwords match';
+      matchHint.innerHTML = `<span style="display:inline-flex;align-items:center;gap:4px;">${icon('check', 13)} Passwords match</span>`;
       matchHint.style.color = '#10B981';
     } else {
-      matchHint.textContent = '✕ Passwords do not match';
+      matchHint.innerHTML = `<span style="display:inline-flex;align-items:center;gap:4px;">${icon('x', 13)} Passwords do not match</span>`;
       matchHint.style.color = '#EF4444';
     }
   }
@@ -568,7 +569,7 @@ function attachTemporaryPasswordEvents(cachedUser) {
         launchConfetti();
       } catch (_) {}
 
-      if (submitLbl) submitLbl.textContent = '✓ Password Updated!';
+      if (submitLbl) submitLbl.innerHTML = `<span style="display:inline-flex;align-items:center;gap:6px;">${icon('check', 16)} Password Updated!</span>`;
       if (submitBtn) submitBtn.style.background = 'linear-gradient(135deg, #10B981 0%, #059669 100%)';
 
       setTimeout(() => {
@@ -958,10 +959,10 @@ function renderStudentInfo() {
           </div>
           <div id="student-id-helper" style="font-size:0.75rem; color:#6b7280; margin-top:5px; padding-left:4px;">
             ${formData.studentId ? `
-              <span style="color:#10b981; font-weight:600;">✓ Auto-generated from your signup birthdate (<code>${formData.studentId}</code>)</span>
+              <span style="color:#10b981; font-weight:600; display:inline-flex; align-items:center; gap:5px;">${icon('check', 14)} Auto-generated from your signup birthdate (<code>${formData.studentId}</code>)</span>
               <span style="color:#9ca3af; font-size:0.7rem; display:block; margin-top:2px;">Editable if your physical CHMSU school ID card ends in a different number.</span>
             ` : `
-              💡 <em>Enter your birthdate above to auto-generate your CHMSU Student ID.</em>
+              <span style="display:inline-flex; align-items:center; gap:5px;"><span style="color:var(--color-primary); display:inline-flex;">${icon('lightbulb', 14)}</span> <em>Enter your birthdate above to auto-generate your CHMSU Student ID.</em></span>
             `}
           </div>
         </div>
@@ -974,10 +975,10 @@ function renderStudentInfo() {
 /* ── Graduate Profile ── */
 function renderGraduateInfo() {
   const empOptions = [
-    { id: 'looking',    label: 'Looking for Work',     emoji: '🔍' },
-    { id: 'employed',   label: 'Employed',             emoji: '💼' },
-    { id: 'freelance',  label: 'Freelancing',          emoji: '💻' },
-    { id: 'studying',   label: 'Continuing Studies',   emoji: '📚' },
+    { id: 'looking',    label: 'Looking for Work',     icon: icon('search', 18) },
+    { id: 'employed',   label: 'Employed',             icon: icon('briefcase', 18) },
+    { id: 'freelance',  label: 'Freelancing',          icon: icon('laptop', 18) },
+    { id: 'studying',   label: 'Continuing Studies',   icon: icon('book-open', 18) },
   ];
   const years = Array.from({ length: 11 }, (_, i) => {
     const start = CURRENT_YEAR - i;
@@ -1044,7 +1045,7 @@ function renderGraduateInfo() {
             ${empOptions.map((opt, i) => `
               <button class="ob-emp-btn ${formData.graduateEmploymentStatus === opt.id ? 'ob-emp-btn--active' : ''}"
                 data-emp="${opt.id}" type="button" style="--delay:${0.04 * i}s">
-                <span class="ob-emp-btn__emoji">${opt.emoji}</span>
+                <span class="ob-emp-btn__emoji">${opt.icon}</span>
                 <span class="ob-emp-btn__label">${opt.label}</span>
                 <span class="ob-emp-btn__tick">${svg.check}</span>
               </button>
@@ -1574,7 +1575,7 @@ function attachPickerEvents() {
         wrap?.classList.add('ob-field--focused');
       }
       if (helper) {
-        helper.innerHTML = `<span style="color:#10b981; font-weight:600;">✓ Suggested CHMSU Student ID: <code>${candidate}</code></span> <span style="color:#9ca3af; font-size:0.7rem;">(Auto-filled. Editable if yours ends in 01 or differs)</span>`;
+        helper.innerHTML = `<span style="color:#10b981; font-weight:600; display:inline-flex; align-items:center; gap:4px;">${icon('check', 13)} Suggested CHMSU Student ID: <code>${candidate}</code></span> <span style="color:#9ca3af; font-size:0.7rem;">(Auto-filled. Editable if yours ends in 01 or differs)</span>`;
       }
     }
   }
@@ -1673,7 +1674,7 @@ function attachSecurityEvents() {
         }
       } else {
         if (strengthBadge) {
-          strengthBadge.textContent = '✓ Length OK';
+          strengthBadge.innerHTML = `<span style="display:inline-flex;align-items:center;gap:4px;">${icon('check', 13)} Length OK</span>`;
           strengthBadge.style.color = '#10B981';
         }
       }
@@ -1687,12 +1688,12 @@ function attachSecurityEvents() {
     }
     if (val1 === val2) {
       if (matchHint) {
-        matchHint.textContent = '✓ Passwords match';
+        matchHint.innerHTML = `<span style="display:inline-flex;align-items:center;gap:4px;">${icon('check', 13)} Passwords match</span>`;
         matchHint.style.color = '#10B981';
       }
     } else {
       if (matchHint) {
-        matchHint.textContent = '✕ Passwords do not match';
+        matchHint.innerHTML = `<span style="display:inline-flex;align-items:center;gap:4px;">${icon('x', 13)} Passwords do not match</span>`;
         matchHint.style.color = '#EF4444';
       }
     }
@@ -1720,19 +1721,19 @@ function showPendingApprovalModal(info) {
   overlay.className = 'ob-modal-overlay';
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.68);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;';
   overlay.innerHTML = `
-    <div class="ob-modal" style="background:#ffffff;border-radius:18px;max-width:480px;width:100%;padding:36px 30px;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,0.3);border:1px solid #e5e7eb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-      <div style="width:68px;height:68px;margin:0 auto 18px;border-radius:50%;background:#ECFDF5;border:2px solid #A7F3D0;display:flex;align-items:center;justify-content:center;font-size:32px;">
-        ⏳
+    <div class="ob-modal" style="background:var(--bg-elevated, #ffffff);border-radius:18px;max-width:480px;width:100%;padding:36px 30px;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,0.3);border:1px solid var(--border-default, #e5e7eb);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+      <div style="width:68px;height:68px;margin:0 auto 18px;border-radius:50%;background:rgba(16,185,129,0.12);border:2px solid rgba(16,185,129,0.35);color:#10B981;display:flex;align-items:center;justify-content:center;">
+        ${icon('hourglass', 28)}
       </div>
-      <h2 style="font-size:1.35rem;font-weight:700;color:#111827;margin:0 0 10px;line-height:1.3;">
+      <h2 style="font-size:1.35rem;font-weight:700;color:var(--text-primary, #111827);margin:0 0 10px;line-height:1.3;">
         Registration Submitted for Approval
       </h2>
-      <p style="font-size:0.9rem;color:#4B5563;line-height:1.6;margin:0 0 20px;">
+      <p style="font-size:0.9rem;color:var(--text-secondary, #4B5563);line-height:1.6;margin:0 0 20px;">
         Thank you, <strong>${escapeHtml(info.name)}</strong>! Your student registration with Student ID <strong>${escapeHtml(info.studentId)}</strong> has been recorded.
       </p>
-      <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:12px;padding:16px 18px;margin-bottom:24px;text-align:left;font-size:0.84rem;line-height:1.55;color:#374151;">
-        <div style="font-weight:700;color:#005930;margin-bottom:5px;display:flex;align-items:center;gap:6px;">
-          <span>ℹ️</span> Verification in Progress
+      <div style="background:var(--bg-secondary, #F9FAFB);border:1px solid var(--border-default, #E5E7EB);border-radius:12px;padding:16px 18px;margin-bottom:24px;text-align:left;font-size:0.84rem;line-height:1.55;color:var(--text-secondary, #374151);">
+        <div style="font-weight:700;color:#10B981;margin-bottom:5px;display:flex;align-items:center;gap:6px;">
+          ${icon('info', 16)} Verification in Progress
         </div>
         Your account is currently in <strong>Pending</strong> status. An OJT Coordinator or Administrator will verify your student credentials before your account is activated. You will be able to log in as soon as it is approved.
       </div>

@@ -2052,7 +2052,7 @@ class StudentController extends Controller
         // Notify supervisors for this student's program
         $locationNote = $locationValidity ? " ({$locationValidity})" : '';
         if ($hasExemption) {
-            $locationNote .= " [⚠️ Outside Range: Review Required]";
+            $locationNote .= " [Outside Range: Review Required]";
         }
         foreach ($this->getSupervisorIdsForStudent($user) as $svId) {
             AppNotification::send(
@@ -2077,7 +2077,7 @@ class StudentController extends Controller
                 AppNotification::send(
                     $companyUserId,
                     'attendance_pending_approval',
-                    "⚠️ Off-Site Trainee Time-In: {$user->name}",
+                    "Off-Site Trainee Time-In: {$user->name}",
                     "{$user->name} ({$postingTitle}) timed in outside the OJT perimeter ({$distanceMeters}m away). Reason: \"{$outOfRangeReason}\". Live photo proof submitted. Awaiting your approval.",
                     [
                         'student_id'        => $user->id,
@@ -2472,7 +2472,7 @@ class StudentController extends Controller
                 AppNotification::send(
                     $companyUserId,
                     'attendance_pending_approval',
-                    "⚠️ Off-Site Trainee Time-Out: {$user->name}",
+                    "Off-Site Trainee Time-Out: {$user->name}",
                     "{$user->name} ({$postingTitle}) logged {$sessionLabel} outside the OJT perimeter ({$distVal}m away). Reason: \"{$log->out_of_range_reason}\". Awaiting your review & approval.",
                     [
                         'student_id'        => $user->id,
@@ -3124,7 +3124,7 @@ class StudentController extends Controller
             AppNotification::send(
                 $app->jobListing->company_user_id,
                 'offer_accepted',
-                'Job Offer Accepted — Onboarding In Progress! 🎉',
+                'Job Offer Accepted — Onboarding In Progress!',
                 "{$user->name} has accepted your job offer for \"{$jobTitle}\" and is now in the pre-employment onboarding stage.",
                 ['application_id' => $app->id, 'job_title' => $jobTitle, 'applicant_name' => $user->name]
             );
@@ -3643,7 +3643,7 @@ class StudentController extends Controller
             AppNotification::send(
                 $supId,
                 'emergency_stoppage_filed',
-                '🚨 Urgent: OJT Emergency Notice Filed',
+                'Urgent: OJT Emergency Notice Filed',
                 "{$user->name} filed a {$typeLabel} ({$catLabel}). Supporting proof provided for review.",
                 [
                     'emergency_id' => $emergency->id,
@@ -3661,7 +3661,7 @@ class StudentController extends Controller
             AppNotification::send(
                 $companyUserId,
                 'trainee_emergency_notice',
-                '⚠️ Trainee Emergency Notice',
+                'Trainee Emergency Notice',
                 "Trainee {$user->name} filed an {$typeLabel} ({$catLabel}). Academic coordinator has been alerted.",
                 [
                     'emergency_id' => $emergency->id,
@@ -3735,7 +3735,7 @@ class StudentController extends Controller
             AppNotification::send(
                 $supId,
                 'fit_to_work_uploaded',
-                '🩺 Medical Fit-to-Work Clearance Uploaded',
+                'Medical Fit-to-Work Clearance Uploaded',
                 "{$user->name} uploaded a Fit-to-Work clearance certificate to resume OJT training.",
                 [
                     'emergency_id' => $emergency->id,

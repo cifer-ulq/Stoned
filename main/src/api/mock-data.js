@@ -28,9 +28,9 @@ export const mockData = {
   'dashboard/activities': [
     { id: 1, type: 'application', title: 'Applied to Frontend Developer at TechCorp', time: '2 hours ago', icon: 'briefcase' },
     { id: 2, type: 'interview', title: 'Interview scheduled with DataFlow Inc.', time: '5 hours ago', icon: 'video' },
-    { id: 3, type: 'feedback', title: 'Supervisor feedback received', time: '1 day ago', icon: 'message-square' },
+    { id: 3, type: 'feedback', title: 'Supervisor feedback received', time: '1 day ago', icon: 'messageSquare' },
     { id: 4, type: 'match', title: 'New job match: UI/UX Designer at CreativeLab', time: '2 days ago', icon: 'zap' },
-    { id: 5, type: 'log', title: 'Daily OJT log submitted', time: '2 days ago', icon: 'file-text' },
+    { id: 5, type: 'log', title: 'Daily OJT log submitted', time: '2 days ago', icon: 'fileText' },
   ],
 
   /* ── Profile / Portfolio ── */
@@ -89,12 +89,12 @@ export const mockData = {
   ],
 
   'profile/works': [
-    { id: 1, title: 'E-Commerce Dashboard', description: 'Full-stack admin dashboard with analytics, inventory management, and real-time order tracking.', tags: ['React', 'Node.js', 'PostgreSQL'], color: '#4A6CF7', emoji: '📊' },
-    { id: 2, title: 'Restaurant Booking App', description: 'Mobile-friendly reservation system with QR code check-in and table management.', tags: ['JavaScript', 'Firebase', 'CSS'], color: '#34C759', emoji: '🍽️' },
-    { id: 3, title: 'GDSC Club Website', description: 'Responsive website for the Google Developer Student Club with event registration and blog.', tags: ['HTML', 'CSS', 'JavaScript'], color: '#FFB547', emoji: '🌐' },
-    { id: 4, title: 'Weather Forecast App', description: 'Real-time weather data with 7-day forecast, location search, and animated weather icons.', tags: ['React', 'API Integration', 'CSS'], color: '#FF6B6B', emoji: '🌤️' },
-    { id: 5, title: 'Student Portfolio Generator', description: 'Automated portfolio builder that pulls verified academic data and generates a shareable page.', tags: ['Vite', 'JavaScript', 'CSS'], color: '#6D8DFF', emoji: '🎨' },
-    { id: 6, title: 'Task Management CLI', description: 'Terminal-based productivity tool with deadlines, priorities, and project grouping.', tags: ['Python', 'SQLite'], color: '#9CA3BF', emoji: '✅' },
+    { id: 1, title: 'E-Commerce Dashboard', description: 'Full-stack admin dashboard with analytics, inventory management, and real-time order tracking.', tags: ['React', 'Node.js', 'PostgreSQL'], color: '#4A6CF7', icon: 'barChart2' },
+    { id: 2, title: 'Restaurant Booking App', description: 'Mobile-friendly reservation system with QR code check-in and table management.', tags: ['JavaScript', 'Firebase', 'CSS'], color: '#34C759', icon: 'utensils' },
+    { id: 3, title: 'GDSC Club Website', description: 'Responsive website for the Google Developer Student Club with event registration and blog.', tags: ['HTML', 'CSS', 'JavaScript'], color: '#FFB547', icon: 'globe' },
+    { id: 4, title: 'Weather Forecast App', description: 'Real-time weather data with 7-day forecast, location search, and animated weather icons.', tags: ['React', 'API Integration', 'CSS'], color: '#FF6B6B', icon: 'cloudSun' },
+    { id: 5, title: 'Student Portfolio Generator', description: 'Automated portfolio builder that pulls verified academic data and generates a shareable page.', tags: ['Vite', 'JavaScript', 'CSS'], color: '#6D8DFF', icon: 'palette' },
+    { id: 6, title: 'Task Management CLI', description: 'Terminal-based productivity tool with deadlines, priorities, and project grouping.', tags: ['Python', 'SQLite'], color: '#9CA3BF', icon: 'checkCircle' },
   ],
 
   'profile/resume': {

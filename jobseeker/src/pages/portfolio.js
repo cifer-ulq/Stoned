@@ -26,13 +26,35 @@ const projectGradients = [
 ];
 
 const PROJECT_CATEGORIES = [
-  { id: 'Academic Capstone', label: '🎓 Academic Capstone' },
-  { id: 'Internship / OJT',  label: '💼 Internship / OJT Deliverable' },
-  { id: 'Client / Freelance', label: '🤝 Client / Freelance' },
-  { id: 'Hackathon / Competition', label: '🏆 Hackathon / Competition' },
-  { id: 'Personal / Open Source', label: '🚀 Personal / Open Source' },
-  { id: 'Research / Publication', label: '🔬 Research / Publication' },
+  { id: 'Academic Capstone', label: 'Academic Capstone' },
+  { id: 'Internship / OJT',  label: 'Internship / OJT Deliverable' },
+  { id: 'Client / Freelance', label: 'Client / Freelance' },
+  { id: 'Hackathon / Competition', label: 'Hackathon / Competition' },
+  { id: 'Personal / Open Source', label: 'Personal / Open Source' },
+  { id: 'Research / Publication', label: 'Research / Publication' },
 ];
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function getProjectCatIcon(cat, size = 30) {
+  const map = {
+    'Academic Capstone': 'graduationCap',
+    'Internship / OJT': 'briefcase',
+    'Client / Freelance': 'handshake',
+    'Hackathon / Competition': 'trophy',
+    'Personal / Open Source': 'rocket',
+    'Research / Publication': 'flaskConical',
+  };
+  return icon(map[cat] || 'folderOpen', size);
+}
 
 const PROJECT_ROLES = [
   'Full-Stack Developer',
@@ -460,7 +482,7 @@ function renderAbout() {
                   <div class="skill-category-card" data-cat="${cat}">
                     <div class="skill-category-card__header">
                       <div class="skill-category-card__badge" style="background: ${meta.bg}; color: ${meta.color};">
-                        <span class="skill-category-card__emoji">${meta.emoji}</span>
+                        <span class="skill-category-card__emoji" style="display:inline-flex;align-items:center;justify-content:center;">${meta.icon || icon('sparkles', 15)}</span>
                       </div>
                       <div class="skill-category-card__info">
                         <h4 class="skill-category-card__title">${meta.label}</h4>
@@ -1032,7 +1054,7 @@ function getCategoryMeta(cat) {
     key: cat || 'other',
     label: cat ? cat.charAt(0).toUpperCase() + cat.slice(1) : 'Other Skills',
     shortLabel: cat || 'Other',
-    emoji: '✨',
+    icon: icon('sparkles', 15),
     color: '#84CC16',
     bg: 'rgba(132, 204, 22, 0.12)',
   };
@@ -1067,12 +1089,12 @@ function openSkillModal(skill) {
       <div class="skm-layout">
         <nav class="skm-sidebar" id="skm-sidebar">
           <button type="button" class="skm-cat-btn ${initCat === 'all' ? 'skm-cat-btn--active' : ''}" data-cat="all">
-            <span class="skm-cat-emoji">🌐</span>
+            <span class="skm-cat-emoji">${icon('globe', 15)}</span>
             <span class="skm-cat-label">All Skills</span>
           </button>
           ${Object.entries(CATEGORY_META).map(([cat, m]) => `
             <button type="button" class="skm-cat-btn ${cat === initCat ? 'skm-cat-btn--active' : ''}" data-cat="${cat}">
-              <span class="skm-cat-emoji">${m.emoji}</span>
+              <span class="skm-cat-emoji">${m.icon || icon('sparkles', 15)}</span>
               <span class="skm-cat-label">${m.shortLabel || m.label}</span>
             </button>`).join('')}
         </nav>
@@ -1140,7 +1162,7 @@ function openSkillModal(skill) {
       .skm-cat-btn { display:flex; align-items:center; gap:10px; width:100%; padding:9px 12px; border-radius:10px; border:none; cursor:pointer; background:transparent; text-align:left; font-size:.82rem; color:var(--text-secondary); font-weight:500; transition:background .15s,color .15s; }
       .skm-cat-btn:hover { background:var(--surface-hover); color:var(--text-primary); }
       .skm-cat-btn--active { background:var(--color-primary-bg); color:var(--color-primary); font-weight:700; }
-      .skm-cat-emoji { font-size:1.05rem; flex-shrink:0; }
+      .skm-cat-emoji { display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; }
       .skm-right { flex:1; display:flex; flex-direction:column; overflow:hidden; padding:14px 16px; gap:12px; }
       .skm-search-wrap { display:flex; align-items:center; gap:8px; background:var(--bg-secondary); border:1.5px solid var(--border-default); border-radius:10px; padding:8px 12px; transition:border .15s; }
       .skm-search-wrap:focus-within { border-color:var(--color-primary); background:var(--surface-card); }
@@ -1223,7 +1245,7 @@ function openSkillModal(skill) {
       dot.classList.add('skm-preview-dot--active');
       name.textContent = selectedName;
       const meta = getCategoryMeta(selectedCat);
-      cat.textContent  = `${meta.emoji} ${meta.label}`;
+      cat.innerHTML = `<span style="display:inline-flex;align-items:center;gap:6px;">${meta.icon || icon('sparkles', 14)}<span>${escapeHtml(meta.label)}</span></span>`;
     } else {
       dot.classList.remove('skm-preview-dot--active');
       name.textContent = 'No skill selected';
@@ -1373,7 +1395,7 @@ function openSkillModal(skill) {
   overlay.querySelector('#skm-save').addEventListener('click', async () => {
     const errEl   = overlay.querySelector('#skm-error');
     const saveBtn = overlay.querySelector('#skm-save');
-    if (!selectedName) { errEl.textContent = '⚠ Please select or enter a skill.'; return; }
+    if (!selectedName) { errEl.innerHTML = `<span style="display:inline-flex;align-items:center;gap:4px;">${icon('alertTriangle', 13)} Please select or enter a skill.</span>`; return; }
     errEl.textContent = '';
     saveBtn.disabled  = true;
     saveBtn.innerHTML = `${SPIN_SVG} Saving…`;
@@ -1721,7 +1743,7 @@ function renderResume() {
 <body>
   <div class="print-bar">
     <span><strong>1-Page Executive Resume</strong> — A4 Print Preview</span>
-    <button class="print-btn" onclick="window.print()">🖨️ Print / Save as PDF</button>
+    <button class="print-btn" onclick="window.print()">${icon('printer', 14)} Print / Save as PDF</button>
   </div>
   ${card.outerHTML}
 </body>
@@ -1836,7 +1858,7 @@ function renderProjects() {
                 ${p.image_url
                   ? `<img class="work-card__thumb" src="${storageUrl(p.image_url)}" alt="${p.title}" loading="lazy" />`
                   : `<div class="work-card__banner-placeholder">
-                      <span style="font-size:2.2rem;opacity:0.9;">📁</span>
+                      <span style="display:inline-flex;opacity:0.92;">${getProjectCatIcon(p.category, 30)}</span>
                       <span style="font-size:0.8rem;font-weight:700;letter-spacing:0.04em;">${cat}</span>
                     </div>`}
                 <span class="work-card__cat-pill">${cat}</span>
@@ -2542,7 +2564,7 @@ function openAchModal(ach) {
     if (emptyBox && loadedBox && filenameEl) {
       emptyBox.style.display = 'none';
       loadedBox.style.display = 'block';
-      filenameEl.textContent = `📎 ${file.name} (${Math.round(file.size / 1024)} KB)`;
+      filenameEl.innerHTML = `<span style="display:inline-flex;align-items:center;gap:5px;">${icon('paperclip', 13)} ${escapeHtml(file.name)} (${Math.round(file.size / 1024)} KB)</span>`;
     }
   });
 
@@ -2571,7 +2593,7 @@ function openAchModal(ach) {
         pendingCertFile = file;
         certDropzone.querySelector('#cert-empty-box').style.display = 'none';
         certDropzone.querySelector('#cert-loaded-preview').style.display = 'block';
-        certDropzone.querySelector('#cert-local-filename').textContent = `📎 ${file.name} (${Math.round(file.size / 1024)} KB)`;
+        certDropzone.querySelector('#cert-local-filename').innerHTML = `<span style="display:inline-flex;align-items:center;gap:5px;">${icon('paperclip', 13)} ${escapeHtml(file.name)} (${Math.round(file.size / 1024)} KB)</span>`;
       });
     };
   }
@@ -2685,7 +2707,7 @@ function openCertificateViewer(ach) {
       <div style="flex:1;overflow:auto;padding:16px;background:#0d1117;display:flex;align-items:center;justify-content:center;min-height:360px;">
         ${isPdf ? `
           <div style="text-align:center;color:#fff;padding:32px;">
-            <div style="font-size:3rem;margin-bottom:12px;">📄</div>
+            <div style="margin-bottom:12px;color:#94a3b8;display:flex;justify-content:center;">${icon('fileText', 44)}</div>
             <h4 style="color:#fff;margin:0 0 6px;">PDF Certificate Document</h4>
             <p style="color:#94a3b8;font-size:0.85rem;margin-bottom:16px;">This certificate is stored in authentic PDF format.</p>
             <a href="${fullUrl}" target="_blank" rel="noopener" class="btn btn--primary" style="gap:6px;">

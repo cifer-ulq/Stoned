@@ -1472,7 +1472,7 @@ export default function traineesPage(container) {
                 </div>
                 ${(t.requirements?.drive_url || t.requirements_drive_url) ? `
                   <a href="${t.requirements?.drive_url || t.requirements_drive_url}" target="_blank" rel="noopener" class="btn btn--ghost btn--xs" style="color:#0284c7;font-weight:700;font-size:0.8rem;gap:5px;white-space:nowrap;">
-                    Open Folder ↗
+                    ${icon('externalLink', 12)} Open Folder
                   </a>
                 ` : ''}
               </div>

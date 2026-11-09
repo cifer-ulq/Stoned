@@ -524,7 +524,7 @@ function openPromoteModal({ students, onPromote, container }) {
                     ${icon('check-circle', 11)} ${st.ojt_hours}h / ${st.ojt_required || 600}h
                   </span>
                   <span class="badge badge--success" style="font-size:0.72rem;font-weight:600;display:inline-flex;align-items:center;gap:4px;">
-                    <span style="color:#F59E0B;">★</span> ${Number(st.evaluation_score || 5).toFixed(1)} Eval
+                    <span style="color:#F59E0B;display:inline-flex;align-items:center;">${icon('star-filled', 11)}</span> ${Number(st.evaluation_score || 5).toFixed(1)} Eval
                   </span>
                 </div>
               </div>
@@ -774,9 +774,9 @@ function showModal(s, container, onRefresh) {
                 <div class="spm-progress-track">
                   <div class="spm-progress-fill spm-ojt__fill" data-pct="${pct}" style="background:${barColor};"></div>
                 </div>
-                <div style="font-size:0.72rem;color:var(--text-tertiary);margin-top:2px;">
+                <div style="font-size:0.72rem;color:var(--text-tertiary);margin-top:2px;display:flex;align-items:center;gap:4px;">
                   ${isGate1Passed
-                    ? `✓ Required ${s.ojt_required || 600}h threshold achieved`
+                    ? `${icon('check-circle', 12)} <span>Required ${s.ojt_required || 600}h threshold achieved</span>`
                     : `${Math.max(0, (s.ojt_required || 600) - (s.ojt_hours || 0))} hours remaining to complete OJT`}
                 </div>
               </div>
@@ -794,8 +794,8 @@ function showModal(s, container, onRefresh) {
 
               ${s.evaluation_status === 'submitted' ? `
                 <div class="spm-eval-score-card">
-                  <div class="spm-eval-score">
-                    <span class="spm-star">★</span>
+                  <div class="spm-eval-score" style="align-items:center;">
+                    <span class="spm-star" style="display:inline-flex;align-items:center;">${icon('star-filled', 14)}</span>
                     <span>${Number(s.evaluation_score || 5).toFixed(1)}</span>
                     <span class="spm-score-max">/ 5.0</span>
                   </div>
@@ -1093,7 +1093,7 @@ function renderTable(tbody, list, container, selectedStudents, updateSelectionUI
         <!-- Checkbox -->
         <td class="st-checkbox-cell">
           ${isEligible
-            ? `<input type="checkbox" class="student-select-cb st-checkbox" data-id="${s.id}" ${isChecked ? 'checked' : ''} title="Eligible: Completed ${s.ojt_hours}h / ${s.ojt_required || 600}h OJT + Company Evaluated (${Number(s.evaluation_score || 5).toFixed(1)}★)" />`
+            ? `<input type="checkbox" class="student-select-cb st-checkbox" data-id="${s.id}" ${isChecked ? 'checked' : ''} title="Eligible: Completed ${s.ojt_hours}h / ${s.ojt_required || 600}h OJT + Company Evaluated (${Number(s.evaluation_score || 5).toFixed(1)}/5.0)" />`
             : `<input type="checkbox" disabled class="st-checkbox" title="Ineligible: ${escapeHtml(s.ineligible_reason || 'Requirements not met')}" style="cursor:not-allowed;opacity:0.25;" />`}
         </td>
 
@@ -1127,7 +1127,7 @@ function renderTable(tbody, list, container, selectedStudents, updateSelectionUI
                </div>
                <div>
                  ${s.evaluation_status === 'submitted'
-                   ? `<span class="st-eval-badge st-eval-badge--submitted" title="Evaluated by ${escapeHtml(s.evaluator_name || 'Host Company')} on ${escapeHtml(s.evaluation_date || 'N/A')}"><span class="star">★</span> ${Number(s.evaluation_score || 5).toFixed(1)} Eval</span>`
+                   ? `<span class="st-eval-badge st-eval-badge--submitted" title="Evaluated by ${escapeHtml(s.evaluator_name || 'Host Company')} on ${escapeHtml(s.evaluation_date || 'N/A')}"><span class="star" style="display:inline-flex;align-items:center;">${icon('star-filled', 11)}</span> ${Number(s.evaluation_score || 5).toFixed(1)} Eval</span>`
                    : s.evaluation_status === 'pending'
                      ? `<span class="st-eval-badge st-eval-badge--pending">${icon('clock', 11)} Eval Pending</span>`
                      : `<span style="font-size:0.75rem;color:var(--text-tertiary);font-style:italic;">No Eval yet</span>`}
