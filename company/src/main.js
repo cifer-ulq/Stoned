@@ -40,7 +40,7 @@ let activeRouteKey = null;
 const routeEndpointMap = {
   '/':             ['/company/dashboard', '/company/profile'],
   '/jobs':         ['/company/jobs'],
-  '/post-job':     ['/company/jobs'],
+  '/post-job':     [],
   '/ojt-slots':    ['/company/ojt-postings'],
   '/ojt-trainees': ['/company/ojt-trainees'],
   '/employees':    ['/company/employees'],
@@ -48,7 +48,7 @@ const routeEndpointMap = {
   '/interviews':   ['/company/interviews'],
   '/analytics':    ['/company/analytics'],
   '/profile':      ['/company/profile', '/company/jobs', '/company/ojt-postings', '/company/ojt-trainees'],
-  '/profile-setup':['/company/profile', '/auth/me'],
+  '/profile-setup':[],
 };
 
 function getEndpointsForRoute(routePath) {
@@ -86,10 +86,18 @@ function renderPage(routePath, renderer) {
     });
 
     const existingView = pageViews.get(routeKey);
+    const isTransientFormRoute = routePath === '/post-job' || routePath === '/profile-setup';
 
     if (existingView) {
       // 1. INSTANT DISPLAY: Unhide existing container
       existingView.container.style.display = 'block';
+
+      if (isTransientFormRoute) {
+        existingView.dirty = false;
+        await renderer(existingView.container);
+        window.scrollTo({ top: 0, behavior: 'instant' });
+        return;
+      }
 
       // Restore scroll position
       const savedScroll = scrollPositions.get(routeKey) || 0;

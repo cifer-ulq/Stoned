@@ -706,11 +706,11 @@ function renderCurrentStep(container, editId, editJob) {
   const wrap = container.querySelector('#pj-step-wrap');
   wrap.innerHTML = '';
   wrap.classList.remove('pj-slide-in');
-  // Trigger animation
+  if (currentStep === 1)      renderStep1(wrap);
+  else if (currentStep === 2) renderStep2(wrap);
+  else if (currentStep === 3) renderStep3(wrap);
+  // Trigger transition animation cleanly after synchronous step mount
   requestAnimationFrame(() => {
-    if (currentStep === 1)      renderStep1(wrap);
-    else if (currentStep === 2) renderStep2(wrap);
-    else if (currentStep === 3) renderStep3(wrap);
     wrap.classList.add('pj-slide-in');
   });
 

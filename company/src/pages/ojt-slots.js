@@ -2904,6 +2904,11 @@ function openSlotWizard({ isEdit = false, slot = null, container, allSlots }) {
   function updateLivePreview() {
     const target = backdrop.querySelector('#wiz-card-preview-target');
     if (!target) return;
+    const deptInitials = (name = '') => {
+      const words = String(name).trim().split(/\s+/).filter(Boolean);
+      if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
+      return (words[0] || 'OJ').slice(0, 2).toUpperCase();
+    };
     const dept = deptSelect.value || 'IT Department';
     const title = backdrop.querySelector('#wiz-title').value.trim() || 'Trainee Position';
     const courses = coursePicker.getCourses();
@@ -2918,19 +2923,19 @@ function openSlotWizard({ isEdit = false, slot = null, container, allSlots }) {
       <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.03);">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
           <div style="width:42px;height:42px;border-radius:10px;background:#ecfdf5;color:#005930;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1rem;">
-            ${deptInitials(dept)}
+            ${escapeHtml(deptInitials(dept))}
           </div>
           <div style="flex:1;min-width:0;">
-            <h4 style="margin:0;font-size:1rem;font-weight:800;color:#0f172a;">${title}</h4>
-            <p style="margin:2px 0 0;font-size:0.75rem;color:#64748b;">${dept}</p>
+            <h4 style="margin:0;font-size:1rem;font-weight:800;color:#0f172a;">${escapeHtml(title)}</h4>
+            <p style="margin:2px 0 0;font-size:0.75rem;color:#64748b;">${escapeHtml(dept)}</p>
           </div>
           <span class="badge badge--success">Open</span>
         </div>
 
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
-          <span class="ojts-tag" style="font-size:0.72rem;">${icon('bookOpen', 11)} ${courses.length ? courses.join(', ') : 'Open to All'}</span>
+          <span class="ojts-tag" style="font-size:0.72rem;">${icon('bookOpen', 11)} ${escapeHtml(courses.length ? courses.join(', ') : 'Open to All')}</span>
           <span class="ojts-tag" style="font-size:0.72rem;">${icon('calendar', 11)} 5 months (600 hours)</span>
-          <span class="ojts-tag" style="font-size:0.72rem;">${icon('mapPin', 11)} ${loc.split(',')[0]}</span>
+          <span class="ojts-tag" style="font-size:0.72rem;">${icon('mapPin', 11)} ${escapeHtml(loc.split(',')[0])}</span>
         </div>
 
         ${skills.length ? `
