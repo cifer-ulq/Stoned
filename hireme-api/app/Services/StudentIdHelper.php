@@ -106,4 +106,120 @@ class StudentIdHelper
 
         return "{$base}00";
     }
+
+    /**
+     * Extract structured name parts (first_name, middle_initial, last_name)
+     * from a full display name, honoring explicit overrides when supplied.
+     *
+     * @return array{first_name: ?string, middle_initial: ?string, last_name: ?string}
+     */
+    public static function parseNameParts(
+        string $fullName,
+        ?string $firstName = null,
+        ?string $middleInitial = null,
+        ?string $lastName = null
+    ): array {
+        $cleanFull  = preg_replace('/\s+/', ' ', trim($fullName));
+        $cleanFirst = $firstName !== null ? preg_replace('/\s+/', ' ', trim($firstName)) : null;
+        $cleanLast  = $lastName !== null ? preg_replace('/\s+/', ' ', trim($lastName)) : null;
+
+        $alphaMid = preg_replace('/[^A-Za-z]/', '', (string) ($middleInitial ?? ''));
+        $cleanMid = $alphaMid !== '' ? strtoupper(substr($alphaMid, 0, 1)) : null;
+
+        if ($cleanFirst !== null && $cleanFirst !== '' && $cleanLast !== null && $cleanLast !== '') {
+            return [
+                'first_name'     => $cleanFirst,
+                'middle_initial' => $cleanMid,
+                'last_name'      => $cleanLast,
+            ];
+        }
+
+        if ($cleanFull === '') {
+            return [
+                'first_name'     => $cleanFirst ?: null,
+                'middle_initial' => $cleanMid,
+                'last_name'      => $cleanLast ?: null,
+            ];
+        }
+
+        $parts = explode(' ', $cleanFull);
+        $count = count($parts);
+
+        $derivedFirst = null;
+        $derivedMid   = null;
+        $derivedLast  = null;
+
+        if ($count === 1) {
+            $derivedFirst = $parts[0];
+        } elseif ($count === 2) {
+            $derivedFirst = $parts[0];
+            $derivedLast  = $parts[1];
+        } else {
+            // Detect a middle-initial token such as "M." or "M" between first and last names
+            $midIdx = null;
+            for ($k = 1; $k < $count - 1; $k++) {
+                if (preg_match('/^[A-Za-z]\.?$/', $parts[$k])) {
+                    $midIdx = $k;
+                    break;
+                }
+            }
+
+            if ($midIdx !== null) {
+                $derivedFirst = implode(' ', array_slice($parts, 0, $midIdx));
+                $derivedMid   = strtoupper(substr(preg_replace('/[^A-Za-z]/', '', $parts[$midIdx]), 0, 1));
+                $derivedLast  = implode(' ', array_slice($parts, $midIdx + 1));
+            } else {
+                $derivedFirst = $parts[0];
+                $derivedLast  = implode(' ', array_slice($parts, 1));
+            }
+        }
+
+        return [
+            'first_name'     => ($cleanFirst !== null && $cleanFirst !== '') ? $cleanFirst : ($derivedFirst ?: null),
+            'middle_initial' => $cleanMid ?? ($derivedMid ?: null),
+            'last_name'      => ($cleanLast !== null && $cleanLast !== '') ? $cleanLast : ($derivedLast ?: null),
+        ];
+    }
+
+    /**
+     * Determine whether an email address belongs to an RFC 2606 / RFC 6761
+     * reserved non-deliverable test domain so batch imports do not generate SMTP bounces.
+     */
+    public static function isNonDeliverableTestEmail(string $email): bool
+    {
+        $atPos = strrpos($email, '@');
+        if ($atPos === false) {
+            return false;
+        }
+
+        $domain = strtolower(trim(substr($email, $atPos + 1)));
+        if ($domain === '') {
+            return false;
+        }
+
+        if (in_array($domain, ['example.com', 'example.org', 'example.net', 'localhost'], true)) {
+            return true;
+        }
+
+        foreach (['.test', '.invalid', '.localhost', '.example'] as $suffix) {
+            if (str_ends_with($domain, $suffix)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Resolve the active frontend login URL, falling back away from deprecated hosts.
+     */
+    public static function resolveLoginAppUrl(): string
+    {
+        $url = config('app.login_app_url') ?: env('LOGIN_APP_URL');
+        if (empty($url) || str_contains((string) $url, 'stoned-two')) {
+            return 'https://chmsu-hireme.vercel.app/login/';
+        }
+
+        return (string) $url;
+    }
 }

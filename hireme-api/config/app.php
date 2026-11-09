@@ -54,6 +54,8 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
+    'login_app_url' => env('LOGIN_APP_URL', 'https://chmsu-hireme.vercel.app/login/'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Timezone

@@ -14,6 +14,7 @@ function escapeHtml(str) {
 
 function downloadCredentialsCSV(creds) {
   if (!creds || !creds.length) return;
+  const loginUrl = `${window.location.origin}/login/`;
   const rows = [
     ['Name', 'Student ID', 'Email', 'Course', 'Section', 'Temporary Password', 'Login URL']
   ];
@@ -25,7 +26,7 @@ function downloadCredentialsCSV(creds) {
       `"${(c.course || '').replace(/"/g, '""')}"`,
       `"${(c.section || '').replace(/"/g, '""')}"`,
       `"${(c.temporary_password || '').replace(/"/g, '""')}"`,
-      `"https://stoned-two.vercel.app/login/"`
+      `"${loginUrl.replace(/"/g, '""')}"`
     ]);
   });
   const csvContent = rows.map(r => r.join(',')).join('\r\n');
@@ -118,8 +119,9 @@ function validateRows(rows) {
     if (row.email && seenEmails.has(row.email.toLowerCase())) issues.push('Duplicate email');
     else if (row.email) seenEmails.add(row.email.toLowerCase());
 
-    if (row.student_id && seenIds.has(row.student_id)) issues.push('Duplicate student_id');
-    else if (row.student_id) seenIds.add(row.student_id);
+    const normId = row.student_id ? row.student_id.replace(/\s+/g, '').toUpperCase() : '';
+    if (normId && seenIds.has(normId)) issues.push('Duplicate student_id');
+    else if (normId) seenIds.add(normId);
 
     return { ...row, _issues: issues, _valid: issues.length === 0 };
   });
@@ -216,12 +218,12 @@ export function openStudentImportModal(onSuccess) {
           </button>
         </div>
         <div class="sim-format-columns">
-          ${['name *', 'email *', 'student_id *', 'course *', 'year', 'section', 'campus', 'batch'].map(c => {
+          ${['name *', 'email *', 'student_id *', 'course *', 'year', 'section', 'campus', 'batch', 'birth_date'].map(c => {
             const req = c.includes('*');
             return `<span class="sim-col-pill ${req ? 'sim-col-pill--req' : ''}">${c.replace(' *', '')}${req ? ` ${icon('sparkles', 10)}` : ''}</span>`;
           }).join('')}
         </div>
-        <p class="sim-format-note" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;"><span style="display:inline-flex;align-items:center;gap:3px;color:var(--color-primary);font-weight:600;">${icon('sparkles', 11)} Required</span> &nbsp;·&nbsp; Column order doesn't matter &nbsp;·&nbsp; Extra columns are ignored</p>
+        <p class="sim-format-note" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;"><span style="display:inline-flex;align-items:center;gap:3px;color:var(--color-primary);font-weight:600;">${icon('sparkles', 11)} Required</span> &nbsp;·&nbsp; Optional extras also supported: <code>first_name</code>, <code>middle_initial</code>, <code>last_name</code> &nbsp;·&nbsp; Column order doesn't matter</p>
       </div>
     `;
     renderIcons();
@@ -279,7 +281,7 @@ export function openStudentImportModal(onSuccess) {
     if (existing) existing.remove();
     const el = document.createElement('div');
     el.className = 'sim-file-error';
-    el.innerHTML = `${icon('alert-triangle', 14)} ${msg}`;
+    el.innerHTML = `${icon('alert-triangle', 14)} ${escapeHtml(msg)}`;
     body.querySelector('.sim-upload-zone').after(el);
     renderIcons();
   }
@@ -296,7 +298,7 @@ export function openStudentImportModal(onSuccess) {
       <div class="sim-preview-stats">
         <div class="sim-preview-stat sim-preview-stat--file">
           ${icon('file-text', 15)}
-          <span class="sim-preview-stat__val">${fileName}</span>
+          <span class="sim-preview-stat__val">${escapeHtml(fileName)}</span>
         </div>
         <div class="sim-preview-stat sim-preview-stat--good">
           ${icon('check-circle', 14)}
@@ -336,17 +338,17 @@ export function openStudentImportModal(onSuccess) {
             ${preview.map(r => `
               <tr class="${r._valid ? '' : 'sim-table__row--bad'}">
                 <td class="sim-table__row-num">${r._row}</td>
-                <td>${r.name || '<span class="sim-missing">—</span>'}</td>
-                <td>${r.email || '<span class="sim-missing">—</span>'}</td>
-                <td>${r.student_id || '<span class="sim-missing">—</span>'}</td>
-                <td>${r.course || '<span class="sim-missing">—</span>'}</td>
-                <td>${r.year || '—'}</td>
-                <td>${r.section || '—'}</td>
-                <td>${r.campus || '—'}</td>
+                <td>${r.name ? escapeHtml(r.name) : '<span class="sim-missing">—</span>'}</td>
+                <td>${r.email ? escapeHtml(r.email) : '<span class="sim-missing">—</span>'}</td>
+                <td>${r.student_id ? escapeHtml(r.student_id) : '<span class="sim-missing">—</span>'}</td>
+                <td>${r.course ? escapeHtml(r.course) : '<span class="sim-missing">—</span>'}</td>
+                <td>${r.year ? escapeHtml(r.year) : '—'}</td>
+                <td>${r.section ? escapeHtml(r.section) : '—'}</td>
+                <td>${r.campus ? escapeHtml(r.campus) : 'Alijis Campus'}</td>
                 <td>
                   ${r._valid
                     ? `<span class="sim-status-pill sim-status-pill--ok">${icon('check', 10)} Valid</span>`
-                    : `<span class="sim-status-pill sim-status-pill--err">${icon('x', 10)} ${r._issues[0]}</span>`}
+                    : `<span class="sim-status-pill sim-status-pill--err">${icon('x', 10)} ${escapeHtml(r._issues[0])}</span>`}
                 </td>
               </tr>
             `).join('')}
@@ -404,11 +406,23 @@ export function openStudentImportModal(onSuccess) {
   function renderStep3(res) {
     setStep(3);
 
-    const imported = res?.imported ?? 0;
-    const skipped  = res?.skipped  ?? 0;
-    const errors   = res?.errors   ?? [];
-    const creds    = res?.credentials ?? [];
-    const success  = imported > 0;
+    const imported    = res?.imported     ?? 0;
+    const skipped     = res?.skipped      ?? 0;
+    const errors      = res?.errors       ?? [];
+    const creds       = res?.credentials  ?? [];
+    const mailSkipped = res?.mail_skipped ?? 0;
+    const mailErrors  = res?.mail_errors  ?? [];
+    const success     = imported > 0;
+
+    const heroSub = !success
+      ? escapeHtml(res?.message || 'All rows were skipped. Please review the errors below and fix your CSV.')
+      : (mailSkipped > 0 && mailSkipped === imported
+          ? `Temporary credentials have been generated (${mailSkipped} reserved test address${mailSkipped !== 1 ? 'es' : ''} skipped from email dispatch).`
+          : (mailSkipped > 0
+              ? `Temporary credentials have been generated (${mailSkipped} reserved test address${mailSkipped !== 1 ? 'es' : ''} skipped; remaining welcome emails sent).`
+              : (mailErrors.length > 0
+                  ? `Temporary credentials generated (some welcome emails encountered delivery issues — see credentials below).`
+                  : `Temporary credentials have been generated and welcome emails dispatched.`)));
 
     body.innerHTML = `
       <div class="sim-result-hero ${success ? 'sim-result-hero--ok' : 'sim-result-hero--warn'}">
@@ -420,9 +434,7 @@ export function openStudentImportModal(onSuccess) {
             ${success ? `${imported} Student${imported !== 1 ? 's' : ''} Imported Successfully` : 'No Students Imported'}
           </div>
           <div class="sim-result-hero__sub">
-            ${success
-              ? `Temporary credentials have been generated and welcome emails queued.`
-              : `All rows were skipped. Please review the errors below and fix your CSV.`}
+            ${heroSub}
           </div>
         </div>
       </div>
@@ -505,9 +517,9 @@ export function openStudentImportModal(onSuccess) {
               <tbody>
                 ${errors.map(e => `
                   <tr>
-                    <td class="sim-table__row-num">${e.row}</td>
-                    <td>${e.email || '—'}</td>
-                    <td><span class="sim-err-reason">${e.reason}</span></td>
+                    <td class="sim-table__row-num">${escapeHtml(e.row)}</td>
+                    <td>${e.email ? escapeHtml(e.email) : '—'}</td>
+                    <td><span class="sim-err-reason">${escapeHtml(e.reason)}</span></td>
                   </tr>
                 `).join('')}
               </tbody>

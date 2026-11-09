@@ -2,6 +2,7 @@
 
 namespace App\Mail;
 
+use App\Services\StudentIdHelper;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -31,7 +32,7 @@ class AlumniWelcome extends Mailable
         }
 
         if (empty($this->loginUrl)) {
-            $this->loginUrl = config('app.login_app_url', env('LOGIN_APP_URL', 'https://stoned-two.vercel.app/login/'));
+            $this->loginUrl = StudentIdHelper::resolveLoginAppUrl();
         }
     }
 

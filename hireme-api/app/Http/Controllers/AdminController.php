@@ -27,6 +27,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
@@ -587,7 +588,7 @@ class AdminController extends Controller
                 $sp->where(function ($sq) {
                     $sq->whereNull('status')->orWhere('status', '!=', 'alumni');
                 })->where(function ($sq) {
-                    $sq->whereNull('year_level')->orWhere('year_level', 'not ilike', '%graduat%');
+                    $sq->whereNull('year_level')->orWhereRaw('LOWER(year_level) NOT LIKE ?', ['%graduat%']);
                 });
             });
 
@@ -2124,7 +2125,7 @@ class AdminController extends Controller
                 email:             $user->email,
                 assignedProgram:   $normalizedCourse,
                 temporaryPassword: $tempPassword,
-                loginUrl:          config('app.login_app_url', env('LOGIN_APP_URL', 'https://stoned-two.vercel.app/login/')),
+                loginUrl:          StudentIdHelper::resolveLoginAppUrl(),
             ));
             $mailSent = true;
         } catch (\Throwable $mailError) {
@@ -2171,7 +2172,7 @@ class AdminController extends Controller
                 email:             $user->email,
                 assignedProgram:   $course,
                 temporaryPassword: $tempPassword,
-                loginUrl:          config('app.login_app_url', env('LOGIN_APP_URL', 'https://stoned-two.vercel.app/login/')),
+                loginUrl:          StudentIdHelper::resolveLoginAppUrl(),
             ));
             $mailSent = true;
         } catch (\Throwable $mailError) {
@@ -2618,15 +2619,30 @@ class AdminController extends Controller
         if (! isset($idx['year']) && isset($idx['year_level'])) {
             $idx['year'] = $idx['year_level'];
         }
+        // Alias: middle_name → middle_initial
+        if (! isset($idx['middle_initial']) && isset($idx['middle_name'])) {
+            $idx['middle_initial'] = $idx['middle_name'];
+        }
+        // Aliases: birthdate / dob → birth_date
+        if (! isset($idx['birth_date']) && isset($idx['birthdate'])) {
+            $idx['birth_date'] = $idx['birthdate'];
+        }
+        if (! isset($idx['birth_date']) && isset($idx['dob'])) {
+            $idx['birth_date'] = $idx['dob'];
+        }
+
+        $hasNamePartCols = Schema::hasColumns('users', ['first_name', 'middle_initial', 'last_name']);
+        $hasBirthDateCol = Schema::hasColumn('student_profiles', 'birth_date');
 
         // ── Process rows ─────────────────────────────────────────────────────
         $imported            = 0;
         $skipped             = 0;
         $errors              = [];
         $seenEmails          = [];
-        $seenStudentIds       = [];
+        $seenStudentIds      = [];
         $importedCredentials = [];
         $mailErrors          = [];
+        $mailSkipped         = 0;
         $smtpDead            = false;
 
         $get = function (array $values, string $key) use ($idx): ?string {
@@ -2639,17 +2655,28 @@ class AdminController extends Controller
             $rowNum = $i + 1;  // 1-indexed for human display (row 2 = first data row)
             $values = str_getcsv($lines[$i]);
 
-            $nameRaw   = $get($values, 'name');
-            $name      = $nameRaw ? preg_replace('/\s+/', ' ', trim($nameRaw)) : null;
-            $emailRaw  = $get($values, 'email');
-            $email     = $emailRaw ? strtolower(trim($emailRaw)) : null;
-            $studentId = StudentIdHelper::sanitize($get($values, 'student_id'));
-            $course    = CourseNormalizer::normalize($get($values, 'course'));
-            $year      = YearLevelNormalizer::normalize($get($values, 'year'), '4th Year');
-            $section   = SectionNormalizer::normalize($get($values, 'section'));
-            $campus    = $get($values, 'campus') ?: 'Alijis Campus';
-            $batchRaw  = $get($values, 'batch');
-            $batch     = $batchRaw ? preg_replace('/\s*-\s*/', '-', trim($batchRaw)) : null;
+            $nameRaw      = $get($values, 'name');
+            $name         = $nameRaw ? preg_replace('/\s+/', ' ', trim($nameRaw)) : null;
+            $emailRaw     = $get($values, 'email');
+            $email        = $emailRaw ? strtolower(trim($emailRaw)) : null;
+            $studentId    = StudentIdHelper::sanitize($get($values, 'student_id'));
+            $course       = CourseNormalizer::normalize($get($values, 'course'));
+            $year         = YearLevelNormalizer::normalize($get($values, 'year'), '4th Year');
+            $section      = SectionNormalizer::normalize($get($values, 'section'));
+            $campus       = $get($values, 'campus') ?: 'Alijis Campus';
+            $batchRaw     = $get($values, 'batch');
+            $batch        = $batchRaw ? preg_replace('/\s*-\s*/', '-', trim($batchRaw)) : null;
+            $birthDateRaw = $get($values, 'birth_date');
+            $birthDate    = null;
+
+            if ($birthDateRaw !== null) {
+                try {
+                    $birthDate = Carbon::parse($birthDateRaw)->format('Y-m-d');
+                } catch (\Throwable) {
+                    $errors[] = ['row' => $rowNum, 'email' => $email ?? '—', 'reason' => "Invalid birth_date format ({$birthDateRaw})"];
+                    $skipped++; continue;
+                }
+            }
 
             // ── Per-row validation ───────────────────────────────────────────
             if (! $name) {
@@ -2696,6 +2723,13 @@ class AdminController extends Controller
             $seenEmails[]     = strtolower($email);
             $seenStudentIds[] = $studentId;
 
+            $nameParts = StudentIdHelper::parseNameParts(
+                $name,
+                $get($values, 'first_name'),
+                $get($values, 'middle_initial'),
+                $get($values, 'last_name')
+            );
+
             // ── Create records ───────────────────────────────────────────────
             try {
                 $rawId = trim((string) $studentId);
@@ -2705,39 +2739,53 @@ class AdminController extends Controller
                 }
 
                 DB::transaction(function () use (
-                    $name, $email, $studentId, $course, $year, $section, $campus, $batch, $tempPassword
+                    $name, $nameParts, $email, $studentId, $course, $year, $section, $campus, $batch, $birthDate, $tempPassword, $hasNamePartCols, $hasBirthDateCol
                 ) {
-                    $user = User::create([
+                    $userAttrs = [
                         'name'                 => $name,
                         'email'                => $email,
                         'password'             => Hash::make($tempPassword),
                         'must_change_password' => true,
                         'role'                 => 'student',
                         'onboarding_completed' => true,                     // Pre-filled by admin
-                    ]);
+                    ];
+                    if ($hasNamePartCols) {
+                        $userAttrs['first_name']     = $nameParts['first_name'];
+                        $userAttrs['middle_initial'] = $nameParts['middle_initial'];
+                        $userAttrs['last_name']      = $nameParts['last_name'];
+                    }
+                    $user = User::create($userAttrs);
 
-                    StudentProfile::create([
-                        'user_id'    => $user->id,
-                        'school'     => 'Carlos Hilado Memorial State University',
-                        'campus'     => $campus,
-                        'program'    => $course,
-                        'year_level' => $year,
-                        'student_id' => $studentId,
-                        'section'    => $section,
-                        'batch'      => $batch,
-                        'status'     => 'Active',
-                    ]);
+                    $profileAttrs = [
+                        'user_id'             => $user->id,
+                        'school'              => 'Carlos Hilado Memorial State University',
+                        'campus'              => $campus,
+                        'program'             => $course,
+                        'year_level'          => $year,
+                        'student_id'          => $studentId,
+                        'section'             => $section,
+                        'batch'               => $batch,
+                        'status'              => 'Active',
+                        'registration_source' => 'admin',
+                        'approval_status'     => 'approved',
+                    ];
+                    if ($hasBirthDateCol && $birthDate !== null) {
+                        $profileAttrs['birth_date'] = $birthDate;
+                    }
+                    StudentProfile::create($profileAttrs);
                 });
 
-                // Send welcome email with credentials outside of DB transaction (safeguarded against SMTP connection hanging)
-                if (!$smtpDead) {
+                // Send welcome email with credentials outside of DB transaction (skip reserved non-deliverable test domains)
+                if (StudentIdHelper::isNonDeliverableTestEmail($email)) {
+                    $mailSkipped++;
+                } elseif (!$smtpDead) {
                     try {
                         Mail::to($email)->send(new StudentWelcome(
                             studentName:       $name,
                             email:             $email,
                             studentId:         $studentId,
                             program:           $course,
-                            campus:            $campus ?? 'Main Campus',
+                            campus:            $campus ?? 'Alijis Campus',
                             temporaryPassword: $tempPassword,
                         ));
                     } catch (\Throwable $mailError) {
@@ -2755,8 +2803,12 @@ class AdminController extends Controller
 
                 $importedCredentials[] = [
                     'name'               => $name,
+                    'first_name'         => $nameParts['first_name'],
+                    'middle_initial'     => $nameParts['middle_initial'],
+                    'last_name'          => $nameParts['last_name'],
                     'email'              => $email,
                     'student_id'         => $studentId,
+                    'birth_date'         => $birthDate,
                     'course'             => $course,
                     'section'            => $section ?? '—',
                     'temporary_password' => $tempPassword,
@@ -2774,14 +2826,24 @@ class AdminController extends Controller
             }
         }
 
+        $statusNote = " Credentials generated and welcome emails sent.";
+        if (!empty($mailErrors)) {
+            $statusNote = " (Note: Email sending encountered an issue; see mail_errors or use downloaded credentials).";
+        } elseif ($mailSkipped > 0 && $mailSkipped === $imported) {
+            $statusNote = " Credentials generated (welcome emails skipped for reserved test addresses).";
+        } elseif ($mailSkipped > 0) {
+            $statusNote = " Credentials generated ({$mailSkipped} reserved test email(s) skipped; remaining welcome emails sent).";
+        }
+
         return response()->json([
-            'imported'    => $imported,
-            'skipped'     => $skipped,
-            'errors'      => $errors,
-            'credentials' => $importedCredentials,
-            'mail_errors' => $mailErrors,
-            'message'     => $imported > 0
-                ? "Successfully imported $imported student(s)." . (!empty($mailErrors) ? " (Note: Email sending encountered an issue; see mail_errors or use downloaded credentials)." : " Credentials generated and welcome emails sent.")
+            'imported'     => $imported,
+            'skipped'      => $skipped,
+            'errors'       => $errors,
+            'credentials'  => $importedCredentials,
+            'mail_errors'  => $mailErrors,
+            'mail_skipped' => $mailSkipped,
+            'message'      => $imported > 0
+                ? "Successfully imported $imported student(s)." . $statusNote
                 : 'No students were imported.',
         ]);
     }
