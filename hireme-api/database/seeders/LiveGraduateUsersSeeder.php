@@ -561,15 +561,27 @@ class LiveGraduateUsersSeeder extends Seeder
                 ]
             );
 
-            $this->command->info("✓  Seeded graduate: {$data['name']} [{$data['batch']} | Sec {$data['section']}]");
+            if ($this->command) {
+                $this->command->info("✓  Seeded graduate: {$data['name']} [{$data['batch']} | Sec {$data['section']}]");
+            } else {
+                echo "✓  Seeded graduate: {$data['name']} [{$data['batch']} | Sec {$data['section']}]" . PHP_EOL;
+            }
         }
 
-        $this->command->newLine();
-        $this->command->info('════════════════════════════════════════════════════════');
-        $this->command->info('  LiveGraduateUsersSeeder complete — 20 graduates seeded');
-        $this->command->info('  Password for all accounts: Demo@1234');
-        $this->command->info('  Batch 2025-2026: Sections A & B  (5 each)');
-        $this->command->info('  Batch 2024-2025: Sections A & B  (5 each)');
-        $this->command->info('════════════════════════════════════════════════════════');
+        $summary = implode(PHP_EOL, [
+            '════════════════════════════════════════════════════════',
+            '  LiveGraduateUsersSeeder complete — 20 graduates seeded',
+            '  Password for all accounts: Demo@1234',
+            '  Batch 2025-2026: Sections A & B  (5 each)',
+            '  Batch 2024-2025: Sections A & B  (5 each)',
+            '════════════════════════════════════════════════════════',
+        ]);
+
+        if ($this->command) {
+            $this->command->newLine();
+            $this->command->info($summary);
+        } else {
+            echo PHP_EOL . $summary . PHP_EOL;
+        }
     }
 }
