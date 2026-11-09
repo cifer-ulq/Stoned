@@ -696,13 +696,17 @@ export default async function JobPostingsPage(container) {
       applyFilters(false);
     },
   }).then(res => {
-    if (!cached && res) {
-      if (!tableContainer || !tableContainer.isConnected) return;
-      loadError = false;
-      jobs = Array.isArray(res) ? res : [];
-      renderJobAnalytics(jobs, analytics);
-      applyFilters(false);
+    if (cached || !tableContainer || !tableContainer.isConnected) return;
+    if (!res) {
+      loadError = true;
+      analytics.innerHTML = '';
+      renderTablePage();
+      return;
     }
+    loadError = false;
+    jobs = Array.isArray(res) ? res : [];
+    renderJobAnalytics(jobs, analytics);
+    applyFilters(false);
   }).catch(() => {
     if (!cached && tableContainer && tableContainer.isConnected) {
       loadError = true;
