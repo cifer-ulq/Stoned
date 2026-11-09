@@ -322,13 +322,14 @@ async function renderStep2() {
                     <select class="sp-select" id="p-ownership" required>
                       <option value="">Select ownership type</option>
                       <option value="Private Corporation">Private Corporation</option>
-                      <option value="Public Corporation">Public Corporation</option>
+                      <option value="Public / Listed Company">Public / Listed Company</option>
                       <option value="Sole Proprietorship">Sole Proprietorship</option>
                       <option value="Partnership">Partnership</option>
                       <option value="Cooperative">Cooperative</option>
-                      <option value="Non-profit / NGO">Non-profit / NGO</option>
+                      <option value="Non-Profit / NGO">Non-Profit / NGO</option>
                       <option value="Government Agency">Government Agency</option>
                       <option value="State-owned Enterprise">State-owned Enterprise</option>
+                      <option value="Other">Other</option>
                     </select>
                     <div class="sp-field-error" id="err-p-ownership"></div>
                   </div>
@@ -340,13 +341,12 @@ async function renderStep2() {
                     </label>
                     <select class="sp-select" id="p-size" required>
                       <option value="">Select workforce size</option>
-                      <option value="1-10">1 – 10 employees (Startup / Boutique)</option>
-                      <option value="11-50">11 – 50 employees (Small Enterprise)</option>
-                      <option value="51-200">51 – 200 employees (Medium Business)</option>
-                      <option value="201-500">201 – 500 employees (Mid-to-Large)</option>
-                      <option value="501-1000">501 – 1,000 employees (Large Enterprise)</option>
-                      <option value="1001-5000">1,001 – 5,000 employees (Corporation)</option>
-                      <option value="5001+">5,001+ employees (Conglomerate)</option>
+                      <option value="1-10 employees">1 – 10 employees (Startup / Boutique)</option>
+                      <option value="11-50 employees">11 – 50 employees (Small Enterprise)</option>
+                      <option value="51-200 employees">51 – 200 employees (Medium Business)</option>
+                      <option value="201-500 employees">201 – 500 employees (Mid-to-Large)</option>
+                      <option value="501-1,000 employees">501 – 1,000 employees (Large Enterprise)</option>
+                      <option value="1,000+ employees">1,000+ employees (Corporation / Enterprise)</option>
                     </select>
                     <div class="sp-field-error" id="err-p-size"></div>
                   </div>
@@ -521,8 +521,12 @@ async function renderStep2() {
       const json = await res.json();
       companyData = json?.data || null;
       if (companyData) {
-        if (companyData.company_location && !document.getElementById('p-address').value) {
-          document.getElementById('p-address').value = companyData.company_location;
+        const prefillAddress = companyData.full_address || companyData.company_location;
+        if (prefillAddress && !document.getElementById('p-address').value) {
+          document.getElementById('p-address').value = prefillAddress;
+        }
+        if (companyData.contact_title && !document.getElementById('p-title').value) {
+          document.getElementById('p-title').value = companyData.contact_title;
         }
         if (companyData.contact_phone && !document.getElementById('p-phone').value) {
           document.getElementById('p-phone').value = companyData.contact_phone;

@@ -6,14 +6,49 @@
 import { icon } from '../components/icons.js';
 import { getState, setState } from '../store.js';
 import { navigate } from '../router.js';
-import { apiGet, apiUpload, storageUrl } from '../api/client.js';
+import { apiGet, apiPost, apiUpload, storageUrl } from '../api/client.js';
 import { openMoaRequestModal, showPostingRestrictedModal } from '../components/moa-modal.js';
 
 const INDUSTRIES = [
-  'Information Technology', 'Business Process Outsourcing', 'Manufacturing',
-  'Healthcare', 'Education', 'Finance & Banking', 'Retail & E-Commerce',
-  'Construction', 'Agriculture', 'Tourism & Hospitality', 'Government',
-  'Non-Profit / NGO', 'Other',
+  'Software Development',
+  'IT Consulting',
+  'IT Consulting & Services',
+  'Cloud Services',
+  'Cloud Computing & DevOps',
+  'Data Analytics & AI',
+  'Cybersecurity',
+  'Digital Design & UX',
+  'IT Outsourcing',
+  'IT Outsourcing & BPO',
+  'Telecommunications',
+  'BPO / Call Center',
+  'Business Process Outsourcing',
+  'Information Technology',
+  'Accounting & Finance',
+  'Finance & Banking',
+  'Financial Services & FinTech',
+  'Marketing & Advertising',
+  'Manufacturing',
+  'Engineering & Hardware',
+  'Construction & Engineering',
+  'Construction',
+  'Healthcare & Medical',
+  'Healthcare & BioTech',
+  'Healthcare',
+  'Education',
+  'Education & EdTech',
+  'Government',
+  'Government & Public Sector',
+  'Non-profit / NGO',
+  'Non-Profit / NGO',
+  'Retail & E-commerce',
+  'Retail & E-Commerce',
+  'Hospitality & Tourism',
+  'Tourism & Hospitality',
+  'Logistics & Transportation',
+  'Agriculture',
+  'Agriculture & Food Tech',
+  'Other',
 ];
 
 const COMPANY_SIZES = [
@@ -21,15 +56,37 @@ const COMPANY_SIZES = [
   '201-500 employees', '501-1,000 employees', '1,000+ employees',
 ];
 
+const LEGACY_SIZE_MAP = {
+  '1-10': '1-10 employees',
+  '11-50': '11-50 employees',
+  '51-200': '51-200 employees',
+  '201-500': '201-500 employees',
+  '501-1000': '501-1,000 employees',
+  '1001-5000': '1,000+ employees',
+  '5001+': '1,000+ employees',
+};
+
 const OWNERSHIP_TYPES = [
   'Private Corporation',
   'Public / Listed Company',
   'Sole Proprietorship',
   'Partnership',
+  'Cooperative',
   'Non-Profit / NGO',
   'Government Agency',
+  'State-owned Enterprise',
   'Other',
 ];
+
+function renderSelectOptions(list, currentValue) {
+  const norm = currentValue ? (LEGACY_SIZE_MAP[currentValue] || currentValue) : '';
+  const hasMatch = norm && list.includes(norm);
+  const opts = list.map(item => `<option value="${escapeHtml(item)}" ${norm === item ? 'selected' : ''}>${escapeHtml(item)}</option>`).join('');
+  if (norm && !hasMatch) {
+    return `${opts}<option value="${escapeHtml(norm)}" selected>${escapeHtml(norm)}</option>`;
+  }
+  return opts;
+}
 
 let C = {}; // company state
 let currentTab = 'about';
@@ -55,11 +112,15 @@ export async function renderCompanyProfile(container) {
       C = {
         ...C,
         name:                 d.company_name        || C.name,
+        initials:             (d.company_name || C.name || 'CO').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2),
         industry:             d.company_type        || C.industry,
         location:             d.company_location    || C.location,
+        fullAddress:          d.full_address        || C.fullAddress || '',
         companySize:          d.company_size        || C.companySize,
         contactEmail:         d.contact_email       || C.contactEmail,
         contactPhone:         d.contact_phone       || C.contactPhone,
+        contactPerson:        d.contact_person      || C.contactPerson || d.name || '',
+        contactTitle:         d.contact_title       || C.contactTitle || '',
         website:              d.website             || C.website,
         description:          d.description         || C.description,
         logoUrl:              d.logo_url            || C.logoUrl,
@@ -364,6 +425,10 @@ function renderAboutTab() {
             <span class="cp-detail-item__value" id="detail-location">${escapeHtml(C.location || '—')}</span>
           </div>
           <div class="cp-detail-item">
+            <span class="cp-detail-item__label">${icon('mapPin', 14)} Full Address</span>
+            <span class="cp-detail-item__value" id="detail-full-address">${escapeHtml(C.fullAddress || C.location || '—')}</span>
+          </div>
+          <div class="cp-detail-item">
             <span class="cp-detail-item__label">${icon('globe', 14)} Website</span>
             <span class="cp-detail-item__value" id="detail-website">
               ${C.website
@@ -404,7 +469,7 @@ function renderAboutTab() {
               <strong style="font-size:1rem;color:var(--text-primary);">${C.moaStatus || 'Pending'}</strong>
             </div>
             ${C.moaFileUrl ? `
-              <a href="${escapeHtml(C.moaFileUrl)}" target="_blank" rel="noopener" class="btn btn--outline btn--sm" style="gap:6px;">
+              <a href="${escapeHtml(storageUrl(C.moaFileUrl))}" target="_blank" rel="noopener" class="btn btn--outline btn--sm" style="gap:6px;">
                 ${icon('externalLink', 13)} View MOA Document
               </a>
             ` : ''}
@@ -623,6 +688,10 @@ function renderContactTab() {
         </div>
         <div class="cp-details-grid">
           <div class="cp-detail-item">
+            <span class="cp-detail-item__label">${icon('user', 14)} Contact Person</span>
+            <span class="cp-detail-item__value">${escapeHtml(C.contactPerson || '—')}${C.contactTitle ? ` (${escapeHtml(C.contactTitle)})` : ''}</span>
+          </div>
+          <div class="cp-detail-item">
             <span class="cp-detail-item__label">${icon('mail', 14)} Contact Email</span>
             <span class="cp-detail-item__value">${escapeHtml(C.contactEmail || '—')}</span>
           </div>
@@ -639,8 +708,8 @@ function renderContactTab() {
             </span>
           </div>
           <div class="cp-detail-item">
-            <span class="cp-detail-item__label">${icon('mapPin', 14)} Address</span>
-            <span class="cp-detail-item__value">${escapeHtml(C.location || '—')}</span>
+            <span class="cp-detail-item__label">${icon('mapPin', 14)} Full Address</span>
+            <span class="cp-detail-item__value">${escapeHtml(C.fullAddress || C.location || '—')}</span>
           </div>
         </div>
       </div>
@@ -704,8 +773,8 @@ function openModal({ title, body, onSave }) {
 /* ── Full Edit Profile Modal ── */
 function openEditModal() {
   const logoPreviewHtml = C.logoUrl
-    ? `<img src="${C.logoUrl}" alt="Logo" style="width:64px;height:64px;border-radius:50%;object-fit:cover;" />`
-    : `<div style="width:64px;height:64px;border-radius:50%;background:var(--bg-tertiary);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.2rem;">${C.initials || 'CO'}</div>`;
+    ? `<img src="${escapeHtml(storageUrl(C.logoUrl))}" alt="Logo" style="width:64px;height:64px;border-radius:50%;object-fit:cover;" />`
+    : `<div style="width:64px;height:64px;border-radius:50%;background:var(--bg-tertiary);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.2rem;">${escapeHtml(C.initials || 'CO')}</div>`;
 
   openModal({
     title: `${icon('edit', 18)} Edit Company Profile`,
@@ -715,8 +784,8 @@ function openEditModal() {
         <div id="modal-logo-preview">${logoPreviewHtml}</div>
         <div>
           <button type="button" class="btn btn--outline btn--sm" id="modal-upload-logo-btn">${icon('upload', 14)} Change Logo</button>
-          <p class="text-xs text-tertiary mt-1">PNG, JPG up to 2MB</p>
-          <input type="file" id="modal-logo-input" accept="image/png,image/jpeg" hidden />
+          <p class="text-xs text-tertiary mt-1">PNG, JPG, WebP up to 5MB</p>
+          <input type="file" id="modal-logo-input" accept="image/png,image/jpeg,image/webp,image/gif" hidden />
         </div>
       </div>
 
@@ -731,20 +800,47 @@ function openEditModal() {
           <label class="form-label">Industry *</label>
           <select class="form-select" name="company_type" required>
             <option value="">Select industry</option>
-            ${INDUSTRIES.map(i => `<option value="${i}" ${C.industry === i ? 'selected' : ''}>${i}</option>`).join('')}
+            ${renderSelectOptions(INDUSTRIES, C.industry)}
           </select>
         </div>
         <div class="form-group" style="flex:1;">
           <label class="form-label">Company Size *</label>
           <select class="form-select" name="company_size" required>
             <option value="">Select size</option>
-            ${COMPANY_SIZES.map(s => `<option value="${s}" ${C.companySize === s ? 'selected' : ''}>${s}</option>`).join('')}
+            ${renderSelectOptions(COMPANY_SIZES, C.companySize)}
           </select>
         </div>
       </div>
+      <div class="form-row">
+        <div class="form-group" style="flex:1;">
+          <label class="form-label">Ownership Type</label>
+          <select class="form-select" name="ownership_type">
+            <option value="">Select ownership</option>
+            ${renderSelectOptions(OWNERSHIP_TYPES, C.ownershipType || 'Private Corporation')}
+          </select>
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label class="form-label">Year Founded</label>
+          <input class="form-input" name="year_founded" type="number" min="1800" max="${new Date().getFullYear()}" value="${escapeHtml(C.yearFounded || '')}" placeholder="e.g. 2018" />
+        </div>
+      </div>
       <div class="form-group">
-        <label class="form-label">Address / Location *</label>
-        <input class="form-input" name="company_location" required value="${escapeHtml(C.location)}" placeholder="e.g. Cebu City, Philippines" />
+        <label class="form-label">City / Province Location *</label>
+        <input class="form-input" name="company_location" required value="${escapeHtml(C.location)}" placeholder="e.g. Bacolod City, Negros Occidental" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Full Street Address</label>
+        <input class="form-input" name="full_address" value="${escapeHtml(C.fullAddress || '')}" placeholder="e.g. Unit 4, Ayala North Point, Talisay City" />
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="flex:1;">
+          <label class="form-label">Contact Person</label>
+          <input class="form-input" name="contact_person" value="${escapeHtml(C.contactPerson || '')}" placeholder="Full name" />
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label class="form-label">Contact Title / Role</label>
+          <input class="form-input" name="contact_title" value="${escapeHtml(C.contactTitle || '')}" placeholder="e.g. HR Manager" />
+        </div>
       </div>
       <div class="form-row">
         <div class="form-group" style="flex:1;">
@@ -758,7 +854,7 @@ function openEditModal() {
       </div>
       <div class="form-group">
         <label class="form-label">Website</label>
-        <input class="form-input" name="website" type="url" value="${escapeHtml(C.website)}" placeholder="https://yourcompany.com" />
+        <input class="form-input" name="website" type="text" value="${escapeHtml(C.website)}" placeholder="https://yourcompany.com" />
       </div>
       <div class="form-group">
         <label class="form-label">Company Description</label>
@@ -766,55 +862,61 @@ function openEditModal() {
       </div>
     `,
     onSave: async (form) => {
-      const data = new FormData();
-      data.append('company_name',     form.company_name.value.trim());
-      data.append('company_type',     form.company_type.value);
-      data.append('company_size',     form.company_size.value);
-      data.append('company_location', form.company_location.value.trim());
-      data.append('contact_email',    form.contact_email.value.trim());
-      if (form.contact_phone.value) data.append('contact_phone', form.contact_phone.value.trim());
-      if (form.website.value)       data.append('website', form.website.value.trim());
-      if (form.description.value)   data.append('description', form.description.value.trim());
-
-      // Attach logo file if changed
-      const logoInput = document.getElementById('modal-logo-input');
-      if (logoInput?.files?.[0]) data.append('logo', logoInput.files[0]);
-
       if (!form.company_name.value.trim()) throw new Error('Company name is required.');
       if (!form.company_type.value)        throw new Error('Please select an industry.');
       if (!form.company_size.value)        throw new Error('Please select a company size.');
       if (!form.company_location.value.trim()) throw new Error('Address is required.');
       if (!form.contact_email.value.trim()) throw new Error('Contact email is required.');
 
-      const headers = { 'Accept': 'application/json' };
-      const token = localStorage.getItem('hireme_token');
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-      const res = await fetch('http://localhost:8000/api/company/profile', {
-        method: 'POST',
-        headers,
-        credentials: 'include',
-        body: data,
-      });
-      const json = await res.json();
-      if (!res.ok || !json.success) {
-        const msg = json.message || (json.errors ? Object.values(json.errors).flat().join(' ') : 'Save failed.');
+      let websiteVal = form.website.value.trim();
+      if (websiteVal && !/^https?:\/\//i.test(websiteVal)) {
+        websiteVal = 'https://' + websiteVal;
+      }
+
+      const data = new FormData();
+      data.append('company_name',     form.company_name.value.trim());
+      data.append('company_type',     form.company_type.value);
+      data.append('company_size',     form.company_size.value);
+      data.append('company_location', form.company_location.value.trim());
+      data.append('contact_email',    form.contact_email.value.trim());
+      data.append('ownership_type',   form.ownership_type.value);
+      data.append('year_founded',     form.year_founded.value.trim());
+      data.append('full_address',     form.full_address.value.trim());
+      data.append('contact_person',   form.contact_person.value.trim());
+      data.append('contact_title',    form.contact_title.value.trim());
+      data.append('contact_phone',    form.contact_phone.value.trim());
+      data.append('website',          websiteVal);
+      data.append('description',      form.description.value.trim());
+
+      // Attach logo file if changed
+      const logoInput = document.getElementById('modal-logo-input');
+      if (logoInput?.files?.[0]) data.append('logo', logoInput.files[0]);
+
+      const json = await apiUpload('/company/profile', data);
+      if (!json || !json.success) {
+        const msg = json?.message || (json?.errors ? Object.values(json.errors).flat().join(' ') : 'Save failed.');
         throw new Error(msg);
       }
 
       const cp = json.data;
-      const initials = cp.company_name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+      const initials = (cp.company_name || 'CO').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
       C = {
         ...C,
-        name:          cp.company_name,
+        name:             cp.company_name,
         initials,
-        industry:      cp.company_type,
-        location:      cp.company_location,
-        companySize:   cp.company_size,
-        contactEmail:  cp.contact_email,
-        contactPhone:  cp.contact_phone || '',
-        website:       cp.website || '',
-        description:   cp.description || '',
-        logoUrl:       cp.logo_url || C.logoUrl,
+        industry:         cp.company_type,
+        location:         cp.company_location,
+        fullAddress:      cp.full_address || '',
+        companySize:      cp.company_size,
+        ownershipType:    cp.ownership_type || C.ownershipType || '',
+        yearFounded:      cp.year_founded || '',
+        contactEmail:     cp.contact_email,
+        contactPhone:     cp.contact_phone || '',
+        contactPerson:    cp.contact_person || C.contactPerson || '',
+        contactTitle:     cp.contact_title || '',
+        website:          cp.website || '',
+        description:      cp.description || '',
+        logoUrl:          cp.logo_url || C.logoUrl,
         profileCompleted: true,
       };
       setState('company', C);
@@ -842,7 +944,7 @@ function openEditModal() {
       logoInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (!file) return;
-        if (file.size > 2 * 1024 * 1024) { showToast('File too large. Max 2MB.', 'error'); return; }
+        if (file.size > 5 * 1024 * 1024) { showToast('File too large. Max 5MB.', 'error'); return; }
         const reader = new FileReader();
         reader.onload = (ev) => {
           const preview = document.getElementById('modal-logo-preview');
@@ -938,7 +1040,7 @@ function openAboutCompanyModal() {
                   <span class="about-input-icon">${icon('briefcase', 15)}</span>
                   <select class="about-input form-select" name="industry">
                     <option value="">Select industry</option>
-                    ${INDUSTRIES.map(i => `<option value="${i}" ${C.industry === i ? 'selected' : ''}>${i}</option>`).join('')}
+                    ${renderSelectOptions(INDUSTRIES, C.industry)}
                   </select>
                 </div>
               </div>
@@ -950,7 +1052,7 @@ function openAboutCompanyModal() {
                   <span class="about-input-icon">${icon('users', 15)}</span>
                   <select class="about-input form-select" name="company_size">
                     <option value="">Select size</option>
-                    ${COMPANY_SIZES.map(s => `<option value="${s}" ${C.companySize === s ? 'selected' : ''}>${s}</option>`).join('')}
+                    ${renderSelectOptions(COMPANY_SIZES, C.companySize)}
                   </select>
                 </div>
               </div>
@@ -962,7 +1064,7 @@ function openAboutCompanyModal() {
                   <span class="about-input-icon">${icon('building', 15)}</span>
                   <select class="about-input form-select" name="ownership_type">
                     <option value="">Select ownership</option>
-                    ${OWNERSHIP_TYPES.map(o => `<option value="${o}" ${(C.ownershipType || 'Private Corporation') === o ? 'selected' : ''}>${o}</option>`).join('')}
+                    ${renderSelectOptions(OWNERSHIP_TYPES, C.ownershipType || 'Private Corporation')}
                   </select>
                 </div>
               </div>
@@ -986,7 +1088,7 @@ function openAboutCompanyModal() {
 
               <!-- Address / Location -->
               <div class="about-field-group about-field-group--full">
-                <label class="about-field-label">Location / Headquarters</label>
+                <label class="about-field-label">City / Province Location</label>
                 <div class="about-input-wrap">
                   <span class="about-input-icon">${icon('mapPin', 15)}</span>
                   <input
@@ -995,6 +1097,21 @@ function openAboutCompanyModal() {
                     name="location"
                     value="${escapeHtml(C.location || '')}"
                     placeholder="e.g. Bacolod City, Negros Occidental"
+                  />
+                </div>
+              </div>
+
+              <!-- Full Street Address -->
+              <div class="about-field-group about-field-group--full">
+                <label class="about-field-label">Full Street Address</label>
+                <div class="about-input-wrap">
+                  <span class="about-input-icon">${icon('mapPin', 15)}</span>
+                  <input
+                    type="text"
+                    class="about-input"
+                    name="full_address"
+                    value="${escapeHtml(C.fullAddress || '')}"
+                    placeholder="e.g. Unit 4, Ayala North Point, Talisay City, Negros Occidental"
                   />
                 </div>
               </div>
@@ -1129,6 +1246,7 @@ function openAboutCompanyModal() {
       ownership_type:   form.ownership_type.value,
       year_founded:     form.year_founded.value.trim(),
       company_location: form.location.value.trim(),
+      full_address:     form.full_address.value.trim(),
       website:          websiteVal,
       contact_phone:    form.contact_phone.value.trim(),
       company_name:     C.name || '',
@@ -1139,22 +1257,9 @@ function openAboutCompanyModal() {
     saveBtn.innerHTML = `${icon('loader', 16)} <span>Saving…</span>`;
 
     try {
-      const headers = {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      };
-      const token = localStorage.getItem('hireme_token');
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-      const res = await fetch('http://localhost:8000/api/company/profile', {
-        method: 'POST',
-        headers,
-        credentials: 'include',
-        body: JSON.stringify(payload),
-      });
-
-      const json = await res.json();
-      if (!res.ok || !json.success) {
-        const msg = json.message || (json.errors ? Object.values(json.errors).flat().join(' ') : 'Save failed.');
+      const json = await apiPost('/company/profile', payload);
+      if (!json || !json.success) {
+        const msg = json?.message || (json?.errors ? Object.values(json.errors).flat().join(' ') : 'Save failed.');
         throw new Error(msg);
       }
 
@@ -1165,6 +1270,7 @@ function openAboutCompanyModal() {
         industry:      d.company_type || payload.company_type || C.industry,
         companySize:   d.company_size || payload.company_size || C.companySize,
         location:      d.company_location || payload.company_location || C.location,
+        fullAddress:   d.full_address !== undefined ? (d.full_address || '') : payload.full_address,
         website:       d.website !== undefined ? d.website : payload.website,
         contactPhone:  d.contact_phone !== undefined ? d.contact_phone : payload.contact_phone,
         ownershipType: d.ownership_type || payload.ownership_type || C.ownershipType,

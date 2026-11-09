@@ -305,6 +305,7 @@ function showModal(c, container, companies, onUpdateCallback) {
               <button class="btn btn--outline btn--sm" id="modal-send-invite-btn" style="width:100%;justify-content:center;gap:6px;">
                 ${icon('send', 13)} <span>Send Login Credentials</span>
               </button>
+              <div id="modal-invite-link-box" style="display:none;margin-top:10px;padding:10px 12px;background:var(--bg-primary);border:1px solid var(--border-default);border-radius:8px;font-size:0.75rem;"></div>
             </div>
           </div>
         </div>
@@ -432,15 +433,42 @@ function showModal(c, container, companies, onUpdateCallback) {
 
   /* Send Invitation Credentials */
   const inviteBtn = backdrop.querySelector('#modal-send-invite-btn');
+  const inviteLinkBox = backdrop.querySelector('#modal-invite-link-box');
   if (inviteBtn) {
     inviteBtn.addEventListener('click', async () => {
       inviteBtn.disabled = true;
       const span = inviteBtn.querySelector('span');
-      if (span) span.textContent = 'Sending Invitation…';
+      if (span) span.textContent = 'Generating Link…';
 
       try {
         const res = await apiPost(`/admin/companies/${c.id}/send-invitation`);
-        showToast(res?.message || 'Invitation email sent successfully!', 'success');
+        showToast(res?.message || 'Invitation email sent successfully!', res?.mail_skipped ? 'info' : 'success');
+
+        if (inviteLinkBox && res?.set_password_url) {
+          const escAttr = (v) => String(v || '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m]);
+          const safeUrl = escAttr(res.set_password_url);
+          inviteLinkBox.style.display = 'block';
+          inviteLinkBox.innerHTML = `
+            <div style="font-weight:700;color:var(--text-primary);margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+              <span>${res.mail_skipped ? 'SMTP Skipped (Reserved .test Email) — Setup Link' : 'Account Setup Link'}</span>
+            </div>
+            <div style="display:flex;gap:6px;align-items:center;">
+              <input id="modal-invite-link-input" type="text" readonly value="${safeUrl}" class="cp-select" style="flex:1;padding:5px 8px;font-size:0.72rem;font-family:monospace;" />
+              <button type="button" class="btn btn--outline btn--sm" id="modal-invite-copy-btn" style="padding:4px 10px;font-size:0.72rem;">Copy</button>
+              <a href="${safeUrl}" target="_blank" rel="noopener" id="modal-invite-open-link" class="btn btn--primary btn--sm" style="padding:4px 10px;font-size:0.72rem;">Open</a>
+            </div>
+          `;
+          inviteLinkBox.querySelector('#modal-invite-copy-btn')?.addEventListener('click', async () => {
+            try {
+              await navigator.clipboard.writeText(res.set_password_url);
+              showToast('Setup link copied to clipboard.', 'success', 'Copied');
+            } catch {
+              const inp = inviteLinkBox.querySelector('#modal-invite-link-input');
+              inp?.select();
+              showToast('Press Ctrl+C to copy the link.', 'info', 'Select Link');
+            }
+          });
+        }
       } catch (err) {
         showToast('Failed to send invitation email', 'error');
       } finally {
@@ -1121,13 +1149,24 @@ function showAddCompanyModal(container, onSuccess) {
     try {
       const res = await apiPostForm('/admin/companies', fd);
       if (res?.company) {
+        const companyTitle = res.company.name || nameEl.value.trim();
         showToast(
-          `${res.company.name || nameEl.value.trim()} has been registered. Invitation email sent.`,
-          'success',
+          res.mail_skipped
+            ? `${companyTitle} registered. SMTP delivery skipped for .test domain — onboarding link ready.`
+            : `${companyTitle} has been registered. Invitation email sent.`,
+          res.mail_skipped ? 'info' : 'success',
           'Partner Registered'
         );
         close();
         if (typeof onSuccess === 'function') onSuccess(res.company);
+        if (res.set_password_url && (res.mail_skipped || !res.email_sent)) {
+          showOnboardingLinkModal(container, {
+            companyName: companyTitle,
+            email: res.company.email || emailEl.value.trim(),
+            setPasswordUrl: res.set_password_url,
+            mailSkipped: Boolean(res.mail_skipped),
+          });
+        }
       } else {
         showToast(res?.message || 'Failed to register company.', 'error', 'Registration Failed');
       }
@@ -1158,6 +1197,56 @@ function showAddCompanyModal(container, onSuccess) {
       btnSubmit.disabled = false;
       btnSubmit.querySelector('.btn-text').style.display = 'inline-flex';
       btnSubmit.querySelector('.btn-loading').style.display = 'none';
+    }
+  });
+}
+
+function showOnboardingLinkModal(container, { companyName, email, setPasswordUrl, mailSkipped }) {
+  const esc = (s) => String(s || '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m]);
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+  backdrop.innerHTML = `
+    <div class="modal" style="max-width:560px;width:95vw;border-radius:16px;overflow:hidden;">
+      <div class="modal__header" style="padding:18px 22px;border-bottom:1px solid var(--border-default);display:flex;align-items:center;justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:36px;height:36px;border-radius:10px;background:rgba(0,89,48,0.1);color:#005930;display:flex;align-items:center;justify-content:center;">${icon('key', 18)}</div>
+          <div>
+            <h3 class="modal__title" style="margin:0;font-size:1.05rem;">Company Onboarding Link</h3>
+            <p style="margin:2px 0 0;font-size:0.78rem;color:var(--text-secondary);">${esc(companyName)} (${esc(email)})</p>
+          </div>
+        </div>
+        <button type="button" class="modal__close" id="onb-close">${icon('x', 16)}</button>
+      </div>
+      <div class="modal__body" style="padding:18px 22px;">
+        <p style="margin:0 0 12px;font-size:0.84rem;color:var(--text-secondary);line-height:1.5;">
+          ${mailSkipped
+            ? 'Email sending was automatically skipped because the email uses a reserved non-deliverable test domain. Use the setup link below to complete password creation and company onboarding:'
+            : 'Email delivery could not be completed automatically. Share the setup link below with the company representative:'}
+        </p>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="text" id="onboarding-link-input" readonly value="${esc(setPasswordUrl)}" class="cp-select" style="flex:1;padding:8px 10px;font-size:0.78rem;font-family:monospace;" />
+          <button type="button" class="btn btn--outline btn--sm" id="onboarding-link-copy">Copy</button>
+        </div>
+      </div>
+      <div class="modal__footer" style="padding:14px 22px;background:var(--bg-primary);border-top:1px solid var(--border-default);display:flex;justify-content:flex-end;gap:10px;">
+        <a href="${esc(setPasswordUrl)}" target="_blank" rel="noopener" class="btn btn--primary btn--sm" id="onboarding-link-open">${icon('external-link', 14)} Open Setup Page</a>
+        <button type="button" class="btn btn--secondary btn--sm" id="onboarding-link-done">Done</button>
+      </div>
+    </div>
+  `;
+  container.appendChild(backdrop);
+  renderIcons(backdrop);
+  const closeLinkModal = () => backdrop.remove();
+  backdrop.querySelector('#onb-close')?.addEventListener('click', closeLinkModal);
+  backdrop.querySelector('#onboarding-link-done')?.addEventListener('click', closeLinkModal);
+  backdrop.addEventListener('click', (e) => { if (e.target === backdrop) closeLinkModal(); });
+  backdrop.querySelector('#onboarding-link-copy')?.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(setPasswordUrl);
+      showToast('Onboarding link copied to clipboard.', 'success', 'Copied');
+    } catch {
+      backdrop.querySelector('#onboarding-link-input')?.select();
+      showToast('Link selected — press Ctrl+C to copy.', 'info', 'Select Link');
     }
   });
 }

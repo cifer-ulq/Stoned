@@ -8,6 +8,7 @@ use App\Models\StudentOjtInterest;
 use App\Models\OjtRecord;
 use App\Mail\ResetPasswordMail;
 use App\Services\AuthCookieService;
+use App\Services\StudentIdHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
@@ -419,15 +420,20 @@ class LoginController extends Controller
             // Generate standard password reset token
             $token = Password::createToken($user);
 
-            // Determine frontend login URL (defaults to live production web if unconfigured or fallback)
-            $baseUrl = config('app.login_app_url', env('LOGIN_APP_URL'));
-            if (empty($baseUrl) || str_contains($baseUrl, 'stoned-two')) {
-                $baseUrl = 'https://chmsu-hireme.vercel.app/login';
-            }
-            $baseUrl = rtrim($baseUrl, '/');
+            // Determine active frontend login URL
+            $baseUrl = rtrim(StudentIdHelper::resolveLoginAppUrl(), '/');
 
             // Construct link pointing to the dedicated reset password page
             $resetUrl = $baseUrl . '/reset-password.html?token=' . urlencode($token) . '&email=' . urlencode($user->email);
+
+            $mailSkipped = StudentIdHelper::isNonDeliverableTestEmail($user->email);
+            if ($mailSkipped) {
+                return response()->json([
+                    'success'      => true,
+                    'mail_skipped' => true,
+                    'message'      => 'Password reset delivery skipped for reserved non-deliverable test email address.',
+                ]);
+            }
 
             // Send branded email notification
             Mail::to($user->email)->send(new ResetPasswordMail(
@@ -439,8 +445,9 @@ class LoginController extends Controller
             ));
 
             return response()->json([
-                'success' => true,
-                'message' => 'A password reset link has been sent to your email address.',
+                'success'      => true,
+                'mail_skipped' => false,
+                'message'      => 'A password reset link has been sent to your email address.',
             ]);
         } catch (\Throwable $e) {
             Log::error('[forgotPassword] Mail delivery failure: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);

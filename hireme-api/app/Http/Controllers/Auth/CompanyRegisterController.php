@@ -7,6 +7,7 @@ use App\Mail\CompanyRegistrationConfirmation;
 use App\Models\CompanyProfile;
 use App\Models\User;
 use App\Services\AuthCookieService;
+use App\Services\StudentIdHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
@@ -67,20 +68,23 @@ class CompanyRegisterController extends Controller
         // Issue auth token so they can log in immediately
         $token = $user->createToken('auth_token')->plainTextToken;
 
-        // Auto-send registration confirmation email
-        $emailSent = false;
-        try {
-            Mail::to($user->email)->send(new CompanyRegistrationConfirmation(
-                companyName:   $data['company_name'],
-                contactPerson: $data['contact_person'],
-                email:         $data['email'],
-                industry:      $data['industry'],
-                location:      $data['location'] ?? '—',
-                phone:         $data['phone'] ?? '',
-            ));
-            $emailSent = true;
-        } catch (\Throwable $e) {
-            \Log::error('[CompanyRegister] Failed to send confirmation email: ' . $e->getMessage());
+        // Auto-send registration confirmation email (skip RFC 2606/6761 reserved test domains)
+        $emailSent   = false;
+        $mailSkipped = StudentIdHelper::isNonDeliverableTestEmail($user->email);
+        if (!$mailSkipped) {
+            try {
+                Mail::to($user->email)->send(new CompanyRegistrationConfirmation(
+                    companyName:   $data['company_name'],
+                    contactPerson: $data['contact_person'],
+                    email:         $data['email'],
+                    industry:      $data['industry'],
+                    location:      $data['location'] ?? '—',
+                    phone:         $data['phone'] ?? '',
+                ));
+                $emailSent = true;
+            } catch (\Throwable $e) {
+                \Log::error('[CompanyRegister] Failed to send confirmation email: ' . $e->getMessage());
+            }
         }
 
         // Notify all system administrators
@@ -104,9 +108,10 @@ class CompanyRegisterController extends Controller
         }
 
         return response()->json([
-            'message'    => 'Company registered successfully. Your account is pending review.',
-            'email_sent' => $emailSent,
-            'token'      => $token,
+            'message'      => 'Company registered successfully. Your account is pending review.',
+            'email_sent'   => $emailSent,
+            'mail_skipped' => $mailSkipped,
+            'token'        => $token,
             'user'       => [
                 'id'                   => $user->id,
                 'name'                 => $user->name,

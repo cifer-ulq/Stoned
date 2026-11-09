@@ -131,50 +131,66 @@ class AdminController extends Controller
             'registration_source' => 'admin',
         ]);
 
-        // Auto-send invitation email with login credentials
-        $emailSent = false;
+        // Generate password-reset / onboarding link and send invitation email unless test domain
+        $emailSent      = false;
+        $mailSkipped    = StudentIdHelper::isNonDeliverableTestEmail($user->email);
+        $setPasswordUrl = null;
         try {
             $token = Password::createToken($user);
-            $setPasswordUrl = rtrim(env('LOGIN_APP_URL', 'http://localhost:5174'), '/') . '/set-password.html'
+            $setPasswordUrl = rtrim(StudentIdHelper::resolveLoginAppUrl(), '/') . '/set-password.html'
                 . '?token=' . urlencode($token)
                 . '&email=' . urlencode($user->email);
 
-            Mail::to($user->email)->send(new CompanyInvitation(
-                companyName:    $data['company_name'],
-                contactPerson:  $data['contact_person'],
-                email:          $data['email'],
-                industry:       $data['industry'],
-                location:       $data['location'] ?? '—',
-                phone:          $data['phone'] ?? '',
-                moaStartDate:   $moaStartDate?->toDateString(),
-                moaEndDate:     $moaEndDate?->toDateString(),
-                moaStatus:      $moaStatus,
-                status:         'Pending',
-                setPasswordUrl: $setPasswordUrl,
-            ));
-            $emailSent = true;
+            if (!$mailSkipped) {
+                Mail::to($user->email)->send(new CompanyInvitation(
+                    companyName:    $data['company_name'],
+                    contactPerson:  $data['contact_person'],
+                    email:          $data['email'],
+                    industry:       $data['industry'],
+                    location:       $data['location'] ?? '—',
+                    phone:          $data['phone'] ?? '',
+                    moaStartDate:   $moaStartDate?->toDateString(),
+                    moaEndDate:     $moaEndDate?->toDateString(),
+                    moaStatus:      $moaStatus,
+                    status:         'Pending',
+                    setPasswordUrl: $setPasswordUrl,
+                ));
+                $emailSent = true;
+            }
         } catch (\Throwable $e) {
             \Log::error('[storeCompany] Failed to send invitation email: ' . $e->getMessage());
         }
 
+        $message = $emailSent
+            ? 'Partner registered. Invitation email sent.'
+            : ($mailSkipped
+                ? 'Partner registered. Onboarding link generated (SMTP skipped for reserved test domain).'
+                : 'Partner registered (invitation email pending).');
+
         return response()->json([
-            'message'    => $emailSent ? 'Partner registered. Invitation email sent.' : 'Partner registered (invitation email pending).',
-            'email_sent' => $emailSent,
-            'company'    => [
-                'id'             => 'C-' . $user->id,
-                'name'           => $data['company_name'],
-                'industry'       => $data['industry'],
-                'location'       => $data['location'] ?? '',
-                'status'         => 'Pending',
-                'moaStatus'      => $moaStatus,
-                'moaExpiry'      => $moaEndDate?->toDateString(),
-                'contactPerson'  => $data['contact_person'],
-                'email'          => $data['email'],
-                'phone'          => $data['phone'] ?? '',
-                'ojtSlots'       => 0,
-                'activePostings' => 0,
-                'rating'         => 0.0,
-                'moa_file_url'   => $moaFilePath ? url(Storage::url($moaFilePath)) : null,
+            'message'          => $message,
+            'email_sent'       => $emailSent,
+            'mail_skipped'     => $mailSkipped,
+            'set_password_url' => $setPasswordUrl,
+            'company'          => [
+                'id'                 => 'C-' . $user->id,
+                'name'               => $data['company_name'],
+                'industry'           => $data['industry'],
+                'location'           => $data['location'] ?? '',
+                'status'             => 'Pending',
+                'moaStatus'          => $moaStatus,
+                'moaStartDate'       => $moaStartDate?->toDateString(),
+                'moaExpiry'          => $moaEndDate?->toDateString(),
+                'moaFileUrl'         => $moaFilePath ? url(Storage::url($moaFilePath)) : null,
+                'contactPerson'      => $data['contact_person'],
+                'email'              => $data['email'],
+                'phone'              => $data['phone'] ?? '',
+                'registrationSource' => 'admin',
+                'profileCompleted'   => false,
+                'ojtSlots'           => 0,
+                'activePostings'     => 0,
+                'rating'             => 0.0,
+                'moa_file_url'       => $moaFilePath ? url(Storage::url($moaFilePath)) : null,
             ],
         ], 201);
     }
@@ -264,26 +280,41 @@ class AdminController extends Controller
         // Generate a password-reset token (stored in password_reset_tokens table)
         $token = Password::createToken($user);
 
-        // Link points to the login app's set-password page (configure LOGIN_APP_URL in .env)
-        $setPasswordUrl = rtrim(env('LOGIN_APP_URL', 'http://localhost:5174'), '/') . '/set-password.html'
+        // Link points to the resolved login app set-password page
+        $setPasswordUrl = rtrim(StudentIdHelper::resolveLoginAppUrl(), '/') . '/set-password.html'
             . '?token=' . urlencode($token)
             . '&email=' . urlencode($user->email);
 
+        $mailSkipped = StudentIdHelper::isNonDeliverableTestEmail($user->email);
+        if ($mailSkipped) {
+            return response()->json([
+                'message'          => 'Onboarding link generated (SMTP skipped for reserved test domain).',
+                'email_sent'       => false,
+                'mail_skipped'     => true,
+                'set_password_url' => $setPasswordUrl,
+            ]);
+        }
+
         Mail::to($user->email)->send(new CompanyInvitation(
-            companyName:   $profile->company_name ?? $user->name,
-            contactPerson: $profile->contact_person ?? $user->name,
-            email:         $user->email,
-            industry:      $profile->company_type ?? '—',
-            location:      $profile->company_location ?? '—',
-            phone:         $profile->contact_phone ?? '',
-            moaStartDate:  $profile->moa_start_date,
-            moaEndDate:    $profile->moa_end_date,
-            moaStatus:     $profile->moa_status ?? 'Pending',
-            status:        $profile->status ?? 'Pending',
+            companyName:    $profile->company_name ?? $user->name,
+            contactPerson:  $profile->contact_person ?? $user->name,
+            email:          $user->email,
+            industry:       $profile->company_type ?? '—',
+            location:       $profile->company_location ?? '—',
+            phone:          $profile->contact_phone ?? '',
+            moaStartDate:   $profile->moa_start_date,
+            moaEndDate:     $profile->moa_end_date,
+            moaStatus:      $profile->moa_status ?? 'Pending',
+            status:         $profile->status ?? 'Pending',
             setPasswordUrl: $setPasswordUrl,
         ));
 
-        return response()->json(['message' => 'Invitation email sent to ' . $user->email]);
+        return response()->json([
+            'message'          => 'Invitation email sent to ' . $user->email,
+            'email_sent'       => true,
+            'mail_skipped'     => false,
+            'set_password_url' => $setPasswordUrl,
+        ]);
     }
 
     /* ── DELETE /api/admin/companies/{id} ── (Pending only) */

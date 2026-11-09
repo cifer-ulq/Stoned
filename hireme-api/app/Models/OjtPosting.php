@@ -15,6 +15,8 @@ class OjtPosting extends Model
         'department',
         'industry',
         'location',
+        'contact_name',
+        'contact_phone',
         'branch_name',
         'latitude',
         'longitude',

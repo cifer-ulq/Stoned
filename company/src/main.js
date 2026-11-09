@@ -249,16 +249,21 @@ async function initApp() {
     }
 
     const cp = u.company_profile || {};
+    const companyDisplayName = cp.company_name || u.name || 'CO';
     identity = {
       id: u.id,
-      name: cp.company_name || u.name,
-      contactPerson: u.name,
-      initials: u.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2),
-      role: 'HR Manager',
+      name: companyDisplayName,
+      contactPerson: cp.contact_person || u.name,
+      contactTitle: cp.contact_title || '',
+      initials: companyDisplayName.split(' ').filter(Boolean).map(w => w[0]).join('').toUpperCase().slice(0, 2) || 'CO',
+      role: cp.contact_title || 'HR Manager',
       email: u.email,
       industry: cp.company_type || '',
       location: cp.company_location || '',
+      fullAddress: cp.full_address || '',
       companySize: cp.company_size || '',
+      ownershipType: cp.ownership_type || '',
+      yearFounded: cp.year_founded || '',
       contactEmail: cp.contact_email || '',
       contactPhone: cp.contact_phone || '',
       website: cp.website || '',

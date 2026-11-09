@@ -65,13 +65,16 @@ class CompanyController extends Controller
             'status'            => 'Active',
         ];
 
-        // If company is admin-registered (not self-registered), MOA is automatically Active!
+        // If company is admin-registered (not self-registered), ensure MOA is Active unless already evaluated
         if ($profile->registration_source !== 'self') {
-            $updateData['moa_status'] = 'Active';
+            if (!$profile->moa_status || strtolower((string) $profile->moa_status) === 'pending') {
+                $updateData['moa_status'] = 'Active';
+            }
         }
 
         $profile->update($updateData);
         $user->update(['onboarding_completed' => true]);
+        $user->setRelation('companyProfile', $profile->fresh());
 
         return response()->json([
             'message'    => 'Profile completed successfully.',
@@ -140,6 +143,8 @@ class CompanyController extends Controller
             'department'       => 'nullable|string|max:255',
             'industry'         => 'nullable|string|max:255',
             'location'         => 'required|string|max:255',
+            'contact_name'     => 'nullable|string|max:255',
+            'contact_phone'    => 'nullable|string|max:50',
             'branch_name'      => 'nullable|string|max:255',
             'latitude'         => 'nullable|numeric|between:-90,90',
             'longitude'        => 'nullable|numeric|between:-180,180',
@@ -152,6 +157,7 @@ class CompanyController extends Controller
             'slots_total'       => 'required|integer|min:1',
             'duration'          => 'nullable|string|max:100',
             'schedule_type'     => 'nullable|in:full_day,half_day',
+            'status'            => 'nullable|in:open,draft',
             'expires_at'        => 'nullable|date',
         ]);
 
@@ -179,10 +185,13 @@ class CompanyController extends Controller
             'company_name'    => $companyName,
             'company_initial' => $validated['company_initial'] ?? $autoInitial,
             'company_color'   => $validated['company_color']   ?? $autoColor,
+            'industry'        => $validated['industry']        ?? $profile?->company_type,
+            'contact_name'    => $validated['contact_name']    ?? $profile?->contact_person,
+            'contact_phone'   => $validated['contact_phone']   ?? $profile?->contact_phone,
             'duration'        => '5 months (600 hours)',
             'company_user_id' => $request->user()->id,
             'slots_remaining' => $validated['slots_total'],
-            'status'          => 'open',
+            'status'          => $validated['status']          ?? 'open',
         ]);
 
         return response()->json(['success' => true, 'data' => $posting], 201);
@@ -198,7 +207,7 @@ class CompanyController extends Controller
 
         $data = $request->only([
             'title', 'company_name', 'company_initial', 'company_color',
-            'department', 'industry', 'location', 'branch_name', 'latitude', 'longitude', 'description', 'learning_outcomes',
+            'department', 'industry', 'location', 'contact_name', 'contact_phone', 'branch_name', 'latitude', 'longitude', 'description', 'learning_outcomes',
             'required_skills', 'required_documents', 'qualifications', 'preferred_courses', 'slots_total', 'slots_remaining',
             'duration', 'schedule_type', 'status', 'expires_at',
         ]);
@@ -1807,6 +1816,7 @@ class CompanyController extends Controller
                 'avatar_url'        => $user->avatar_url,
                 'company_name'      => $cp?->company_name,
                 'company_location'  => $cp?->company_location,
+                'full_address'      => $cp?->full_address,
                 'company_type'      => $cp?->company_type,
                 'company_size'      => $cp?->company_size,
                 'ownership_type'    => $cp?->ownership_type,
@@ -1823,6 +1833,7 @@ class CompanyController extends Controller
                 'moa_start_date'    => $cp?->moa_start_date,
                 'moa_end_date'      => $cp?->moa_end_date,
                 'contact_person'    => $cp?->contact_person,
+                'contact_title'     => $cp?->contact_title,
                 'registration_source'    => $cp?->registration_source ?? 'admin',
                 'moa_requested_at'       => $cp?->moa_requested_at?->toIso8601String(),
                 'moa_request_notes'      => $cp?->moa_request_notes,
@@ -1924,8 +1935,11 @@ class CompanyController extends Controller
             'company_type'     => 'nullable|string|max:255',
             'company_size'     => 'nullable|string|max:100',
             'company_location' => 'nullable|string|max:255',
+            'full_address'     => 'nullable|string|max:500',
             'contact_email'    => 'nullable|email|max:255',
             'contact_phone'    => 'nullable|string|max:50',
+            'contact_person'   => 'nullable|string|max:255',
+            'contact_title'    => 'nullable|string|max:100',
             'website'          => 'nullable|url|max:255',
             'description'      => 'nullable|string',
             'ownership_type'   => 'nullable|string|max:100',
@@ -1959,6 +1973,24 @@ class CompanyController extends Controller
             'contact_email'    => $contactEmail,
             'profile_completed'=> true,
         ];
+
+        if ($request->has('full_address')) {
+            $profileData['full_address'] = $validated['full_address'] ?? null;
+        } elseif ($cp?->full_address) {
+            $profileData['full_address'] = $cp->full_address;
+        }
+
+        if ($request->has('contact_person')) {
+            $profileData['contact_person'] = $validated['contact_person'] ?? null;
+        } elseif ($cp?->contact_person) {
+            $profileData['contact_person'] = $cp->contact_person;
+        }
+
+        if ($request->has('contact_title')) {
+            $profileData['contact_title'] = $validated['contact_title'] ?? null;
+        } elseif ($cp?->contact_title) {
+            $profileData['contact_title'] = $cp->contact_title;
+        }
 
         if ($request->has('contact_phone')) {
             $profileData['contact_phone'] = $validated['contact_phone'] ?? null;
@@ -2006,8 +2038,9 @@ class CompanyController extends Controller
             $profileData
         );
 
-        // Mark onboarding completed on the user
+        // Mark onboarding completed on the user & keep loaded relation fresh
         $user->update(['onboarding_completed' => true]);
+        $user->setRelation('companyProfile', $cp);
 
         return response()->json([
             'success' => true,
@@ -2015,6 +2048,7 @@ class CompanyController extends Controller
             'data'    => [
                 'company_name'      => $cp->company_name,
                 'company_location'  => $cp->company_location,
+                'full_address'      => $cp->full_address,
                 'company_type'      => $cp->company_type,
                 'company_size'      => $cp->company_size,
                 'ownership_type'    => $cp->ownership_type,
@@ -2022,6 +2056,8 @@ class CompanyController extends Controller
                 'website'           => $cp->website,
                 'contact_email'     => $cp->contact_email,
                 'contact_phone'     => $cp->contact_phone,
+                'contact_person'    => $cp->contact_person,
+                'contact_title'     => $cp->contact_title,
                 'description'       => $cp->description,
                 'logo_url'          => $cp->logo_url,
                 'profile_completed' => true,

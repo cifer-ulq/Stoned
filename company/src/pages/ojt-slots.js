@@ -228,10 +228,10 @@ function normalizeSlot(p) {
     latitude:             p.latitude         ?? null,
     longitude:            p.longitude        ?? null,
     tasks:                p.description      || '',
-    learningOutcomes:     p.learning_outcomes|| '—',
-    contactName:          p.contact_name     || 'CIER Office',
+    learningOutcomes:     p.learning_outcomes|| '',
+    contactName:          p.contact_name     || '',
     contactPhone:         p.contact_phone    || '',
-    supervisor:           p.contact_name     || 'CIER',
+    supervisor:           p.contact_name     || '',
     supervisorContact:    p.contact_phone    || '',
     startDate:            p.start_date       || 'Set per student',
     endorsed:             p.endorsed_count   || 0,
@@ -2512,7 +2512,10 @@ function showEditSlotModal(slot, container, allSlots) {
  * Dramatic, uncluttered 3-Step Guided OJT Slot Wizard (Create & Edit)
  */
 function openSlotWizard({ isEdit = false, slot = null, container, allSlots }) {
-  const companyAddress = (slot && slot.location) || 'Unit 4, TechPark Building, Lacson St., Bacolod City, Negros Occidental';
+  const company = getState('company') || {};
+  const companyAddress = (slot && slot.location) || company.fullAddress || company.location || '';
+  const defaultContactName = isEdit ? (slot?.contactName || '') : (company.contactPerson || '');
+  const defaultContactPhone = isEdit ? (slot?.contactPhone || '') : (company.contactPhone || '');
 
   let currentStep = 1;
   const totalSteps = 3;
@@ -2723,6 +2726,25 @@ function openSlotWizard({ isEdit = false, slot = null, container, allSlots }) {
               <div id="wiz-quals-suggestions" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;"></div>
             </div>
           </div>
+
+          <div class="ojt-form-card">
+            <div class="ojt-form-card__head">
+              <div class="ojt-form-card__icon">${icon('fileText', 17)}</div>
+              <div>
+                <h4 class="ojt-form-card__title">Tasks, Activities &amp; Learning Outcomes</h4>
+                <p class="ojt-form-card__subtitle">Describe the trainee's day-to-day responsibilities and expected competencies</p>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Tasks &amp; Activities</label>
+              <textarea class="form-textarea" id="wiz-description" rows="3" placeholder="e.g. Assist engineering team in testing web APIs, maintaining documentation, and resolving support tickets.">${escapeHtml(slot?.tasks || '')}</textarea>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">Learning Outcomes</label>
+              <textarea class="form-textarea" id="wiz-learning-outcomes" rows="2" placeholder="e.g. Hands-on familiarity with Git workflows, QA regression testing, and client troubleshooting.">${escapeHtml(slot?.learningOutcomes && slot.learningOutcomes !== '—' ? slot.learningOutcomes : '')}</textarea>
+            </div>
+          </div>
         </div>
 
         <!-- STEP 3: Deployment & Final Review -->
@@ -2788,11 +2810,11 @@ function openSlotWizard({ isEdit = false, slot = null, container, allSlots }) {
             <div class="form-row">
               <div class="form-group" style="flex:1;">
                 <label class="form-label">Contact Person Name *</label>
-                <input type="text" class="form-input" id="wiz-contact-name" value="${escapeHtml(slot?.contactName || '')}" placeholder="e.g. Engr. Mark Rivera" required />
+                <input type="text" class="form-input" id="wiz-contact-name" value="${escapeHtml(defaultContactName)}" placeholder="e.g. Engr. Mark Rivera" required />
               </div>
               <div class="form-group" style="flex:1;">
                 <label class="form-label">Phone / Mobile Number *</label>
-                <input type="tel" class="form-input" id="wiz-contact-phone" value="${escapeHtml(slot?.contactPhone || '')}" placeholder="e.g. 0917-123-4567" required />
+                <input type="tel" class="form-input" id="wiz-contact-phone" value="${escapeHtml(defaultContactPhone)}" placeholder="e.g. 0917-123-4567" required />
               </div>
             </div>
 
@@ -3040,8 +3062,18 @@ function openSlotWizard({ isEdit = false, slot = null, container, allSlots }) {
       : backdrop.querySelector('#wiz-location').value.trim();
     const branchName = useBranch ? backdrop.querySelector('#wiz-branch-name').value.trim() : null;
 
+    if (!location && !companyAddress) {
+      nextBtn.disabled = false;
+      nextBtn.innerHTML = `${icon('checkCircle', 16)} ${isEdit ? 'Save Changes' : 'Publish OJT Slot'}`;
+      showToast('Please enter a deployment location.', 'error');
+      return;
+    }
+
     const latVal = parseFloat(backdrop.querySelector('#wiz-lat').value);
     const lonVal = parseFloat(backdrop.querySelector('#wiz-lon').value);
+
+    const descVal = backdrop.querySelector('#wiz-description')?.value.trim() || '';
+    const outcomesVal = backdrop.querySelector('#wiz-learning-outcomes')?.value.trim() || '';
 
     const payload = {
       title:              backdrop.querySelector('#wiz-title').value.trim(),
@@ -3050,6 +3082,8 @@ function openSlotWizard({ isEdit = false, slot = null, container, allSlots }) {
       branch_name:        branchName || null,
       latitude:           !isNaN(latVal) ? latVal : null,
       longitude:          !isNaN(lonVal) ? lonVal : null,
+      description:        descVal || null,
+      learning_outcomes:  outcomesVal || null,
       preferred_courses:  coursePicker.getCourses(),
       required_skills:    skillsPicker.getItems(),
       required_documents: docsPicker.getItems(),

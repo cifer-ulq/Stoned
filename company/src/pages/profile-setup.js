@@ -5,19 +5,86 @@
 import { icon } from '../components/icons.js';
 import { navigate } from '../router.js';
 import { getState, setState } from '../store.js';
-import { apiPost } from '../api/client.js';
+import { apiUpload, storageUrl } from '../api/client.js';
 
 const INDUSTRIES = [
-  'Information Technology', 'Business Process Outsourcing', 'Manufacturing',
-  'Healthcare', 'Education', 'Finance & Banking', 'Retail & E-Commerce',
-  'Construction', 'Agriculture', 'Tourism & Hospitality', 'Government',
-  'Non-Profit / NGO', 'Other',
+  'Software Development',
+  'IT Consulting',
+  'IT Consulting & Services',
+  'Cloud Services',
+  'Cloud Computing & DevOps',
+  'Data Analytics & AI',
+  'Cybersecurity',
+  'Digital Design & UX',
+  'IT Outsourcing',
+  'IT Outsourcing & BPO',
+  'Telecommunications',
+  'BPO / Call Center',
+  'Business Process Outsourcing',
+  'Information Technology',
+  'Accounting & Finance',
+  'Finance & Banking',
+  'Financial Services & FinTech',
+  'Marketing & Advertising',
+  'Manufacturing',
+  'Engineering & Hardware',
+  'Construction & Engineering',
+  'Construction',
+  'Healthcare & Medical',
+  'Healthcare & BioTech',
+  'Healthcare',
+  'Education',
+  'Education & EdTech',
+  'Government',
+  'Government & Public Sector',
+  'Non-profit / NGO',
+  'Non-Profit / NGO',
+  'Retail & E-commerce',
+  'Retail & E-Commerce',
+  'Hospitality & Tourism',
+  'Tourism & Hospitality',
+  'Logistics & Transportation',
+  'Agriculture',
+  'Agriculture & Food Tech',
+  'Other',
 ];
 
 const COMPANY_SIZES = [
   '1-10 employees', '11-50 employees', '51-200 employees',
   '201-500 employees', '501-1,000 employees', '1,000+ employees',
 ];
+
+const LEGACY_SIZE_MAP = {
+  '1-10': '1-10 employees',
+  '11-50': '11-50 employees',
+  '51-200': '51-200 employees',
+  '201-500': '201-500 employees',
+  '501-1000': '501-1,000 employees',
+  '1001-5000': '1,000+ employees',
+  '5001+': '1,000+ employees',
+};
+
+const OWNERSHIP_TYPES = [
+  'Private Corporation',
+  'Public / Listed Company',
+  'Sole Proprietorship',
+  'Partnership',
+  'Cooperative',
+  'Non-Profit / NGO',
+  'Government Agency',
+  'State-owned Enterprise',
+  'Other',
+];
+
+function renderSelectOptions(list, currentValue) {
+  const norm = currentValue ? (LEGACY_SIZE_MAP[currentValue] || currentValue) : '';
+  const hasMatch = norm && list.includes(norm);
+  const opts = list.map(item => `<option value="${escapeHtml(item)}" ${norm === item ? 'selected' : ''}>${escapeHtml(item)}</option>`).join('');
+  if (norm && !hasMatch) {
+    return `${opts}<option value="${escapeHtml(norm)}" selected>${escapeHtml(norm)}</option>`;
+  }
+  return opts;
+}
 
 let logoDataUrl = null;
 let logoFile    = null;
@@ -35,8 +102,13 @@ export async function renderProfileSetup(container) {
   const prefill = {
     companyName:   company.name || '',
     industry:      company.industry || '',
-    companySize:   company.companySize || '',
+    companySize:   LEGACY_SIZE_MAP[company.companySize] || company.companySize || '',
+    ownershipType: company.ownershipType || '',
+    yearFounded:   company.yearFounded || '',
     address:       company.location || '',
+    fullAddress:   company.fullAddress || '',
+    contactPerson: company.contactPerson || '',
+    contactTitle:  company.contactTitle || '',
     website:       company.website || '',
     contactEmail:  company.contactEmail || company.email || '',
     contactPhone:  company.contactPhone || '',
@@ -66,7 +138,7 @@ function render(container, prefill = {}) {
           <div class="ps-logo-upload" id="logo-upload-area">
             <div class="ps-logo-upload__preview" id="logo-preview">
               ${logoDataUrl
-                ? `<img src="${logoDataUrl}" alt="Logo" class="ps-logo-upload__img" />`
+                ? `<img src="${escapeHtml(storageUrl(logoDataUrl))}" alt="Logo" class="ps-logo-upload__img" />`
                 : `<div class="ps-logo-upload__placeholder">${icon('building', 40)}</div>`}
             </div>
             <div class="ps-logo-upload__info">
@@ -75,7 +147,7 @@ function render(container, prefill = {}) {
               </button>
               <span class="text-xs text-tertiary">PNG, JPG up to 2MB. Recommended 200x200px.</span>
             </div>
-            <input type="file" id="logo-file-input" accept="image/png,image/jpeg" hidden />
+            <input type="file" id="logo-file-input" accept="image/png,image/jpeg,image/webp" hidden />
           </div>
 
           <div class="ps-form-grid">
@@ -90,7 +162,7 @@ function render(container, prefill = {}) {
               <label class="form-label">Industry <span style="color:var(--color-error,#EF4444)">*</span></label>
               <select class="form-select" id="ps-industry">
                 <option value="">Select industry</option>
-                ${INDUSTRIES.map(i => `<option value="${i}" ${prefill.industry === i ? 'selected' : ''}>${i}</option>`).join('')}
+                ${renderSelectOptions(INDUSTRIES, prefill.industry)}
               </select>
             </div>
 
@@ -98,15 +170,52 @@ function render(container, prefill = {}) {
               <label class="form-label">Company Size <span style="color:var(--color-error,#EF4444)">*</span></label>
               <select class="form-select" id="ps-company-size">
                 <option value="">Select size</option>
-                ${COMPANY_SIZES.map(s => `<option value="${s}" ${prefill.companySize === s ? 'selected' : ''}>${s}</option>`).join('')}
+                ${renderSelectOptions(COMPANY_SIZES, prefill.companySize)}
               </select>
             </div>
 
-            <div class="form-group ps-form-grid__full">
-              <label class="form-label">Address / Location <span style="color:var(--color-error,#EF4444)">*</span></label>
+            <div class="form-group">
+              <label class="form-label">Ownership Type</label>
+              <select class="form-select" id="ps-ownership">
+                <option value="">Select ownership</option>
+                ${renderSelectOptions(OWNERSHIP_TYPES, prefill.ownershipType)}
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Year Founded</label>
+              <input type="number" class="form-input" id="ps-year-founded"
+                min="1800" max="${new Date().getFullYear()}"
+                value="${escapeHtml(prefill.yearFounded)}"
+                placeholder="e.g. 2018" />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">City / Province Location <span style="color:var(--color-error,#EF4444)">*</span></label>
               <input type="text" class="form-input" id="ps-address"
                 value="${escapeHtml(prefill.address)}"
-                placeholder="e.g. 123 IT Park, Cebu City, Philippines" />
+                placeholder="e.g. Bacolod City, Negros Occidental" />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Full Office Address</label>
+              <input type="text" class="form-input" id="ps-full-address"
+                value="${escapeHtml(prefill.fullAddress)}"
+                placeholder="e.g. 3F CyberGate Bldg., Lacson St., Bacolod City" />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Contact Person</label>
+              <input type="text" class="form-input" id="ps-contact-person"
+                value="${escapeHtml(prefill.contactPerson)}"
+                placeholder="e.g. Juan Dela Cruz" />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Contact Title / Position</label>
+              <input type="text" class="form-input" id="ps-contact-title"
+                value="${escapeHtml(prefill.contactTitle)}"
+                placeholder="e.g. HR Manager" />
             </div>
 
             <div class="form-group">
@@ -194,14 +303,19 @@ function attachListeners(container, prefill) {
 }
 
 async function handleSubmit(container) {
-  const name        = container.querySelector('#ps-company-name')?.value?.trim();
-  const industry    = container.querySelector('#ps-industry')?.value;
-  const size        = container.querySelector('#ps-company-size')?.value;
-  const address     = container.querySelector('#ps-address')?.value?.trim();
-  const email       = container.querySelector('#ps-email')?.value?.trim();
-  const phone       = container.querySelector('#ps-phone')?.value?.trim();
-  const website     = container.querySelector('#ps-website')?.value?.trim();
-  const description = container.querySelector('#ps-description')?.value?.trim();
+  const name          = container.querySelector('#ps-company-name')?.value?.trim();
+  const industry      = container.querySelector('#ps-industry')?.value;
+  const size          = container.querySelector('#ps-company-size')?.value;
+  const ownershipType = container.querySelector('#ps-ownership')?.value;
+  const yearFounded   = container.querySelector('#ps-year-founded')?.value?.trim();
+  const address       = container.querySelector('#ps-address')?.value?.trim();
+  const fullAddress   = container.querySelector('#ps-full-address')?.value?.trim();
+  const contactPerson = container.querySelector('#ps-contact-person')?.value?.trim();
+  const contactTitle  = container.querySelector('#ps-contact-title')?.value?.trim();
+  const email         = container.querySelector('#ps-email')?.value?.trim();
+  const phone         = container.querySelector('#ps-phone')?.value?.trim();
+  const website       = container.querySelector('#ps-website')?.value?.trim();
+  const description   = container.querySelector('#ps-description')?.value?.trim();
 
   const errorEl = container.querySelector('#ps-error');
   const showError = (msg) => {
@@ -227,30 +341,26 @@ async function handleSubmit(container) {
     fd.append('company_size',     size);
     fd.append('company_location', address);
     fd.append('contact_email',    email);
-    if (phone)       fd.append('contact_phone', phone);
-    if (website)     fd.append('website', website);
-    if (description) fd.append('description', description);
-    if (logoFile)    fd.append('logo', logoFile);
+    if (ownershipType) fd.append('ownership_type', ownershipType);
+    if (yearFounded)   fd.append('year_founded', yearFounded);
+    if (fullAddress)   fd.append('full_address', fullAddress);
+    if (contactPerson) fd.append('contact_person', contactPerson);
+    if (contactTitle)  fd.append('contact_title', contactTitle);
+    if (phone)         fd.append('contact_phone', phone);
+    if (website)       fd.append('website', website);
+    if (description)   fd.append('description', description);
+    if (logoFile)      fd.append('logo', logoFile);
 
-    const headers = { 'Accept': 'application/json' };
-    const token = localStorage.getItem('hireme_token');
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-    const res = await fetch('http://localhost:8000/api/company/profile', {
-      method: 'POST',
-      headers,
-      credentials: 'include',
-      body: fd,
-    });
-    const json = await res.json();
+    const json = await apiUpload('/company/profile', fd);
 
-    if (!res.ok || !json.success) {
-      const msg = json.message || (json.errors ? Object.values(json.errors).flat().join(' ') : 'Save failed.');
+    if (!json || !json.success) {
+      const msg = json?.message || (json?.errors ? Object.values(json.errors).flat().join(' ') : 'Save failed.');
       throw new Error(msg);
     }
 
     const cp = json.data;
     const company = getState('company');
-    const initials = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+    const initials = name.split(' ').filter(Boolean).map(w => w[0]).join('').toUpperCase().slice(0, 2) || 'CO';
 
     const updatedIdentity = {
       ...company,
@@ -258,12 +368,17 @@ async function handleSubmit(container) {
       initials,
       industry:         cp.company_type,
       location:         cp.company_location,
+      fullAddress:      cp.full_address || '',
       companySize:      cp.company_size,
+      ownershipType:    cp.ownership_type || '',
+      yearFounded:      cp.year_founded || '',
+      contactPerson:    cp.contact_person || company.contactPerson || '',
+      contactTitle:     cp.contact_title || '',
       contactEmail:     cp.contact_email,
       contactPhone:     cp.contact_phone || '',
       website:          cp.website || '',
       description:      cp.description || '',
-      logoUrl:          cp.logo_url || null,
+      logoUrl:          cp.logo_url || company.logoUrl || null,
       profileCompleted: true,
     };
     setState('company', updatedIdentity);
