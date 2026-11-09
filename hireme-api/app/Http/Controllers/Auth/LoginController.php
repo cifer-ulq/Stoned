@@ -84,6 +84,9 @@ class LoginController extends Controller
                 'user'  => [
                     'id'                   => $user->id,
                     'name'                 => $user->name,
+                    'first_name'           => $user->first_name ?? null,
+                    'middle_initial'       => $user->middle_initial ?? null,
+                    'last_name'            => $user->last_name ?? null,
                     'email'                => $user->email,
                     'role'                 => $user->role,
                     'status'               => $isActiveOjt ? 'active_ojt' : ($user->studentProfile?->status ?? 'regular'),
@@ -169,6 +172,9 @@ class LoginController extends Controller
             'data'    => [
                 'id'                   => $user->id,
                 'name'                 => $user->name,
+                'first_name'           => $user->first_name ?? null,
+                'middle_initial'       => $user->middle_initial ?? null,
+                'last_name'            => $user->last_name ?? null,
                 'email'                => $user->email,
                 'role'                 => $user->role,
                 'status'               => $isActiveOjt ? 'active_ojt' : ($user->studentProfile?->status ?? 'regular'),

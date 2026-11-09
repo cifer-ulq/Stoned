@@ -1312,6 +1312,9 @@ async function completeRegistration(credentials) {
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
       body: JSON.stringify({
         name:           credentials.name,
+        first_name:     credentials.first_name || undefined,
+        last_name:      credentials.last_name || undefined,
+        middle_initial: credentials.middle_name || undefined,
         email:          credentials.email,
         password:       credentials.password,
         role:           formData.userType,

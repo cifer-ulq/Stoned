@@ -24,8 +24,24 @@ function escapeHtml(str) {
     .replace(/'/g, '&#039;');
 }
 
+/* ── Name Formatting Helpers ── */
+function normalizeMiddleInitial(val) {
+  const clean = String(val || '').replace(/[^A-Za-z]/g, '');
+  return clean ? clean[0].toUpperCase() : '';
+}
+
+function formatFullName(firstName, lastName, middleInitial) {
+  const first = String(firstName || '').trim().replace(/\s+/g, ' ');
+  const last  = String(lastName || '').trim().replace(/\s+/g, ' ');
+  const mi    = normalizeMiddleInitial(middleInitial);
+  if (!first && !last) return '';
+  if (!first) return last;
+  if (!last) return first;
+  return mi ? `${first} ${mi}. ${last}` : `${first} ${last}`;
+}
+
 /* ── CHMSU Student ID Generator ── */
-function generateChmsuStudentId(fullName, birthDate, middleName) {
+function generateChmsuStudentId(nameInput, birthDate, middleName) {
   if (!birthDate) return '';
   const partsDate = String(birthDate).split('-');
   if (partsDate.length !== 3) return '';
@@ -35,30 +51,42 @@ function generateChmsuStudentId(fullName, birthDate, middleName) {
   const yy   = yyyy.slice(-2);
   const datePart = `${mm}${dd}${yy}`;
 
-  const cleanName = (fullName || '').trim();
-  const parts = cleanName.split(/\s+/).filter(Boolean);
+  const extractInitial = (val) => {
+    const clean = String(val || '').replace(/[^A-Za-z]/g, '');
+    return clean ? clean[0].toUpperCase() : 'X';
+  };
+
   let firstInitial = 'X';
   let middleInitial = 'X';
   let lastInitial = 'X';
 
-  if (parts.length === 1) {
-    lastInitial = parts[0][0].toUpperCase();
-    firstInitial = lastInitial;
-  } else if (parts.length === 2) {
-    firstInitial = parts[0][0].toUpperCase();
-    lastInitial = parts[1][0].toUpperCase();
-    if (middleName && middleName.trim()) {
-      middleInitial = middleName.trim()[0].toUpperCase();
-    }
-  } else if (parts.length >= 3) {
-    firstInitial = parts[0][0].toUpperCase();
-    lastInitial = parts[parts.length - 1][0].toUpperCase();
-    if (middleName && middleName.trim()) {
-      middleInitial = middleName.trim()[0].toUpperCase();
-    } else {
-      const candidateMiddle = parts[1].replace(/[^A-Za-z]/g, '');
-      if (candidateMiddle) {
-        middleInitial = candidateMiddle[0].toUpperCase();
+  if (nameInput && typeof nameInput === 'object') {
+    firstInitial  = extractInitial(nameInput.firstName);
+    lastInitial   = extractInitial(nameInput.lastName);
+    middleInitial = extractInitial(nameInput.middleInitial ?? middleName);
+  } else {
+    const cleanName = (nameInput || '').trim();
+    const parts = cleanName.split(/\s+/).filter(Boolean);
+
+    if (parts.length === 1) {
+      lastInitial = extractInitial(parts[0]);
+      firstInitial = lastInitial;
+    } else if (parts.length === 2) {
+      firstInitial = extractInitial(parts[0]);
+      lastInitial = extractInitial(parts[1]);
+      if (middleName && middleName.trim()) {
+        middleInitial = extractInitial(middleName);
+      }
+    } else if (parts.length >= 3) {
+      firstInitial = extractInitial(parts[0]);
+      lastInitial = extractInitial(parts[parts.length - 1]);
+      if (middleName && middleName.trim()) {
+        middleInitial = extractInitial(middleName);
+      } else {
+        const candidateMiddle = parts[1].replace(/[^A-Za-z]/g, '');
+        if (candidateMiddle) {
+          middleInitial = candidateMiddle[0].toUpperCase();
+        }
       }
     }
   }
@@ -279,17 +307,39 @@ function renderStandardForm(isSignin, isSignup) {
     <form class="login-form" id="login-form" novalidate>
       <div id="login-status-alert" style="display:none;"></div>
       ${!isSignin ? `
-      <div class="lf-field">
-        <div class="lf-field__wrap" id="wrap-name">
-          <span class="lf-field__icon">${icon('user', 18)}</span>
-          <input class="lf-field__input" type="text" id="name" name="name"
-            placeholder="x" autocomplete="name" />
-          <label class="lf-field__label" for="name">Full Name</label>
+      <div class="lf-row-2">
+        <div class="lf-field">
+          <div class="lf-field__wrap" id="wrap-first-name">
+            <span class="lf-field__icon">${icon('user', 18)}</span>
+            <input class="lf-field__input" type="text" id="first-name" name="first_name"
+              placeholder="x" autocomplete="given-name" />
+            <label class="lf-field__label" for="first-name">First Name</label>
+          </div>
+          <span class="lf-field__error" id="err-first-name"></span>
         </div>
-        <span class="lf-field__error" id="err-name"></span>
+
+        <div class="lf-field">
+          <div class="lf-field__wrap" id="wrap-last-name">
+            <span class="lf-field__icon">${icon('user', 18)}</span>
+            <input class="lf-field__input" type="text" id="last-name" name="last_name"
+              placeholder="x" autocomplete="family-name" />
+            <label class="lf-field__label" for="last-name">Last Name</label>
+          </div>
+          <span class="lf-field__error" id="err-last-name"></span>
+        </div>
       </div>
 
-      <div style="display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 10px;">
+      <div class="lf-row-meta">
+        <div class="lf-field">
+          <div class="lf-field__wrap" id="wrap-middle-name">
+            <span class="lf-field__icon">${icon('user', 18)}</span>
+            <input class="lf-field__input" type="text" id="middle-name" name="middle_name" maxlength="1"
+              placeholder="x" autocomplete="additional-name" style="text-transform: uppercase;" />
+            <label class="lf-field__label" for="middle-name">Middle Initial</label>
+          </div>
+          <span class="lf-field__error" id="err-middle-name"></span>
+        </div>
+
         <div class="lf-field">
           <div class="lf-field__wrap" id="wrap-birth-date">
             <span class="lf-field__icon">${icon('calendar', 18)}</span>
@@ -298,16 +348,6 @@ function renderStandardForm(isSignin, isSignup) {
             <label class="lf-field__label lf-field__label--float" for="birth-date">Birthdate</label>
           </div>
           <span class="lf-field__error" id="err-birth-date"></span>
-        </div>
-
-        <div class="lf-field">
-          <div class="lf-field__wrap" id="wrap-middle-name">
-            <span class="lf-field__icon">${icon('user', 18)}</span>
-            <input class="lf-field__input" type="text" id="middle-name" name="middle_name" maxlength="30"
-              placeholder="x" />
-            <label class="lf-field__label" for="middle-name">Middle Initial</label>
-          </div>
-          <span class="lf-field__error" id="err-middle-name"></span>
         </div>
       </div>
 
@@ -827,18 +867,20 @@ function attachEvents() {
   document.getElementById('login-form')?.addEventListener('submit', handleSubmit);
 
   // Live CHMSU Student ID Suggestion preview on signup
-  const nameInput   = document.getElementById('name');
-  const birthInput  = document.getElementById('birth-date');
-  const middleInput = document.getElementById('middle-name');
-  const previewBox  = document.getElementById('signup-id-preview');
-  const previewVal  = document.getElementById('signup-preview-val');
+  const firstNameInput = document.getElementById('first-name');
+  const lastNameInput  = document.getElementById('last-name');
+  const birthInput     = document.getElementById('birth-date');
+  const middleInput    = document.getElementById('middle-name');
+  const previewBox     = document.getElementById('signup-id-preview');
+  const previewVal     = document.getElementById('signup-preview-val');
 
   function updateSignupIdPreview() {
-    const n = nameInput?.value.trim() || '';
-    const b = birthInput?.value || '';
-    const m = middleInput?.value.trim() || '';
-    if (n && b) {
-      const candidate = generateChmsuStudentId(n, b, m);
+    const fn = firstNameInput?.value.trim() || '';
+    const ln = lastNameInput?.value.trim() || '';
+    const b  = birthInput?.value || '';
+    const m  = middleInput?.value.trim() || '';
+    if (fn && ln && b) {
+      const candidate = generateChmsuStudentId({ firstName: fn, lastName: ln, middleInitial: m }, b);
       if (candidate && previewBox && previewVal) {
         previewVal.textContent = candidate;
         previewBox.style.display = 'flex';
@@ -850,10 +892,37 @@ function attachEvents() {
     }
   }
 
-  nameInput?.addEventListener('input', updateSignupIdPreview);
-  birthInput?.addEventListener('input', updateSignupIdPreview);
-  birthInput?.addEventListener('change', updateSignupIdPreview);
-  middleInput?.addEventListener('input', updateSignupIdPreview);
+  firstNameInput?.addEventListener('input', () => {
+    clearFieldError('first-name');
+    updateSignupIdPreview();
+  });
+  lastNameInput?.addEventListener('input', () => {
+    clearFieldError('last-name');
+    updateSignupIdPreview();
+  });
+  birthInput?.addEventListener('input', () => {
+    clearFieldError('birth-date');
+    updateSignupIdPreview();
+  });
+  birthInput?.addEventListener('change', () => {
+    clearFieldError('birth-date');
+    updateSignupIdPreview();
+  });
+  middleInput?.addEventListener('input', (e) => {
+    e.target.value = normalizeMiddleInitial(e.target.value);
+    clearFieldError('middle-name');
+    updateSignupIdPreview();
+  });
+
+  document.getElementById('email')?.addEventListener('input', () => {
+    if (currentView === 'signup') clearFieldError('email');
+  });
+  document.getElementById('password')?.addEventListener('input', () => {
+    if (currentView === 'signup') clearFieldError('password');
+  });
+  document.getElementById('signup-terms-chk')?.addEventListener('change', () => {
+    clearFieldError('terms');
+  });
 
   // Form submit — company
   document.getElementById('company-form')?.addEventListener('submit', handleCompanySubmit);
@@ -945,12 +1014,19 @@ function updatePasswordStrength(pw, barPrefix, labelId) {
   label.textContent = pw.length ? labels[score] : '';
 }
 
-/* ── Show field error ── */
+/* ── Show / Clear field error ── */
 function showError(id, msg) {
   const wrap = document.getElementById('wrap-' + id);
   const err  = document.getElementById('err-' + id);
   wrap?.classList.add('lf-field__wrap--error');
   if (err) { err.textContent = msg; err.classList.add('lf-field__error--visible'); }
+}
+
+function clearFieldError(id) {
+  const wrap = document.getElementById('wrap-' + id);
+  const err  = document.getElementById('err-' + id);
+  wrap?.classList.remove('lf-field__wrap--error');
+  if (err) { err.textContent = ''; err.classList.remove('lf-field__error--visible'); }
 }
 
 /* ── Show generic login error without turning textboxes red ── */
@@ -1105,17 +1181,22 @@ async function handleSubmit(e) {
 
   const email    = document.getElementById('email')?.value.trim() || '';
   const password = document.getElementById('password')?.value || '';
-  const name     = document.getElementById('name')?.value.trim() || '';
 
   let valid = true;
   const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   if (currentView === 'signup') {
-    const birthDate  = document.getElementById('birth-date')?.value || '';
-    const middleName = document.getElementById('middle-name')?.value.trim() || '';
+    const firstName     = (document.getElementById('first-name')?.value || '').trim().replace(/\s+/g, ' ');
+    const lastName      = (document.getElementById('last-name')?.value || '').trim().replace(/\s+/g, ' ');
+    const middleInitial = normalizeMiddleInitial(document.getElementById('middle-name')?.value || '');
+    const birthDate     = document.getElementById('birth-date')?.value || '';
 
-    if (!name) {
-      showError('name', 'Please enter your full name.');
+    if (!firstName) {
+      showError('first-name', 'Please enter your first name.');
+      valid = false;
+    }
+    if (!lastName) {
+      showError('last-name', 'Please enter your last name.');
       valid = false;
     }
     if (!birthDate) {
@@ -1142,15 +1223,18 @@ async function handleSubmit(e) {
     btn.disabled = true;
     lbl.innerHTML = '<span class="login-spinner"></span> Please wait…';
 
-    const suggestedId = generateChmsuStudentId(name, birthDate, middleName);
+    const fullName    = formatFullName(firstName, lastName, middleInitial);
+    const suggestedId = generateChmsuStudentId({ firstName, lastName, middleInitial }, birthDate);
 
     // Store credentials temporarily — role + profile collected on onboarding
     sessionStorage.setItem('hireme-signup', JSON.stringify({
-      name,
+      name: fullName,
+      first_name: firstName,
+      last_name: lastName,
+      middle_name: middleInitial,
       email,
       password,
       birth_date: birthDate,
-      middle_name: middleName,
       student_id: suggestedId,
       terms_accepted: true,
     }));
