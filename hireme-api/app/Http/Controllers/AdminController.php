@@ -1209,17 +1209,33 @@ class AdminController extends Controller
                 $companyProfile = $j->company?->companyProfile;
                 $companyName    = $companyProfile?->company_name ?? $j->company?->name ?? 'Unknown Company';
 
+                $toList = static function ($val): array {
+                    if (is_array($val)) return $val;
+                    if (is_string($val)) {
+                        $decoded = json_decode($val, true);
+                        return is_array($decoded) ? $decoded : [];
+                    }
+                    return [];
+                };
+
                 return [
-                    'id'         => $j->id,
-                    'title'      => $j->title,
-                    'company'    => $companyName,
-                    'location'   => $j->location,
-                    'type'       => $j->employment_type,
-                    'status'     => $statusMap[$j->status] ?? ucfirst($j->status),
-                    'applicants' => $j->applications_count ?? 0,
-                    'skills'     => $j->required_skills ?? [],
-                    'posted'     => $j->created_at->format('M d, Y'),
-                    'expires_at' => $j->expires_at?->format('Y-m-d'),
+                    'id'               => $j->id,
+                    'title'            => $j->title,
+                    'company'          => $companyName,
+                    'department'       => $j->department,
+                    'location'         => $j->location,
+                    'type'             => $j->employment_type,
+                    'experience_level' => $j->experience_level,
+                    'salary_range'     => $j->salary_range,
+                    'description'      => $j->description,
+                    'responsibilities' => $toList($j->responsibilities),
+                    'requirements'     => $toList($j->requirements),
+                    'benefits'         => $toList($j->benefits),
+                    'status'           => $statusMap[$j->status] ?? ucfirst($j->status),
+                    'applicants'       => $j->applications_count ?? 0,
+                    'skills'           => $toList($j->required_skills),
+                    'posted'           => $j->created_at->format('M d, Y'),
+                    'expires_at'       => $j->expires_at?->format('Y-m-d'),
                 ];
             });
 
