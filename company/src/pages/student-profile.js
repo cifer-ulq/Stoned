@@ -378,10 +378,6 @@ function renderProfile(d, params) {
               <button class="profile-btn-primary" id="download-resume-top-btn" title="Download ATS Resume as PDF">
                 ${icon('download', 15)} <span>Download Resume</span>
               </button>
-              ${email ? `
-                <a href="mailto:${email}?subject=CHMSU%20HireMe%20Candidate%20Inquiry%20-%20${encodeURIComponent(name)}" class="profile-btn-secondary" title="Email candidate directly">
-                  ${icon('mail', 15)} <span>Email Candidate</span>
-                </a>` : ''}
             </div>
           </div>
 
