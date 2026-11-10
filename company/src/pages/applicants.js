@@ -346,9 +346,9 @@ function renderCards(container, apps, allApps) {
               </a>` : ''}
           </div>`;
         primaryBtn = `
-          <div style="display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;">
-            <button class="ap-btn ap-btn--outline ap-btn-ojt-schedule" data-id="${id}" style="color:#005930;border-color:#005930;background:#ffffff;font-weight:700;" title="Schedule face-to-face or online interview">${icon('calendar', 14)} Schedule Interview</button>
-            <button class="ap-btn ap-btn--primary ap-btn-ojt-direct-accept" data-id="${id}" style="background:#005930;border-color:#005930;font-weight:700;" title="Accept student directly without an interview">${icon('checkCircle', 14)} Direct Accept</button>
+          <div class="ap-card__actions-duo">
+            <button class="ap-btn ap-btn--outline ap-btn-ojt-schedule" data-id="${id}" title="Schedule face-to-face or online interview">${icon('calendar', 14)} Schedule Interview</button>
+            <button class="ap-btn ap-btn--primary ap-btn-ojt-direct-accept" data-id="${id}" title="Accept student directly without an interview">${icon('checkCircle', 14)} Direct Accept</button>
           </div>`;
       } else if (raw === 'interview_scheduled') {
         statusBadge = 'Interview Scheduled';

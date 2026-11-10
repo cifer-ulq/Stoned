@@ -1817,6 +1817,13 @@
   width: 100%;
 }
 
+.ap-card__actions-duo {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  width: 100%;
+}
+
 .ap-card__actions-secondary {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
@@ -1852,6 +1859,19 @@
   background: #004020;
   border-color: #004020;
   color: #ffffff;
+}
+
+.ap-btn--outline {
+  background: #ffffff;
+  color: #005930;
+  border-color: #005930;
+  font-weight: 700;
+}
+
+.ap-btn--outline:hover {
+  background: rgba(0, 89, 48, 0.06);
+  border-color: #004020;
+  color: #004020;
 }
 
 .ap-btn--ghost {
