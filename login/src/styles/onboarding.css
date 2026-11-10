@@ -769,6 +769,108 @@
 .ob-nav__btn svg { flex-shrink: 0; }
 
 /* ══════════════════════════════════════════════════════════════
+   PRIMARY & GENERIC ONBOARDING BUTTONS (.ob-btn)
+   ══════════════════════════════════════════════════════════════ */
+.ob-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 24px;
+  border-radius: 12px;
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  outline: none;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease, opacity 0.2s ease;
+  position: relative;
+  overflow: hidden;
+  text-decoration: none;
+  line-height: 1.2;
+  box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+}
+
+.ob-btn--full {
+  width: 100%;
+}
+
+.ob-btn svg,
+.ob-btn .ob-btn__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.ob-btn span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.ob-btn--primary {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+  color: #ffffff !important;
+  box-shadow: 0 4px 18px rgba(0, 89, 48, 0.35);
+}
+
+.ob-btn--primary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.20) 0%, transparent 60%);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+}
+
+.ob-btn--primary:hover:not(:disabled) {
+  box-shadow: 0 8px 26px rgba(0, 89, 48, 0.48);
+  transform: translateY(-2px);
+  color: #ffffff !important;
+}
+
+.ob-btn--primary:hover:not(:disabled)::before {
+  opacity: 1;
+}
+
+.ob-btn--primary:hover:not(:disabled) .ob-btn__icon,
+.ob-btn--primary:hover:not(:disabled) > svg {
+  transform: translateX(4px);
+}
+
+.ob-btn--primary:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.ob-btn--primary:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: 0 4px 14px rgba(0, 89, 48, 0.2);
+}
+
+.ob-btn__spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: obBtnSpin 0.7s linear infinite;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+@keyframes obBtnSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* ══════════════════════════════════════════════════════════════
    POP ANIMATION
    ══════════════════════════════════════════════════════════════ */
 @keyframes obPop {

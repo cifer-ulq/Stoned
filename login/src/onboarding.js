@@ -374,7 +374,7 @@ function renderTemporaryPasswordFlow(cachedUser) {
                 <!-- Email (Read-only) -->
                 <div>
                   <label class="ob-field__label--static">Account Email</label>
-                  <div class="ob-field__input-wrap" style="background: var(--bg-secondary); border-color: var(--border-light); cursor: not-allowed; opacity: 0.85;">
+                  <div class="ob-field__input-wrap" style="background: var(--bg-secondary); border-color: var(--border-default); cursor: not-allowed; opacity: 0.85;">
                     <span class="ob-field__icon">${icon('mail', 18)}</span>
                     <input type="text" class="ob-field__input" value="${userEmail}" disabled style="color: var(--text-secondary); cursor: not-allowed; padding-top: 14px; padding-bottom: 14px;" />
                   </div>
@@ -415,9 +415,9 @@ function renderTemporaryPasswordFlow(cachedUser) {
                 </div>
 
                 <!-- Submit Button -->
-                <button type="button" id="btn-submit-pwd" class="ob-btn ob-btn--primary" style="width: 100%; justify-content: center; padding: 14px 20px; font-size: 0.92rem; font-weight: 600; margin-top: 4px;">
+                <button type="submit" id="btn-submit-pwd" class="ob-btn ob-btn--primary ob-btn--full" style="margin-top: 6px;">
                   <span id="btn-submit-lbl">Update Password & Continue</span>
-                  ${svg.arrowRight}
+                  <span id="btn-submit-icon" class="ob-btn__icon">${svg.arrowRight}</span>
                 </button>
 
               </form>
@@ -425,8 +425,8 @@ function renderTemporaryPasswordFlow(cachedUser) {
             </div>
           </div>
 
-          <div class="ob-main__footer" style="display: flex; justify-content: center; border-top: 1px solid var(--border-light); padding-top: 14px;">
-            <button type="button" id="btn-temp-signout" style="background: none; border: none; color: var(--text-tertiary); font-size: 0.8rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 6px;">
+          <div class="ob-main__footer" style="display: flex; justify-content: center; border-top: 1px solid var(--border-default); padding-top: 14px;">
+            <button type="button" id="btn-temp-signout" style="background: none; border: none; color: var(--text-tertiary); font-size: 0.8rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 6px; transition: color 0.2s ease;">
               Not you? Sign out & return to login
             </button>
           </div>
@@ -506,6 +506,7 @@ function attachTemporaryPasswordEvents(cachedUser) {
 
   const submitBtn = document.getElementById('btn-submit-pwd');
   const submitLbl = document.getElementById('btn-submit-lbl');
+  const submitIcon = document.getElementById('btn-submit-icon');
 
   async function handleSubmit() {
     const p1 = newPwdInput?.value || '';
@@ -529,6 +530,7 @@ function attachTemporaryPasswordEvents(cachedUser) {
 
     if (submitBtn) submitBtn.disabled = true;
     if (submitLbl) submitLbl.textContent = 'Updating password…';
+    if (submitIcon) submitIcon.innerHTML = '<span class="ob-btn__spinner"></span>';
 
     try {
       const token = localStorage.getItem('hireme_token');
@@ -554,6 +556,7 @@ function attachTemporaryPasswordEvents(cachedUser) {
         if (errorBox) errorBox.style.display = 'flex';
         if (submitBtn) submitBtn.disabled = false;
         if (submitLbl) submitLbl.textContent = 'Update Password & Continue';
+        if (submitIcon) submitIcon.innerHTML = svg.arrowRight;
         return;
       }
 
@@ -569,7 +572,8 @@ function attachTemporaryPasswordEvents(cachedUser) {
         launchConfetti();
       } catch (_) {}
 
-      if (submitLbl) submitLbl.innerHTML = `<span style="display:inline-flex;align-items:center;gap:6px;">${icon('check', 16)} Password Updated!</span>`;
+      if (submitLbl) submitLbl.textContent = 'Password Updated!';
+      if (submitIcon) submitIcon.innerHTML = icon('check', 18);
       if (submitBtn) submitBtn.style.background = 'linear-gradient(135deg, #10B981 0%, #059669 100%)';
 
       setTimeout(() => {
@@ -590,12 +594,17 @@ function attachTemporaryPasswordEvents(cachedUser) {
       if (errorBox) errorBox.style.display = 'flex';
       if (submitBtn) submitBtn.disabled = false;
       if (submitLbl) submitLbl.textContent = 'Update Password & Continue';
+      if (submitIcon) submitIcon.innerHTML = svg.arrowRight;
     }
   }
 
   submitBtn?.addEventListener('click', handleSubmit);
-  newPwdInput?.addEventListener('keydown', (e) => { if (e.key === 'Enter') confirmPwdInput?.focus(); });
-  confirmPwdInput?.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleSubmit(); });
+  document.getElementById('temp-pwd-form')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    handleSubmit();
+  });
+  newPwdInput?.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); confirmPwdInput?.focus(); } });
+  confirmPwdInput?.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); } });
 
   document.getElementById('btn-temp-signout')?.addEventListener('click', () => {
     localStorage.removeItem('hireme_token');
@@ -1740,7 +1749,7 @@ function showPendingApprovalModal(info) {
         </div>
         Your account is currently in <strong>Pending</strong> status. An OJT Coordinator or Administrator will verify your student credentials before your account is activated. You will be able to log in as soon as it is approved.
       </div>
-      <a href="./index.html" class="ob-btn ob-btn--primary" style="display:flex;width:100%;justify-content:center;padding:14px 20px;font-weight:600;text-decoration:none;border-radius:10px;background:#005930;color:#ffffff;font-size:0.92rem;">
+      <a href="./index.html" class="ob-btn ob-btn--primary ob-btn--full" style="margin-top: 4px;">
         Return to Sign In
       </a>
     </div>
