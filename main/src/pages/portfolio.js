@@ -930,96 +930,195 @@ function openEditAboutModal() {
   });
 }
 
-/* ── Requirements Drive Modal ── */
+/* ── Requirements Drive Modal (Redesigned) ── */
 function openRequirementsDriveModal() {
   const existing = document.getElementById('portfolio-modal-overlay');
   if (existing) existing.remove();
   const activeReq = Array.isArray(REQS) && REQS.length ? REQS[0] : null;
 
+  const reqStatus = activeReq?.status || 'pending';
+  const statusLabels = {
+    verified:       { label: 'Verified & Approved', bg: 'rgba(16,185,129,0.12)', color: '#059669', border: 'rgba(16,185,129,0.3)', icon: 'checkCircle' },
+    needs_revision: { label: 'Revision Needed',      bg: 'rgba(239,68,68,0.12)',  color: '#DC2626', border: 'rgba(239,68,68,0.3)',  icon: 'alertTriangle' },
+    submitted:      { label: 'Under Review',         bg: 'rgba(2,132,199,0.12)',  color: '#0284c7', border: 'rgba(2,132,199,0.3)',  icon: 'clock' },
+    pending:        { label: 'Action Required',      bg: 'rgba(0,89,48,0.10)',    color: '#005930', border: 'rgba(0,89,48,0.25)',   icon: 'folder' },
+  };
+  const currentStMeta = statusLabels[reqStatus] || statusLabels.pending;
+  const itemsCount = (activeReq && Array.isArray(activeReq.items)) ? activeReq.items.length : 0;
+
   const overlay = document.createElement('div');
   overlay.id = 'portfolio-modal-overlay';
   overlay.className = 'modal-overlay';
   overlay.innerHTML = `
-    <div class="modal-box pfm-box" role="dialog" aria-modal="true" style="max-width:540px;">
-      <div class="pfm-header">
-        <div class="pfm-header-left">
-          <div class="pfm-icon-box" style="background:linear-gradient(135deg,#0284c7,#38bdf8);">
-            ${icon('folder', 20)}
+    <div class="modal-box pfm-box req-modal-box" role="dialog" aria-modal="true" style="max-width:580px;border-radius:18px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,0.24);">
+      
+      <!-- Top Brand Color Accent Bar -->
+      <div style="height:4px;background:linear-gradient(90deg, #005930 0%, #10B981 50%, #34D399 100%);width:100%;"></div>
+
+      <!-- Header -->
+      <div class="pfm-header" style="padding:18px 24px;border-bottom:1px solid var(--border-subtle);background:var(--bg-elevated, #ffffff);">
+        <div class="pfm-header-left" style="display:flex;align-items:center;gap:14px;">
+          <div class="pfm-icon-box" style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg, #005930 0%, #1A7A4A 100%);color:#ffffff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,89,48,0.22);flex-shrink:0;">
+            ${icon('folderOpen', 22)}
           </div>
           <div>
-            <h3 class="pfm-title">${activeReq ? activeReq.title : 'Pre-Deployment OJT Document Packet'}</h3>
-            <p class="pfm-subtitle">${activeReq?.supervisor?.name ? `Assigned by ${activeReq.supervisor.name}` : 'OJT Document Submission'}</p>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px;">
+              <h3 class="pfm-title" style="font-size:1.1rem;font-weight:700;color:var(--text-primary);margin:0;">
+                ${escapeHtml(activeReq ? activeReq.title : 'Pre-Deployment OJT Document Packet')}
+              </h3>
+              <span style="font-size:0.68rem;font-weight:700;padding:2px 8px;border-radius:99px;background:${currentStMeta.bg};color:${currentStMeta.color};border:1px solid ${currentStMeta.border};display:inline-flex;align-items:center;gap:4px;">
+                ${icon(currentStMeta.icon, 10)} ${currentStMeta.label}
+              </span>
+            </div>
+            <p class="pfm-subtitle" style="font-size:0.78rem;color:var(--text-tertiary);margin:0;display:flex;align-items:center;gap:5px;">
+              ${activeReq?.supervisor?.name ? `${icon('shield', 12)} Assigned by <strong style="color:var(--text-secondary);">${escapeHtml(activeReq.supervisor.name)}</strong> (OJT Coordinator)` : 'OJT Document Submission Packet'}
+            </p>
           </div>
         </div>
-        <button type="button" class="pfm-close-btn" aria-label="Close">${icon('x', 18)}</button>
+        <button type="button" class="pfm-close-btn" aria-label="Close" style="width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:none;background:var(--bg-secondary);color:var(--text-secondary);cursor:pointer;transition:all .18s ease;">${icon('x', 18)}</button>
       </div>
 
-      <form id="pfm-drive-form" class="pfm-form-body" novalidate>
-        <!-- Required Documents Checklist Inside Modal (if assigned) -->
-        ${(activeReq && Array.isArray(activeReq.items) && activeReq.items.length) ? `
-        <div class="pfm-section" style="margin-bottom:12px;">
-          <div class="pfm-section-label" style="display:flex;align-items:center;justify-content:space-between;">
-            <span>${icon('clipboardCheck', 13)} Required Documents in Folder</span>
-            <span style="font-size:0.72rem;font-weight:700;color:#0284c7;">${activeReq.items.length} Required</span>
-          </div>
-          <div style="background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:8px;padding:8px 12px;display:flex;flex-direction:column;gap:6px;max-height:160px;overflow-y:auto;">
-            ${activeReq.items.map((it, idx) => {
-              const itName = getReqItemName(it);
-              return `
-                <div style="display:flex;align-items:center;gap:8px;font-size:0.78rem;">
-                  <span style="width:18px;height:18px;border-radius:4px;background:rgba(2,132,199,0.1);color:#0284c7;display:inline-flex;align-items:center;justify-content:center;font-size:0.68rem;font-weight:700;flex-shrink:0;">${idx + 1}</span>
-                  <span style="font-weight:500;color:var(--text-primary);flex:1;line-height:1.3;">${itName}</span>
-                  <span style="font-size:0.65rem;padding:1px 6px;border-radius:4px;background:rgba(0,89,48,0.08);color:#005930;font-weight:700;flex-shrink:0;">Required</span>
-                </div>
-              `;
-            }).join('')}
-          </div>
-        </div>
-        ` : `
-        <div class="pfm-section" style="margin-bottom:12px;">
-          <div style="background:var(--bg-surface);border:1px dashed var(--border-subtle);border-radius:8px;padding:10px 12px;font-size:0.78rem;color:var(--text-secondary);line-height:1.45;">
-            No requirement packet has been assigned yet by your OJT Coordinator. You can still save or update your Google Drive folder link in advance below.
-          </div>
-        </div>
-        `}
-
-        ${activeReq?.instructions ? `
-          <div style="margin-bottom:14px;padding:8px 12px;background:rgba(2,132,199,0.05);border-left:3px solid #0284c7;border-radius:6px;font-size:0.76rem;color:var(--text-secondary);line-height:1.45;">
-            <strong style="color:var(--text-primary);">${icon('info', 12)} Coordinator Instructions:</strong> ${activeReq.instructions}
+      <form id="pfm-drive-form" class="pfm-form-body" novalidate style="background:var(--bg-primary, #F8FAFC);padding:0;">
+        
+        <!-- Coordinator Feedback Alert (if needs revision) -->
+        ${(reqStatus === 'needs_revision' && activeReq?.supervisor_remarks) ? `
+          <div style="margin:16px 22px 0;padding:12px 14px;background:#FEF2F2;border:1px solid #FECACA;border-left:4px solid #EF4444;border-radius:10px;display:flex;align-items:flex-start;gap:10px;font-size:0.82rem;color:#991B1B;line-height:1.5;">
+            <span style="color:#DC2626;flex-shrink:0;margin-top:1px;">${icon('alertTriangle', 16)}</span>
+            <div>
+              <strong style="color:#7F1D1D;display:block;margin-bottom:2px;">Coordinator Revision Notes:</strong>
+              ${escapeHtml(activeReq.supervisor_remarks)}
+            </div>
           </div>
         ` : ''}
 
-        <div class="pfm-section">
-          <div class="pfm-section-label">
-            ${icon('folder', 13)} Cloud Drive Link
-          </div>
-          <div class="pfm-fields">
-            <div class="form-group">
-              <label class="pfm-label">Requirements Folder URL (Google Drive / OneDrive)</label>
-              <div class="pfm-input-wrap">
-                <span class="pfm-input-prefix">${icon('folder', 14)}</span>
-                <input class="form-input pfm-input pfm-input--prefixed" name="requirements_drive_url" type="url" placeholder="https://drive.google.com/drive/folders/..." value="${P.requirements_drive_url || ''}">
-              </div>
-              <p style="font-size:0.75rem;color:var(--text-tertiary);margin:6px 0 0;line-height:1.4;">
-                Upload your signed documents to your Google Drive / OneDrive folder, set link sharing to <strong>"Anyone with the link can view"</strong>, and paste the folder URL above.
-              </p>
+        <!-- Required Documents Checklist -->
+        ${itemsCount > 0 ? `
+          <div class="pfm-section" style="padding:16px 22px 10px;">
+            <div class="pfm-section-label" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+              <span style="display:inline-flex;align-items:center;gap:6px;font-size:0.74rem;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.06em;">
+                ${icon('clipboardCheck', 14)} Required Documents in Packet
+              </span>
+              <span style="font-size:0.72rem;font-weight:700;background:rgba(0,89,48,0.08);color:#005930;padding:2px 10px;border-radius:99px;border:1px solid rgba(0,89,48,0.18);">
+                ${itemsCount} Required
+              </span>
             </div>
-            ${P.requirements_drive_url ? `
-              <div style="margin-top:6px;padding:8px 12px;background:rgba(2,132,199,0.06);border:1px solid rgba(2,132,199,0.2);border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
-                <span style="font-size:0.78rem;color:#0284c7;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:320px;">Current: ${P.requirements_drive_url}</span>
-                <a href="${P.requirements_drive_url}" target="_blank" rel="noopener" style="font-size:0.75rem;font-weight:600;color:#0284c7;text-decoration:underline;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;">Open ${icon('externalLink', 12)}</a>
+
+            <div style="background:var(--bg-elevated, #ffffff);border:1px solid var(--border-default);border-radius:12px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;max-height:185px;overflow-y:auto;box-shadow:inset 0 1px 2px rgba(0,0,0,0.02);">
+              ${activeReq.items.map((it, idx) => {
+                const itName = getReqItemName(it);
+                return `
+                  <div style="display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;background:var(--bg-secondary);border:1px solid transparent;transition:all .15s ease;">
+                    <span style="width:22px;height:22px;border-radius:6px;background:rgba(0,89,48,0.1);color:#005930;display:inline-flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:700;flex-shrink:0;">
+                      ${idx + 1}
+                    </span>
+                    <span style="font-size:0.81rem;font-weight:500;color:var(--text-primary);flex:1;line-height:1.35;">
+                      ${escapeHtml(itName)}
+                    </span>
+                    <span style="font-size:0.67rem;padding:2px 8px;border-radius:6px;background:rgba(0,89,48,0.08);color:#005930;font-weight:700;flex-shrink:0;border:1px solid rgba(0,89,48,0.14);">
+                      Required
+                    </span>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+            <p style="font-size:0.72rem;color:var(--text-tertiary);margin:6px 2px 0;line-height:1.4;display:flex;align-items:center;gap:5px;">
+              ${icon('info', 12)} Upload completed, signed & stamped copies into your cloud folder.
+            </p>
+          </div>
+        ` : `
+          <div class="pfm-section" style="padding:16px 22px 10px;">
+            <div style="background:var(--bg-elevated, #ffffff);border:1.5px dashed var(--border-default);border-radius:12px;padding:12px 14px;font-size:0.8rem;color:var(--text-secondary);line-height:1.5;display:flex;align-items:center;gap:10px;">
+              <span style="color:#005930;flex-shrink:0;">${icon('info', 18)}</span>
+              <span>No requirement packet has been assigned yet by your coordinator. You can still save or update your Google Drive or OneDrive folder link below in advance.</span>
+            </div>
+          </div>
+        `}
+
+        <!-- Coordinator Instructions Card -->
+        ${activeReq?.instructions ? `
+          <div style="margin:0 22px 12px;padding:10px 14px;background:rgba(0,89,48,0.05);border-left:3.5px solid #005930;border-radius:8px;font-size:0.78rem;color:var(--text-secondary);line-height:1.5;">
+            <div style="font-weight:700;color:#005930;margin-bottom:3px;display:flex;align-items:center;gap:6px;">
+              ${icon('info', 13)} Coordinator Instructions
+            </div>
+            <div>${escapeHtml(activeReq.instructions)}</div>
+          </div>
+        ` : ''}
+
+        <!-- Cloud Drive Link Section -->
+        <div class="pfm-section" style="padding:4px 22px 18px;">
+          
+          <!-- 3-Step Upload Guidance Bar -->
+          <div style="background:var(--bg-elevated, #ffffff);border:1px solid var(--border-default);border-radius:12px;padding:12px 14px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+            <div style="font-size:0.72rem;font-weight:700;color:#005930;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+              ${icon('folderOpen', 13)} Submission Steps
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:8px;">
+              <div style="display:flex;flex-direction:column;gap:3px;padding:8px;background:var(--bg-secondary);border-radius:8px;font-size:0.73rem;line-height:1.35;">
+                <span style="font-weight:700;color:#005930;">1. Put PDFs in folder</span>
+                <span style="color:var(--text-tertiary);">Save all signed docs</span>
               </div>
-            ` : ''}
+              <div style="display:flex;flex-direction:column;gap:3px;padding:8px;background:var(--bg-secondary);border-radius:8px;font-size:0.73rem;line-height:1.35;">
+                <span style="font-weight:700;color:#005930;">2. Set Link Access</span>
+                <span style="color:var(--text-tertiary);">"Anyone with link"</span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:3px;padding:8px;background:var(--bg-secondary);border-radius:8px;font-size:0.73rem;line-height:1.35;">
+                <span style="font-weight:700;color:#005930;">3. Paste & Submit</span>
+                <span style="color:var(--text-tertiary);">Send for review</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="pfm-fields">
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="pfm-label" style="font-size:0.83rem;font-weight:700;color:var(--text-primary);margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;">
+                <span>Requirements Folder URL</span>
+                <span id="link-valid-tag" style="font-size:0.72rem;font-weight:600;display:none;"></span>
+              </label>
+
+              <div class="pfm-input-wrap" style="position:relative;">
+                <span class="pfm-input-prefix" style="left:12px;color:#005930;">${icon('folderOpen', 16)}</span>
+                <input 
+                  class="form-input pfm-input pfm-input--prefixed" 
+                  id="req-drive-input"
+                  name="requirements_drive_url" 
+                  type="url" 
+                  placeholder="https://drive.google.com/drive/folders/..." 
+                  value="${P.requirements_drive_url || ''}"
+                  style="padding-left:38px;padding-right:14px;height:44px;font-size:0.88rem;border:1.5px solid var(--border-default);border-radius:10px;background:var(--bg-elevated,#ffffff);transition:all .2s ease;"
+                  required
+                />
+              </div>
+
+              <!-- Currently Submitted Link Preview -->
+              ${P.requirements_drive_url ? `
+                <div style="margin-top:10px;padding:10px 14px;background:rgba(0,89,48,0.06);border:1px solid rgba(0,89,48,0.22);border-radius:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+                  <div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1;">
+                    <span style="color:#005930;flex-shrink:0;">${icon('checkCircle', 15)}</span>
+                    <span style="font-size:0.78rem;font-weight:600;color:#005930;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${P.requirements_drive_url}">
+                      ${P.requirements_drive_url}
+                    </span>
+                  </div>
+                  <a href="${P.requirements_drive_url}" target="_blank" rel="noopener" style="font-size:0.75rem;font-weight:700;color:#005930;text-decoration:none;display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:#ffffff;border:1px solid rgba(0,89,48,0.25);border-radius:6px;box-shadow:0 1px 2px rgba(0,0,0,0.04);transition:all .15s ease;">
+                    Open ${icon('externalLink', 12)}
+                  </a>
+                </div>
+              ` : ''}
+
+            </div>
           </div>
         </div>
 
-        <div class="pfm-footer">
-          <p class="pfm-error" id="pfm-drive-error"></p>
-          <div class="pfm-footer-actions">
-            <button type="button" class="btn btn--ghost pfm-cancel">Cancel</button>
-            <button type="submit" class="btn btn--primary pfm-save-btn">${SAVE_ICON} ${activeReq ? 'Submit for Review' : 'Save Drive Link'}</button>
+        <!-- Footer -->
+        <div class="pfm-footer" style="padding:14px 24px;border-top:1px solid var(--border-subtle);background:var(--bg-elevated, #ffffff);display:flex;align-items:center;justify-content:space-between;gap:12px;">
+          <p class="pfm-error" id="pfm-drive-error" style="font-size:0.8rem;color:#DC2626;margin:0;"></p>
+          <div class="pfm-footer-actions" style="display:flex;align-items:center;gap:10px;">
+            <button type="button" class="btn btn--ghost pfm-cancel" style="padding:10px 18px;border-radius:10px;font-size:0.88rem;font-weight:600;border:1.5px solid var(--border-default);background:var(--bg-secondary);color:var(--text-secondary);cursor:pointer;transition:all .18s ease;">Cancel</button>
+            <button type="submit" class="btn btn--primary pfm-save-btn" style="padding:10px 22px;border-radius:10px;font-size:0.88rem;font-weight:700;background:linear-gradient(135deg, #005930 0%, #1A7A4A 100%);color:#ffffff;border:none;box-shadow:0 4px 14px rgba(0,89,48,0.3);cursor:pointer;display:inline-flex;align-items:center;gap:8px;transition:all .2s ease;">
+              ${SAVE_ICON} <span>${activeReq ? 'Submit for Review' : 'Save Drive Link'}</span>
+            </button>
           </div>
         </div>
+
       </form>
     </div>
     <style>${pfmStyles()}</style>`;
@@ -1032,14 +1131,50 @@ function openRequirementsDriveModal() {
   overlay.querySelector('.pfm-cancel').onclick     = close;
   overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
 
+  // Live URL validation feedback
+  const driveInput = overlay.querySelector('#req-drive-input');
+  const validTag   = overlay.querySelector('#link-valid-tag');
+
+  function validateUrl() {
+    const val = (driveInput?.value || '').trim();
+    if (!val) {
+      if (validTag) validTag.style.display = 'none';
+      return;
+    }
+    const isDrive = /drive\.google\.com|onedrive|1drv\.ms|dropbox\.com/i.test(val);
+    const isValidHttp = /^https?:\/\//i.test(val);
+
+    if (validTag) {
+      validTag.style.display = 'inline-flex';
+      if (isDrive) {
+        validTag.innerHTML = `<span style="color:#059669;display:inline-flex;align-items:center;gap:3px;">${icon('checkCircle', 12)} Cloud Folder Link</span>`;
+      } else if (isValidHttp) {
+        validTag.innerHTML = `<span style="color:#0284c7;display:inline-flex;align-items:center;gap:3px;">${icon('check', 12)} Valid Link Format</span>`;
+      } else {
+        validTag.innerHTML = `<span style="color:#DC2626;display:inline-flex;align-items:center;gap:3px;">${icon('alertTriangle', 12)} Include https://</span>`;
+      }
+    }
+  }
+
+  driveInput?.addEventListener('input', validateUrl);
+  validateUrl();
+
   overlay.querySelector('#pfm-drive-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const errEl   = overlay.querySelector('#pfm-drive-error');
     const saveBtn = overlay.querySelector('.pfm-save-btn');
-    saveBtn.disabled = true;
-    saveBtn.innerHTML = `${SPIN_ICON} Submitting…`;
-    const form = new FormData(e.target);
+    const form    = new FormData(e.target);
     const driveUrl = formVal(form, 'requirements_drive_url');
+
+    if (!driveUrl || !driveUrl.trim()) {
+      if (errEl) errEl.textContent = 'Please enter a valid Google Drive or OneDrive folder link.';
+      driveInput?.focus();
+      return;
+    }
+
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = `${SPIN_ICON} <span>Submitting…</span>`;
+
     try {
       const res = await apiPut('/student/requirements/submit', {
         requirements_drive_url: driveUrl,
@@ -1060,8 +1195,8 @@ function openRequirementsDriveModal() {
       renderAbout();
     } catch (err) {
       saveBtn.disabled  = false;
-      saveBtn.innerHTML = `${SAVE_ICON} ${activeReq ? 'Submit for Review' : 'Save Drive Link'}`;
-      errEl.textContent = err.message || 'Save failed. Try again.';
+      saveBtn.innerHTML = `${SAVE_ICON} <span>${activeReq ? 'Submit for Review' : 'Save Drive Link'}</span>`;
+      if (errEl) errEl.textContent = err.message || 'Save failed. Please check your network and try again.';
     }
   });
 }

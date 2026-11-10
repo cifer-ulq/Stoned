@@ -571,9 +571,6 @@ function renderCards(container, apps, allApps) {
               <button type="button" class="ap-btn ap-btn--ghost ap-btn-coord-chat" data-id="${id}" style="color:#005930;font-weight:700;" title="View OJT Coordinator contact info & choose who to message">
                 ${icon('users', 13)} Coordinator
               </button>` : ''}
-            <button class="ap-btn ap-btn--ghost ap-btn-profile" data-id="${id}" title="View full candidate portfolio in new tab">
-              ${icon('externalLink', 13)} Portfolio
-            </button>
           </div>
         </div>
 
@@ -601,11 +598,22 @@ function renderCards(container, apps, allApps) {
     });
   });
 
-  // Wire View & Review Profile buttons (open resume modal + mark viewed)
+  // Wire View & Review Profile buttons (opens candidate portfolio in a new tab + marks viewed in background)
   grid.querySelectorAll('.ap-btn-view-profile').forEach(btn => {
     btn.addEventListener('click', () => {
       const app = allApps.find(a => String(a.id) === btn.dataset.id);
-      if (app) showResumeModal(app, allApps, container, app.category === 'job' ? 'reviewed' : null);
+      if (app) openCandidateProfileTab(app, allApps, container);
+    });
+  });
+
+  // Make candidate identity block (avatar + name) clickable to view portfolio in new tab
+  grid.querySelectorAll('.ap-card__profile').forEach(el => {
+    el.style.cursor = 'pointer';
+    el.setAttribute('title', 'Click to open candidate portfolio in new tab');
+    el.addEventListener('click', () => {
+      const card = el.closest('.ap-card');
+      const app = allApps.find(a => String(a.id) === card?.dataset.id);
+      if (app) openCandidateProfileTab(app, allApps, container);
     });
   });
 
@@ -717,47 +725,50 @@ function renderCards(container, apps, allApps) {
       if (app) openOnboardingModal(app, allApps, container);
     });
   });
+}
 
-  // Wire Profile buttons (open full profile in a new tab + mark viewed in background)
-  grid.querySelectorAll('.ap-btn-profile').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const app = allApps.find(a => String(a.id) === btn.dataset.id);
-      if (!app) return;
-      const studentUserId = app.applicant?.id;
-      if (!studentUserId) return;
+/**
+ * Open candidate portfolio profile in a new tab & mark viewed in background
+ */
+function openCandidateProfileTab(app, allApps, container) {
+  if (!app) return;
+  const studentUserId = app.applicant?.id;
+  if (!studentUserId) return;
 
-      // Mark viewed in background
-      if (app.category === 'ojt') {
-        const slotId = app.job?.id || app.posting_id;
-        const interestId = app.raw_id;
-        if (slotId && interestId && !app.resume_viewed) {
-          apiPost(`/company/ojt-postings/${slotId}/mark-viewed/${interestId}`, {}).then(() => {
-            app.resume_viewed = true;
-            refreshApplicantUI(container, allApps);
-          });
-        }
-      } else if (app.status === 'applied') {
-        apiPatch(`/company/applications/${app.id}/status`, { status: 'reviewed' }).then(() => {
-          app.status = 'reviewed';
-          app.status_label = 'Reviewed';
-          app.resume_viewed = true;
-          refreshApplicantUI(container, allApps);
-        });
-      }
-
-      let profileUrl;
-      if (app.category === 'ojt') {
-        const slotId = app.job?.id || '';
-        const interestId = app.raw_id || '';
-        profileUrl = `./student-profile.html?student=${studentUserId}&slot=${slotId}&interest=${interestId}&category=ojt`;
-      } else {
-        const jobId = app.job?.id || '';
-        const appId = app.id || app.raw_id || '';
-        profileUrl = `./student-profile.html?student=${studentUserId}&job=${jobId}&application=${appId}&category=job`;
-      }
-      window.open(profileUrl, '_blank');
+  // Mark viewed in background
+  if (app.category === 'ojt') {
+    const slotId = app.job?.id || app.posting_id;
+    const interestId = app.raw_id;
+    if (slotId && interestId && !app.resume_viewed) {
+      apiPost(`/company/ojt-postings/${slotId}/mark-viewed/${interestId}`, {}).then(() => {
+        app.resume_viewed = true;
+        if (container && allApps) refreshApplicantUI(container, allApps);
+      }).catch(err => {
+        console.warn('Failed to mark OJT application viewed:', err);
+      });
+    }
+  } else if (app.status === 'applied') {
+    apiPatch(`/company/applications/${app.id}/status`, { status: 'reviewed' }).then(() => {
+      app.status = 'reviewed';
+      app.status_label = 'Reviewed';
+      app.resume_viewed = true;
+      if (container && allApps) refreshApplicantUI(container, allApps);
+    }).catch(err => {
+      console.warn('Failed to mark job application reviewed:', err);
     });
-  });
+  }
+
+  let profileUrl;
+  if (app.category === 'ojt') {
+    const slotId = app.job?.id || '';
+    const interestId = app.raw_id || '';
+    profileUrl = `./student-profile.html?student=${studentUserId}&slot=${slotId}&interest=${interestId}&category=ojt`;
+  } else {
+    const jobId = app.job?.id || '';
+    const appId = app.id || app.raw_id || '';
+    profileUrl = `./student-profile.html?student=${studentUserId}&job=${jobId}&application=${appId}&category=job`;
+  }
+  window.open(profileUrl, '_blank');
 }
 
 function refreshApplicantUI(container, allApps) {
@@ -786,7 +797,7 @@ function showOjtReviewModal(app, allApps, container, parentBackdrop) {
   // Guard: Candidate profile must be inspected first
   if (!app.resume_viewed) {
     showToast('Please review the candidate\'s profile before submitting a review note.', 'warning');
-    showResumeModal(app, allApps, container, null);
+    openCandidateProfileTab(app, allApps, container);
     return;
   }
 
