@@ -111,7 +111,7 @@ export function getReqItemName(it) {
 /* ══════════════════════════════════════════════════
    MODAL HELPER
    ══════════════════════════════════════════════════ */
-function openModal({ title, body, onSave }) {
+function openModal({ title, body, onSave, onMount }) {
   const existing = document.getElementById('portfolio-modal-overlay');
   if (existing) existing.remove();
 
@@ -135,6 +135,7 @@ function openModal({ title, body, onSave }) {
 
   document.body.appendChild(overlay);
   requestAnimationFrame(() => overlay.querySelector('.modal-box')?.classList.add('modal-box--visible'));
+  if (typeof onMount === 'function') onMount(overlay);
 
   const close = () => overlay.remove();
   overlay.querySelector('.modal-close').onclick = close;
@@ -2100,8 +2101,12 @@ function groupSkillsForResume(skills) {
    RESUME TAB (EXECUTIVE 1-PAGE ATS FORMAT)
    ══════════════════════════════════════════════════ */
 function renderResume() {
-  const typeLabel = P.resume_type === 'summary' ? 'Professional Summary' : 'Career Objective';
-  const objText   = P.resume_objective || (P.bio ? P.bio : '<em class="text-tertiary">No objective or professional summary written yet. Click "Edit Summary" above to add one.</em>');
+  const isAlumni = P.is_alumni || P.status === 'alumni' || P.role === 'graduate' || P.year_level === 'Graduated';
+  const typeLabel = P.resume_type === 'summary' ? 'Professional Summary' : (isAlumni ? 'Professional Summary' : 'Career Objective');
+  const emptyPrompt = isAlumni
+    ? 'No professional summary written yet. Click "Edit Summary" above to highlight your technical background and key project deliverables.'
+    : 'No career objective written yet. Click "Edit Objective" above to craft a tailored statement for your target OJT practicum or entry role.';
+  const objText   = P.resume_objective || `<em class="text-tertiary">${emptyPrompt}</em>`;
 
   // Single-line contact details
   const contacts = [];
@@ -2150,7 +2155,7 @@ function renderResume() {
           <span class="resume-toolbar__desc">Executive single-page ATS-ready format</span>
         </div>
         <div class="resume-toolbar__actions">
-          ${isPeerView ? '' : `<button class="btn btn--sm resume-action-btn" id="edit-objective-btn">${icon('edit', 14)} Edit Summary</button>`}
+          ${isPeerView ? '' : `<button class="btn btn--sm resume-action-btn" id="edit-objective-btn">${icon('edit', 14)} ${isAlumni ? 'Edit Summary' : 'Edit Objective'}</button>`}
           <button class="btn btn--sm resume-action-btn" id="view-resume-btn">${icon('eye', 14)} Fullscreen / Print</button>
           <button class="btn btn--sm resume-download-btn" id="download-resume-btn">${icon('download', 14)} Download PDF</button>
         </div>
@@ -2163,7 +2168,7 @@ function renderResume() {
           <!-- Executive Header -->
           <div class="resume-doc-header">
             <h1 class="resume-doc-name">${P.name || 'Candidate Name'}</h1>
-            <p class="resume-doc-headline">${P.headline || P.program || 'Software Engineer'}</p>
+            <p class="resume-doc-headline">${P.headline || (P.program ? `${P.program} ${isAlumni ? 'Graduate' : 'Student'}` : (isAlumni ? 'IT Graduate' : 'IT Student / OJT Candidate'))}</p>
             <div class="resume-contact-bar">
               ${contacts.join('<span class="resume-sep">•</span>')}
             </div>
@@ -2324,31 +2329,58 @@ function renderResume() {
 
   // Edit objective/summary
   if (!isPeerView && tabContent.querySelector('#edit-objective-btn')) {
+    const studentTemplate = `Motivated ${P.program || 'Information Technology'} student at Carlos Hilado Memorial State University seeking an On-the-Job Training (OJT) practicum in web and software development. Eager to apply academic competencies and contribute to team deliverables while gaining industry experience.`;
+    const gradTemplate = `Results-driven ${P.program || 'Information Technology'} graduate from Carlos Hilado Memorial State University with practical experience building responsive web applications. Proficient in modern engineering workflows, eager to deliver high-impact software solutions.`;
+
     tabContent.querySelector('#edit-objective-btn').onclick = () => openModal({
-    title: `${icon('fileText', 18)} Edit Professional Summary / Objective`,
-    body: `
-      <p class="modal-error" style="color:var(--color-danger);font-size:.85rem;min-height:1.2em;"></p>
-      <div class="form-group">
-        <label class="form-label">Type</label>
-        <select class="form-input form-select" name="resume_type">
-          <option value="objective" ${P.resume_type!=='summary'?'selected':''}>Career Objective (entry-level / OJT candidate)</option>
-          <option value="summary"   ${P.resume_type==='summary'?'selected':''}>Professional Summary (experienced / highlights)</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">2–3 sentences tailored to your target job</label>
-        <textarea class="form-input form-textarea" name="resume_objective" rows="5" placeholder="Detail-oriented BSIT student seeking software development opportunities…">${P.resume_objective || ''}</textarea>
-      </div>`,
-    onSave: async (form) => {
-      const data = {
-        resume_type: formVal(form, 'resume_type'),
-        resume_objective: formVal(form, 'resume_objective'),
-      };
-      await apiPut('/student/resume', data);
-      Object.assign(P, data);
-      renderResume();
-    },
-  });
+      title: `${icon('fileText', 18)} ${isAlumni ? 'Edit Professional Summary' : 'Edit Career Objective'}`,
+      body: `
+        <p class="modal-error" style="color:var(--color-danger);font-size:.85rem;min-height:1.2em;"></p>
+        <div class="form-group">
+          <label class="form-label">Format Type</label>
+          <select class="form-input form-select" name="resume_type" id="modal-resume-type">
+            <option value="objective" ${P.resume_type !== 'summary' ? 'selected' : ''}>Career Objective (Recommended for OJT / Internships)</option>
+            <option value="summary"   ${P.resume_type === 'summary' ? 'selected' : ''}>Professional Summary (Recommended for Graduates & Experienced)</option>
+          </select>
+          <span class="text-xs text-tertiary" style="margin-top:3px;">
+            Career objectives focus on your training goals and availability, while professional summaries highlight your technical accomplishments.
+          </span>
+        </div>
+        <div class="form-group">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+            <label class="form-label" style="margin:0;">Opening Statement (2–3 professional sentences)</label>
+            <button type="button" class="btn btn--xs btn--ghost" id="use-resume-template-btn" style="color:var(--color-primary);font-size:0.75rem;padding:2px 8px;">
+              ${icon('sparkles', 12)} Use Starter Template
+            </button>
+          </div>
+          <textarea class="form-input form-textarea" id="modal-resume-textarea" name="resume_objective" rows="5" placeholder="Write a tailored professional statement…">${P.resume_objective || ''}</textarea>
+        </div>`,
+      onMount: (modalEl) => {
+        const typeSelect = modalEl.querySelector('#modal-resume-type');
+        const textarea   = modalEl.querySelector('#modal-resume-textarea');
+        const templateBtn = modalEl.querySelector('#use-resume-template-btn');
+        if (templateBtn && textarea && typeSelect) {
+          templateBtn.onclick = () => {
+            const isSummary = typeSelect.value === 'summary';
+            textarea.value = isSummary ? gradTemplate : studentTemplate;
+          };
+          typeSelect.onchange = () => {
+            if (!textarea.value.trim()) {
+              textarea.placeholder = typeSelect.value === 'summary' ? gradTemplate : studentTemplate;
+            }
+          };
+        }
+      },
+      onSave: async (form) => {
+        const data = {
+          resume_type: formVal(form, 'resume_type'),
+          resume_objective: formVal(form, 'resume_objective'),
+        };
+        await apiPut('/student/resume', data);
+        Object.assign(P, data);
+        renderResume();
+      },
+    });
   }
 
   // PDF download

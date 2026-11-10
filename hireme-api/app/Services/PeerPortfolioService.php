@@ -147,6 +147,8 @@ class PeerPortfolioService
                 'linkedin_url' => $sp?->linkedin_url ?? $jp?->linkedin_url,
                 'portfolio_url'=> $sp?->portfolio_url ?? $jp?->portfolio_url,
                 'status'       => $isAlumni ? 'alumni' : ($sp?->status ?? 'active'),
+                'resume_type'  => $sp?->resume_type ?? $jp?->resume_type ?? ($targetUser->role === 'student' ? 'objective' : 'summary'),
+                'resume_objective' => $sp?->resume_objective ?? $jp?->resume_objective ?? '',
             ],
             'activeOjt' => $activeOjt,
             'education' => $education->map(fn($e) => [

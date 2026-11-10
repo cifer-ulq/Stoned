@@ -394,6 +394,7 @@ Route::middleware('auth:sanctum')->prefix('jobseeker')->group(function () {
 
     // About
     Route::put('about',             [JobseekerController::class, 'updateAbout']);
+    Route::put('resume',            [JobseekerController::class, 'updateResume']);
 
     // Education
     Route::post('education',        [JobseekerController::class, 'storeEducation']);

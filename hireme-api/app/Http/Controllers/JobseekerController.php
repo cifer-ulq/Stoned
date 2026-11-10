@@ -216,6 +216,8 @@ class JobseekerController extends Controller
                 'graduate_course'            => $gradProfile?->course,
                 'graduate_section'           => $gradProfile?->section,
                 'graduate_employment_status' => $gradProfile?->employment_status,
+                'resume_type'                => $profile?->resume_type ?? ($user->role === 'student' ? 'objective' : 'summary'),
+                'resume_objective'           => $profile?->resume_objective ?? '',
             ],
             'education'    => $education,
             'experience'   => $experience,
@@ -695,12 +697,14 @@ class JobseekerController extends Controller
     {
         $user = $request->user();
         $data = $request->validate([
-            'bio'           => ['nullable', 'string', 'max:1500'],
-            'headline'      => ['nullable', 'string', 'max:160'],
-            'phone'         => ['nullable', 'string', 'max:30'],
-            'location'      => ['nullable', 'string', 'max:120'],
-            'linkedin_url'  => ['nullable', 'max:255'],
-            'portfolio_url' => ['nullable', 'max:255'],
+            'bio'              => ['nullable', 'string', 'max:1500'],
+            'headline'         => ['nullable', 'string', 'max:160'],
+            'phone'            => ['nullable', 'string', 'max:30'],
+            'location'         => ['nullable', 'string', 'max:120'],
+            'linkedin_url'     => ['nullable', 'max:255'],
+            'portfolio_url'    => ['nullable', 'max:255'],
+            'resume_type'      => ['nullable', 'in:summary,objective'],
+            'resume_objective' => ['nullable', 'string', 'max:1500'],
         ]);
 
         $user->jobseekerProfile()->updateOrCreate(
@@ -708,7 +712,34 @@ class JobseekerController extends Controller
             $data
         );
 
+        if ($user->studentProfile && (isset($data['resume_type']) || isset($data['resume_objective']))) {
+            $user->studentProfile->update(array_filter([
+                'resume_type'      => $data['resume_type'] ?? null,
+                'resume_objective' => $data['resume_objective'] ?? null,
+            ]));
+        }
+
         return response()->json(['message' => 'Updated.']);
+    }
+
+    public function updateResume(Request $request)
+    {
+        $user = $request->user();
+        $validated = $request->validate([
+            'resume_type'      => ['required', 'in:summary,objective'],
+            'resume_objective' => ['nullable', 'string', 'max:1500'],
+        ]);
+
+        $user->jobseekerProfile()->updateOrCreate(
+            ['user_id' => $user->id],
+            $validated
+        );
+
+        if ($user->studentProfile) {
+            $user->studentProfile->update($validated);
+        }
+
+        return response()->json(['message' => 'Resume updated successfully.']);
     }
 
     public function storeEducation(Request $request)

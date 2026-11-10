@@ -359,8 +359,9 @@ class StudentController extends Controller
         $phone     = $studentProfile?->phone ?? $jobseekerProfile?->phone;
         $githubUrl = $studentProfile?->github_url ?? $jobseekerProfile?->portfolio_url;
         $linkedin  = $studentProfile?->linkedin_url ?? $jobseekerProfile?->linkedin_url;
-        $resumeObj = $studentProfile?->resume_objective;
-        $campus    = $studentProfile?->campus ?? $graduateProfile?->campus;
+        $resumeObj  = $studentProfile?->resume_objective ?? $jobseekerProfile?->resume_objective;
+        $resumeType = $studentProfile?->resume_type ?? $jobseekerProfile?->resume_type ?? ($user->role === 'graduate' ? 'summary' : 'objective');
+        $campus     = $studentProfile?->campus ?? $graduateProfile?->campus;
         $school    = $studentProfile?->school ?? 'Carlos Hilado Memorial State University';
         $studentId = $studentProfile?->student_id;
         $section   = $studentProfile?->section ?? $graduateProfile?->section;
@@ -429,6 +430,7 @@ class StudentController extends Controller
                     'github_url'             => $githubUrl,
                     'linkedin_url'           => $linkedin,
                     'requirements_drive_url' => $studentProfile?->requirements_drive_url,
+                    'resume_type'            => $resumeType,
                     'resume_objective'       => $resumeObj,
                     'cover_color'      => $studentProfile?->cover_color,
                     'avatar_url'       => $user->avatar_url,

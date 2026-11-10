@@ -19,6 +19,8 @@ class JobseekerProfile extends Model
         'phone',
         'avatar_url',
         'profile_completed',
+        'resume_type',
+        'resume_objective',
     ];
 
     protected $casts = [

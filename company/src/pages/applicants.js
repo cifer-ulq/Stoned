@@ -2182,8 +2182,12 @@ async function showResumeModal(app, allApps, container, newStatus) {
     ? `<div class="rc-match"><strong>Position match:</strong> Matched ${app.matched_skills.length} of ${app.job.required_skills.length} required skills — ${app.matched_skills.join(', ')}</div>`
     : '';
 
-  const objText = P.bio || P.resume_objective || '';
-  const objLabel = P.resume_type === 'summary' ? 'Professional Summary' : 'Objective';
+  const isSummary = P.resume_type === 'summary' || (!isOjt && (P.role === 'graduate' || !P.year_level));
+  const objLabel  = isSummary ? 'Professional Summary' : 'Career Objective';
+  const candidateName = P.name || app.applicant?.name || 'Candidate';
+  const objText   = P.resume_objective || (isOjt
+    ? `${candidateName} is an active candidate for On-the-Job Training (OJT) practicum in ${P.program || 'Information Technology'} at Carlos Hilado Memorial State University.`
+    : `${candidateName} is an applicant for ${app.job?.title || 'this position'} with an academic and practical background in ${P.headline || P.program || 'Information Technology'}.`);
 
   let footerActions = '';
   if (isOjt) {

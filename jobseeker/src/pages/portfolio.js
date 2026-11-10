@@ -114,7 +114,7 @@ function parseJsonArray(val) {
 /* ══════════════════════════════════════════════════
    MODAL HELPER
    ══════════════════════════════════════════════════ */
-function openModal({ title, body, onSave }) {
+function openModal({ title, body, onSave, onMount }) {
   const existing = document.getElementById('portfolio-modal-overlay');
   if (existing) existing.remove();
 
@@ -138,6 +138,7 @@ function openModal({ title, body, onSave }) {
 
   document.body.appendChild(overlay);
   requestAnimationFrame(() => overlay.querySelector('.modal-box')?.classList.add('modal-box--visible'));
+  if (typeof onMount === 'function') onMount(overlay);
 
   const close = () => overlay.remove();
   overlay.querySelector('.modal-close').onclick = close;
@@ -337,8 +338,11 @@ function renderAbout() {
         </div>
         <div id="edu-list">
           ${(() => {
-            const isGrad = P.role === 'graduate';
-            const hasChmsu = isGrad && (P.graduate_course || P.graduate_campus || P.graduate_year_graduated);
+            const isGrad = P.role === 'graduate' || !!P.graduate_year_graduated;
+            const programName = P.graduate_course || P.program || P.course;
+            const campusName = P.graduate_campus || P.campus;
+            const sectionName = P.graduate_section || P.section;
+            const hasChmsu = isGrad ? (programName || campusName || P.graduate_year_graduated) : (programName || campusName);
             const chmsuCard = hasChmsu ? `
               <div class="profile-timeline-item profile-timeline-item--pinned">
                 <div class="profile-timeline-item__dot profile-timeline-item__dot--active"></div>
@@ -347,15 +351,18 @@ function renderAbout() {
                     <div>
                       <h4 class="profile-timeline-item__title">Carlos Hilado Memorial State University</h4>
                       <p class="profile-timeline-item__subtitle">
-                        ${[P.graduate_course, P.graduate_campus].filter(Boolean).join(' &mdash; ')}
-                        ${P.graduate_section ? `<span style="color:var(--text-tertiary);font-size:0.8rem;margin-left:6px;">Section ${P.graduate_section}</span>` : ''}
+                        ${[programName, campusName].filter(Boolean).join(' &mdash; ')}
+                        ${sectionName ? `<span style="color:var(--text-tertiary);font-size:0.8rem;margin-left:6px;">Section ${sectionName}</span>` : ''}
                       </p>
                     </div>
                     <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
                       ${P.graduate_year_graduated
                         ? `<span class="profile-timeline-item__date">${P.graduate_year_graduated}</span>`
-                        : ''}
-                      <span class="badge badge--green" style="font-size:0.68rem;padding:2px 10px;border-radius:999px;background:linear-gradient(135deg,#059669,#34D399);color:#fff;font-weight:700;letter-spacing:0.04em;">Graduate</span>
+                        : (P.batch ? `<span class="profile-timeline-item__date">Batch ${P.batch}</span>` : '')}
+                      ${isGrad
+                        ? `<span class="badge badge--green" style="font-size:0.68rem;padding:2px 10px;border-radius:999px;background:linear-gradient(135deg,#059669,#34D399);color:#fff;font-weight:700;letter-spacing:0.04em;">Graduate</span>`
+                        : `<span class="badge badge--info" style="font-size:0.68rem;padding:2px 10px;border-radius:999px;background:linear-gradient(135deg,#4A6CF7,#6D8DFF);color:#fff;font-weight:700;letter-spacing:0.04em;">${P.year_level || 'Enrolled Student'}</span>`
+                      }
                     </div>
                   </div>
                 </div>
@@ -1510,8 +1517,13 @@ function groupSkillsForResume(skills) {
    RESUME TAB (EXECUTIVE 1-PAGE ATS FORMAT)
    ══════════════════════════════════════════════════ */
 function renderResume() {
-  const typeLabel = P.resume_type === 'summary' ? 'Professional Summary' : 'Career Objective';
-  const objText   = P.resume_objective || (P.bio ? P.bio : '<em class="text-tertiary">No objective or professional summary written yet. Click "Edit Summary" above to add one.</em>');
+  const isAlumni = P.role === 'graduate' || !!P.graduate_year_graduated;
+  const isSummary = P.resume_type === 'summary' || (!P.resume_type && isAlumni);
+  const typeLabel = isSummary ? 'Professional Summary' : 'Career Objective';
+  const emptyPrompt = isAlumni
+    ? 'No professional summary written yet. Click "Edit Summary" above to highlight your technical background and key project deliverables.'
+    : 'No career objective written yet. Click "Edit Objective" above to craft a tailored statement for your target OJT practicum or entry role.';
+  const objText   = P.resume_objective || `<em class="text-tertiary">${emptyPrompt}</em>`;
 
   // Single-line contact details
   const contacts = [];
@@ -1556,12 +1568,15 @@ function renderResume() {
       });
     });
   }
-  if (eduEntries.length === 0 && (P.program || P.course)) {
+  if (eduEntries.length === 0 && (P.program || P.course || P.graduate_course)) {
+    const isGradUser = P.role === 'graduate' || !!P.graduate_year_graduated;
     eduEntries.push({
-      degree: P.program || P.course || 'Bachelor of Science in Information Technology',
-      school: 'Carlos Hilado Memorial State University',
-      period: P.graduate_year_graduated || 'Graduated',
-      gpa: '',
+      degree: P.graduate_course || P.program || P.course || 'Bachelor of Science in Information Technology',
+      school: `Carlos Hilado Memorial State University${(P.graduate_campus || P.campus) ? ` (${P.graduate_campus || P.campus})` : ''}`,
+      period: isGradUser
+        ? (P.graduate_year_graduated || 'Graduated')
+        : (P.year_level ? `${P.year_level} · Undergraduate` : 'Undergraduate'),
+      gpa: P.gpa || '',
       description: '',
     });
   }
@@ -1583,7 +1598,7 @@ function renderResume() {
           <span class="resume-toolbar__desc">Executive single-page ATS-ready format</span>
         </div>
         <div class="resume-toolbar__actions">
-          ${isPeerView ? '' : `<button class="btn btn--sm resume-action-btn" id="edit-objective-btn">${icon('edit', 14)} Edit Summary</button>`}
+          ${isPeerView ? '' : `<button class="btn btn--sm resume-action-btn" id="edit-objective-btn">${icon('edit', 14)} ${isAlumni ? 'Edit Summary' : 'Edit Objective'}</button>`}
           <button class="btn btn--sm resume-action-btn" id="view-resume-btn">${icon('eye', 14)} Fullscreen / Print</button>
           <button class="btn btn--sm resume-download-btn" id="download-resume-btn">${icon('download', 14)} Download PDF</button>
         </div>
@@ -1596,7 +1611,7 @@ function renderResume() {
           <!-- Executive Header -->
           <div class="resume-doc-header">
             <h1 class="resume-doc-name">${P.name || 'Candidate Name'}</h1>
-            <p class="resume-doc-headline">${P.headline || P.graduate_course || 'Software Engineer'}</p>
+            <p class="resume-doc-headline">${P.headline || (P.graduate_course || P.program ? `${P.graduate_course || P.program} ${isAlumni ? 'Graduate' : 'Student'}` : (isAlumni ? 'IT Graduate' : 'IT Student / OJT Candidate'))}</p>
             <div class="resume-contact-bar">
               ${contacts.join('<span class="resume-sep">•</span>')}
             </div>
@@ -1757,27 +1772,54 @@ function renderResume() {
 
   // Edit objective/summary
   if (!isPeerView && tabContent.querySelector('#edit-objective-btn')) {
+    const studentTemplate = `Motivated ${P.graduate_course || P.program || 'Information Technology'} student at Carlos Hilado Memorial State University seeking an On-the-Job Training (OJT) practicum in web and software development. Eager to apply academic competencies and contribute to team deliverables while gaining industry experience.`;
+    const gradTemplate = `Results-driven ${P.graduate_course || P.program || 'Information Technology'} graduate from Carlos Hilado Memorial State University with practical experience building responsive web applications. Proficient in modern engineering workflows, eager to deliver high-impact software solutions.`;
+
     tabContent.querySelector('#edit-objective-btn').onclick = () => openModal({
-      title: `${icon('fileText', 18)} Edit Professional Summary / Objective`,
+      title: `${icon('fileText', 18)} ${isAlumni ? 'Edit Professional Summary' : 'Edit Career Objective'}`,
       body: `
         <p class="modal-error" style="color:var(--color-danger);font-size:.85rem;min-height:1.2em;"></p>
         <div class="form-group">
-          <label class="form-label">Type</label>
-          <select class="form-input form-select" name="resume_type">
-            <option value="objective" ${P.resume_type!=='summary'?'selected':''}>Career Objective (career starter / entry-level)</option>
-            <option value="summary"   ${P.resume_type==='summary'?'selected':''}>Professional Summary (experienced / highlights)</option>
+          <label class="form-label">Format Type</label>
+          <select class="form-input form-select" name="resume_type" id="modal-resume-type">
+            <option value="summary"   ${(P.resume_type === 'summary' || (!P.resume_type && isAlumni)) ? 'selected' : ''}>Professional Summary (Standard for Graduates & Experienced)</option>
+            <option value="objective" ${(P.resume_type === 'objective' || (!P.resume_type && !isAlumni)) ? 'selected' : ''}>Career Objective (Recommended for OJT / Internships)</option>
           </select>
+          <span class="text-xs text-tertiary" style="margin-top:3px;">
+            Professional summaries highlight your technical accomplishments and capstone projects, while career objectives focus on internship learning goals.
+          </span>
         </div>
         <div class="form-group">
-          <label class="form-label">2–3 sentences tailored to your target role</label>
-          <textarea class="form-input form-textarea" name="resume_objective" rows="5" placeholder="Results-oriented IT graduate with experience in web architecture…">${P.resume_objective || ''}</textarea>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+            <label class="form-label" style="margin:0;">Opening Statement (2–3 professional sentences)</label>
+            <button type="button" class="btn btn--xs btn--ghost" id="use-resume-template-btn" style="color:var(--color-primary);font-size:0.75rem;padding:2px 8px;">
+              ${icon('sparkles', 12)} Use Starter Template
+            </button>
+          </div>
+          <textarea class="form-input form-textarea" id="modal-resume-textarea" name="resume_objective" rows="5" placeholder="Write a tailored professional statement…">${P.resume_objective || ''}</textarea>
         </div>`,
+      onMount: (modalEl) => {
+        const typeSelect = modalEl.querySelector('#modal-resume-type');
+        const textarea   = modalEl.querySelector('#modal-resume-textarea');
+        const templateBtn = modalEl.querySelector('#use-resume-template-btn');
+        if (templateBtn && textarea && typeSelect) {
+          templateBtn.onclick = () => {
+            const isSummary = typeSelect.value === 'summary';
+            textarea.value = isSummary ? gradTemplate : studentTemplate;
+          };
+          typeSelect.onchange = () => {
+            if (!textarea.value.trim()) {
+              textarea.placeholder = typeSelect.value === 'summary' ? gradTemplate : studentTemplate;
+            }
+          };
+        }
+      },
       onSave: async (form) => {
         const data = {
           resume_type: formVal(form, 'resume_type'),
           resume_objective: formVal(form, 'resume_objective'),
         };
-        await apiPut('/jobseeker/about', data);
+        await apiPut('/jobseeker/resume', data);
         Object.assign(P, data);
         renderResume();
       },
