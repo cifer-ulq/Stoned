@@ -167,7 +167,7 @@ function internalCard(job, idx, appliedIds = new Set()) {
   const sc          = scoreColor(job.matchScore);
   const isHighlyRec = job.matchScore >= 71;
   const isNotRec    = job.matchScore <= 25;
-  const applied     = appliedIds.has(job.id);
+  const applied     = appliedIds.has(job.id) || appliedIds.has(Number(job.id)) || appliedIds.has(String(job.id));
   const hasMatched  = (job.matchedSkills || []).length > 0;
 
   const logoContent = renderCompanyLogo(job.companyLogo, job.company, job.companyInitial);
@@ -1211,10 +1211,20 @@ export async function renderJobs(container) {
   if (res?.success && Array.isArray(res.data)) {
     allJobs = res.data.map(normalizeJob);
   }
+  const addAppId = a => {
+    const lid = a.job_listing_id ?? a.job_listing?.id;
+    if (lid != null) {
+      appliedIds.add(lid);
+      appliedIds.add(Number(lid));
+      appliedIds.add(String(lid));
+    }
+  };
   if (Array.isArray(appRes)) {
-    appRes.forEach(a => { if (a.job_listing_id) appliedIds.add(a.job_listing_id); });
+    appRes.forEach(addAppId);
   } else if (appRes?.success && Array.isArray(appRes.data)) {
-    appRes.data.forEach(a => { if (a.job_listing_id) appliedIds.add(a.job_listing_id); });
+    appRes.data.forEach(addAppId);
+  } else if (Array.isArray(appRes?.data)) {
+    appRes.data.forEach(addAppId);
   }
 
   /* Counts */
@@ -1542,8 +1552,9 @@ export async function renderJobs(container) {
 
   /* Job Detail modal */
   function openJobDetailModal(job) {
+    const isJobApplied = appliedIds.has(job.id) || appliedIds.has(Number(job.id)) || appliedIds.has(String(job.id));
     const overlay = document.createElement('div');
-    overlay.innerHTML = jobDetailModal(job, appliedIds.has(job.id));
+    overlay.innerHTML = jobDetailModal(job, isJobApplied);
     const el = overlay.firstElementChild;
     document.body.appendChild(el);
 
@@ -1661,10 +1672,14 @@ export async function renderJobs(container) {
         if (res?.status === 409 || res?.message?.toLowerCase().includes('already')) {
           showToast('You have already applied for this job.', 'info');
           appliedIds.add(job.id);
+          appliedIds.add(Number(job.id));
+          appliedIds.add(String(job.id));
           renderCards(false);
         } else if (res?.application || res?.message === 'Application sent.') {
           showToast('Application sent! Good luck!', 'success');
           appliedIds.add(job.id);
+          appliedIds.add(Number(job.id));
+          appliedIds.add(String(job.id));
           renderCards(false);
         } else {
           showToast(res?.message || 'Something went wrong. Please try again.', 'error');

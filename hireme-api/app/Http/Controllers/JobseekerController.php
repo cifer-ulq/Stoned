@@ -293,6 +293,7 @@ class JobseekerController extends Controller
                 $interview = $app->interviews->first();
                 return [
                     'id'             => $app->id,
+                    'job_listing_id' => $app->job_listing_id,
                     'status'         => $app->status,
                     'cover_letter'   => $app->cover_letter,
                     'custom_resume_url'    => $app->custom_resume_url,
