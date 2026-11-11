@@ -18,10 +18,14 @@
   }
 
 
-  /* Job Postings 1200px */
+  /* Job Postings 1200px — 3 columns */
   .jf-panel__grid {
     grid-template-columns: repeat(4, 1fr);
     gap: var(--space-4);
+  }
+  .jp-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 16px !important;
   }
 
   /* OJT Slots 1200px — 3 columns */
@@ -175,13 +179,14 @@
   }
 
 
-  /* Job Postings 992px */
+  /* Job Postings 992px — 2 columns */
   .jp-stats-row {
     grid-template-columns: repeat(2, 1fr) !important;
     gap: 12px !important;
   }
   .jp-grid {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 14px !important;
   }
   .jf-panel__grid {
     grid-template-columns: repeat(3, 1fr) !important;

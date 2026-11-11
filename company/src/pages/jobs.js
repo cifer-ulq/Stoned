@@ -180,7 +180,7 @@ export async function renderJobs(container) {
     </div>
 
     <div class="jp-grid fade-in" id="jobs-grid">
-      ${skeletonCards(4)}
+      ${skeletonCards(6)}
     </div>
   `;
 
