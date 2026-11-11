@@ -556,14 +556,10 @@ function renderCards(container, apps, allApps) {
             ${primaryBtn}
           </div>
           <div class="ap-card__actions-secondary">
-            ${showReject
-              ? (isOjt
-                  ? `<button class="ap-btn ap-btn--ghost-danger ap-btn-ojt-reject" data-id="${id}" title="Decline applicant">${icon('x', 13)} Decline</button>`
-                  : `<button class="ap-btn ap-btn--ghost-danger ap-btn-status" data-action="rejected" data-id="${id}" title="Reject candidate">${icon('x', 13)} Reject</button>`)
-              : (!isViewed
-                  ? `<button class="ap-btn ap-btn--ghost ap-btn-view-profile" data-id="${id}" title="Inspect candidate profile first">${icon('eye', 13)} Inspect Profile</button>`
-                  : `<button class="ap-btn ap-btn--ghost ap-btn-status" disabled style="opacity:0.4;cursor:default;">${icon('x', 13)} Closed</button>`)
-            }
+            ${showReject ? (isOjt
+              ? `<button class="ap-btn ap-btn--ghost-danger ap-btn-ojt-reject" data-id="${id}" title="Decline applicant">${icon('x', 13)} Decline</button>`
+              : `<button class="ap-btn ap-btn--ghost-danger ap-btn-status" data-action="rejected" data-id="${id}" title="Reject candidate">${icon('x', 13)} Reject</button>`
+            ) : ''}
             <button type="button" class="ap-btn ap-btn--ghost ap-btn-chat" data-id="${id}" onclick="event.stopPropagation(); window.openChat && window.openChat('${chatKey}')" title="Message candidate">
               ${icon('messageSquare', 13)} Chat
             </button>

@@ -1827,9 +1827,13 @@
 }
 
 .ap-card__actions-secondary {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  display: flex;
   gap: 6px;
+  width: 100%;
+}
+
+.ap-card__actions-secondary .ap-btn {
+  flex: 1;
 }
 
 .ap-btn {

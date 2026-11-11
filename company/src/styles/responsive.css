@@ -1776,7 +1776,7 @@
     text-align: left !important;
   }
   .ap-card__actions-secondary {
-    grid-template-columns: repeat(2, 1fr) !important;
+    display: flex !important;
     gap: 6px !important;
   }
   .ap-card__actions-secondary .ap-btn {
