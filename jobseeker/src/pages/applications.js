@@ -1119,6 +1119,14 @@ function unifiedApplicationCard(item, idx) {
             ` : ''}
           </div>
         ` : `
+          ${(!isRejectedAny && item.matchScore != null && Number(item.matchScore) <= 25 && item.status === 'applied') ? `
+            <div style="margin-top: 10px; padding: 8px 12px; background: rgba(245,158,11,0.08); border-left: 3px solid #f59e0b; border-radius: 6px; font-size: 0.77rem; color: #b45309; display: flex; align-items: center; gap: 8px;">
+              <span style="flex-shrink:0;">${icon('clock', 13)}</span>
+              <div>
+                <strong>Preliminary Pre-Screening:</strong> Low match score (${Math.round(Number(item.matchScore))}%) — The hiring company may review prerequisite skill alignment before full resume review.
+              </div>
+            </div>
+          ` : ''}
           <!-- Progress Tracker -->
           <div class="app-tracker">
             ${steps.map((s, sIdx) => {

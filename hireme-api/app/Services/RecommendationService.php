@@ -41,6 +41,19 @@ class RecommendationService
     }
 
     /**
+     * Check if a match score falls below the cutoff and requires
+     * preliminary pre-screening before portfolio review.
+     *
+     * @param int|float|null $score
+     * @return bool
+     */
+    public static function isPreScreenRequired($score): bool
+    {
+        $num = (int) round(max(0, min(100, (float) ($score ?? 0))));
+        return $num <= 25;
+    }
+
+    /**
      * Recommendation for external partner jobs:
      * All external partner listings are classified as Highly Recommended and do not display a match percentage.
      *

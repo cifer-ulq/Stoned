@@ -8,6 +8,7 @@ import { openSetOjtScheduleModal } from '../components/ojt-schedule-modal.js';
 
 const STATUS_LABELS = {
   all:        'All Stages',
+  pre_screen: 'Low Match Screening',
   applied:    'Applied',
   reviewed:   'Under Review / Endorsed',
   interview:  'Interview',
@@ -199,7 +200,13 @@ function applyFilters(container, allApps, category, status, query) {
 
   // Filter by pipeline status
   if (status !== 'all') {
-    if (status === 'rejected') {
+    if (status === 'pre_screen') {
+      filtered = filtered.filter(a => {
+        const sc = a.match_score != null ? Math.round(Number(a.match_score)) : 0;
+        const isV = a.category === 'ojt' ? !!a.resume_viewed : (a.status !== 'applied' || !!a.resume_viewed);
+        return sc <= 25 && !isV && a.status !== 'rejected' && a.status !== 'withdrawn';
+      });
+    } else if (status === 'rejected') {
       filtered = filtered.filter(a => a.status === 'rejected' || a.status === 'withdrawn');
     } else {
       filtered = filtered.filter(a => a.status === status);
@@ -242,7 +249,13 @@ function updatePipelineCounts(container, apps, category) {
   const counts = { all: scoped.length };
   for (const key of Object.keys(STATUS_LABELS)) {
     if (key === 'all') continue;
-    if (key === 'rejected') {
+    if (key === 'pre_screen') {
+      counts[key] = scoped.filter(a => {
+        const sc = a.match_score != null ? Math.round(Number(a.match_score)) : 0;
+        const isV = a.category === 'ojt' ? !!a.resume_viewed : (a.status !== 'applied' || !!a.resume_viewed);
+        return sc <= 25 && !isV && a.status !== 'rejected' && a.status !== 'withdrawn';
+      }).length;
+    } else if (key === 'rejected') {
       counts[key] = scoped.filter(a => a.status === 'rejected' || a.status === 'withdrawn').length;
     } else {
       counts[key] = scoped.filter(a => a.status === key).length;
@@ -301,14 +314,32 @@ function renderCards(container, apps, allApps) {
       const isViewed = !!a.resume_viewed;
 
       if (raw === 'interested') {
+        const isLowMatch = (rec.tier === 'not-recommended' || scoreVal <= 25);
         if (!isViewed) {
-          statusBadge = 'Pending Review';
-          statusClass = 'applied';
-          ojtNotice = `
-            <div class="ap-ojt-notice" style="margin:10px 0 6px;padding:8px 12px;background:rgba(245,158,11,0.08);border-left:3px solid #f59e0b;border-radius:4px;font-size:0.75rem;color:#b45309;line-height:1.4;">
-              ${icon('alertCircle', 13)} <strong>Profile Unreviewed</strong> &bull; Review candidate portfolio & requirements before making screening decisions.
-            </div>`;
-          primaryBtn = `<button class="ap-btn ap-btn--primary ap-btn-view-profile" data-id="${id}" style="background:#005930;border-color:#005930;" title="Inspect student portfolio & application">${icon('userCheck', 14)} View & Review Profile</button>`;
+          if (isLowMatch) {
+            statusBadge = 'Pre-Screening Required';
+            statusClass = 'applied';
+            const missingList = (a.missing_skills || []).slice(0, 3).join(', ');
+            const missingMore = (a.missing_skills || []).length > 3 ? ` +${a.missing_skills.length - 3} more` : '';
+            const missingText = missingList ? `Missing: ${missingList}${missingMore}` : 'Unmatched prerequisite skills';
+            ojtNotice = `
+              <div class="ap-ojt-notice" style="margin:10px 0 6px;padding:8px 12px;background:rgba(239,68,68,0.08);border-left:3px solid #dc2626;border-radius:4px;font-size:0.75rem;color:#b91c1c;line-height:1.4;">
+                ${icon('alertTriangle', 13)} <strong>Low Match Pre-Screening (${scoreVal}%)</strong> &bull; ${escapeHtml(missingText)}. Screen out early or proceed to portfolio.
+              </div>`;
+            primaryBtn = `
+              <div class="ap-card__actions-duo">
+                <button class="ap-btn ap-btn--primary ap-btn-pre-screen" data-id="${id}" style="background:#dc2626;border-color:#dc2626;color:#ffffff;" title="Pre-screen low-match applicant before opening portfolio">${icon('shieldAlert', 14)} Pre-Screen Candidate</button>
+                <button class="ap-btn ap-btn--outline ap-btn-view-profile" data-id="${id}" title="Inspect student portfolio & application anyway">${icon('externalLink', 14)} Review Anyway</button>
+              </div>`;
+          } else {
+            statusBadge = 'Pending Review';
+            statusClass = 'applied';
+            ojtNotice = `
+              <div class="ap-ojt-notice" style="margin:10px 0 6px;padding:8px 12px;background:rgba(245,158,11,0.08);border-left:3px solid #f59e0b;border-radius:4px;font-size:0.75rem;color:#b45309;line-height:1.4;">
+                ${icon('alertCircle', 13)} <strong>Profile Unreviewed</strong> &bull; Review candidate portfolio & requirements before making screening decisions.
+              </div>`;
+            primaryBtn = `<button class="ap-btn ap-btn--primary ap-btn-view-profile" data-id="${id}" style="background:#005930;border-color:#005930;" title="Inspect student portfolio & application">${icon('userCheck', 14)} View & Review Profile</button>`;
+          }
         } else {
           statusBadge = 'Profile Inspected';
           statusClass = 'applied';
@@ -404,11 +435,29 @@ function renderCards(container, apps, allApps) {
     } else {
       // Regular Job Applicant
       const isViewed = a.status !== 'applied' || !!a.resume_viewed;
+      const isLowMatch = (rec.tier === 'not-recommended' || scoreVal <= 25);
       if (a.status === 'applied') {
         if (!isViewed) {
-          statusBadge = 'Pending Review';
-          statusClass = 'applied';
-          primaryBtn = `<button class="ap-btn ap-btn--primary ap-btn-view-profile" data-id="${id}" style="background:#005930;border-color:#005930;" title="Review candidate resume & credentials">${icon('userCheck', 14)} View & Review Profile</button>`;
+          if (isLowMatch) {
+            statusBadge = 'Pre-Screening Required';
+            statusClass = 'applied';
+            const missingList = (a.missing_skills || []).slice(0, 3).join(', ');
+            const missingMore = (a.missing_skills || []).length > 3 ? ` +${a.missing_skills.length - 3} more` : '';
+            const missingText = missingList ? `Missing: ${missingList}${missingMore}` : 'Unmatched prerequisite skills';
+            ojtNotice = `
+              <div class="ap-ojt-notice" style="margin:10px 0 6px;padding:8px 12px;background:rgba(239,68,68,0.08);border-left:3px solid #dc2626;border-radius:4px;font-size:0.75rem;color:#b91c1c;line-height:1.4;">
+                ${icon('alertTriangle', 13)} <strong>Low Match Pre-Screening (${scoreVal}%)</strong> &bull; ${escapeHtml(missingText)}. Screen out early or proceed to resume.
+              </div>`;
+            primaryBtn = `
+              <div class="ap-card__actions-duo">
+                <button class="ap-btn ap-btn--primary ap-btn-pre-screen" data-id="${id}" style="background:#dc2626;border-color:#dc2626;color:#ffffff;" title="Pre-screen low-match applicant before opening resume">${icon('shieldAlert', 14)} Pre-Screen Candidate</button>
+                <button class="ap-btn ap-btn--outline ap-btn-view-profile" data-id="${id}" title="Review candidate resume & credentials anyway">${icon('externalLink', 14)} Review Anyway</button>
+              </div>`;
+          } else {
+            statusBadge = 'Pending Review';
+            statusClass = 'applied';
+            primaryBtn = `<button class="ap-btn ap-btn--primary ap-btn-view-profile" data-id="${id}" style="background:#005930;border-color:#005930;" title="Review candidate resume & credentials">${icon('userCheck', 14)} View & Review Profile</button>`;
+          }
         } else {
           statusBadge = 'Reviewed';
           statusClass = 'reviewed';
@@ -469,9 +518,10 @@ function renderCards(container, apps, allApps) {
     }
 
     const isViewed = isOjt ? !!a.resume_viewed : (a.status !== 'applied' || !!a.resume_viewed);
+    const isNotRec = rec.tier === 'not-recommended' || scoreVal <= 25;
     const showReject = isOjt
-      ? (!['rejected', 'ojt_confirmed', 'ojt_started'].includes(a.raw_status) && (a.raw_status !== 'interested' || isViewed))
-      : (!['rejected', 'withdrawn', 'hired', 'onboarding'].includes(a.status) && (a.status !== 'applied' || isViewed));
+      ? (!['rejected', 'ojt_confirmed', 'ojt_started'].includes(a.raw_status) && (a.raw_status !== 'interested' || isViewed || isNotRec))
+      : (!['rejected', 'withdrawn', 'hired', 'onboarding'].includes(a.status) && (a.status !== 'applied' || isViewed || isNotRec));
 
     return `
       <div class="ap-card ap-card--${isOjt ? 'ojt' : 'job'}" data-id="${a.id}">
@@ -594,6 +644,14 @@ function renderCards(container, apps, allApps) {
     });
   });
 
+  // Wire Pre-Screen Candidate buttons (evaluate low match before opening portfolio)
+  grid.querySelectorAll('.ap-btn-pre-screen').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const app = allApps.find(a => String(a.id) === btn.dataset.id);
+      if (app) showPreScreenEvaluationModal(app, allApps, container, null);
+    });
+  });
+
   // Wire View & Review Profile buttons (opens candidate portfolio in a new tab + marks viewed in background)
   grid.querySelectorAll('.ap-btn-view-profile').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -609,7 +667,16 @@ function renderCards(container, apps, allApps) {
     el.addEventListener('click', () => {
       const card = el.closest('.ap-card');
       const app = allApps.find(a => String(a.id) === card?.dataset.id);
-      if (app) openCandidateProfileTab(app, allApps, container);
+      if (app) {
+        const isViewed = app.category === 'ojt' ? !!app.resume_viewed : (app.status !== 'applied' || !!app.resume_viewed);
+        const scoreVal = app.match_score != null ? Math.round(Number(app.match_score)) : 0;
+        const isLowMatch = scoreVal <= 25 || app.requires_pre_screen;
+        if (!isViewed && isLowMatch) {
+          showPreScreenEvaluationModal(app, allApps, container, null);
+          return;
+        }
+        openCandidateProfileTab(app, allApps, container);
+      }
     });
   });
 
@@ -1399,20 +1466,201 @@ function showOjtRejectModal(app, allApps, container, parentBackdrop) {
   });
 }
 
+/**
+ * ATS Pre-Screening Evaluation Modal for Low-Match (Not Recommended <= 25%) Applicants
+ * Allows recruiters to quickly screen out candidate without opening portfolio,
+ * or proceed to portfolio with acknowledgment.
+ */
+function showPreScreenEvaluationModal(app, allApps, container, parentBackdrop) {
+  const modal = document.createElement('div');
+  modal.className = 'modal-backdrop modal-backdrop--visible';
+  modal.style.zIndex = '10003';
+  const studentName = app.applicant?.name || 'Applicant';
+  const roleTitle = app.job?.title || (app.category === 'ojt' ? 'OJT Position' : 'Job Opening');
+  const scoreVal = app.match_score != null ? Math.round(Number(app.match_score)) : 0;
+  const isOjt = app.category === 'ojt';
+  const slotId = app.job?.id || app.posting_id;
+  const interestId = app.raw_id;
+
+  const matchedSkills = app.matched_skills || [];
+  const missingSkills = app.missing_skills || [];
+
+  const matchedChips = matchedSkills.length > 0
+    ? matchedSkills.map(s => `<span class="ap-skill-chip" style="background:#ecfdf5;color:#065f46;border-color:#a7f3d0;">✓ ${escapeHtml(s)}</span>`).join(' ')
+    : '<span style="color:#64748b;font-size:0.8rem;font-style:italic;">None matched</span>';
+
+  const missingChips = missingSkills.length > 0
+    ? missingSkills.map(s => `<span class="ap-skill-chip" style="background:#fef2f2;color:#991b1b;border-color:#fecaca;">✕ ${escapeHtml(s)}</span>`).join(' ')
+    : '<span style="color:#64748b;font-size:0.8rem;font-style:italic;">All listed skills missing</span>';
+
+  const defaultReason = `Application did not meet minimum prerequisite skills required for ${roleTitle} (${scoreVal}% match).`;
+
+  modal.innerHTML = `
+    <div class="modal modal--visible" style="max-width:540px;width:100%;border-radius:12px;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,0.25);">
+      <!-- Top Alert Strip -->
+      <div style="height:4px;background:#dc2626;width:100%;"></div>
+
+      <!-- Header -->
+      <div class="modal__header" style="padding:18px 24px;border-bottom:1px solid #f1f5f9;background:#ffffff;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:42px;height:42px;border-radius:10px;background:rgba(220,38,38,0.1);color:#dc2626;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            ${icon('shieldAlert', 22)}
+          </div>
+          <div style="min-width:0;">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <h3 class="modal__title" style="margin:0;font-size:1.05rem;">Preliminary Pre-Screening</h3>
+              <span class="ap-rec-badge ap-rec-badge--not-recommended" style="font-size:0.68rem;padding:2px 8px;border-radius:12px;background:#fee2e2;color:#991b1b;font-weight:700;">
+                ${scoreVal}% MATCH · NOT RECOMMENDED
+              </span>
+            </div>
+            <p style="font-size:0.8rem;color:#64748b;margin:3px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+              ${escapeHtml(studentName)} &bull; ${escapeHtml(roleTitle)}
+            </p>
+          </div>
+        </div>
+        <button class="modal__close" id="ps-close">${icon('x', 20)}</button>
+      </div>
+
+      <!-- Body -->
+      <div class="modal__body" style="padding:20px 24px;background:#ffffff;max-height:calc(85vh - 140px);overflow-y:auto;">
+        <!-- Advisory Notice -->
+        <div style="padding:12px 14px;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.25);border-radius:8px;margin-bottom:16px;font-size:0.82rem;color:#1e293b;line-height:1.5;">
+          <strong style="color:#b91c1c;display:block;margin-bottom:2px;">Skill Alignment Below Cutoff:</strong>
+          This applicant scores <strong>${scoreVal}%</strong> against your required skills. In standard ATS screening, applicants under 25% may be screened out early to save review time. You can decline with skill feedback or inspect their full portfolio anyway.
+        </div>
+
+        <!-- Skill Comparison Breakdown -->
+        <div style="margin-bottom:16px;padding:12px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;">
+          <div style="margin-bottom:10px;">
+            <label style="display:block;font-size:0.75rem;font-weight:700;text-transform:uppercase;color:#065f46;letter-spacing:0.04em;margin-bottom:6px;">
+              Matched Skills (${matchedSkills.length})
+            </label>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;">
+              ${matchedChips}
+            </div>
+          </div>
+          <div>
+            <label style="display:block;font-size:0.75rem;font-weight:700;text-transform:uppercase;color:#991b1b;letter-spacing:0.04em;margin-bottom:6px;">
+              Missing Required Skills (${missingSkills.length})
+            </label>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;">
+              ${missingChips}
+            </div>
+          </div>
+        </div>
+
+        <!-- Feedback Note Input -->
+        <div class="form-group" style="margin-bottom:4px;">
+          <label class="form-label" style="font-size:0.8rem;font-weight:600;color:#334155;margin-bottom:6px;display:flex;justify-content:space-between;">
+            <span>Screen-out Reason / Note for Candidate <span style="color:#dc2626;">*</span></span>
+            <span style="font-size:0.72rem;color:#94a3b8;font-weight:400;">Visible to student</span>
+          </label>
+          <textarea id="ps-note" class="form-textarea" rows="3" style="width:100%;font-size:0.83rem;resize:vertical;" placeholder="Enter reason for screening out">${escapeHtml(defaultReason)}</textarea>
+        </div>
+        <p id="ps-error" style="color:var(--color-error);font-size:0.8rem;margin:6px 0 0;display:none;"></p>
+      </div>
+
+      <!-- Footer Actions -->
+      <div class="modal__footer" style="padding:14px 24px;background:#f8fafc;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+        <button class="btn btn--outline" id="ps-proceed-portfolio" style="border-color:#005930;color:#005930;display:inline-flex;align-items:center;gap:6px;font-size:0.82rem;font-weight:600;" title="Bypass pre-screen gate and open full portfolio">
+          ${icon('externalLink', 14)} Review Portfolio Anyway
+        </button>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn--ghost" id="ps-cancel" style="font-size:0.82rem;">Cancel</button>
+          <button class="btn btn--primary" id="ps-decline" style="background:#dc2626;border-color:#dc2626;color:#ffffff;display:inline-flex;align-items:center;gap:6px;font-size:0.82rem;font-weight:600;">
+            ${icon('x', 14)} Decline (Skill Mismatch)
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  const close = () => modal.remove();
+  modal.querySelector('#ps-close').addEventListener('click', close);
+  modal.querySelector('#ps-cancel').addEventListener('click', close);
+  modal.addEventListener('click', e => { if (e.target === modal) close(); });
+
+  // Option B: Review Portfolio Anyway
+  modal.querySelector('#ps-proceed-portfolio').addEventListener('click', () => {
+    close();
+    if (parentBackdrop) parentBackdrop.remove();
+    openCandidateProfileTab(app, allApps, container);
+  });
+
+  // Option A: Screen Out (Decline)
+  modal.querySelector('#ps-decline').addEventListener('click', async () => {
+    const note = modal.querySelector('#ps-note').value.trim();
+    const errEl = modal.querySelector('#ps-error');
+    if (!note || note.length < 5) {
+      errEl.textContent = 'Please enter a decline reason of at least 5 characters.';
+      errEl.style.display = 'block';
+      return;
+    }
+    const declineBtn = modal.querySelector('#ps-decline');
+    declineBtn.disabled = true;
+    declineBtn.innerHTML = `${icon('clock', 14)} Screening out…`;
+    errEl.style.display = 'none';
+
+    try {
+      let res;
+      if (isOjt) {
+        res = await apiPatch(`/company/applications/ojt_${interestId}/status`, {
+          status: 'rejected',
+          notes: note,
+          is_pre_screen: true
+        });
+      } else {
+        res = await apiPatch(`/company/applications/${app.id}/status`, {
+          status: 'rejected',
+          notes: note,
+          is_pre_screen: true
+        });
+      }
+
+      if (res?.success) {
+        close();
+        if (parentBackdrop) parentBackdrop.remove();
+        app.raw_status = 'rejected';
+        app.status = 'rejected';
+        app.status_label = 'Declined';
+        app.company_note = note;
+        refreshApplicantUI(container, allApps);
+        showToast('Candidate screened out due to skill mismatch.', 'info');
+      } else {
+        errEl.textContent = res?.message || 'Failed to screen out applicant.';
+        errEl.style.display = 'block';
+        declineBtn.disabled = false;
+        declineBtn.innerHTML = `${icon('x', 14)} Decline (Skill Mismatch)`;
+      }
+    } catch {
+      errEl.textContent = 'Network error. Please try again.';
+      errEl.style.display = 'block';
+      declineBtn.disabled = false;
+      declineBtn.innerHTML = `${icon('x', 14)} Decline (Skill Mismatch)`;
+    }
+  });
+}
+
 /* ══════════════════════════════════════════════════
    STATUS UPDATE
    ══════════════════════════════════════════════════ */
 async function doStatusUpdate(appId, newStatus, allApps, container) {
   const app = allApps.find(a => String(a.id) === String(appId));
   if (!app) return;
-  const res = await apiPatch(`/company/applications/${appId}/status`, { status: newStatus });
+  const isLowMatch = (app.match_score != null && Number(app.match_score) <= 25) || app.requires_pre_screen;
+  const payload = { status: newStatus };
+  if (newStatus === 'rejected' && isLowMatch) {
+    payload.is_pre_screen = true;
+    payload.notes = 'Declined during preliminary pre-screening due to unmatched prerequisite skills.';
+  }
+  const res = await apiPatch(`/company/applications/${appId}/status`, payload);
   if (res && res.success) {
     app.status = newStatus;
     app.status_label = ucfirst(newStatus);
     refreshApplicantUI(container, allApps);
     showToast(`${app.applicant.name} moved to "${newStatus}"`);
   } else {
-    showToast('Failed to update status. Try again.', 'error');
+    showToast(res?.message || 'Failed to update status. Try again.', 'error');
   }
 }
 

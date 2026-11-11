@@ -2287,6 +2287,8 @@ class CompanyController extends Controller
                 'match_score'          => $score,
                 'match_recommendation' => $this->getRecommendationTier($score),
                 'matched_skills'       => $matched,
+                'missing_skills'       => $matchResult['missing_canonical'] ?? [],
+                'requires_pre_screen'  => ($score <= 25 && $app->status === 'applied'),
                 'interview_id'                 => $latestInterview?->id,
                 'interview_date'               => $latestInterview?->scheduled_date?->toDateString(),
                 'interview_candidate_response' => $latestInterview?->candidate_response ?? 'pending',
@@ -2405,6 +2407,8 @@ class CompanyController extends Controller
                 'match_score'            => $score,
                 'match_recommendation'   => $this->getRecommendationTier($score),
                 'matched_skills'         => $matched,
+                'missing_skills'         => $matchResult['missing_canonical'] ?? [],
+                'requires_pre_screen'    => ($score <= 25 && $interest->status === 'interested' && !$interest->resume_viewed_at),
                 'interview_id'           => $interest->interview_scheduled_at ? ('ojt_' . $interest->id) : null,
                 'interview_date'         => $interest->interview_scheduled_at?->toDateString(),
                 'interview_scheduled_at_raw' => $interest->interview_scheduled_at?->toISOString(),
@@ -2477,9 +2481,11 @@ class CompanyController extends Controller
             'status'        => ['required', 'in:applied,reviewed,interview,offered,onboarding,hired,withdrawn,rejected'],
             'notes'         => ['nullable', 'string'],
             'offer_details' => ['nullable', 'array'],
+            'is_pre_screen' => ['nullable', 'boolean'],
         ]);
 
         $newStatus = $data['status'];
+        $isPreScreen = $request->boolean('is_pre_screen');
 
         // Handle OJT Interest
         if (str_starts_with($id, 'ojt_')) {
@@ -2492,7 +2498,13 @@ class CompanyController extends Controller
             $companyName = $interest->posting->company_name ?? 'The Company';
 
             if ($newStatus === 'rejected') {
-                if ($interest->status === 'interested' && !$interest->resume_viewed_at) {
+                // Check if low-score pre-screening exemption applies
+                $studentSkills = StudentSkill::where('user_id', $interest->student_user_id)->pluck('name')->toArray();
+                $required = $interest->posting?->required_skills ?? [];
+                $matchRes = \App\Services\SkillNormalizer::match($studentSkills, (array) $required);
+                $isLowMatch = ($matchRes['match_score'] <= 25);
+
+                if ($interest->status === 'interested' && !$interest->resume_viewed_at && !$isPreScreen && !$isLowMatch) {
                     return response()->json([
                         'success' => false,
                         'message' => 'Please view the student\'s profile and credentials before declining their application.',
@@ -2501,14 +2513,19 @@ class CompanyController extends Controller
 
                 $interest->update([
                     'status' => 'rejected',
-                    'company_note' => $data['notes'] ?? $interest->company_note,
+                    'company_note' => $data['notes'] ?? ($isLowMatch ? 'Declined during preliminary pre-screening due to unmatched prerequisite skills.' : $interest->company_note),
                 ]);
+
+                $notifTitle = ($isPreScreen || $isLowMatch) ? 'Preliminary Screening Update' : 'OJT Application Update';
+                $notifMsg = ($isPreScreen || $isLowMatch)
+                    ? "{$companyName} was unable to advance your application for \"{$jobTitle}\" during preliminary screening due to unmatched prerequisite skills."
+                    : "Your application for \"{$jobTitle}\" at {$companyName} was not accepted at this time.";
 
                 AppNotification::send(
                     $interest->student_user_id,
                     'application_rejected',
-                    'OJT Application Update',
-                    "Your application for \"{$jobTitle}\" at {$companyName} was not accepted at this time.",
+                    $notifTitle,
+                    $notifMsg,
                     ['posting_id' => $interest->ojt_posting_id, 'interest_id' => $interest->id]
                 );
             } elseif ($newStatus === 'reviewed') {
@@ -2599,7 +2616,14 @@ class CompanyController extends Controller
                              "You are now in the pre-employment onboarding stage for \"$jobTitle\". Please upload your required documents."],
         ];
 
-        if (isset($notifMap[$newStatus])) {
+        if ($newStatus === 'rejected' && $isPreScreen) {
+            $companyName = $app->jobListing?->company?->name ?? 'The company';
+            AppNotification::send($app->applicant_user_id, 'application_rejected', 'Preliminary Screening Update',
+                "{$companyName} was unable to advance your application for \"{$jobTitle}\" during preliminary screening due to unmatched prerequisite skills.", [
+                'application_id' => $app->id,
+                'job_title'      => $jobTitle,
+            ]);
+        } elseif (isset($notifMap[$newStatus])) {
             [$type, $title, $message] = $notifMap[$newStatus];
             AppNotification::send($app->applicant_user_id, $type, $title, $message, [
                 'application_id' => $app->id,

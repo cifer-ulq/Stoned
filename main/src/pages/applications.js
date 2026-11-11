@@ -1075,6 +1075,14 @@ function unifiedApplicationCard(item, idx) {
             ` : ''}
           </div>
         ` : `
+          ${(item.matchScore != null && Number(item.matchScore) <= 25 && (item.rawStatus === 'interested' || item.status === 'applied')) ? `
+            <div style="margin: 10px 20px 6px; padding: 8px 12px; background: rgba(245,158,11,0.08); border-left: 3px solid #f59e0b; border-radius: 6px; font-size: 0.77rem; color: #b45309; display: flex; align-items: center; gap: 8px;">
+              <span style="flex-shrink:0;">${icon('clock', 13)}</span>
+              <div>
+                <strong>Preliminary Pre-Screening:</strong> Low match score (${Math.round(Number(item.matchScore))}%) — The host company may review prerequisite skill alignment before full portfolio inspection.
+              </div>
+            </div>
+          ` : ''}
           <!-- 9-Stage Step Progress Strip -->
           <div class="ojt-app-card__timeline">
             <div class="ojt-timeline">
@@ -1347,6 +1355,14 @@ function unifiedApplicationCard(item, idx) {
               ` : ''}
             </div>
           ` : `
+            ${(item.matchScore != null && Number(item.matchScore) <= 25 && item.status === 'applied') ? `
+              <div style="margin-top: 10px; padding: 8px 12px; background: rgba(245,158,11,0.08); border-left: 3px solid #f59e0b; border-radius: 6px; font-size: 0.77rem; color: #b45309; display: flex; align-items: center; gap: 8px;">
+                <span style="flex-shrink:0;">${icon('clock', 13)}</span>
+                <div>
+                  <strong>Preliminary Pre-Screening:</strong> Low match score (${Math.round(Number(item.matchScore))}%) — The hiring company may review prerequisite skill alignment before full resume review.
+                </div>
+              </div>
+            ` : ''}
             <div class="app-tracker" style="margin-top:12px;">
               ${steps.map((s, sIdx) => {
                 const stepCfg = jobStatusConfig[s] || jobStatusConfig.applied;
