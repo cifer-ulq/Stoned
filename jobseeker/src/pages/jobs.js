@@ -82,6 +82,15 @@ function normalizeJob(raw) {
   };
 }
 
+/* ── Robust Company Logo Renderer with Fallback & Hotlink Protection ── */
+function renderCompanyLogo(logoUrl, companyName, initial) {
+  const init = escapeHtml(initial || (companyName || 'C').charAt(0).toUpperCase());
+  if (!logoUrl) {
+    return `<span>${init}</span>`;
+  }
+  return `<img src="${escapeHtml(logoUrl)}" alt="" referrerpolicy="no-referrer" loading="lazy" style="width:100%;height:100%;object-fit:contain;" onerror="this.onerror=null;this.parentElement.innerHTML='<span>${init}</span>';">`;
+}
+
 /* ── Match-score color helper ── */
 function scoreColor(score) {
   const num = typeof score === 'number' ? Math.round(score) : Math.round(Number(score) || 0);
@@ -161,9 +170,7 @@ function internalCard(job, idx, appliedIds = new Set()) {
   const applied     = appliedIds.has(job.id);
   const hasMatched  = (job.matchedSkills || []).length > 0;
 
-  const logoContent = job.companyLogo
-    ? `<img src="${escapeHtml(job.companyLogo)}" alt="${escapeHtml(job.company)}">`
-    : escapeHtml(job.companyInitial || job.company?.[0] || 'C');
+  const logoContent = renderCompanyLogo(job.companyLogo, job.company, job.companyInitial);
 
   return `
     <article class="jm-card${applied ? ' jm-card--applied' : ''}" style="--enter-delay:${idx*60}ms;" data-job-id="${job.id}">
@@ -254,9 +261,7 @@ function externalCard(job, idx) {
     return ov[s] || String(s).split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
   };
 
-  const logoContent = job.company_logo
-    ? `<img src="${escapeHtml(job.company_logo)}" alt="${escapeHtml(job.company)}">`
-    : escapeHtml(job.company_initial || (job.company || 'C').charAt(0));
+  const logoContent = renderCompanyLogo(job.company_logo, job.company, job.company_initial);
 
   const isLocal = Boolean(job.is_local || job.location_scope === 'local' || (job.location && /bacolod|negros|talisay|silay/i.test(job.location)));
   const isHighlyRec = (job.match_score >= 71) || (job.match_recommendation?.tier === 'highly_recommended');
@@ -319,9 +324,7 @@ function externalCard(job, idx) {
 /* ── Job Detail Modal ── */
 function jobDetailModal(job, applied = false) {
   const sc = scoreColor(job.matchScore);
-  const logoContent = job.companyLogo
-    ? `<img src="${escapeHtml(job.companyLogo)}" alt="${escapeHtml(job.company)}" style="width:100%;height:100%;object-fit:contain;">`
-    : escapeHtml(job.companyInitial || job.company?.[0] || 'C');
+  const logoContent = renderCompanyLogo(job.companyLogo, job.company, job.companyInitial);
 
   const matchedLower = (job.matchedSkills || []).map(s => String(s).toLowerCase().trim());
   const allSkills = job.skills || [];
@@ -480,9 +483,7 @@ function jobDetailModal(job, applied = false) {
 
 /* ── Send Resume modal (external jobs) ── */
 function sendResumeModal(job) {
-  const logoContent = job.company_logo
-    ? `<img src="${escapeHtml(job.company_logo)}" alt="${escapeHtml(job.company)}" style="width:100%;height:100%;object-fit:contain;">`
-    : escapeHtml(job.company_initial || (job.company || 'C').charAt(0));
+  const logoContent = renderCompanyLogo(job.company_logo, job.company, job.company_initial);
 
   return `
     <div class="modal-overlay" id="send-resume-modal">
@@ -546,9 +547,7 @@ function sendResumeModal(job) {
 function applyModal(job) {
   const sc = scoreColor(job.matchScore);
   const isNotRec = sc.tier === 'not_recommended' || (job.matchScore <= 25);
-  const logoContent = job.companyLogo
-    ? `<img src="${escapeHtml(job.companyLogo)}" alt="${escapeHtml(job.company)}" style="width:100%;height:100%;object-fit:contain;">`
-    : escapeHtml(job.companyInitial || job.company?.[0] || 'C');
+  const logoContent = renderCompanyLogo(job.companyLogo, job.company, job.companyInitial);
 
   return `
     <div class="modal-overlay" id="apply-modal">
