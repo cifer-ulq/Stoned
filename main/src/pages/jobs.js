@@ -77,6 +77,7 @@ function normalizeJob(raw) {
     postedDate: relativeDate(raw.created_at),
     rawDate: raw.created_at,
     applicants: raw.applicants || 0,
+    is_external: false,
   };
 }
 
@@ -706,20 +707,20 @@ export async function renderJobs(container) {
       <!-- Toolbar -->
       <section class="jm-toolbar animate-fade-in-up" style="animation-delay:300ms;">
         <div class="jm-tabs" id="job-filter">
-          <button class="jm-tabs__btn jm-tabs__btn--active" data-filter="all">
+          <button class="jm-tabs__btn jm-tabs__btn--active" data-filter="internal">
             <span class="jm-tabs__icon">${icon('briefcase', 15)}</span>
-            All Jobs
-            <span class="jm-tabs__count" id="all-count">0</span>
-          </button>
-          <button class="jm-tabs__btn" data-filter="top">
-            <span class="jm-tabs__icon">${icon('zap', 15)}</span>
-            Best Match
-            <span class="jm-tabs__count" id="top-count">0</span>
+            Internal Jobs
+            <span class="jm-tabs__count" id="internal-count">0</span>
           </button>
           <button class="jm-tabs__btn" data-filter="external">
             <span class="jm-tabs__icon">${icon('globe', 15)}</span>
             External Jobs
             <span class="jm-tabs__count" id="external-count">0</span>
+          </button>
+          <button class="jm-tabs__btn" data-filter="all">
+            <span class="jm-tabs__icon">${icon('layers', 15)}</span>
+            All Jobs
+            <span class="jm-tabs__count" id="all-count">0</span>
           </button>
         </div>
         <div class="jm-toolbar__right">
@@ -1001,7 +1002,7 @@ export async function renderJobs(container) {
   const sortBar    = container.querySelector('#job-sort');
   const gateBanner = container.querySelector('#employment-gate-banner');
 
-  let currentFilter = 'all';
+  let currentFilter = 'internal';
   let currentSort   = 'match';
   let searchQuery   = '';
   let allJobs       = [];
@@ -1013,6 +1014,20 @@ export async function renderJobs(container) {
   let externalScope = 'local';
   let externalVisibleCount = 16;
   let empStatus     = { hired: false, active_ojt: false, pending_ojt: false };
+
+  function updateCounts() {
+    const intCount = allJobs.length;
+    const extCount = Array.isArray(externalJobs) ? externalJobs.length : 0;
+    const totalCount = intCount + extCount;
+
+    const ic = container.querySelector('#internal-count');
+    const ec = container.querySelector('#external-count');
+    const ac = container.querySelector('#all-count');
+
+    if (ic) ic.textContent = intCount;
+    if (ec) ec.textContent = extCount;
+    if (ac) ac.textContent = totalCount;
+  }
 
   function renderQuickBar() {
     const titleEl = container.querySelector('#jf-quick-title');
@@ -1085,10 +1100,11 @@ export async function renderJobs(container) {
     if (!cleanQ && defaultExternalJobs !== null) {
       externalJobs = [...defaultExternalJobs];
       lastExternalSearchQuery = '';
-      const ec = container.querySelector('#external-count');
-      if (ec) ec.textContent = externalJobs.length;
+      updateCounts();
       renderQuickBar();
-      renderCards(false);
+      if (currentFilter === 'all' || currentFilter === 'external') {
+        renderCards(false);
+      }
       return;
     }
 
@@ -1097,7 +1113,7 @@ export async function renderJobs(container) {
     lastExternalSearchQuery = cleanQ;
 
     emptyEl.style.display = 'none';
-    if (showLoading) {
+    if (showLoading && (currentFilter === 'external' || (currentFilter === 'all' && allJobs.length === 0))) {
       cardsEl.innerHTML = `
         <div style="grid-column:1/-1;display:flex;flex-direction:column;align-items:center;gap:16px;padding:60px 20px;color:var(--text-secondary);">
           <div style="width:44px;height:44px;border:3px solid var(--border-subtle);border-top-color:var(--color-primary);border-radius:50%;animation:spin 0.8s linear infinite;"></div>
@@ -1111,60 +1127,72 @@ export async function renderJobs(container) {
         : '/student/external-jobs';
       const res = await apiGet(url);
       if (res?.success && Array.isArray(res.data)) {
-        externalJobs = res.data;
+        externalJobs = res.data.map(j => ({
+          ...j,
+          is_external: true,
+          matchScore: typeof j.match_score === 'number' ? j.match_score : (j.matchScore ?? 0),
+          rawDate: j.posted_date || j.created_at || null,
+        }));
         if (!cleanQ) {
-          defaultExternalJobs = [...res.data];
+          defaultExternalJobs = [...externalJobs];
         }
-        const ec = container.querySelector('#external-count');
-        if (ec) ec.textContent = externalJobs.length;
+        updateCounts();
         renderQuickBar();
       } else {
         externalJobs = [];
-        const msg = res?.message || 'External job listings are temporarily unavailable.';
+        updateCounts();
+        if (showLoading && currentFilter === 'external') {
+          const msg = res?.message || 'External job listings are temporarily unavailable.';
+          cardsEl.innerHTML = `
+            <div style="grid-column:1/-1;display:flex;flex-direction:column;align-items:center;gap:12px;padding:60px 20px;text-align:center;">
+              <div style="width:56px;height:56px;border-radius:50%;background:var(--bg-secondary);display:flex;align-items:center;justify-content:center;color:var(--text-tertiary);">${icon('globe', 24)}</div>
+              <p style="font-size:.925rem;font-weight:600;color:var(--text-primary);">No External Jobs Found</p>
+              <p style="font-size:.825rem;color:var(--text-secondary);max-width:340px;line-height:1.6;">${cleanQ ? `No listings matched "${escapeHtml(cleanQ)}". Try broader search terms.` : msg}</p>
+              ${cleanQ ? `
+              <button id="ext-clear-btn" style="margin-top:4px;padding:8px 18px;border-radius:8px;border:1.5px solid var(--border-default);background:var(--bg-elevated);font-size:.8rem;font-weight:600;cursor:pointer;color:var(--text-primary);">
+                Clear Search
+              </button>` : `
+              <button id="ext-retry-btn" style="margin-top:4px;padding:8px 18px;border-radius:8px;border:1.5px solid var(--border-default);background:var(--bg-elevated);font-size:.8rem;font-weight:600;cursor:pointer;color:var(--text-primary);">
+                Try Again
+              </button>`}
+            </div>`;
+          container.querySelector('#ext-clear-btn')?.addEventListener('click', () => {
+            searchQuery = '';
+            if (searchInput) searchInput.value = '';
+            updateFilterBadge();
+            fetchExternalJobs('');
+          });
+          container.querySelector('#ext-retry-btn')?.addEventListener('click', () => {
+            fetchExternalJobs(cleanQ);
+          });
+          return;
+        }
+      }
+    } catch {
+      externalJobs = [];
+      updateCounts();
+      if (showLoading && currentFilter === 'external') {
         cardsEl.innerHTML = `
           <div style="grid-column:1/-1;display:flex;flex-direction:column;align-items:center;gap:12px;padding:60px 20px;text-align:center;">
-            <div style="width:56px;height:56px;border-radius:50%;background:var(--bg-secondary);display:flex;align-items:center;justify-content:center;color:var(--text-tertiary);">${icon('globe', 24)}</div>
-            <p style="font-size:.925rem;font-weight:600;color:var(--text-primary);">No External Jobs Found</p>
-            <p style="font-size:.825rem;color:var(--text-secondary);max-width:340px;line-height:1.6;">${cleanQ ? `No listings matched "${escapeHtml(cleanQ)}". Try broader search terms.` : msg}</p>
-            ${cleanQ ? `
-            <button id="ext-clear-btn" style="margin-top:4px;padding:8px 18px;border-radius:8px;border:1.5px solid var(--border-default);background:var(--bg-elevated);font-size:.8rem;font-weight:600;cursor:pointer;color:var(--text-primary);">
-              Clear Search
-            </button>` : `
-            <button id="ext-retry-btn" style="margin-top:4px;padding:8px 18px;border-radius:8px;border:1.5px solid var(--border-default);background:var(--bg-elevated);font-size:.8rem;font-weight:600;cursor:pointer;color:var(--text-primary);">
-              Try Again
-            </button>`}
+            <div style="width:56px;height:56px;border-radius:50%;background:var(--bg-secondary);display:flex;align-items:center;justify-content:center;color:var(--color-warning, #f59e0b);">${icon('alertTriangle', 24)}</div>
+            <p style="font-size:.925rem;font-weight:600;color:var(--text-primary);">Could Not Load External Jobs</p>
+            <p style="font-size:.825rem;color:var(--text-secondary);max-width:340px;line-height:1.6;">Could not reach the server. Make sure the backend is running and try again.</p>
+            <button id="ext-retry-btn2" style="margin-top:4px;padding:8px 18px;border-radius:8px;border:1.5px solid var(--border-default);background:var(--bg-elevated);font-size:.8rem;font-weight:600;cursor:pointer;color:var(--text-primary);">
+              Retry
+            </button>
           </div>`;
-        container.querySelector('#ext-clear-btn')?.addEventListener('click', () => {
-          searchQuery = '';
-          if (searchInput) searchInput.value = '';
-          updateFilterBadge();
-          fetchExternalJobs('');
-        });
-        container.querySelector('#ext-retry-btn')?.addEventListener('click', () => {
+        container.querySelector('#ext-retry-btn2')?.addEventListener('click', () => {
           fetchExternalJobs(cleanQ);
         });
         return;
       }
-    } catch {
-      externalJobs = [];
-      cardsEl.innerHTML = `
-        <div style="grid-column:1/-1;display:flex;flex-direction:column;align-items:center;gap:12px;padding:60px 20px;text-align:center;">
-          <div style="width:56px;height:56px;border-radius:50%;background:var(--bg-secondary);display:flex;align-items:center;justify-content:center;color:var(--color-warning, #f59e0b);">${icon('alertTriangle', 24)}</div>
-          <p style="font-size:.925rem;font-weight:600;color:var(--text-primary);">Could Not Load External Jobs</p>
-          <p style="font-size:.825rem;color:var(--text-secondary);max-width:340px;line-height:1.6;">Could not reach the server. Make sure the backend is running and try again.</p>
-          <button id="ext-retry-btn2" style="margin-top:4px;padding:8px 18px;border-radius:8px;border:1.5px solid var(--border-default);background:var(--bg-elevated);font-size:.8rem;font-weight:600;cursor:pointer;color:var(--text-primary);">
-            Retry
-          </button>
-        </div>`;
-      container.querySelector('#ext-retry-btn2')?.addEventListener('click', () => {
-        fetchExternalJobs(cleanQ);
-      });
-      return;
     } finally {
       externalFetching = false;
     }
 
-    renderCards(false);
+    if (currentFilter === 'all' || currentFilter === 'external') {
+      renderCards(false);
+    }
   }
 
   /* Fetch employment status, real jobs + existing applications in parallel */
@@ -1233,9 +1261,8 @@ export async function renderJobs(container) {
   }
 
   /* Counts */
-  const topJobs = allJobs.filter(j => j.matchScore >= 71);
-  container.querySelector('#all-count').textContent = allJobs.length;
-  container.querySelector('#top-count').textContent = topJobs.length;
+  updateCounts();
+  fetchExternalJobs('', false);
 
   /* Animate stats */
   function animateStats(jobs) {
@@ -1274,69 +1301,37 @@ export async function renderJobs(container) {
   }
 
   function getFilteredJobs() {
-    if (currentFilter === 'external') {
-      let jobs = Array.isArray(externalJobs) ? [...externalJobs] : [];
-
-      if (externalScope !== 'all') {
-        jobs = jobs.filter(j => {
-          const isLoc = Boolean(j.is_local || j.location_scope === 'local' || (j.location && /bacolod|negros|talisay|silay/i.test(j.location)));
-          const isRem = Boolean(j.location_scope === 'remote' || j.remote || (j.location && /remote/i.test(j.location)));
-          if (externalScope === 'local') return isLoc;
-          if (externalScope === 'remote') return isRem;
-          if (externalScope === 'nationwide') return !isLoc && !isRem;
-          return true;
-        });
-      }
-
-      if (searchQuery) {
-        const q = searchQuery.toLowerCase();
-        jobs = jobs.filter(j =>
-          (j.title || '').toLowerCase().includes(q) ||
-          (j.company || '').toLowerCase().includes(q) ||
-          (j.location || '').toLowerCase().includes(q) ||
-          (j.description || '').toLowerCase().includes(q) ||
-          (j.source || '').toLowerCase().includes(q) ||
-          (j.skills || []).some(s => String(s).toLowerCase().includes(q)) ||
-          (j.matched_skills || j.matchedSkills || []).some(s => String(s).toLowerCase().includes(q))
-        );
-      }
-
-      /* Advanced filters */
-      if (filters.types.size > 0)
-        jobs = jobs.filter(j => filters.types.has(j.type));
-      if (filters.locations.size > 0)
-        jobs = jobs.filter(j => filters.locations.has(j.location));
-      // All external listings are Highly Recommended with no match percentage; minScore filter does not exclude them
-      if (filters.minSalary > 0)
-        jobs = jobs.filter(j => {
-          const nums = (j.salary || '').match(/[\d,]+/g);
-          if (!nums) return true;
-          const maxVal = Math.max(...nums.map(n => parseInt(n.replace(/,/g, ''), 10)));
-          return maxVal >= filters.minSalary;
-        });
-      if (filters.datePosted !== 'any') {
-        const now = Date.now();
-        const cutoffs = { today: 86400000, week: 604800000, month: 2592000000 };
-        const cutoff = cutoffs[filters.datePosted];
-        if (cutoff) jobs = jobs.filter(j => {
-          if (!j.posted_date) return true;
-          return (now - new Date(j.posted_date).getTime()) <= cutoff;
-        });
-      }
-
-      if (currentSort === 'recent') {
-        jobs.sort((a, b) => new Date(b.posted_date || 0) - new Date(a.posted_date || 0));
-      }
-      return jobs;
+    let jobs = [];
+    if (currentFilter === 'internal') {
+      jobs = [...allJobs];
+    } else if (currentFilter === 'external') {
+      jobs = Array.isArray(externalJobs) ? [...externalJobs] : [];
+    } else if (currentFilter === 'all') {
+      const ext = Array.isArray(externalJobs) ? externalJobs : [];
+      jobs = [...allJobs, ...ext];
     }
 
-    let jobs = currentFilter === 'top' ? allJobs.filter(j => j.matchScore >= 71) : [...allJobs];
+    if (currentFilter === 'external' && externalScope !== 'all') {
+      jobs = jobs.filter(j => {
+        const isLoc = Boolean(j.is_local || j.location_scope === 'local' || (j.location && /bacolod|negros|talisay|silay/i.test(j.location)));
+        const isRem = Boolean(j.location_scope === 'remote' || j.remote || (j.location && /remote/i.test(j.location)));
+        if (externalScope === 'local') return isLoc;
+        if (externalScope === 'remote') return isRem;
+        if (externalScope === 'nationwide') return !isLoc && !isRem;
+        return true;
+      });
+    }
+
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       jobs = jobs.filter(j =>
         (j.title || '').toLowerCase().includes(q) ||
         (j.company || '').toLowerCase().includes(q) ||
-        (j.skills || []).some(s => s.toLowerCase().includes(q))
+        (j.location || '').toLowerCase().includes(q) ||
+        (j.description || '').toLowerCase().includes(q) ||
+        (j.source || '').toLowerCase().includes(q) ||
+        (j.skills || []).some(s => String(s).toLowerCase().includes(q)) ||
+        (j.matched_skills || j.matchedSkills || []).some(s => String(s).toLowerCase().includes(q))
       );
     }
 
@@ -1348,9 +1343,9 @@ export async function renderJobs(container) {
     if (filters.locations.size > 0)
       jobs = jobs.filter(j => filters.locations.has(j.location));
     if (filters.departments.size > 0)
-      jobs = jobs.filter(j => j.department && filters.departments.has(j.department));
+      jobs = jobs.filter(j => !j.department || filters.departments.has(j.department));
     if (filters.minScore > 0)
-      jobs = jobs.filter(j => j.matchScore >= filters.minScore);
+      jobs = jobs.filter(j => (j.matchScore ?? j.match_score ?? 0) >= filters.minScore);
     if (filters.minSalary > 0)
       jobs = jobs.filter(j => {
         const nums = (j.salary || '').match(/[\d,]+/g);
@@ -1363,15 +1358,16 @@ export async function renderJobs(container) {
       const cutoffs = { today: 86400000, week: 604800000, month: 2592000000 };
       const cutoff = cutoffs[filters.datePosted];
       if (cutoff) jobs = jobs.filter(j => {
-        if (!j.rawDate) return true;
-        return (now - new Date(j.rawDate).getTime()) <= cutoff;
+        const d = j.rawDate || j.posted_date;
+        if (!d) return true;
+        return (now - new Date(d).getTime()) <= cutoff;
       });
     }
 
     if (currentSort === 'match') {
-      jobs.sort((a, b) => b.matchScore - a.matchScore);
+      jobs.sort((a, b) => (b.matchScore ?? b.match_score ?? 0) - (a.matchScore ?? a.match_score ?? 0));
     } else if (currentSort === 'recent') {
-      jobs.sort((a, b) => new Date(b.rawDate || 0) - new Date(a.rawDate || 0));
+      jobs.sort((a, b) => new Date(b.rawDate || b.posted_date || 0) - new Date(a.rawDate || a.posted_date || 0));
     }
     return jobs;
   }
@@ -1447,14 +1443,22 @@ export async function renderJobs(container) {
           });
         }
       } else {
+        emptyEl.innerHTML = `
+          <div class="jm-empty__icon">${icon('search', 48)}</div>
+          <h3>${currentFilter === 'internal' ? 'No internal jobs found' : 'No jobs found'}</h3>
+          <p>Try adjusting your search or filters</p>`;
         emptyEl.style.display = 'flex';
       }
       return;
     }
     emptyEl.style.display = 'none';
-    if (currentFilter === 'external') {
+    if (currentFilter === 'external' || currentFilter === 'all') {
       const visible = jobs.slice(0, externalVisibleCount);
-      let html = visible.map((j, i) => externalCard(j, i)).join('');
+      let html = visible.map((j, i) => {
+        return j.is_external
+          ? externalCard(j, i)
+          : internalCard(j, i, appliedIds);
+      }).join('');
 
       if (jobs.length > externalVisibleCount) {
         html += `
@@ -1464,7 +1468,7 @@ export async function renderJobs(container) {
               <span class="jf-chip-count" style="margin-left: 2px;">${visible.length} of ${jobs.length}</span>
             </button>
             <span style="font-size: 0.78rem; color: var(--text-tertiary); font-weight: 500;">
-              Showing top ${visible.length} of ${jobs.length} verified listings
+              Showing ${visible.length} of ${jobs.length} opportunities
             </span>
           </div>`;
       }
@@ -2229,7 +2233,7 @@ export async function renderJobs(container) {
     externalVisibleCount = 16;
     renderQuickBar();
 
-    if (filter === 'external') {
+    if (filter === 'external' || filter === 'all') {
       if (externalJobs === null || (searchQuery && lastExternalSearchQuery !== searchQuery)) {
         await fetchExternalJobs(searchQuery);
       }
