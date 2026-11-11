@@ -14,6 +14,7 @@ use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class LiveStudentOjtCohortSeeder extends Seeder
@@ -21,37 +22,86 @@ class LiveStudentOjtCohortSeeder extends Seeder
     /**
      * Run the database seeds.
      *
-     * Creates 10 new BSIT students (5 in Section A, 5 in Section B) with active OJT deployments:
-     *   - 4 students with 30%-40% completed (192h to 240h) and in-site GPS scatter (18m-68m).
-     *   - 6 students on Day 1 (0h completed), active OJT, ready for their first time-in punch clock.
+     * Seamlessly deploys 10 new BSIT students (5 in Section A, 5 in Section B) into active OJT:
+     *   - Compatible with both Live Production (Render PostgreSQL) and Local environments.
+     *   - Dynamically resolves live partner companies (Negros GridWorks, Silay CloudBridge,
+     *     Bacolod FinLedger, Talisay Creative Spark Studio) and supervisor Kate Bermejo.
+     *   - 4 students with 30%-40% completed hours (192h to 240h) and in-site GPS scatter (18m-68m).
+     *   - 6 students on Day 1 (0h completed), active OJT, clean slate ready for first time-in.
      */
     public function run(): void
     {
         $defaultPassword = Hash::make('Demo@1234');
         $now = Carbon::now();
 
-        // 1. Resolve OJT Coordinator (Mariene Labrador or fallback to any supervisor)
+        // 1. Dynamically Resolve Academic Supervisor / Coordinator (Kate Bermejo or first supervisor)
         $coordinator = User::where('role', 'supervisor')
             ->where(function ($q) {
-                $q->where('email', 'mariene.labrador@chmsu.edu.ph')
-                  ->orWhere('email', 'mariene@labrador.com')
-                  ->orWhere('name', 'like', '%Mariene%');
+                $q->where('name', 'like', '%Kate%')
+                  ->orWhere('email', 'like', '%kate%')
+                  ->orWhere('name', 'like', '%Mariene%')
+                  ->orWhere('email', 'like', '%mariene%');
             })
             ->first() ?? User::where('role', 'supervisor')->first();
 
         if (!$coordinator) {
-            $coordinator = User::firstOrCreate(
-                ['email' => 'mariene.labrador@chmsu.edu.ph'],
-                [
-                    'name'                 => 'Mariene Labrador',
-                    'password'             => $defaultPassword,
-                    'role'                 => 'supervisor',
-                    'onboarding_completed' => true,
-                ]
-            );
+            $coordinator = User::create([
+                'name'                 => 'Kate Bermejo',
+                'email'                => 'katenicolebermejooo@gmail.com',
+                'password'             => $defaultPassword,
+                'role'                 => 'supervisor',
+                'onboarding_completed' => true,
+            ]);
         }
 
-        // 2. Define Cohort Specification (10 Students)
+        // Ensure supervisor profile has assigned course 'Bachelor of Science in Information Technology'
+        \App\Models\SupervisorProfile::updateOrCreate(
+            ['user_id' => $coordinator->id],
+            [
+                'company_name' => 'Carlos Hilado Memorial State University',
+                'position'     => 'OJT Coordinator — BSIT Department',
+                'course'       => 'Bachelor of Science in Information Technology',
+            ]
+        );
+
+        // 2. Dynamically Resolve Partner Companies on Live / Local
+        $findCompany = function (array $keywords) {
+            $query = User::where('role', 'company');
+            foreach ($keywords as $kw) {
+                $found = (clone $query)->where(function ($q) use ($kw) {
+                    $q->where('name', 'like', "%{$kw}%")
+                      ->orWhere('email', 'like', "%{$kw}%");
+                })->first();
+                if ($found) return $found;
+            }
+            return null;
+        };
+
+        // Live companies with fallback to any available company
+        $gridWorks = $findCompany(['GridWorks', 'Negros GridWorks', 'gridworks'])
+            ?? User::where('role', 'company')->first();
+
+        $cloudBridge = $findCompany(['CloudBridge', 'Silay CloudBridge', 'cloudbridge'])
+            ?? User::where('role', 'company')->where('id', '!=', $gridWorks?->id)->first()
+            ?? $gridWorks;
+
+        $finLedger = $findCompany(['FinLedger', 'Bacolod FinLedger', 'finledger'])
+            ?? User::where('role', 'company')->whereNotIn('id', [$gridWorks?->id, $cloudBridge?->id])->first()
+            ?? $gridWorks;
+
+        $creativeSpark = $findCompany(['Creative Spark', 'Talisay Creative Spark', 'talisayspark'])
+            ?? User::where('role', 'company')->whereNotIn('id', [$gridWorks?->id, $cloudBridge?->id, $finLedger?->id])->first()
+            ?? $gridWorks;
+
+        // Company base coordinates (real office locations in Negros Occidental)
+        $companyCoords = [
+            $gridWorks?->id     => ['lat' => 10.6698, 'lon' => 122.9485], // Negros CyberCentre, Bacolod
+            $cloudBridge?->id   => ['lat' => 10.7960, 'lon' => 122.9750], // Silay Civic Tech Hub, Silay
+            $finLedger?->id     => ['lat' => 10.6765, 'lon' => 122.9510], // Capitol Corporate Plaza, Lacson St, Bacolod
+            $creativeSpark?->id => ['lat' => 10.7300, 'lon' => 122.9650], // Ayala District North Point, Talisay
+        ];
+
+        // 3. Define 10 BSIT Student Personas (5 in 4-A, 5 in 4-B)
         $cohort = [
             // ── SECTION A (5 Students) ──────────────────────────────────────────────────
             [
@@ -65,8 +115,8 @@ class LiveStudentOjtCohortSeeder extends Seeder
                 'headline'         => 'Full-Stack Web Trainee | Laravel · Vue.js · RESTful APIs',
                 'bio'              => 'Dedicated 4th-Year BSIT Section A student focusing on robust backend architectures and reactive client interfaces.',
                 'phone'            => '+63 917 111 4016',
-                'company_user_id'  => 11, // Na Ah Company
-                'posting_title'    => 'Full-Stack Web Development Trainee',
+                'company_user'     => $gridWorks,
+                'posting_title'    => 'Web Development Trainee',
                 'completed_days'   => 24, // 192 hours = 32%
                 'skills'           => ['Laravel', 'Vue.js', 'PostgreSQL', 'Git', 'RESTful APIs'],
             ],
@@ -78,13 +128,13 @@ class LiveStudentOjtCohortSeeder extends Seeder
                 'email'            => 'beatrice.lopez.bsit4a@chmsu.edu.ph',
                 'student_id'       => '2023-BSIT4A-017',
                 'section'          => 'BSIT 4-A',
-                'headline'         => 'Full-Stack Developer Intern | JavaScript · PHP · Tailwind CSS',
-                'bio'              => 'BSIT 4th-Year student specializing in responsive frontends and microservices integration.',
+                'headline'         => 'DevOps & Systems Trainee | Docker · Linux · CI/CD Automation',
+                'bio'              => 'BSIT 4th-Year student specializing in cloud deployment pipelines, Linux server administration, and containerization.',
                 'phone'            => '+63 917 222 4017',
-                'company_user_id'  => 105, // NexusWave Solutions
-                'posting_title'    => 'Full-Stack Web Development Trainee',
+                'company_user'     => $cloudBridge,
+                'posting_title'    => 'DevOps / Systems Trainee',
                 'completed_days'   => 27, // 216 hours = 36%
-                'skills'           => ['PHP', 'JavaScript', 'Tailwind CSS', 'Docker', 'MySQL'],
+                'skills'           => ['Docker', 'Linux', 'Git', 'CI/CD Pipelines', 'Python'],
             ],
             [
                 'name'             => 'Carlos Daniel Mendoza',
@@ -94,11 +144,11 @@ class LiveStudentOjtCohortSeeder extends Seeder
                 'email'            => 'carlos.mendoza.bsit4a@chmsu.edu.ph',
                 'student_id'       => '2023-BSIT4A-018',
                 'section'          => 'BSIT 4-A',
-                'headline'         => 'Security Operations (SOC) Trainee | Linux · Wireshark · Threat Analysis',
+                'headline'         => 'Cybersecurity Assistant Intern | Network Security · SOC Audits',
                 'bio'              => 'Cybersecurity enthusiast passionate about log auditing, network vulnerability scanning, and incident response.',
                 'phone'            => '+63 917 333 4018',
-                'company_user_id'  => 106, // CyberForge Defence
-                'posting_title'    => 'Security Operations (SOC) & Network Trainee',
+                'company_user'     => $cloudBridge,
+                'posting_title'    => 'Cybersecurity Assistant Intern',
                 'completed_days'   => 0, // Day 1
                 'skills'           => ['Linux Admin', 'Wireshark', 'SOC Monitoring', 'Firewalls', 'Bash'],
             ],
@@ -110,13 +160,13 @@ class LiveStudentOjtCohortSeeder extends Seeder
                 'email'            => 'dianne.cruz.bsit4a@chmsu.edu.ph',
                 'student_id'       => '2023-BSIT4A-019',
                 'section'          => 'BSIT 4-A',
-                'headline'         => 'Data Engineering & BI Intern | Python · ETL · PowerBI · SQL',
-                'bio'              => 'Analytical BSIT senior dedicated to data pipelines, business intelligence dashboards, and query optimization.',
+                'headline'         => 'Database Admin Intern | SQL Queries · Database Normalization',
+                'bio'              => 'Analytical BSIT senior dedicated to relational database schemas, data integrity, and backup automation.',
                 'phone'            => '+63 917 444 4019',
-                'company_user_id'  => 107, // Stratum AI
-                'posting_title'    => 'Data Engineering & Business Intelligence Intern',
+                'company_user'     => $finLedger,
+                'posting_title'    => 'Database Admin Intern',
                 'completed_days'   => 0, // Day 1
-                'skills'           => ['Python', 'SQL', 'ETL Pipelines', 'PowerBI', 'Pandas'],
+                'skills'           => ['MySQL', 'SQL', 'Database Design', 'Data Integrity', 'Documentation'],
             ],
             [
                 'name'             => 'Ethan Joshua Torres',
@@ -126,13 +176,13 @@ class LiveStudentOjtCohortSeeder extends Seeder
                 'email'            => 'ethan.torres.bsit4a@chmsu.edu.ph',
                 'student_id'       => '2023-BSIT4A-020',
                 'section'          => 'BSIT 4-A',
-                'headline'         => 'Software QA & Test Automation Trainee | Cypress · Postman · CI/CD',
+                'headline'         => 'Software QA & Test Automation Trainee | Cypress · Postman · Bug Tracking',
                 'bio'              => 'Quality assurance apprentice focused on automated test execution, defect documentation, and API regression testing.',
                 'phone'            => '+63 917 555 4020',
-                'company_user_id'  => 11, // Na Ah Company
-                'posting_title'    => 'Quality Assurance & Automated Testing Intern',
+                'company_user'     => $gridWorks,
+                'posting_title'    => 'QA / Software Tester Intern',
                 'completed_days'   => 0, // Day 1
-                'skills'           => ['Cypress', 'Postman', 'Manual Testing', 'Jira', 'GitHub Actions'],
+                'skills'           => ['Manual Testing', 'Postman', 'Cypress', 'Jira', 'Test Cases'],
             ],
 
             // ── SECTION B (5 Students) ──────────────────────────────────────────────────
@@ -144,13 +194,13 @@ class LiveStudentOjtCohortSeeder extends Seeder
                 'email'            => 'fiona.javier.bsit4b@chmsu.edu.ph',
                 'student_id'       => '2023-BSIT4B-021',
                 'section'          => 'BSIT 4-B',
-                'headline'         => 'Cloud Systems & DevOps Intern | Docker · Kubernetes · Linux',
-                'bio'              => 'BSIT Section B senior specializing in containerization, cloud infrastructure maintenance, and automated deployments.',
+                'headline'         => 'Frontend & UI/UX Developer Intern | React · Tailwind CSS · Figma',
+                'bio'              => 'BSIT Section B senior specializing in translating Figma tokens into accessible, responsive interactive web portals.',
                 'phone'            => '+63 918 666 4021',
-                'company_user_id'  => 11, // Na Ah Company
-                'posting_title'    => 'Cloud Systems & DevOps Intern',
+                'company_user'     => $creativeSpark,
+                'posting_title'    => 'Web Development Trainee',
                 'completed_days'   => 26, // 208 hours = 34.7%
-                'skills'           => ['Docker', 'Linux', 'Kubernetes', 'Nginx', 'Bash Scripting'],
+                'skills'           => ['React', 'JavaScript', 'HTML/CSS', 'Tailwind CSS', 'Figma'],
             ],
             [
                 'name'             => 'Gerard Paul Tan',
@@ -160,13 +210,13 @@ class LiveStudentOjtCohortSeeder extends Seeder
                 'email'            => 'gerard.tan.bsit4b@chmsu.edu.ph',
                 'student_id'       => '2023-BSIT4B-022',
                 'section'          => 'BSIT 4-B',
-                'headline'         => 'Cloud & Infrastructure Engineering Intern | AWS · Terraform · CI/CD',
-                'bio'              => 'Infrastructure trainee passionate about AWS cloud services, high availability, and automated configuration management.',
+                'headline'         => 'Software Engineering Intern | Python · REST APIs · Clean Architecture',
+                'bio'              => 'Backend engineering intern passionate about asynchronous queues, automated test runners, and database indexing.',
                 'phone'            => '+63 918 777 4022',
-                'company_user_id'  => 105, // NexusWave Solutions
-                'posting_title'    => 'Cloud & DevOps Engineering Intern',
+                'company_user'     => $gridWorks,
+                'posting_title'    => 'Software Engineering Intern',
                 'completed_days'   => 30, // 240 hours = 40.0%
-                'skills'           => ['AWS', 'Terraform', 'CI/CD Pipelines', 'Linux', 'Docker'],
+                'skills'           => ['Python', 'SQL', 'Git', 'RESTful APIs', 'Problem Solving'],
             ],
             [
                 'name'             => 'Hannah Denise Santos',
@@ -176,13 +226,13 @@ class LiveStudentOjtCohortSeeder extends Seeder
                 'email'            => 'hannah.santos.bsit4b@chmsu.edu.ph',
                 'student_id'       => '2023-BSIT4B-023',
                 'section'          => 'BSIT 4-B',
-                'headline'         => 'IT Systems & Server Admin Trainee | Windows Server · Active Directory',
-                'bio'              => 'Systems administration enthusiast focused on Active Directory management, server health monitoring, and enterprise backups.',
+                'headline'         => 'Network & Systems Assistant Intern | Routing · Switching · Diagnostics',
+                'bio'              => 'Enterprise networking enthusiast focused on VLAN management, switch configuration, and uptime alerting.',
                 'phone'            => '+63 918 888 4023',
-                'company_user_id'  => 106, // CyberForge Defence
-                'posting_title'    => 'IT Systems & Server Administration Intern',
+                'company_user'     => $cloudBridge,
+                'posting_title'    => 'Network Assistant Intern',
                 'completed_days'   => 0, // Day 1
-                'skills'           => ['Windows Server', 'Active Directory', 'Network Config', 'Hyper-V', 'PowerShell'],
+                'skills'           => ['Computer Networking', 'Troubleshooting', 'Technical Support', 'Linux'],
             ],
             [
                 'name'             => 'Ian Lawrence Garcia',
@@ -192,13 +242,13 @@ class LiveStudentOjtCohortSeeder extends Seeder
                 'email'            => 'ian.garcia.bsit4b@chmsu.edu.ph',
                 'student_id'       => '2023-BSIT4B-024',
                 'section'          => 'BSIT 4-B',
-                'headline'         => 'Software QA & Automation Specialist | Cypress · Playwright · API Tests',
-                'bio'              => 'Detail-oriented tester passionate about writing reliable end-to-end regression suites and validating backend APIs.',
+                'headline'         => 'Systems Analyst Trainee | BPMN · Data Flow · Client UAT',
+                'bio'              => 'Detail-oriented analyst passionate about software requirement specifications, process diagrams, and user acceptance guides.',
                 'phone'            => '+63 918 999 4024',
-                'company_user_id'  => 107, // Stratum AI
-                'posting_title'    => 'Software QA & Automated Testing Intern',
+                'company_user'     => $gridWorks,
+                'posting_title'    => 'Systems Analyst Trainee',
                 'completed_days'   => 0, // Day 1
-                'skills'           => ['Cypress', 'Playwright', 'Postman', 'Test Case Design', 'Bug Reports'],
+                'skills'           => ['SQL', 'Documentation', 'Communication Skills', 'Data Flow Analysis'],
             ],
             [
                 'name'             => 'Julia Renee Aguilar',
@@ -208,17 +258,17 @@ class LiveStudentOjtCohortSeeder extends Seeder
                 'email'            => 'julia.aguilar.bsit4b@chmsu.edu.ph',
                 'student_id'       => '2023-BSIT4B-025',
                 'section'          => 'BSIT 4-B',
-                'headline'         => 'Full-Stack Web Trainee | Vue.js · Laravel · Tailwind CSS',
-                'bio'              => 'Web development trainee eager to develop intuitive, accessible frontends and efficient database schemas.',
+                'headline'         => 'IT Support & Helpdesk Intern | Endpoint Provisioning · Hardware Triage',
+                'bio'              => 'IT operations apprentice dedicated to rapid user support, ticket resolution, and workstation deployment.',
                 'phone'            => '+63 918 000 4025',
-                'company_user_id'  => 105, // NexusWave Solutions
-                'posting_title'    => 'Full-Stack Web Development Trainee',
+                'company_user'     => $gridWorks,
+                'posting_title'    => 'IT Support Intern',
                 'completed_days'   => 0, // Day 1
-                'skills'           => ['Vue.js', 'Laravel', 'Tailwind CSS', 'MySQL', 'Git'],
+                'skills'           => ['Technical Support', 'Troubleshooting', 'Computer Hardware', 'Customer Service'],
             ],
         ];
 
-        // 3. Technical Tasks Repository for Authentic Daily Logs (30 workdays)
+        // 4. Authentic IT Deliverable Logs (30 workdays)
         $workdayTasks = [
             1  => "Attended company practicum orientation, received workstation credentials, signed NDA and workspace acceptable use policies.",
             2  => "Configured developer environment (VS Code extensions, Git SSH keys, Docker Desktop, and project dependencies).",
@@ -252,9 +302,9 @@ class LiveStudentOjtCohortSeeder extends Seeder
             30 => "Completed milestone progress demonstration to supervisor, summarized sprint deliverables, and logged weekly hours.",
         ];
 
-        // 4. Process Each Student in the Cohort
+        // 5. Seed Each Student Trainee
         foreach ($cohort as $sData) {
-            DB::transaction(function () use ($sData, $defaultPassword, $coordinator, $workdayTasks, $now) {
+            DB::transaction(function () use ($sData, $defaultPassword, $coordinator, $companyCoords, $workdayTasks, $now) {
                 // A. Provision Student User
                 $student = User::updateOrCreate(
                     ['email' => $sData['email']],
@@ -312,19 +362,40 @@ class LiveStudentOjtCohortSeeder extends Seeder
                     ]);
                 }
 
-                // D. Resolve Host Company & OJT Posting
-                $companyUser = User::find($sData['company_user_id']);
-                $posting = OjtPosting::where('company_user_id', $sData['company_user_id'])
-                    ->where('title', 'like', "%{$sData['posting_title']}%")
-                    ->first() ?? OjtPosting::where('company_user_id', $sData['company_user_id'])->first();
-
-                if (!$posting) {
-                    throw new \RuntimeException("No OJT Posting found for company user ID {$sData['company_user_id']}");
+                // D. Resolve Host Company & OJT Posting (with graceful fallbacks)
+                $companyUser = $sData['company_user'];
+                if (!$companyUser) {
+                    $companyUser = User::where('role', 'company')->first();
                 }
 
-                // Base Coordinates for Company
-                $baseLat = (float) ($posting->latitude ?: 10.676500);
-                $baseLon = (float) ($posting->longitude ?: 122.951000);
+                $posting = null;
+                if ($companyUser) {
+                    $posting = OjtPosting::where('company_user_id', $companyUser->id)
+                        ->where('title', 'like', "%{$sData['posting_title']}%")
+                        ->first()
+                        ?? OjtPosting::where('company_user_id', $companyUser->id)->first();
+                }
+
+                if (!$posting) {
+                    $posting = OjtPosting::first();
+                }
+
+                if (!$posting) {
+                    Log::warning("[LiveStudentOjtCohortSeeder] No OJT postings available in database for {$student->name}");
+                    return;
+                }
+
+                // Ensure Posting has valid coordinates for Geofence display
+                $defaultCoord = $companyCoords[$posting->company_user_id] ?? ['lat' => 10.6698, 'lon' => 122.9485];
+                $baseLat = (float) ($posting->latitude ?: $defaultCoord['lat']);
+                $baseLon = (float) ($posting->longitude ?: $defaultCoord['lon']);
+
+                if (empty($posting->latitude) || empty($posting->longitude)) {
+                    $posting->update([
+                        'latitude'  => $baseLat,
+                        'longitude' => $baseLon,
+                    ]);
+                }
 
                 // E. Pre-Deployment Document Checklist Verification
                 StudentOjtRequirement::updateOrCreate(
@@ -344,7 +415,7 @@ class LiveStudentOjtCohortSeeder extends Seeder
                         'due_date'           => '2026-09-15',
                         'status'             => 'verified',
                         'drive_url'          => "https://drive.google.com/drive/folders/chmsu-ojt-requirements-{$slug}",
-                        'supervisor_remarks' => 'All 5 pre-deployment practicum requirements verified and approved by coordinator.',
+                        'supervisor_remarks' => "All 5 pre-deployment practicum requirements verified and approved by Coordinator {$coordinator->name}.",
                         'submitted_at'       => Carbon::parse('2026-09-01 10:00:00'),
                         'verified_at'        => Carbon::parse('2026-09-02 14:30:00'),
                     ]
@@ -356,33 +427,33 @@ class LiveStudentOjtCohortSeeder extends Seeder
                     if (!Storage::disk('public')->exists($endorsementPath)) {
                         Storage::disk('public')->put(
                             $endorsementPath,
-                            "%PDF-1.4\n%CHMSU CIER Official OJT Practicum Endorsement Letter\n%Student: {$student->name} ({$sData['section']})\n%Host Partner: {$posting->company_name}\n%Training Term: Academic Year 2026-2027\n%%EOF"
+                            "%PDF-1.4\n%CHMSU CIER Official OJT Practicum Endorsement Letter\n%Student: {$student->name} ({$sData['section']})\n%Host Partner: {$posting->company_name}\n%Coordinator: {$coordinator->name}\n%Training Term: Academic Year 2026-2027\n%%EOF"
                         );
                     }
                 } catch (\Throwable) {
-                    // Non-blocking in container environments
+                    // Non-blocking
                 }
 
                 // G. Calculate Timeline & Dates
                 $completedDays = $sData['completed_days'];
                 if ($completedDays > 0) {
-                    // Mid-practicum student (started weeks ago, includes today 2026-11-11 as the latest completed day)
+                    // Mid-practicum student (started weeks ago, includes today 2026-11-11 as latest completed day)
                     $pastWorkdays = [];
-                    $cursor = Carbon::parse('2026-11-11'); // Latest workday is today
+                    $cursor = Carbon::parse('2026-11-11');
                     while (count($pastWorkdays) < $completedDays) {
                         if (!$cursor->isWeekend()) {
                             $pastWorkdays[] = $cursor->copy();
                         }
                         $cursor->subDay();
                     }
-                    $pastWorkdays = array_reverse($pastWorkdays); // Chronological
+                    $pastWorkdays = array_reverse($pastWorkdays);
                     $startDate = $pastWorkdays[0]->copy();
                     $applicationDate = $startDate->copy()->subWeeks(2)->next(Carbon::MONDAY);
                     $endorsementDate = $applicationDate->copy()->addDays(3);
                     $interviewDate   = $applicationDate->copy()->addDays(5);
                     $acceptedDate    = $applicationDate->copy()->addDays(7);
                 } else {
-                    // Day 1 student: starts on upcoming shift (Thursday Nov 12, 2026) so today has 0 absences and is ready
+                    // Day 1 student: starts on upcoming shift (Thursday Nov 12, 2026) so today has 0 absences and clean punch clock
                     $startDate       = Carbon::parse('2026-11-12');
                     $applicationDate = Carbon::parse('2026-11-12')->subWeeks(2)->next(Carbon::MONDAY);
                     $endorsementDate = $applicationDate->copy()->addDays(3);
@@ -415,7 +486,7 @@ class LiveStudentOjtCohortSeeder extends Seeder
                         'interview_location'         => $posting->location ?: 'Company Main Development Office',
                         'company_accepted_at'        => $acceptedDate,
                         'company_note'               => "Excellent academic and portfolio performance. Accepted for 600 hours practicum.",
-                        'coordinator_note'           => "Student academically cleared and officially endorsed for industry training. Bilateral MOA verified.",
+                        'coordinator_note'           => "Student academically cleared and officially endorsed by Coordinator {$coordinator->name}. Bilateral MOA verified.",
                         'ojt_start_date'             => $startDate->toDateString(),
                         'ojt_started_at'             => $startDate->copy()->setTime(8, 0, 0),
                         'schedule_days'              => ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
@@ -438,8 +509,8 @@ class LiveStudentOjtCohortSeeder extends Seeder
                     ['user_id' => $student->id],
                     [
                         'company_name'         => $posting->company_name,
-                        'supervisor_name'      => $companyUser?->name ?: $posting->company_name . ' HR',
-                        'supervisor_email'     => $companyUser?->email ?: 'hr@company.ph',
+                        'supervisor_name'      => $posting->company?->name ?: $posting->company_name . ' HR',
+                        'supervisor_email'     => $posting->company?->email ?: 'hr@company.partner.chmsu.test',
                         'location'             => $posting->location,
                         'start_date'           => $startDate->toDateString(),
                         'end_date'             => $estimatedEndDate,

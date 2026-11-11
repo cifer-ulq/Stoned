@@ -3337,4 +3337,47 @@ class AdminController extends Controller
                 : 'No alumni records were imported.',
         ]);
     }
+
+    /**
+     * POST /api/admin/seed-live-cohort
+     * Allows seeding or reseeding the live BSIT student cohort on-demand with admin credentials.
+     */
+    public function seedLiveCohort(Request $request)
+    {
+        $this->requireAdmin($request);
+
+        $seeder = new \Database\Seeders\LiveStudentOjtCohortSeeder();
+        $seeder->run();
+
+        $emails = [
+            'angelo.perez.bsit4a@chmsu.edu.ph',
+            'bea.santos.bsit4a@chmsu.edu.ph',
+            'carlos.reyes.bsit4a@chmsu.edu.ph',
+            'diana.mendoza.bsit4a@chmsu.edu.ph',
+            'eduardo.lim.bsit4a@chmsu.edu.ph',
+            'faye.villanueva.bsit4b@chmsu.edu.ph',
+            'gabriel.torres.bsit4b@chmsu.edu.ph',
+            'hannah.cruz.bsit4b@chmsu.edu.ph',
+            'ian.garcia.bsit4b@chmsu.edu.ph',
+            'julia.aguilar.bsit4b@chmsu.edu.ph',
+        ];
+
+        $students = User::whereIn('email', $emails)
+            ->with(['studentProfile', 'ojtRecords'])
+            ->get();
+
+        return response()->json([
+            'success'  => true,
+            'message'  => 'Live cohort seeded successfully.',
+            'count'    => $students->count(),
+            'students' => $students->map(fn($s) => [
+                'id'             => $s->id,
+                'name'           => $s->name,
+                'email'          => $s->email,
+                'section'        => $s->studentProfile?->section,
+                'ojt_status'     => $s->ojtRecords?->first()?->status,
+                'hours_rendered' => $s->ojtRecords?->first()?->hours_rendered,
+            ]),
+        ]);
+    }
 }

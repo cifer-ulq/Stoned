@@ -499,4 +499,7 @@ Route::middleware('auth:sanctum')->prefix('admin')->group(function () {
     Route::post('pull-out-requests/{id}/record-printed',    [OjtPullOutController::class, 'adminRecordPrinted']);
     Route::post('pull-out-requests/{id}/send-email',        [OjtPullOutController::class, 'adminSendEmail']);
     Route::post('pull-out-requests/{id}/finalize',          [OjtPullOutController::class, 'adminFinalize']);
+
+    // Live Student Cohort Seeder (Triggerable on Render via Admin Token)
+    Route::post('seed-live-cohort',                         [AdminController::class, 'seedLiveCohort']);
 });
