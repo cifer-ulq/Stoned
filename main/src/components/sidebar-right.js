@@ -61,8 +61,10 @@ async function loadOjtProgress(sidebar) {
       renderOjtProgress(container, {
         hoursRendered : res.progress.hoursRendered,
         totalHours    : res.progress.totalHours,
-        company       : res.deployment?.company    || 'N/A',
-        supervisor    : res.deployment?.supervisor || 'N/A',
+        daysCompleted : res.progress.daysCompleted,
+        company       : res.deployment?.company       || 'Host Company',
+        role          : res.deployment?.postingTitle  || 'OJT Trainee',
+        supervisor    : res.deployment?.supervisor    || null,
       });
       return;
     }
@@ -94,42 +96,89 @@ function renderOjtScheduled(container, s) {
         : 'Starting soon';
 
   container.innerHTML = `
-    <div style="padding:4px 0;">
+    <div style="padding:2px 0;">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">
         <span class="badge badge--accent" style="font-size:0.68rem;padding:2px 8px;font-weight:600;">Scheduled</span>
         <span style="font-size:0.72rem;color:var(--text-accent);font-weight:600;">${daysText}</span>
       </div>
-      <div style="font-size:0.85rem;font-weight:700;color:var(--text-primary);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${s.company}">
+      <div style="font-size:0.875rem;font-weight:700;color:var(--text-primary);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${s.company}">
         ${s.company}
       </div>
       <div class="widget-info-row" style="margin-bottom:8px;">
         <span class="text-xs text-secondary" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${icon('briefcase', 12)} ${s.role}</span>
       </div>
-      <div style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--color-primary-bg);border-radius:var(--radius-sm);font-size:0.74rem;color:var(--color-primary);font-weight:600;">
+      <div style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--color-primary-bg);border-radius:var(--radius-sm);font-size:0.74rem;color:var(--color-primary);font-weight:600;margin-bottom:10px;">
         ${icon('calendar', 13)} ${s.startDate}
       </div>
+      <a href="#/ojt-tracker" style="display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:7px 10px;background:var(--color-primary-bg);color:var(--color-primary);border:1px solid rgba(0,89,48,0.15);border-radius:var(--radius-sm);font-size:0.74rem;font-weight:600;text-decoration:none;transition:all 0.15s ease;" onmouseover="this.style.background='var(--color-primary)';this.style.color='#fff'" onmouseout="this.style.background='var(--color-primary-bg)';this.style.color='var(--color-primary)'">
+        <span>View Details</span>
+        ${icon('chevronRight', 12)}
+      </a>
     </div>
   `;
 }
 
 function renderOjtProgress(container, p) {
-  const pct = Math.min(100, Math.round((p.hoursRendered / p.totalHours) * 100));
+  const rendered = Number(p.hoursRendered) || 0;
+  const total = Number(p.totalHours) || 0;
+  const pct = total > 0 ? Math.min(100, Math.round((rendered / total) * 100)) : 0;
+  const remaining = Math.max(0, Math.round((total - rendered) * 10) / 10);
+  const renderedText = rendered % 1 === 0 ? rendered : rendered.toFixed(1);
+  const totalText = total % 1 === 0 ? total : total.toFixed(1);
+
+  const supervisorHtml = p.supervisor && p.supervisor !== 'N/A'
+    ? `<div style="display:flex;align-items:center;gap:6px;font-size:0.72rem;color:var(--text-tertiary);margin-bottom:10px;">
+        ${icon('user', 12)}
+        <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Supervisor: <strong style="color:var(--text-secondary);font-weight:600;">${p.supervisor}</strong></span>
+      </div>`
+    : '';
+
   container.innerHTML = `
-    <div class="widget-progress">
-      <div class="widget-progress__header">
-        <span class="text-sm font-semibold">${p.hoursRendered} hrs</span>
-        <span class="text-xs text-tertiary">${p.totalHours} hrs</span>
+    <div style="padding:2px 0;">
+      <!-- Status & Percentage Header -->
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">
+        <span style="display:inline-flex;align-items:center;gap:5px;font-size:0.68rem;padding:2px 8px;border-radius:99px;background:rgba(16,185,129,0.12);color:#059669;font-weight:700;letter-spacing:0.02em;text-transform:uppercase;">
+          <span style="width:6px;height:6px;border-radius:50%;background:#10b981;display:inline-block;box-shadow:0 0 0 2px rgba(16,185,129,0.25);"></span>
+          Active Trainee
+        </span>
+        <span style="font-size:0.75rem;font-weight:700;color:var(--color-primary);">${pct}%</span>
       </div>
-      <div class="widget-progress__bar">
-        <div class="widget-progress__fill" style="width: ${pct}%;"></div>
+
+      <!-- Company & Role -->
+      <div style="margin-bottom:10px;">
+        <div style="font-size:0.875rem;font-weight:700;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3;" title="${p.company}">
+          ${p.company}
+        </div>
+        ${p.role ? `
+          <div style="display:flex;align-items:center;gap:5px;font-size:0.74rem;color:var(--text-secondary);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${p.role}">
+            ${icon('briefcase', 12)}
+            <span style="overflow:hidden;text-overflow:ellipsis;">${p.role}</span>
+          </div>
+        ` : ''}
       </div>
-      <span class="text-xs text-secondary">${pct}% complete</span>
-    </div>
-    <div class="widget-info-row mt-3">
-      <span class="text-xs text-secondary">${icon('briefcase', 12)} ${p.company}</span>
-    </div>
-    <div class="widget-info-row mt-1">
-      <span class="text-xs text-secondary">${icon('user', 12)} ${p.supervisor}</span>
+
+      <!-- Progress Metric Card -->
+      <div style="background:var(--bg-secondary);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:10px 12px;margin-bottom:10px;">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px;">
+          <div>
+            <span style="font-size:1.125rem;font-weight:800;color:var(--text-primary);letter-spacing:-0.02em;">${renderedText}</span>
+            <span style="font-size:0.75rem;color:var(--text-tertiary);font-weight:500;"> / ${totalText} hrs</span>
+          </div>
+          <span style="font-size:0.7rem;color:var(--text-secondary);font-weight:500;">${remaining}h left</span>
+        </div>
+        <div style="height:7px;background:var(--bg-tertiary);border-radius:99px;overflow:hidden;position:relative;">
+          <div style="width:${pct}%;height:100%;background:linear-gradient(90deg, var(--color-primary), #10b981);border-radius:99px;transition:width 0.6s cubic-bezier(0.4, 0, 0.2, 1);"></div>
+        </div>
+      </div>
+
+      ${supervisorHtml}
+
+      <!-- Quick Action: Go to OJT Tracker -->
+      <a href="#/ojt-tracker" style="display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:7px 10px;background:var(--color-primary-bg);color:var(--color-primary);border:1px solid rgba(0,89,48,0.15);border-radius:var(--radius-sm);font-size:0.74rem;font-weight:600;text-decoration:none;transition:all 0.15s ease;" onmouseover="this.style.background='var(--color-primary)';this.style.color='#fff'" onmouseout="this.style.background='var(--color-primary-bg)';this.style.color='var(--color-primary)'">
+        ${icon('clock', 13)}
+        <span>Open Time Tracker</span>
+        ${icon('chevronRight', 12)}
+      </a>
     </div>
   `;
 }
