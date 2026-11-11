@@ -124,7 +124,7 @@ export async function renderAnalytics(container) {
           <div class="an2-header__icon">${icon('barChart2', 22)}</div>
           <div>
             <div class="an2-header__title-row">
-              <h1 class="an2-header__title">Analytics &amp; Insights</h1>
+              <h1 class="an2-header__title">Analysis &amp; Insights</h1>
               <span class="an2-live-badge"><span class="an2-live-dot"></span>Live Data</span>
             </div>
             <p class="an2-header__sub">Recruitment pipeline velocity, conversion milestones, and OJT performance metrics.</p>

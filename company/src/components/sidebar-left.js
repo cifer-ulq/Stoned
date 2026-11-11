@@ -64,7 +64,7 @@ export function createLeftSidebar() {
       <a class="sidebar-nav__item${profileCompleted ? '' : ' sidebar-nav__item--disabled'}"
          href="${profileCompleted ? '#/analytics' : '#/'}" data-route="/analytics">
         <span class="sidebar-nav__icon" style="background:var(--color-info-bg);color:var(--color-info);">${icon('barChart',20)}</span>
-        <span class="sidebar-nav__label">Analytics</span>
+        <span class="sidebar-nav__label">Analysis & Insights</span>
       </a>
       ${profileCompleted
         ? `<a class="sidebar-nav__item" href="#/profile" data-route="/profile">

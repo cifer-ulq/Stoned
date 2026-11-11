@@ -65,7 +65,7 @@ export function createNavbar() {
           ${icon('video', 22)}
           <span class="navbar__tab-indicator"></span>
         </a>
-        <a class="navbar__tab" href="#/analytics" data-route="/analytics" title="Analytics">
+        <a class="navbar__tab" href="#/analytics" data-route="/analytics" title="Analysis & Insights">
           ${icon('barChart', 22)}
           <span class="navbar__tab-indicator"></span>
         </a>
