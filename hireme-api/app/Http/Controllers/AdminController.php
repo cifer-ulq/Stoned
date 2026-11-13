@@ -3380,4 +3380,36 @@ class AdminController extends Controller
             ]),
         ]);
     }
+
+    public function completeGraduateProfiles(Request $request)
+    {
+        $this->requireAdmin($request);
+
+        $seeder = new \Database\Seeders\CompleteGraduateProfilesSeeder();
+        $seeder->run();
+
+        $graduates = User::where('role', 'graduate')
+            ->with(['graduateProfile', 'jobseekerProfile', 'experiences'])
+            ->get();
+
+        return response()->json([
+            'success'   => true,
+            'message'   => 'Graduate profiles completed and enriched successfully.',
+            'count'     => $graduates->count(),
+            'graduates' => $graduates->map(fn($g) => [
+                'id'                => $g->id,
+                'name'              => $g->name,
+                'email'             => $g->email,
+                'batch'             => $g->graduateProfile?->year_graduated,
+                'section'           => $g->graduateProfile?->section,
+                'employment_status' => $g->graduateProfile?->employment_status,
+                'headline'          => $g->jobseekerProfile?->headline,
+                'profile_completed' => (bool) $g->jobseekerProfile?->profile_completed,
+                'experience_count'  => $g->experiences->count(),
+                'latest_role'       => $g->experiences->firstWhere('is_current', true)?->role ?? $g->experiences->sortByDesc('sort_order')->first()?->role,
+                'latest_company'    => $g->experiences->firstWhere('is_current', true)?->company ?? $g->experiences->sortByDesc('sort_order')->first()?->company,
+                'in_path'           => (bool) ($g->experiences->firstWhere('is_current', true)?->is_it_related ?? false),
+            ]),
+        ]);
+    }
 }

@@ -502,4 +502,5 @@ Route::middleware('auth:sanctum')->prefix('admin')->group(function () {
 
     // Live Student Cohort Seeder (Triggerable on Render via Admin Token)
     Route::post('seed-live-cohort',                         [AdminController::class, 'seedLiveCohort']);
+    Route::post('complete-graduate-profiles',               [AdminController::class, 'completeGraduateProfiles']);
 });
