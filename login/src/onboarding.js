@@ -639,6 +639,11 @@ function render(animate = true) {
     if (signupData.birth_date && !formData.birthDate)   formData.birthDate  = signupData.birth_date;
     if (signupData.middle_name && !formData.middleName) formData.middleName = signupData.middle_name;
     if (signupData.student_id && !formData.studentId)   formData.studentId  = signupData.student_id;
+    if (signupData.student_id && !formData.graduateStudentId) formData.graduateStudentId = signupData.student_id;
+  }
+
+  if (formData.studentId && !formData.graduateStudentId) {
+    formData.graduateStudentId = formData.studentId;
   }
 
   if (cachedUser && cachedUser.role && !formData.userType) {
@@ -1071,10 +1076,17 @@ function renderGraduateInfo() {
         <div class="ob-field ob-field--full ob-reveal" style="--delay:.24s">
           <div class="ob-field__input-wrap">
             <span class="ob-field__icon">${icon('award', 16)}</span>
-            <input class="ob-field__input" type="text" id="graduate-student-id" maxlength="25" style="text-transform:uppercase; font-weight:700; letter-spacing:0.04em;" placeholder=" " value="${formData.graduateStudentId || ''}" />
+            <input class="ob-field__input" type="text" id="graduate-student-id" maxlength="25" style="text-transform:uppercase; font-weight:700; letter-spacing:0.04em;" placeholder=" " value="${formData.graduateStudentId || formData.studentId || ''}" />
             <label class="ob-field__label" for="graduate-student-id">CHMSU Student ID Number <span style="color:#ef4444;font-weight:700;">*</span></label>
           </div>
-          <span class="ob-field__hint" style="font-size:0.75rem;color:#6b7280;margin-top:4px;display:block;">Required for registrar archive verification (e.g. AGM05120400 or 2021-00123).</span>
+          <div id="graduate-student-id-helper" style="font-size:0.75rem; color:#6b7280; margin-top:5px; padding-left:4px;">
+            ${(formData.graduateStudentId || formData.studentId) ? `
+              <span style="color:#10b981; font-weight:600; display:inline-flex; align-items:center; gap:5px;">${icon('check', 14)} Auto-filled from your signup birthdate (<code>${formData.graduateStudentId || formData.studentId}</code>)</span>
+              <span style="color:#9ca3af; font-size:0.7rem; display:block; margin-top:2px;">Editable if your official diploma, TOR, or physical card differs (e.g. 2021-00123).</span>
+            ` : `
+              <span style="color:#6b7280;">Required for registrar archive verification (e.g. AGM05120400 or 2021-00123).</span>
+            `}
+          </div>
         </div>
 
         <div class="ob-field ob-field--full ob-reveal" style="--delay:.26s">
@@ -1698,7 +1710,7 @@ function attachPickerEvents() {
   });
 }
 
-/* ── Graduate events (employment status chips) ── */
+/* ── Graduate events (employment status chips & student id) ── */
 function attachGraduateEvents() {
   attachPickerEvents();
   document.querySelectorAll('[data-emp]').forEach(btn => {
@@ -1707,6 +1719,15 @@ function attachGraduateEvents() {
       document.querySelectorAll('[data-emp]').forEach(b => b.classList.remove('ob-emp-btn--active'));
       btn.classList.add('ob-emp-btn--active');
     });
+  });
+
+  const gradSIdInput = document.getElementById('graduate-student-id');
+  gradSIdInput?.addEventListener('input', (e) => {
+    e.target.value = e.target.value.toUpperCase().replace(/\s+/g, '');
+    formData.graduateStudentId = e.target.value;
+    const wrap = gradSIdInput.closest('.ob-field__input-wrap');
+    wrap?.classList.remove('ob-field__input-wrap--error');
+    wrap?.style.removeProperty('border-color');
   });
 }
 
