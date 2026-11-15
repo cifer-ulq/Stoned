@@ -1339,9 +1339,13 @@ function setupTableEvents(container, drilldown) {
 /* ─────────────────────────────────────────────────────────────
    PAGE RENDERER (CAREER PATH & BATCH TRENDS + REDESIGNED 3 PEO)
    ───────────────────────────────────────────────────────────── */
-let _currentTab = 'peo'; // 'peo' | 'career'
+let _currentTab = 'peo'; // 'peo' | 'career' | 'pending'
 
 function renderAnalytics(container, batches, overall, peoData, onImportSuccess, onPeoFilterChange) {
+  const hash = window.location.hash || '';
+  if (hash.includes('tab=pending')) {
+    _currentTab = 'pending';
+  }
   const available = peoData?.available_filters || {};
   const batchList   = available.batches || [];
   const sectionList = available.sections || [];
@@ -1818,6 +1822,16 @@ export default function AnalyticsPage(container) {
   let currentOverall = { totalAlumni: 0, inPath: 0, batchCount: 0, avgRate: 0 };
   let currentPeoData = null;
 
+  const onHashChange = () => {
+    if (window.location.hash.includes('tab=pending')) {
+      const pendingBtn = container.querySelector('.peo-tab-btn[data-tab="pending"]');
+      if (pendingBtn && !pendingBtn.classList.contains('peo-tab-btn--active')) {
+        pendingBtn.click();
+      }
+    }
+  };
+  window.addEventListener('hashchange', onHashChange);
+
   const cached = getCached('/admin/alumni-analytics');
 
   if (cached?.data?.batches) {
@@ -1938,4 +1952,8 @@ export default function AnalyticsPage(container) {
   }
 
   load();
+
+  return () => {
+    window.removeEventListener('hashchange', onHashChange);
+  };
 }

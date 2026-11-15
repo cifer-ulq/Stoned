@@ -250,7 +250,7 @@ class OnboardingController extends Controller
                         'graduate_id'   => $user->id,
                         'graduate_name' => $user->name,
                         'student_id'    => $studentId,
-                        'route'         => '/analytics?tab=pending',
+                        'route'         => '/reports?tab=pending',
                     ]
                 );
             }
