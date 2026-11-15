@@ -53,6 +53,13 @@ class CourseNormalizer
         'bs ind tech'                                                     => 'Bachelor of Science in Industrial Technology',
         'bs industrial technology'                                        => 'Bachelor of Science in Industrial Technology',
         'bachelor of science in industrial technology'                    => 'Bachelor of Science in Industrial Technology',
+        'bachelor of science in industrial technology - major in architectural drafting technology' => 'Bachelor of Science in Industrial Technology - Major in Architectural Drafting Technology',
+        'bachelor of science in industrial technology - major in automotive technology'             => 'Bachelor of Science in Industrial Technology - Major in Automotive Technology',
+        'bachelor of science in industrial technology - major in computer technology'               => 'Bachelor of Science in Industrial Technology - Major in Computer Technology',
+        'bachelor of science in industrial technology - major in electrical technology'             => 'Bachelor of Science in Industrial Technology - Major in Electrical Technology',
+        'bachelor of science in industrial technology - major in electronics technology'            => 'Bachelor of Science in Industrial Technology - Major in Electronics Technology',
+        'bachelor of science in industrial technology - major in food trades technology'            => 'Bachelor of Science in Industrial Technology - Major in Food Trades Technology',
+        'bachelor of science in industrial technology - major in mechanical technology'             => 'Bachelor of Science in Industrial Technology - Major in Mechanical Technology',
 
         // Entertainment and Multimedia Computing
         'bsemc'                                                           => 'Bachelor of Science in Entertainment and Multimedia Computing',
@@ -146,6 +153,10 @@ class CourseNormalizer
         'bachelor of elementary education'                                => 'Bachelor of Elementary Education',
         'btled'                                                           => 'Bachelor of Technology and Livelihood Education',
         'bachelor of technology and livelihood education'                 => 'Bachelor of Technology and Livelihood Education',
+        'btvted'                                                          => 'Bachelor of Technical Vocational Teacher Education',
+        'bachelor of technical vocational teacher education'              => 'Bachelor of Technical Vocational Teacher Education',
+        'bachelor of technical vocational teacher education - major in electrical technology'  => 'Bachelor of Technical Vocational Teacher Education - Major in Electrical Technology',
+        'bachelor of technical vocational teacher education - major in electronics technology' => 'Bachelor of Technical Vocational Teacher Education - Major in Electronics Technology',
     ];
 
     /**
@@ -191,6 +202,7 @@ class CourseNormalizer
         if (stripos($trimmed, 'bachelor of') === 0) {
             $formatted = ucwords(strtolower($trimmed));
             $formatted = preg_replace('/\bIn\b/', 'in', $formatted);
+            $formatted = preg_replace('/\bOf\b/', 'of', $formatted);
             $formatted = preg_replace('/\bAnd\b/', 'and', $formatted);
             return $formatted;
         }

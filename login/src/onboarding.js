@@ -85,7 +85,7 @@ const formData = {
   avatar: null,
   // Student
   school: 'Carlos Hilado Memorial State University',
-  campus: '',
+  campus: 'Alijis Campus',
   program: 'Bachelor of Science in Information Technology',
   yearLevel: '4th Year',
   section: '',
@@ -883,10 +883,11 @@ function renderStudentInfo() {
       <div class="ob-form ob-form--grid">
 
         <div class="ob-field ob-field--full ob-reveal" style="--delay:.10s">
-          <div class="ob-field__input-wrap">
+          <div class="ob-field__input-wrap ob-field__input-wrap--accent">
             <span class="ob-field__icon">${icon('briefcase', 16)}</span>
-            <input class="ob-field__input" type="text" id="school" placeholder=" " value="${formData.school}" />
-            <label class="ob-field__label" for="school">School / University</label>
+            <input class="ob-field__input" type="text" id="school" value="Carlos Hilado Memorial State University" readonly />
+            <label class="ob-field__label ob-field__label--float" for="school">School / University</label>
+            <span class="ob-field__badge">Fixed</span>
           </div>
         </div>
 
@@ -895,12 +896,12 @@ function renderStudentInfo() {
             <span class="ob-picker__label">Campus</span>
             <div class="ob-picker__grid ob-picker__grid--2">
               ${['Talisay Campus','Binalbagan Campus','Alijis Campus','Fortune Towne Campus'].map(c => `
-                <button type="button" class="ob-picker__opt ${formData.campus === c ? 'ob-picker__opt--on' : ''}" data-pick="campus" data-val="${c}">
+                <button type="button" class="ob-picker__opt ${(formData.campus || 'Alijis Campus') === c ? 'ob-picker__opt--on' : ''}" data-pick="campus" data-val="${c}">
                   <span class="ob-picker__opt-check">${svg.check}</span>
                   <span class="ob-picker__opt-text">${c}</span>
                 </button>`).join('')}
             </div>
-            <input type="hidden" id="campus" value="${formData.campus}">
+            <input type="hidden" id="campus" value="${formData.campus || 'Alijis Campus'}">
           </div>
         </div>
 
@@ -922,11 +923,32 @@ function renderStudentInfo() {
         </div>
 
         <div class="ob-field ob-field--full ob-reveal" style="--delay:.26s">
-          <div class="ob-field__input-wrap ob-field__input-wrap--accent">
+          <div class="ob-field__input-wrap ob-field__select-wrap">
             <span class="ob-field__icon">${icon('briefcase', 16)}</span>
-            <input class="ob-field__input" type="text" id="program" value="Bachelor of Science in Information Technology" readonly />
-            <label class="ob-field__label ob-field__label--float" for="program">Program</label>
-            <span class="ob-field__badge">Fixed</span>
+            <select class="ob-field__input ob-field__select" id="program">
+              <optgroup label="College of Computer Studies (CCS)">
+                <option value="Bachelor of Science in Information Technology" ${formData.program === 'Bachelor of Science in Information Technology' ? 'selected' : ''}>Bachelor of Science in Information Technology</option>
+                <option value="Bachelor of Science in Information Systems" ${formData.program === 'Bachelor of Science in Information Systems' ? 'selected' : ''}>Bachelor of Science in Information Systems</option>
+              </optgroup>
+              <optgroup label="College of Engineering">
+                <option value="Bachelor of Science in Computer Engineering" ${formData.program === 'Bachelor of Science in Computer Engineering' ? 'selected' : ''}>Bachelor of Science in Computer Engineering</option>
+                <option value="Bachelor of Science in Electronics Engineering" ${formData.program === 'Bachelor of Science in Electronics Engineering' ? 'selected' : ''}>Bachelor of Science in Electronics Engineering</option>
+              </optgroup>
+              <optgroup label="College of Industrial Technology (CIT)">
+                <option value="Bachelor of Science in Industrial Technology - Major in Architectural Drafting Technology" ${formData.program === 'Bachelor of Science in Industrial Technology - Major in Architectural Drafting Technology' ? 'selected' : ''}>Bachelor of Science in Industrial Technology - Major in Architectural Drafting Technology</option>
+                <option value="Bachelor of Science in Industrial Technology - Major in Automotive Technology" ${formData.program === 'Bachelor of Science in Industrial Technology - Major in Automotive Technology' ? 'selected' : ''}>Bachelor of Science in Industrial Technology - Major in Automotive Technology</option>
+                <option value="Bachelor of Science in Industrial Technology - Major in Computer Technology" ${formData.program === 'Bachelor of Science in Industrial Technology - Major in Computer Technology' ? 'selected' : ''}>Bachelor of Science in Industrial Technology - Major in Computer Technology</option>
+                <option value="Bachelor of Science in Industrial Technology - Major in Electrical Technology" ${formData.program === 'Bachelor of Science in Industrial Technology - Major in Electrical Technology' ? 'selected' : ''}>Bachelor of Science in Industrial Technology - Major in Electrical Technology</option>
+                <option value="Bachelor of Science in Industrial Technology - Major in Electronics Technology" ${formData.program === 'Bachelor of Science in Industrial Technology - Major in Electronics Technology' ? 'selected' : ''}>Bachelor of Science in Industrial Technology - Major in Electronics Technology</option>
+                <option value="Bachelor of Science in Industrial Technology - Major in Food Trades Technology" ${formData.program === 'Bachelor of Science in Industrial Technology - Major in Food Trades Technology' ? 'selected' : ''}>Bachelor of Science in Industrial Technology - Major in Food Trades Technology</option>
+                <option value="Bachelor of Science in Industrial Technology - Major in Mechanical Technology" ${formData.program === 'Bachelor of Science in Industrial Technology - Major in Mechanical Technology' ? 'selected' : ''}>Bachelor of Science in Industrial Technology - Major in Mechanical Technology</option>
+              </optgroup>
+              <optgroup label="College of Education / Technical-Vocational Programs">
+                <option value="Bachelor of Technical Vocational Teacher Education - Major in Electrical Technology" ${formData.program === 'Bachelor of Technical Vocational Teacher Education - Major in Electrical Technology' ? 'selected' : ''}>Bachelor of Technical Vocational Teacher Education - Major in Electrical Technology</option>
+                <option value="Bachelor of Technical Vocational Teacher Education - Major in Electronics Technology" ${formData.program === 'Bachelor of Technical Vocational Teacher Education - Major in Electronics Technology' ? 'selected' : ''}>Bachelor of Technical Vocational Teacher Education - Major in Electronics Technology</option>
+              </optgroup>
+            </select>
+            <label class="ob-field__label ob-field__label--select" for="program">Program / Degree Course <span style="color:#ef4444;font-weight:700;">*</span></label>
           </div>
         </div>
 
@@ -1493,10 +1515,10 @@ function saveStepData() {
   const stepId = getCurrentStepId();
 
   if (stepId === 'student-info') {
-    formData.school     = document.getElementById('school')?.value || formData.school;
-    formData.campus     = document.getElementById('campus')?.value || '';
+    formData.school     = 'Carlos Hilado Memorial State University';
+    formData.campus     = document.getElementById('campus')?.value || formData.campus || 'Alijis Campus';
     formData.yearLevel  = '4th Year';
-    formData.program    = 'Bachelor of Science in Information Technology';
+    formData.program    = document.getElementById('program')?.value || formData.program || 'Bachelor of Science in Information Technology';
     const rawSec        = document.getElementById('section')?.value || '';
     formData.section    = rawSec.trim().toUpperCase().slice(-1);
     formData.batch      = document.getElementById('batch')?.value || AUTO_BATCH;
@@ -1538,6 +1560,14 @@ function attachFormFieldEvents() {
 /* ── Option picker events ── */
 function attachPickerEvents() {
   attachFormFieldEvents();
+
+  // Program selection change
+  const progSelect = document.getElementById('program');
+  if (progSelect) {
+    progSelect.addEventListener('change', (e) => {
+      formData.program = e.target.value;
+    });
+  }
 
   // Section input constraint (single uppercase letter)
   const secInput = document.getElementById('section');

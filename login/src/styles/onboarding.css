@@ -464,7 +464,7 @@
 
 .ob-field__input {
   width: 100%;
-  padding: 21px 14px 8px 42px;
+  padding: 25px 14px 8px 42px;
   border: none; border-radius: inherit;
   font-family: var(--font-body); font-size: 0.875rem;
   background: transparent; color: var(--text-primary); outline: none;
@@ -478,12 +478,15 @@
   transform-origin: left;
 }
 .ob-field__input:focus + .ob-field__label,
-.ob-field__input:not(:placeholder-shown) + .ob-field__label {
-  top: 9px; transform: translateY(0) scale(0.72);
+.ob-field__input:not(:placeholder-shown) + .ob-field__label,
+.ob-field__label--float {
+  top: 6px; transform: translateY(0) scale(0.70);
+  line-height: 1;
   color: var(--color-primary); font-weight: 600;
 }
 .ob-field__input-wrap--accent .ob-field__input:focus + .ob-field__label,
-.ob-field__input-wrap--accent .ob-field__input:not(:placeholder-shown) + .ob-field__label {
+.ob-field__input-wrap--accent .ob-field__input:not(:placeholder-shown) + .ob-field__label,
+.ob-field__input-wrap--accent .ob-field__label--float {
   color: var(--color-success);
 }
 .ob-field__label--static {
@@ -516,15 +519,30 @@
 
 /* Select floating label — always in the floated/small position */
 .ob-field__label--select {
-  position: absolute; left: 42px; top: 9px;
-  transform: scale(0.72); transform-origin: left;
+  position: absolute; left: 42px; top: 6px;
+  transform: scale(0.70); transform-origin: left;
+  line-height: 1;
   font-size: 0.875rem; font-weight: 600; color: var(--text-tertiary);
   pointer-events: none;
 }
 .ob-field__input-wrap:focus-within .ob-field__label--select { color: var(--color-primary); }
 
 /* Selects inside a wrap with floating label need less top-padding override */
-.ob-field__select-wrap .ob-field__select { padding-top: 22px; padding-bottom: 7px; }
+.ob-field__select-wrap .ob-field__select { padding-top: 25px; padding-bottom: 8px; }
+
+.ob-field__select optgroup {
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: var(--color-primary);
+  background: var(--bg-primary);
+}
+.ob-field__select option {
+  font-weight: 400;
+  font-size: 0.86rem;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  padding: 6px 10px;
+}
 
 /* ══════════════════════════════════════════════════════════════
    OPTION PICKERS  (campus / year-level / program)
