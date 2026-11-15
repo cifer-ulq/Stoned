@@ -595,7 +595,7 @@ function applyModal(job) {
           </div>
 
           <!-- Custom Resume Upload (Optional) -->
-          <div class="form-group" style="margin-bottom: 16px;">
+          <div class="form-group" style="margin-bottom: 0;">
             <label class="form-label" style="font-size: 0.82rem; font-weight: 600; color: #334155; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
               <span>Targeted Resume / CV <span style="color: #94a3b8; font-weight: 400;">(optional, PDF only)</span></span>
               <span style="font-size: 0.72rem; color: #64748b;">Max 5 MB</span>
@@ -612,36 +612,6 @@ function applyModal(job) {
               <button type="button" id="apply-resume-clear" style="display: none; background: none; border: none; color: #ef4444; cursor: pointer; padding: 4px; border-radius: 4px; position: relative; z-index: 2;" title="Remove selected file">
                 ${icon('x', 16)}
               </button>
-            </div>
-          </div>
-
-          <!-- Availability & Salary Expectations (2-column grid) -->
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px;">
-            <div>
-              <label for="apply-start-date" style="font-size: 0.82rem; font-weight: 600; color: #334155; margin-bottom: 6px; display: block;">
-                Earliest Start Date <span style="color: #94a3b8; font-weight: 400;">(optional)</span>
-              </label>
-              <input type="date" id="apply-start-date" class="form-input" style="width: 100%; box-sizing: border-box; font-size: 0.82rem; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 8px; background: #ffffff;">
-            </div>
-            <div>
-              <label for="apply-expected-salary" style="font-size: 0.82rem; font-weight: 600; color: #334155; margin-bottom: 6px; display: block;">
-                Expected Salary <span style="color: #94a3b8; font-weight: 400;">(optional)</span>
-              </label>
-              <input type="text" id="apply-expected-salary" class="form-input" placeholder="e.g. ₱28,000 / month" style="width: 100%; box-sizing: border-box; font-size: 0.82rem; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 8px; background: #ffffff;">
-            </div>
-          </div>
-
-          <!-- Cover letter textarea -->
-          <div class="form-group" style="margin: 0;">
-            <label class="form-label" style="font-size: 0.82rem; font-weight: 600; color: #334155; margin-bottom: 6px; display: block;">
-              Cover Letter / Introduction <span style="color: #94a3b8; font-size: 0.85em; font-weight: 400;">(optional)</span>
-            </label>
-            <textarea id="apply-cover-letter" class="form-textarea" rows="4"
-              style="resize: vertical; font-size: 0.88rem; line-height: 1.6; width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 12px;"
-              placeholder="Highlight relevant projects, career objectives, and why you're a great fit for this position…"></textarea>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
-              <span style="font-size: 0.72rem; color: #94a3b8;">Max 2,000 characters</span>
-              <span style="font-size: 0.72rem; color: #94a3b8;"><span id="char-count">0</span> / 2000</span>
             </div>
           </div>
         </div>
@@ -1638,32 +1608,12 @@ export async function renderJobs(container) {
       resumeClear.style.display = 'none';
     });
 
-    /* Character counter */
-    const textarea   = el.querySelector('#apply-cover-letter');
-    const charCount  = el.querySelector('#char-count');
-    textarea.addEventListener('input', () => {
-      const len = textarea.value.length;
-      charCount.textContent = len;
-      charCount.style.color = len > 2000 ? 'var(--color-error)' : 'var(--text-tertiary)';
-    });
-
     el.querySelector('#apply-modal-submit').addEventListener('click', async () => {
-      const coverLetter = textarea.value.trim();
-      if (coverLetter.length > 2000) { showToast('Cover letter too long (max 2,000 characters).', 'warning'); return; }
-
-      const startDateInput = el.querySelector('#apply-start-date');
-      const salaryInput = el.querySelector('#apply-expected-salary');
-      const startDate = startDateInput?.value?.trim() || null;
-      const expectedSalary = salaryInput?.value?.trim() || null;
-
       const submitBtn = el.querySelector('#apply-modal-submit');
       submitBtn.disabled = true;
       submitBtn.innerHTML = icon('clock', 14) + ' Sending…';
 
       const formData = new FormData();
-      if (coverLetter) formData.append('cover_letter', coverLetter);
-      if (startDate) formData.append('earliest_start_date', startDate);
-      if (expectedSalary) formData.append('expected_salary', expectedSalary);
       if (selectedResumeFile) formData.append('custom_resume', selectedResumeFile);
 
       try {
