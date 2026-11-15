@@ -54,15 +54,15 @@ class StudentController extends Controller
             if ($acceptedInterest && $acceptedInterest->posting) {
                 $p = $acceptedInterest->posting;
                 $hoursPerDay = $p->schedule_type === 'half_day' ? 4 : 8;
-                // Extract explicit hours from duration string (e.g. "5 months (800 hours)" → 800).
+                // Extract explicit hours from duration string (e.g. "5 months (600 hours)" → 600).
                 // NEVER use FILTER_SANITIZE_NUMBER_INT — it concatenates ALL digit sequences,
-                // turning "5 months (800 hours)" into 5800.
-                $totalHours = 800; // default
+                // turning "5 months (600 hours)" into 5600.
+                $totalHours = 600; // default (minimum institutional curriculum requirement)
                 if ($p->duration) {
                     if (preg_match('/(\d+)\s*h(?:ours?|rs?)/i', $p->duration, $m)) {
-                        $totalHours = (int) $m[1] ?: 800;
+                        $totalHours = (int) $m[1] ?: 600;
                     } elseif (preg_match('/^\s*(\d+)\s*$/', trim($p->duration), $m)) {
-                        $totalHours = (int) $m[1] ?: 800;
+                        $totalHours = (int) $m[1] ?: 600;
                     }
                 }
                 // Get hours from time logs
@@ -114,11 +114,20 @@ class StudentController extends Controller
                 'icon'  => 'briefcase',
             ]);
 
+        // Curriculum requirement: 600 hours (less any credited hours from approved pull-outs)
+        $accreditedHours = (float) \App\Models\OjtPullOutRequest::where('student_user_id', $user->id)
+            ->where('status', 'approved')
+            ->sum('credited_hours');
+        $effectiveRequired = (int) ($ojt?->required_hours ?? ($ojtDeployment['requiredHours'] ?? max(0, 600 - (int) $accreditedHours)));
+        if ($effectiveRequired <= 0) {
+            $effectiveRequired = 600;
+        }
+
         return response()->json([
             'stats' => [
                 'ojtHours' => [
                     'value' => $ojt?->completed_hours ?? ($ojtDeployment['completedHours'] ?? 0),
-                    'total' => $ojt?->required_hours ?? ($ojtDeployment['requiredHours'] ?? 500),
+                    'total' => $effectiveRequired,
                     'label' => 'OJT Hours',
                 ],
                 'applications' => [

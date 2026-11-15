@@ -18,7 +18,7 @@ export const mockData = {
 
   /* ── Dashboard Stats ── */
   'dashboard/stats': {
-    ojtHours: { value: 267, total: 800, label: 'OJT Hours' },
+    ojtHours: { value: 267, total: 600, label: 'OJT Hours' },
     jobMatches: { value: 14, label: 'Job Matches' },
     applications: { value: 5, label: 'Applications' },
     interviews: { value: 2, label: 'Upcoming Interviews' },
@@ -100,7 +100,7 @@ export const mockData = {
   'profile/resume': {
     objective: 'Detail-oriented BSIT student seeking full-time frontend developer opportunities. Experienced in building responsive web applications with modern JavaScript frameworks. Strong foundation in UI/UX design principles and agile development.',
     hoursRendered: 267,
-    totalHours: 800,
+    totalHours: 600,
     currentGrade: '1.50',
     supervisorRating: 4.5,
   },
@@ -363,7 +363,7 @@ export const mockData = {
   /* ── OJT Data ── */
   'ojt/progress': {
     hoursRendered: 267,
-    totalHours: 500,
+    totalHours: 600,
     daysCompleted: 45,
     totalDays: 90,
     company: 'TechCorp Solutions',
