@@ -21,7 +21,7 @@ export function createLeftSidebar() {
       <div class="sidebar-user__avatar">${avatarHtml}</div>
       <div class="sidebar-user__info">
         <div class="sidebar-user__name">${user.name}</div>
-        <div class="sidebar-user__role">${user.desiredJobTitle || 'Graduate'}</div>
+        <div class="sidebar-user__role">Graduate</div>
       </div>
     </a>
 

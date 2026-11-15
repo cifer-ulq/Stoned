@@ -179,6 +179,22 @@ class OnboardingController extends Controller
             ['user_id' => $user->id],
             $data
         );
+
+        if ($user->studentProfile) {
+            $user->studentProfile->update(array_filter([
+                'program'    => $data['course'] ?? null,
+                'campus'     => $data['campus'] ?? null,
+                'section'    => $data['section'] ?? null,
+                'batch'      => $data['year_graduated'] ?? null,
+                'year_level' => 'Graduated',
+                'status'     => 'alumni',
+            ]));
+        }
+
+        $user->jobseekerProfile()->updateOrCreate(
+            ['user_id' => $user->id],
+            ['profile_completed' => true]
+        );
     }
 
     /**

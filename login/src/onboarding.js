@@ -95,10 +95,10 @@ const formData = {
   studentId: '',
   // Graduate
   graduateYearGraduated: '',
-  graduateCampus: '',
-  graduateCourse: '',
+  graduateCampus: 'Alijis Campus',
+  graduateCourse: 'Bachelor of Science in Information Technology',
   graduateSection: '',
-  graduateEmploymentStatus: ''
+  graduateEmploymentStatus: 'looking'
 };
 
 /* ── Per-role step definitions ── */
@@ -1011,26 +1011,27 @@ function renderGraduateInfo() {
     { id: 'freelance',  label: 'Freelancing',          icon: icon('laptop', 18) },
     { id: 'studying',   label: 'Continuing Studies',   icon: icon('book-open', 18) },
   ];
-  const years = Array.from({ length: 11 }, (_, i) => {
+  const years = Array.from({ length: 12 }, (_, i) => {
     const start = CURRENT_YEAR - i;
     return { value: `${start}-${start + 1}`, label: `${start} - ${start + 1}` };
   });
+  const defaultBatch = `${CURRENT_YEAR - 1}-${CURRENT_YEAR}`;
+  const currentBatchVal = formData.graduateYearGraduated || defaultBatch;
+
   return `
     <div class="ob-step" data-step="graduate-info">
       <div class="ob-step__header">
         <h2 class="ob-step__title ob-reveal">Your Graduate Profile</h2>
-        <p class="ob-step__subtitle ob-reveal" style="--delay:.06s">Help us personalise your job-matching experience.</p>
+        <p class="ob-step__subtitle ob-reveal" style="--delay:.06s">Help us personalise your career and job-matching experience.</p>
       </div>
       <div class="ob-form ob-form--grid">
 
-        <div class="ob-field ob-reveal" style="--delay:.10s">
-          <div class="ob-field__input-wrap ob-field__select-wrap">
-            <span class="ob-field__icon">${icon('target', 16)}</span>
-            <select class="ob-field__input ob-field__select" id="graduate-year">
-              <option value="" disabled ${!formData.graduateYearGraduated ? 'selected' : ''}></option>
-              ${years.map(y => `<option value="${y.value}" ${formData.graduateYearGraduated === y.value ? 'selected' : ''}>${y.label}</option>`).join('')}
-            </select>
-            <label class="ob-field__label ob-field__label--select" for="graduate-year">Year Graduated</label>
+        <div class="ob-field ob-field--full ob-reveal" style="--delay:.10s">
+          <div class="ob-field__input-wrap ob-field__input-wrap--accent">
+            <span class="ob-field__icon">${icon('briefcase', 16)}</span>
+            <input class="ob-field__input" type="text" id="graduate-school" value="Carlos Hilado Memorial State University" readonly />
+            <label class="ob-field__label ob-field__label--float" for="graduate-school">School / University</label>
+            <span class="ob-field__badge">Fixed</span>
           </div>
         </div>
 
@@ -1039,42 +1040,68 @@ function renderGraduateInfo() {
             <span class="ob-picker__label">Campus</span>
             <div class="ob-picker__grid ob-picker__grid--2">
               ${['Talisay Campus','Binalbagan Campus','Alijis Campus','Fortune Towne Campus'].map(c => `
-                <button type="button" class="ob-picker__opt ${formData.graduateCampus === c ? 'ob-picker__opt--on' : ''}" data-pick="graduate-campus" data-val="${c}">
+                <button type="button" class="ob-picker__opt ${(formData.graduateCampus || 'Alijis Campus') === c ? 'ob-picker__opt--on' : ''}" data-pick="graduate-campus" data-val="${c}">
                   <span class="ob-picker__opt-check">${svg.check}</span>
                   <span class="ob-picker__opt-text">${c}</span>
                 </button>`).join('')}
             </div>
-            <input type="hidden" id="graduate-campus" value="${formData.graduateCampus}">
+            <input type="hidden" id="graduate-campus" value="${formData.graduateCampus || 'Alijis Campus'}">
           </div>
         </div>
 
-        <div class="ob-field ob-field--full ob-reveal" style="--delay:.18s">
-          <div class="ob-picker">
-            <span class="ob-picker__label">Course / Program</span>
-            <div class="ob-picker__grid ob-picker__grid--2 ob-picker__grid--prog">
-              ${['Bachelor of Science in Information Technology','Bachelor of Science in Industrial Technology','Bachelor of Science in Information Systems','Bachelor of Science in Computer Engineering'].map(p => `
-                <button type="button" class="ob-picker__opt ${formData.graduateCourse === p ? 'ob-picker__opt--on' : ''}" data-pick="graduate-course" data-val="${p}">
-                  <span class="ob-picker__opt-check">${svg.check}</span>
-                  <span class="ob-picker__opt-text">${p}</span>
-                </button>`).join('')}
-            </div>
-            <input type="hidden" id="graduate-course" value="${formData.graduateCourse}">
+        <div class="ob-field ob-reveal" style="--delay:.18s">
+          <div class="ob-field__input-wrap ob-field__select-wrap">
+            <span class="ob-field__icon">${icon('target', 16)}</span>
+            <select class="ob-field__input ob-field__select" id="graduate-year">
+              ${years.map(y => `<option value="${y.value}" ${currentBatchVal === y.value ? 'selected' : ''}>${y.label}</option>`).join('')}
+            </select>
+            <label class="ob-field__label ob-field__label--select" for="graduate-year">Year Graduated (Batch) <span style="color:#ef4444;font-weight:700;">*</span></label>
           </div>
         </div>
 
         <div class="ob-field ob-reveal" style="--delay:.22s">
           <div class="ob-field__input-wrap">
             <span class="ob-field__icon">${icon('hash', 16)}</span>
-            <input class="ob-field__input" type="text" id="graduate-section" maxlength="1" style="text-transform:uppercase; font-weight:700;" placeholder=" " value="${formData.graduateSection}" />
+            <input class="ob-field__input" type="text" id="graduate-section" maxlength="1" style="text-transform:uppercase; font-weight:700;" placeholder=" " value="${formData.graduateSection || ''}" />
             <label class="ob-field__label" for="graduate-section">Section (e.g. A or B)</label>
           </div>
         </div>
 
         <div class="ob-field ob-field--full ob-reveal" style="--delay:.26s">
-          <span class="ob-field__section-label">Current Status</span>
+          <div class="ob-field__input-wrap ob-field__select-wrap">
+            <span class="ob-field__icon">${icon('briefcase', 16)}</span>
+            <select class="ob-field__input ob-field__select" id="graduate-course">
+              <optgroup label="College of Computer Studies (CCS)">
+                <option value="Bachelor of Science in Information Technology" ${(formData.graduateCourse || 'Bachelor of Science in Information Technology') === 'Bachelor of Science in Information Technology' ? 'selected' : ''}>Bachelor of Science in Information Technology</option>
+                <option value="Bachelor of Science in Information Systems" ${formData.graduateCourse === 'Bachelor of Science in Information Systems' ? 'selected' : ''}>Bachelor of Science in Information Systems</option>
+              </optgroup>
+              <optgroup label="College of Engineering">
+                <option value="Bachelor of Science in Computer Engineering" ${formData.graduateCourse === 'Bachelor of Science in Computer Engineering' ? 'selected' : ''}>Bachelor of Science in Computer Engineering</option>
+                <option value="Bachelor of Science in Electronics Engineering" ${formData.graduateCourse === 'Bachelor of Science in Electronics Engineering' ? 'selected' : ''}>Bachelor of Science in Electronics Engineering</option>
+              </optgroup>
+              <optgroup label="College of Industrial Technology (CIT)">
+                <option value="Bachelor of Science in Industrial Technology - Major in Architectural Drafting Technology" ${formData.graduateCourse === 'Bachelor of Science in Industrial Technology - Major in Architectural Drafting Technology' ? 'selected' : ''}>Bachelor of Science in Industrial Technology - Major in Architectural Drafting Technology</option>
+                <option value="Bachelor of Science in Industrial Technology - Major in Automotive Technology" ${formData.graduateCourse === 'Bachelor of Science in Industrial Technology - Major in Automotive Technology' ? 'selected' : ''}>Bachelor of Science in Industrial Technology - Major in Automotive Technology</option>
+                <option value="Bachelor of Science in Industrial Technology - Major in Computer Technology" ${formData.graduateCourse === 'Bachelor of Science in Industrial Technology - Major in Computer Technology' ? 'selected' : ''}>Bachelor of Science in Industrial Technology - Major in Computer Technology</option>
+                <option value="Bachelor of Science in Industrial Technology - Major in Electrical Technology" ${formData.graduateCourse === 'Bachelor of Science in Industrial Technology - Major in Electrical Technology' ? 'selected' : ''}>Bachelor of Science in Industrial Technology - Major in Electrical Technology</option>
+                <option value="Bachelor of Science in Industrial Technology - Major in Electronics Technology" ${formData.graduateCourse === 'Bachelor of Science in Industrial Technology - Major in Electronics Technology' ? 'selected' : ''}>Bachelor of Science in Industrial Technology - Major in Electronics Technology</option>
+                <option value="Bachelor of Science in Industrial Technology - Major in Food Trades Technology" ${formData.graduateCourse === 'Bachelor of Science in Industrial Technology - Major in Food Trades Technology' ? 'selected' : ''}>Bachelor of Science in Industrial Technology - Major in Food Trades Technology</option>
+                <option value="Bachelor of Science in Industrial Technology - Major in Mechanical Technology" ${formData.graduateCourse === 'Bachelor of Science in Industrial Technology - Major in Mechanical Technology' ? 'selected' : ''}>Bachelor of Science in Industrial Technology - Major in Mechanical Technology</option>
+              </optgroup>
+              <optgroup label="College of Education / Technical-Vocational Programs">
+                <option value="Bachelor of Technical Vocational Teacher Education - Major in Electrical Technology" ${formData.graduateCourse === 'Bachelor of Technical Vocational Teacher Education - Major in Electrical Technology' ? 'selected' : ''}>Bachelor of Technical Vocational Teacher Education - Major in Electrical Technology</option>
+                <option value="Bachelor of Technical Vocational Teacher Education - Major in Electronics Technology" ${formData.graduateCourse === 'Bachelor of Technical Vocational Teacher Education - Major in Electronics Technology' ? 'selected' : ''}>Bachelor of Technical Vocational Teacher Education - Major in Electronics Technology</option>
+              </optgroup>
+            </select>
+            <label class="ob-field__label ob-field__label--select" for="graduate-course">Program / Degree Course <span style="color:#ef4444;font-weight:700;">*</span></label>
+          </div>
+        </div>
+
+        <div class="ob-field ob-field--full ob-reveal" style="--delay:.30s">
+          <span class="ob-field__section-label">Current Employment Status</span>
           <div class="ob-emp-grid" id="emp-grid">
             ${empOptions.map((opt, i) => `
-              <button class="ob-emp-btn ${formData.graduateEmploymentStatus === opt.id ? 'ob-emp-btn--active' : ''}"
+              <button class="ob-emp-btn ${(formData.graduateEmploymentStatus || 'looking') === opt.id ? 'ob-emp-btn--active' : ''}"
                 data-emp="${opt.id}" type="button" style="--delay:${0.04 * i}s">
                 <span class="ob-emp-btn__emoji">${opt.icon}</span>
                 <span class="ob-emp-btn__label">${opt.label}</span>
@@ -1526,12 +1553,13 @@ function saveStepData() {
     formData.middleName = document.getElementById('middle-name')?.value || formData.middleName || '';
     formData.studentId  = (document.getElementById('student-id')?.value || formData.studentId || '').trim().toUpperCase();
   } else if (stepId === 'graduate-info') {
-    formData.graduateYearGraduated = document.getElementById('graduate-year')?.value || '';
-    formData.graduateCampus        = document.getElementById('graduate-campus')?.value || '';
-    formData.graduateCourse        = document.getElementById('graduate-course')?.value || '';
+    formData.school                = 'Carlos Hilado Memorial State University';
+    formData.graduateCampus        = document.getElementById('graduate-campus')?.value || formData.graduateCampus || 'Alijis Campus';
+    formData.graduateCourse        = document.getElementById('graduate-course')?.value || formData.graduateCourse || 'Bachelor of Science in Information Technology';
     const rawGradSec               = document.getElementById('graduate-section')?.value || '';
     formData.graduateSection       = rawGradSec.trim().toUpperCase().slice(-1);
-    // graduateEmploymentStatus set via chip clicks
+    formData.graduateYearGraduated = document.getElementById('graduate-year')?.value || formData.graduateYearGraduated || `${CURRENT_YEAR - 1}-${CURRENT_YEAR}`;
+    formData.graduateEmploymentStatus = formData.graduateEmploymentStatus || 'looking';
   }
 }
 
