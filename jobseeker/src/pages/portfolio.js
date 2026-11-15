@@ -12,6 +12,21 @@ import {
   searchSkills,
   getSkillsGroupedByCategory,
 } from '@shared/skills-taxonomy.js';
+import {
+  CHMSU_CAMPUSES,
+  REGIONAL_SCHOOLS,
+  DEGREE_ACRONYM_MAP,
+  HONORS_PRESETS,
+  GPA_PRESETS,
+  ROLE_SUGGESTIONS_BY_TYPE,
+  PARTNER_COMPANIES_FALLBACK,
+  BULLET_STARTERS,
+  MONTHS,
+  parseMonthYear,
+  formatMonthYear,
+  calcDuration,
+  toggleBulletInText,
+} from '@shared/portfolio-form-presets.js';
 
 /* ─── palette for skills / experience types ─── */
 const typeColor = { OJT: 'accent', Freelance: 'success', Volunteer: 'warning', 'Full-time': 'info', 'Part-time': 'neutral' };
@@ -618,6 +633,62 @@ function pfmStyles(extra = '') {
     .pfm-tag-chips { display:flex; flex-wrap:wrap; gap:5px; margin-top:6px; }
     .pfm-tag-pill { background:var(--surface-card); border:1px solid var(--border-default); color:var(--text-secondary); font-size:0.72rem; font-weight:600; padding:2px 8px; border-radius:99px; cursor:pointer; transition:all .15s; }
     .pfm-tag-pill:hover { border-color:var(--color-primary); color:var(--color-primary); background:var(--color-primary-bg); }
+
+    /* Dynamic Form Helpers */
+    .pfm-box--wide { max-width: 580px; }
+    .pfm-chips-group { display: flex; flex-direction: column; gap: 5px; margin-top: 4px; }
+    .pfm-chips-label { font-size: .69rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-tertiary); display: flex; align-items: center; gap: 4px; }
+    .pfm-pills-row { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+    .pfm-chip-btn { padding: 3px 10px; border-radius: 99px; font-size: .74rem; font-weight: 600; border: 1px solid var(--border-default); background: var(--surface-card); color: var(--text-secondary); cursor: pointer; transition: all .15s; display: inline-flex; align-items: center; gap: 4px; user-select: none; }
+    .pfm-chip-btn:hover { border-color: var(--color-primary); color: var(--color-primary); background: var(--surface-hover); }
+    .pfm-chip-btn--active { background: var(--color-primary, #005930) !important; color: #fff !important; border-color: transparent !important; box-shadow: 0 1px 4px rgba(0,0,0,0.15); }
+    .pfm-chip-btn--accent { background: rgba(74,108,247,0.08); border-color: rgba(74,108,247,0.3); color: #4A6CF7; }
+    .pfm-chip-btn--accent:hover { background: rgba(74,108,247,0.16); border-color: #4A6CF7; color: #3B5DE7; }
+    .pfm-chip-btn--success { background: rgba(16,185,129,0.08); border-color: rgba(16,185,129,0.3); color: #10B981; }
+    .pfm-chip-btn--success:hover { background: rgba(16,185,129,0.16); border-color: #10B981; color: #059669; }
+    
+    /* Toggle Switch */
+    .pfm-toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: var(--bg-secondary); border-radius: 10px; border: 1px solid var(--border-subtle); margin-bottom: 6px; cursor: pointer; user-select: none; }
+    .pfm-toggle-label { font-size: .8rem; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 8px; }
+    .pfm-switch { position: relative; width: 36px; height: 20px; flex-shrink: 0; }
+    .pfm-switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .pfm-switch-slider { position: absolute; inset: 0; background: var(--border-default); border-radius: 99px; transition: .2s; cursor: pointer; }
+    .pfm-switch-slider:before { content: ''; position: absolute; height: 14px; width: 14px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: .2s; box-shadow: 0 1px 3px rgba(0,0,0,0.25); }
+    .pfm-switch input:checked + .pfm-switch-slider { background: var(--color-primary, #005930); }
+    .pfm-switch input:checked + .pfm-switch-slider:before { transform: translateX(16px); }
+
+    /* Duration & Badges */
+    .pfm-duration-badge { font-size: .72rem; font-weight: 700; color: var(--color-primary); background: rgba(0,89,48,0.08); padding: 2px 8px; border-radius: 6px; margin-left: auto; }
+
+    /* Interactive Skill Tags */
+    .pfm-skill-tags-box { border: 1px solid var(--border-default); border-radius: 10px; background: var(--surface-card); padding: 6px 8px; display: flex; flex-wrap: wrap; gap: 5px; align-items: center; min-height: 40px; }
+    .pfm-skill-tag { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; font-size: .74rem; font-weight: 600; border-radius: 99px; background: rgba(0,89,48,0.1); color: var(--color-primary, #005930); border: 1px solid rgba(0,89,48,0.2); user-select: none; }
+    .pfm-skill-tag-del { border: none; background: transparent; cursor: pointer; padding: 0; display: flex; color: inherit; opacity: .6; transition: opacity .15s; }
+    .pfm-skill-tag-del:hover { opacity: 1; }
+    .pfm-skill-input { border: none !important; outline: none !important; font-size: .8rem !important; flex: 1; min-width: 130px; background: transparent !important; color: var(--text-primary); padding: 3px 4px; box-shadow: none !important; }
+
+    /* Live Preview Card */
+    .pfm-preview-card { border-radius: 12px; padding: 12px 14px; background: var(--bg-secondary); border: 1px dashed var(--border-default); display: flex; flex-direction: column; gap: 6px; }
+    .pfm-preview-card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+    .pfm-preview-card-title { font-size: .88rem; font-weight: 700; color: var(--text-primary); }
+    .pfm-preview-card-sub { font-size: .78rem; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .pfm-preview-card-date { font-size: .72rem; color: var(--text-tertiary); font-weight: 600; white-space: nowrap; }
+    .pfm-preview-card-desc { font-size: .77rem; color: var(--text-secondary); line-height: 1.4; white-space: pre-line; }
+    .pfm-preview-card-skills { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
+    .pfm-preview-card-skill { font-size: .67rem; padding: 1px 7px; border-radius: 99px; background: var(--surface-card); color: var(--text-secondary); border: 1px solid var(--border-default); font-weight: 600; }
+    .pfm-it-badge { display: inline-flex; align-items: center; gap: 4px; font-size: .67rem; font-weight: 700; padding: 1px 6px; border-radius: 99px; background: rgba(16,185,129,0.12); color: #10B981; border: 1px solid rgba(16,185,129,0.25); }
+
+    .pfm-grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .pfm-grid-3 { display:grid; grid-template-columns:1fr 1fr 100px; gap:10px; }
+    @media (max-width: 576px) {
+      .pfm-header { padding:14px 16px; }
+      .pfm-section { padding:14px 16px; }
+      .pfm-footer { padding:12px 16px; flex-wrap:wrap; }
+      .pfm-footer-actions { width:100%; justify-content:flex-end; flex-wrap:wrap; }
+      .pfm-grid-2 { grid-template-columns:1fr; }
+      .pfm-grid-3 { grid-template-columns:1fr 1fr; }
+      .pfm-grid-3 > :last-child { grid-column:span 2; }
+    }
     ${extra}`;
 }
 
@@ -818,18 +889,43 @@ function openEditAboutModal() {
   });
 }
 
-/* ── Experience Modal ── */
+/* ── Experience Modal (Dynamic & Low-Typing) ── */
 function openExpModal(exp) {
   const existing = document.getElementById('portfolio-modal-overlay');
   if (existing) existing.remove();
-  const EXP_TYPES = ['OJT','Freelance','Volunteer','Full-time','Part-time'];
+
+  const EXP_TYPES = ['Full-time', 'Part-time', 'OJT', 'Freelance', 'Volunteer'];
   let selectedType = exp?.type || 'Full-time';
+
+  // Parse existing or default dates
+  const startParsed = parseMonthYear(exp?.period_start);
+  const endParsed   = parseMonthYear(exp?.period_end);
+  const currentYear = new Date().getFullYear();
+
+  let startMonth = startParsed.month || 'Jan';
+  let startYear  = startParsed.year  || String(currentYear - 1);
+  let endMonth   = endParsed.month   || '';
+  let endYear    = endParsed.year    || '';
+  let isCurrent  = exp ? (exp.is_current || !exp.period_end || exp.period_end.toLowerCase() === 'present') : true;
+
+  // Skills array state
+  let selectedSkills = safeArray(exp?.skills);
 
   const overlay = document.createElement('div');
   overlay.id = 'portfolio-modal-overlay';
   overlay.className = 'modal-overlay';
+
+  // Build year options
+  const yearOptions = [];
+  for (let y = currentYear + 1; y >= currentYear - 20; y--) {
+    yearOptions.push(y);
+  }
+
+  // User's own portfolio skills (for quick add)
+  const profileSkillNames = (SKL || []).map(s => s.name).filter(Boolean);
+
   overlay.innerHTML = `
-    <div class="modal-box pfm-box" role="dialog" aria-modal="true">
+    <div class="modal-box pfm-box pfm-box--wide" role="dialog" aria-modal="true">
       <div class="pfm-header">
         <div class="pfm-header-left">
           <div class="pfm-icon-box" style="background:linear-gradient(135deg,#4A6CF7,#6D8DFF);">
@@ -837,39 +933,19 @@ function openExpModal(exp) {
           </div>
           <div>
             <h3 class="pfm-title">${exp ? 'Edit Experience' : 'Add Experience'}</h3>
-            <p class="pfm-subtitle">${exp ? 'Update your work history entry' : 'Add a new work or project entry'}</p>
+            <p class="pfm-subtitle">${exp ? 'Update your career history & accomplishments' : 'Fast add with smart suggestions & 1-click presets'}</p>
           </div>
         </div>
         <button type="button" class="pfm-close-btn" aria-label="Close">${icon('x', 18)}</button>
       </div>
+
       <form id="pfm-form" class="pfm-form-body" novalidate>
-        <div class="pfm-section">
-          <div class="pfm-section-label">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
-            Position
-          </div>
-          <div class="pfm-fields">
-            <div class="form-group">
-              <label class="pfm-label">Job Title <span class="pfm-req">*</span></label>
-              <input class="form-input pfm-input" name="role" required placeholder="Full-Stack Developer" value="${exp?.role || ''}">
-            </div>
-            <div style="display:flex;gap:10px;">
-              <div class="form-group" style="flex:1;">
-                <label class="pfm-label">Company / Organization <span class="pfm-req">*</span></label>
-                <input class="form-input pfm-input" name="company" required placeholder="TechCorp Solutions" value="${exp?.company || ''}">
-              </div>
-              <div class="form-group" style="flex:1;">
-                <label class="pfm-label">Location</label>
-                <input class="form-input pfm-input" name="location" placeholder="Bacolod City / Remote" value="${exp?.location || ''}">
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="pfm-divider"></div>
+
+        <!-- Type & Role -->
         <div class="pfm-section">
           <div class="pfm-section-label">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-            Type & Period
+            Experience Type & Role
           </div>
           <div class="pfm-fields">
             <div class="form-group">
@@ -879,39 +955,155 @@ function openExpModal(exp) {
                 ${EXP_TYPES.map(t => `<button type="button" class="pfm-type-pill${t === selectedType ? ' pfm-type-pill--active' : ''}" data-type="${t}">${t}</button>`).join('')}
               </div>
             </div>
-            <div style="display:flex;gap:10px;">
-              <div class="form-group" style="flex:1;">
-                <label class="pfm-label">Start</label>
-                <input class="form-input pfm-input" name="period_start" placeholder="Jan 2026" value="${exp?.period_start || ''}">
+
+            <!-- Dynamic Role Suggestions -->
+            <div class="pfm-chips-group">
+              <span class="pfm-chips-label">${icon('sparkles', 11)} Quick Role Presets</span>
+              <div class="pfm-pills-row" id="pfm-role-suggestions">
+                <!-- populated by renderRoleSuggestions() -->
               </div>
-              <div class="form-group" style="flex:1;">
-                <label class="pfm-label">End <span class="pfm-hint">(blank = Present)</span></label>
-                <input class="form-input pfm-input" name="period_end" placeholder="Present" value="${exp?.period_end || ''}">
+            </div>
+
+            <div class="form-group">
+              <label class="pfm-label">Job Title / Role <span class="pfm-req">*</span></label>
+              <input class="form-input pfm-input" name="role" id="pfm-role-input" required placeholder="e.g. Full-Stack Developer" value="${exp?.role || ''}" list="pfm-roles-dl" autocomplete="off">
+              <datalist id="pfm-roles-dl">
+                ${(ROLE_SUGGESTIONS_BY_TYPE[selectedType] || []).map(r => `<option value="${r}">`).join('')}
+              </datalist>
+            </div>
+
+            <div class="pfm-grid-2">
+              <div class="form-group">
+                <label class="pfm-label">Company / Organization <span class="pfm-req">*</span></label>
+                <input class="form-input pfm-input" name="company" id="pfm-company-input" required placeholder="e.g. TechCorp Solutions" value="${exp?.company || ''}" list="pfm-companies-dl" autocomplete="off">
+                <datalist id="pfm-companies-dl">
+                  ${PARTNER_COMPANIES_FALLBACK.map(c => `<option value="${c.name}">`).join('')}
+                </datalist>
+              </div>
+              <div class="form-group">
+                <label class="pfm-label">Location</label>
+                <input class="form-input pfm-input" name="location" id="pfm-location-input" placeholder="Bacolod City / Remote" value="${exp?.location || ''}">
               </div>
             </div>
           </div>
         </div>
+
         <div class="pfm-divider"></div>
+
+        <!-- Timeline & Duration -->
+        <div class="pfm-section">
+          <div class="pfm-section-label" style="justify-content:space-between;">
+            <span style="display:flex;align-items:center;gap:6px;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              Period & Timeline
+            </span>
+            <span class="pfm-duration-badge" id="pfm-duration-badge"></span>
+          </div>
+
+          <div class="pfm-fields">
+            <!-- Currently Working Here Toggle Switch -->
+            <label class="pfm-toggle-row" id="pfm-current-toggle-row">
+              <span class="pfm-toggle-label">
+                ${icon('checkCircle', 15)}
+                <span>I currently work here</span>
+              </span>
+              <span class="pfm-switch">
+                <input type="checkbox" id="pfm-is-current" ${isCurrent ? 'checked' : ''}>
+                <span class="pfm-switch-slider"></span>
+              </span>
+            </label>
+
+            <div class="pfm-grid-2">
+              <div class="form-group">
+                <label class="pfm-label">Start Period</label>
+                <div style="display:flex;gap:6px;">
+                  <select class="form-input pfm-input" id="pfm-start-month" style="flex:1;">
+                    ${MONTHS.map(m => `<option value="${m}" ${m === startMonth ? 'selected' : ''}>${m}</option>`).join('')}
+                  </select>
+                  <select class="form-input pfm-input" id="pfm-start-year" style="flex:1;">
+                    ${yearOptions.map(y => `<option value="${y}" ${String(y) === String(startYear) ? 'selected' : ''}>${y}</option>`).join('')}
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-group" id="pfm-end-wrap" style="${isCurrent ? 'opacity:0.5;pointer-events:none;' : ''}">
+                <label class="pfm-label">End Period</label>
+                <div style="display:flex;gap:6px;" id="pfm-end-selectors">
+                  <select class="form-input pfm-input" id="pfm-end-month" style="flex:1;" ${isCurrent ? 'disabled' : ''}>
+                    ${MONTHS.map(m => `<option value="${m}" ${m === (endMonth || 'Dec') ? 'selected' : ''}>${m}</option>`).join('')}
+                  </select>
+                  <select class="form-input pfm-input" id="pfm-end-year" style="flex:1;" ${isCurrent ? 'disabled' : ''}>
+                    ${yearOptions.map(y => `<option value="${y}" ${String(y) === String(endYear || currentYear) ? 'selected' : ''}>${y}</option>`).join('')}
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pfm-divider"></div>
+
+        <!-- Skills Used (Interactive Tags) -->
+        <div class="pfm-section">
+          <div class="pfm-section-label">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m18 16 4-4-4-4"/><path d="m6 8-4 4 4 4"/><path d="m14.5 4-5 16"/></svg>
+            Skills & Technologies Used
+          </div>
+          <div class="pfm-fields">
+            <!-- Active tag container -->
+            <div class="pfm-skill-tags-box" id="pfm-skill-tags-box">
+              <input type="text" class="pfm-skill-input" id="pfm-skill-input" placeholder="+ Type to add skill..." list="pfm-skills-dl" autocomplete="off">
+              <datalist id="pfm-skills-dl">
+                ${SKILL_TAXONOMY.slice(0, 80).map(s => `<option value="${s.canonical}">`).join('')}
+              </datalist>
+            </div>
+
+            <!-- Quick Recommended Skill Chips -->
+            <div class="pfm-chips-group">
+              <span class="pfm-chips-label">${icon('plus', 11)} Suggested Skills</span>
+              <div class="pfm-pills-row" id="pfm-skill-suggestions">
+                <!-- populated by renderSkillSuggestions() -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pfm-divider"></div>
+
+        <!-- Description & Action Verb Bullets -->
         <div class="pfm-section">
           <div class="pfm-section-label">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-            Details
+            Responsibilities & Accomplishments
           </div>
           <div class="pfm-fields">
-            <div class="form-group">
-              <label class="pfm-label">Description</label>
-              <textarea class="form-input form-textarea pfm-input" name="description" rows="3" placeholder="Key responsibilities, achievements…">${exp?.description || ''}</textarea>
+            <!-- Quick bullet starter chips -->
+            <div class="pfm-chips-group">
+              <span class="pfm-chips-label">${icon('sparkles', 11)} 1-Click Bullet Starters (Click to toggle)</span>
+              <div class="pfm-pills-row" id="pfm-bullet-starters">
+                ${BULLET_STARTERS.general.slice(0, 4).map(b => `
+                  <button type="button" class="pfm-chip-btn pfm-bullet-btn" data-bullet="${b}">
+                    ${icon('plus', 11)} ${b.slice(0, 38)}…
+                  </button>
+                `).join('')}
+              </div>
             </div>
+
             <div class="form-group">
-              <label class="pfm-label">Skills used <span class="pfm-hint">(comma-separated)</span></label>
-              <input class="form-input pfm-input" name="skills_raw" placeholder="React, Node.js, MySQL" value="${parseJsonArray(exp?.skills).join(', ')}">
+              <textarea class="form-input form-textarea pfm-input" name="description" id="pfm-desc-input" rows="3" placeholder="Key responsibilities, deliverables, or team achievements…">${exp?.description || ''}</textarea>
             </div>
-            <p style="font-size:.78rem;color:var(--text-tertiary);margin:0;">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-              The system will automatically detect if this is an IT-related role.
-            </p>
           </div>
         </div>
+
+        <!-- Live Preview -->
+        <div class="pfm-section" style="padding-top:0;">
+          <div class="pfm-chips-label" style="margin-bottom:6px;">${icon('eye', 12)} Live Timeline Card Preview</div>
+          <div class="pfm-preview-card" id="pfm-preview-card">
+            <!-- updated in real-time -->
+          </div>
+        </div>
+
+        <!-- Footer (sticky) -->
         <div class="pfm-footer">
           <p class="pfm-error" id="pfm-error"></p>
           <div class="pfm-footer-actions">
@@ -931,6 +1123,45 @@ function openExpModal(exp) {
   overlay.querySelector('.pfm-cancel').onclick     = close;
   overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
 
+  // DOM elements
+  const formEl          = overlay.querySelector('#pfm-form');
+  const roleInput       = overlay.querySelector('#pfm-role-input');
+  const companyInput    = overlay.querySelector('#pfm-company-input');
+  const locationInput   = overlay.querySelector('#pfm-location-input');
+  const descInput       = overlay.querySelector('#pfm-desc-input');
+  const isCurrentToggle = overlay.querySelector('#pfm-is-current');
+  const endWrap         = overlay.querySelector('#pfm-end-wrap');
+  const startMonthEl    = overlay.querySelector('#pfm-start-month');
+  const startYearEl     = overlay.querySelector('#pfm-start-year');
+  const endMonthEl      = overlay.querySelector('#pfm-end-month');
+  const endYearEl       = overlay.querySelector('#pfm-end-year');
+  const durationBadge   = overlay.querySelector('#pfm-duration-badge');
+  const skillTagsBox    = overlay.querySelector('#pfm-skill-tags-box');
+  const skillInput      = overlay.querySelector('#pfm-skill-input');
+  const skillSuggRow    = overlay.querySelector('#pfm-skill-suggestions');
+  const roleSuggRow     = overlay.querySelector('#pfm-role-suggestions');
+  const previewCard     = overlay.querySelector('#pfm-preview-card');
+
+  // ── 1. Role Suggestions Rendering ──
+  function renderRoleSuggestions() {
+    const roles = ROLE_SUGGESTIONS_BY_TYPE[selectedType] || ROLE_SUGGESTIONS_BY_TYPE['Full-time'];
+    roleSuggRow.innerHTML = roles.slice(0, 6).map(r => `
+      <button type="button" class="pfm-chip-btn ${roleInput.value.toLowerCase() === r.toLowerCase() ? 'pfm-chip-btn--active' : ''}" data-role="${r}">
+        ${r}
+      </button>
+    `).join('');
+  }
+
+  roleSuggRow.addEventListener('click', e => {
+    const btn = e.target.closest('[data-role]');
+    if (!btn) return;
+    roleInput.value = btn.dataset.role;
+    renderRoleSuggestions();
+    renderSkillSuggestions();
+    updatePreview();
+  });
+
+  // ── 2. Type Pill Click ──
   overlay.querySelector('#pfm-type-grid').addEventListener('click', e => {
     const btn = e.target.closest('.pfm-type-pill');
     if (!btn) return;
@@ -938,24 +1169,206 @@ function openExpModal(exp) {
     overlay.querySelector('#pfm-type-val').value = selectedType;
     overlay.querySelectorAll('.pfm-type-pill').forEach(b =>
       b.classList.toggle('pfm-type-pill--active', b.dataset.type === selectedType));
+    renderRoleSuggestions();
+    updatePreview();
   });
 
-  overlay.querySelector('#pfm-form').addEventListener('submit', async (e) => {
+  // ── 3. Company Selection Autocomplete (Pre-fills Location) ──
+  companyInput.addEventListener('change', () => {
+    const cName = companyInput.value.trim().toLowerCase();
+    const match = PARTNER_COMPANIES_FALLBACK.find(c => c.name.toLowerCase() === cName);
+    if (match && match.location && !locationInput.value) {
+      locationInput.value = match.location;
+    }
+    updatePreview();
+  });
+
+  // ── 4. Toggle Current Work / Timeline ──
+  function syncCurrentToggle() {
+    isCurrent = isCurrentToggle.checked;
+    endWrap.style.opacity = isCurrent ? '0.5' : '1';
+    endWrap.style.pointerEvents = isCurrent ? 'none' : 'auto';
+    endMonthEl.disabled = isCurrent;
+    endYearEl.disabled  = isCurrent;
+    updateDuration();
+    updatePreview();
+  }
+  isCurrentToggle.addEventListener('change', syncCurrentToggle);
+
+  function updateDuration() {
+    const sMonth = startMonthEl.value;
+    const sYear  = startYearEl.value;
+    const eMonth = isCurrent ? '' : endMonthEl.value;
+    const eYear  = isCurrent ? '' : endYearEl.value;
+    durationBadge.textContent = calcDuration(sMonth, sYear, eMonth, eYear, isCurrent);
+  }
+  startMonthEl.addEventListener('change', () => { updateDuration(); updatePreview(); });
+  startYearEl.addEventListener('change',  () => { updateDuration(); updatePreview(); });
+  endMonthEl.addEventListener('change',    () => { updateDuration(); updatePreview(); });
+  endYearEl.addEventListener('change',     () => { updateDuration(); updatePreview(); });
+  updateDuration();
+
+  // ── 5. Interactive Skill Tags ──
+  function renderSkillsTags() {
+    skillTagsBox.querySelectorAll('.pfm-skill-tag').forEach(t => t.remove());
+
+    selectedSkills.forEach((s, idx) => {
+      const tag = document.createElement('span');
+      tag.className = 'pfm-skill-tag';
+      tag.innerHTML = `<span>${s}</span><button type="button" class="pfm-skill-tag-del" data-idx="${idx}" aria-label="Remove">${icon('x', 11)}</button>`;
+      skillTagsBox.insertBefore(tag, skillInput);
+    });
+    renderSkillSuggestions();
+    updatePreview();
+  }
+
+  function addSkill(name) {
+    const clean = (name || '').trim();
+    if (!clean) return;
+    if (!selectedSkills.some(s => s.toLowerCase() === clean.toLowerCase())) {
+      selectedSkills.push(clean);
+      renderSkillsTags();
+    }
+    skillInput.value = '';
+  }
+
+  skillTagsBox.addEventListener('click', e => {
+    const delBtn = e.target.closest('.pfm-skill-tag-del');
+    if (!delBtn) return;
+    const idx = parseInt(delBtn.dataset.idx, 10);
+    selectedSkills.splice(idx, 1);
+    renderSkillsTags();
+  });
+
+  skillInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      addSkill(skillInput.value);
+    } else if (e.key === 'Backspace' && !skillInput.value && selectedSkills.length) {
+      selectedSkills.pop();
+      renderSkillsTags();
+    }
+  });
+
+  skillInput.addEventListener('change', () => {
+    if (skillInput.value) addSkill(skillInput.value);
+  });
+
+  function renderSkillSuggestions() {
+    const suggestions = [
+      ...profileSkillNames,
+      'JavaScript', 'React', 'Git', 'HTML5', 'CSS3', 'PHP', 'MySQL', 'Python', 'Node.js', 'TypeScript', 'Docker', 'AWS'
+    ].filter(s => !selectedSkills.some(x => x.toLowerCase() === s.toLowerCase()));
+
+    const uniqueSugg = Array.from(new Set(suggestions)).slice(0, 8);
+    skillSuggRow.innerHTML = uniqueSugg.map(s => `
+      <button type="button" class="pfm-chip-btn" data-skill="${s}">
+        + ${s}
+      </button>
+    `).join('');
+  }
+
+  skillSuggRow.addEventListener('click', e => {
+    const btn = e.target.closest('[data-skill]');
+    if (!btn) return;
+    addSkill(btn.dataset.skill);
+  });
+
+  // ── 6. Bullet Starter Buttons ──
+  overlay.querySelector('#pfm-bullet-starters').addEventListener('click', e => {
+    const btn = e.target.closest('[data-bullet]');
+    if (!btn) return;
+    const bullet = btn.dataset.bullet;
+    descInput.value = toggleBulletInText(descInput.value, bullet);
+    updatePreview();
+  });
+
+  // ── 7. Client-Side IT-Related Detection (Live Preview Helper) ──
+  function isItRelatedRole(role, desc, skills) {
+    const itKeywords = [
+      'software', 'developer', 'programmer', 'engineer', 'coding', 'programming',
+      'it ', 'information technology', 'web', 'frontend', 'front-end', 'backend', 'back-end',
+      'fullstack', 'full-stack', 'full stack', 'devops', 'sysadmin', 'system admin',
+      'network', 'database', 'data', 'cyber', 'security', 'cloud', 'mobile', 'app',
+      'android', 'ios', 'react', 'vue', 'angular', 'node', 'laravel', 'php', 'python',
+      'java', 'javascript', 'typescript', 'html', 'css', 'sql', 'nosql', 'api',
+      'tech', 'ui/ux', 'ux', 'ui ', 'design', 'support', 'helpdesk', 'help desk',
+      'computer', 'hardware', 'infrastructure', 'server', 'deployment',
+      'qa ', 'testing', 'automation', 'analyst', 'systems analyst', 'digital'
+    ];
+    const haystack = (role + ' ' + desc + ' ' + skills.join(' ')).toLowerCase();
+    return itKeywords.some(kw => haystack.includes(kw));
+  }
+
+  // ── 8. Live Preview Card ──
+  function updatePreview() {
+    const role     = roleInput.value.trim() || 'Role / Position';
+    const company  = companyInput.value.trim() || 'Company Name';
+    const location = locationInput.value.trim();
+    const sMonth   = startMonthEl.value;
+    const sYear    = startYearEl.value;
+    const sPeriod  = formatMonthYear(sMonth, sYear);
+    const ePeriod  = isCurrent ? 'Present' : formatMonthYear(endMonthEl.value, endYearEl.value);
+    const periodStr = sPeriod ? `${sPeriod} – ${ePeriod}` : 'Period';
+    const desc     = descInput.value.trim();
+    const isItRole = isItRelatedRole(role, desc, selectedSkills);
+
+    previewCard.innerHTML = `
+      <div class="pfm-preview-card-header">
+        <div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span class="pfm-preview-card-title">${role}</span>
+            ${isItRole ? `<span class="pfm-it-badge">${icon('zap', 10)} IT Related</span>` : ''}
+          </div>
+          <div class="pfm-preview-card-sub">
+            <span>${company}</span>
+            ${location ? `<span>&middot; ${location}</span>` : ''}
+            <span class="badge badge--${typeColor[selectedType] || 'neutral'}">${selectedType}</span>
+          </div>
+        </div>
+        <div class="pfm-preview-card-date">${periodStr}</div>
+      </div>
+      ${desc ? `<div class="pfm-preview-card-desc">${desc}</div>` : ''}
+      ${selectedSkills.length ? `
+        <div class="pfm-preview-card-skills">
+          ${selectedSkills.map(s => `<span class="pfm-preview-card-skill">${s}</span>`).join('')}
+        </div>` : ''}
+    `;
+  }
+
+  roleInput.addEventListener('input', updatePreview);
+  companyInput.addEventListener('input', updatePreview);
+  locationInput.addEventListener('input', updatePreview);
+  descInput.addEventListener('input', updatePreview);
+
+  // Initialize
+  renderRoleSuggestions();
+  renderSkillsTags();
+  updatePreview();
+
+  // ── Form Submit ──
+  formEl.addEventListener('submit', async (e) => {
     e.preventDefault();
     const errEl   = overlay.querySelector('#pfm-error');
     const saveBtn = overlay.querySelector('.pfm-save-btn');
     saveBtn.disabled  = true;
     saveBtn.innerHTML = `${SPIN_ICON} Saving…`;
-    const form = new FormData(e.target);
+
+    const startVal = formatMonthYear(startMonthEl.value, startYearEl.value);
+    const endVal   = isCurrent ? '' : formatMonthYear(endMonthEl.value, endYearEl.value);
+
     const data = {
-      role: formVal(form, 'role'), company: formVal(form, 'company'),
-      location: formVal(form, 'location'),
-      type: formVal(form, 'type'),
-      period_start: formVal(form, 'period_start'), period_end: formVal(form, 'period_end'),
-      description: formVal(form, 'description'),
-      skills: formVal(form, 'skills_raw').split(',').map(s => s.trim()).filter(Boolean),
-      is_current: !formVal(form, 'period_end'),
+      role: (roleInput.value || '').trim(),
+      company: (companyInput.value || '').trim(),
+      location: (locationInput.value || '').trim() || null,
+      type: selectedType,
+      period_start: startVal,
+      period_end: isCurrent ? null : endVal,
+      description: (descInput.value || '').trim() || null,
+      skills: selectedSkills,
+      is_current: isCurrent,
     };
+
     try {
       if (!data.role || !data.company) throw new Error('Job title and company are required.');
       if (exp) {
@@ -976,15 +1389,32 @@ function openExpModal(exp) {
   });
 }
 
-/* ── Education Modal ── */
+/* ── Education Modal (Dynamic & Low-Typing) ── */
 function openEduModal(edu) {
   const existing = document.getElementById('portfolio-modal-overlay');
   if (existing) existing.remove();
+
+  const currentYear = new Date().getFullYear();
+  const initYearStart = edu?.year_start || String(currentYear - 4);
+  const initYearEnd   = edu?.year_end   || String(currentYear);
+  let isCurrent       = edu ? (edu.is_current || !edu.year_end || edu.year_end.toLowerCase() === 'present') : false;
+
   const overlay = document.createElement('div');
   overlay.id = 'portfolio-modal-overlay';
   overlay.className = 'modal-overlay';
+
+  // Build year dropdown options
+  const yearOptions = [];
+  for (let y = currentYear + 4; y >= currentYear - 25; y--) {
+    yearOptions.push(y);
+  }
+
+  // Profile pre-fills
+  const userCampus  = P.graduate_campus || P.campus || getState()?.user?.campus || '';
+  const userProgram = P.graduate_course || P.program || P.course || getState()?.user?.course || '';
+
   overlay.innerHTML = `
-    <div class="modal-box pfm-box" role="dialog" aria-modal="true">
+    <div class="modal-box pfm-box pfm-box--wide" role="dialog" aria-modal="true">
       <div class="pfm-header">
         <div class="pfm-header-left">
           <div class="pfm-icon-box" style="background:linear-gradient(135deg,#8B5CF6,#A78BFA);">
@@ -992,60 +1422,181 @@ function openEduModal(edu) {
           </div>
           <div>
             <h3 class="pfm-title">${edu ? 'Edit Education' : 'Add Education'}</h3>
-            <p class="pfm-subtitle">${edu ? 'Update your academic record' : 'Add a school, program or certification'}</p>
+            <p class="pfm-subtitle">${edu ? 'Update your academic background' : '1-click institution presets & degree acronym expansion'}</p>
           </div>
         </div>
         <button type="button" class="pfm-close-btn" aria-label="Close">${icon('x', 18)}</button>
       </div>
+
       <form id="pfm-form" class="pfm-form-body" novalidate>
+
+        <!-- Institution & Campus -->
         <div class="pfm-section">
           <div class="pfm-section-label">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-            Institution
+            Institution & Campus
           </div>
           <div class="pfm-fields">
+
+            <!-- 1-Click Campus Presets -->
+            <div class="pfm-chips-group">
+              <span class="pfm-chips-label">${icon('building', 11)} Quick Campus Select</span>
+              <div class="pfm-pills-row" id="pfm-campus-pills">
+                ${userCampus ? `
+                  <button type="button" class="pfm-chip-btn pfm-chip-btn--accent" data-school="Carlos Hilado Memorial State University - ${userCampus} Campus">
+                    ${icon('check', 11)} Use My Campus (${userCampus})
+                  </button>
+                ` : ''}
+                ${CHMSU_CAMPUSES.map(c => `
+                  <button type="button" class="pfm-chip-btn" data-school="${c.full}">
+                    ${c.label}
+                  </button>
+                `).join('')}
+                <button type="button" class="pfm-chip-btn" data-school="Senior High School">
+                  Senior High School
+                </button>
+              </div>
+            </div>
+
             <div class="form-group">
               <label class="pfm-label">School / University <span class="pfm-req">*</span></label>
-              <input class="form-input pfm-input" name="school" required placeholder="Carlos Hilado Memorial State University" value="${edu?.school || ''}">
-            </div>
-            <div class="form-group">
-              <label class="pfm-label">Degree / Program <span class="pfm-req">*</span></label>
-              <input class="form-input pfm-input" name="degree" required placeholder="Bachelor of Science in Information Technology" value="${edu?.degree || ''}">
+              <input class="form-input pfm-input" name="school" id="pfm-school-input" required placeholder="Carlos Hilado Memorial State University" value="${edu?.school || ''}" list="pfm-schools-dl" autocomplete="off">
+              <datalist id="pfm-schools-dl">
+                ${REGIONAL_SCHOOLS.map(s => `<option value="${s}">`).join('')}
+              </datalist>
             </div>
           </div>
         </div>
+
         <div class="pfm-divider"></div>
+
+        <!-- Degree / Program -->
+        <div class="pfm-section">
+          <div class="pfm-section-label">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            Degree & Program
+          </div>
+          <div class="pfm-fields">
+
+            <!-- 1-Click Degree Acronym Expansion -->
+            <div class="pfm-chips-group">
+              <span class="pfm-chips-label">${icon('sparkles', 11)} Quick Degree Acronyms (Click to auto-expand)</span>
+              <div class="pfm-pills-row" id="pfm-degree-pills">
+                ${userProgram ? `
+                  <button type="button" class="pfm-chip-btn pfm-chip-btn--accent" data-degree="${userProgram}">
+                    ${icon('check', 11)} Use My Program
+                  </button>
+                ` : ''}
+                ${DEGREE_ACRONYM_MAP.map(d => `
+                  <button type="button" class="pfm-chip-btn" data-degree="${d.title}" title="${d.title}">
+                    ${d.acronym}
+                  </button>
+                `).join('')}
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="pfm-label">Degree / Program Title <span class="pfm-req">*</span></label>
+              <input class="form-input pfm-input" name="degree" id="pfm-degree-input" required placeholder="e.g. Bachelor of Science in Information Technology" value="${edu?.degree || ''}" list="pfm-degrees-dl" autocomplete="off">
+              <datalist id="pfm-degrees-dl">
+                ${DEGREE_ACRONYM_MAP.map(d => `<option value="${d.title}">`).join('')}
+              </datalist>
+            </div>
+          </div>
+        </div>
+
+        <div class="pfm-divider"></div>
+
+        <!-- Period, Status & Academic Record -->
         <div class="pfm-section">
           <div class="pfm-section-label">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
             Period & Academic Record
           </div>
-          <div style="display:flex;gap:10px;">
-            <div class="form-group" style="flex:1;">
-              <label class="pfm-label">Year Start</label>
-              <input class="form-input pfm-input" name="year_start" placeholder="2022" value="${edu?.year_start || ''}">
+          <div class="pfm-fields">
+
+            <!-- Currently Studying Here Toggle -->
+            <label class="pfm-toggle-row" id="pfm-edu-current-toggle-row">
+              <span class="pfm-toggle-label">
+                ${icon('checkCircle', 15)}
+                <span>I am currently enrolled here (e.g. Post-grad / Continuing)</span>
+              </span>
+              <span class="pfm-switch">
+                <input type="checkbox" id="pfm-edu-is-current" ${isCurrent ? 'checked' : ''}>
+                <span class="pfm-switch-slider"></span>
+              </span>
+            </label>
+
+            <div class="pfm-grid-3">
+              <div class="form-group">
+                <label class="pfm-label">Year Start</label>
+                <select class="form-input pfm-input" id="pfm-year-start">
+                  ${yearOptions.map(y => `<option value="${y}" ${String(y) === String(initYearStart) ? 'selected' : ''}>${y}</option>`).join('')}
+                </select>
+              </div>
+
+              <div class="form-group" id="pfm-year-end-wrap" style="${isCurrent ? 'opacity:0.5;pointer-events:none;' : ''}">
+                <label class="pfm-label">Year End</label>
+                <select class="form-input pfm-input" id="pfm-year-end" ${isCurrent ? 'disabled' : ''}>
+                  ${yearOptions.map(y => `<option value="${y}" ${String(y) === String(initYearEnd || currentYear) ? 'selected' : ''}>${y}</option>`).join('')}
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="pfm-label">GPA / GWA</label>
+                <input class="form-input pfm-input" id="pfm-gpa-input" name="gpa" placeholder="1.50" value="${edu?.gpa || ''}">
+              </div>
             </div>
-            <div class="form-group" style="flex:1;">
-              <label class="pfm-label">Year End <span class="pfm-hint">(blank = Present)</span></label>
-              <input class="form-input pfm-input" name="year_end" placeholder="2026" value="${edu?.year_end || ''}">
-            </div>
-            <div class="form-group" style="flex:0 0 100px;">
-              <label class="pfm-label">GPA</label>
-              <input class="form-input pfm-input" name="gpa" placeholder="1.50" value="${edu?.gpa || ''}">
+
+            <!-- Quick GPA chips -->
+            <div class="pfm-chips-group">
+              <span class="pfm-chips-label">Quick GPA Scale</span>
+              <div class="pfm-pills-row" id="pfm-gpa-pills">
+                ${GPA_PRESETS.map(g => `
+                  <button type="button" class="pfm-chip-btn" data-gpa="${g}">${g}</button>
+                `).join('')}
+              </div>
             </div>
           </div>
         </div>
+
         <div class="pfm-divider"></div>
+
+        <!-- Honors & Highlights -->
         <div class="pfm-section">
           <div class="pfm-section-label">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-            Honors & Details
+            Honors & Achievements
           </div>
-          <div class="form-group">
-            <label class="pfm-label">Description / Honors</label>
-            <textarea class="form-input form-textarea pfm-input" name="description" rows="3" placeholder="Dean's Lister, Magna Cum Laude, Computer Club President…">${edu?.description || ''}</textarea>
+          <div class="pfm-fields">
+
+            <!-- 1-Click Honors Chips -->
+            <div class="pfm-chips-group">
+              <span class="pfm-chips-label">${icon('award', 11)} 1-Click Honors Bullets (Click to toggle)</span>
+              <div class="pfm-pills-row" id="pfm-honors-pills">
+                ${HONORS_PRESETS.map(h => `
+                  <button type="button" class="pfm-chip-btn" data-honor="${h}">
+                    + ${h}
+                  </button>
+                `).join('')}
+              </div>
+            </div>
+
+            <div class="form-group">
+              <textarea class="form-input form-textarea pfm-input" id="pfm-edu-desc-input" name="description" rows="3" placeholder="Dean's Lister, Magna Cum Laude, President's Lister, Leadership Awardee…">${edu?.description || ''}</textarea>
+            </div>
           </div>
         </div>
+
+        <!-- Live Preview -->
+        <div class="pfm-section" style="padding-top:0;">
+          <div class="pfm-chips-label" style="margin-bottom:6px;">${icon('eye', 12)} Live Timeline Card Preview</div>
+          <div class="pfm-preview-card" id="pfm-edu-preview-card">
+            <!-- updated in real-time -->
+          </div>
+        </div>
+
+        <!-- Footer (sticky) -->
         <div class="pfm-footer">
           <p class="pfm-error" id="pfm-error"></p>
           <div class="pfm-footer-actions">
@@ -1065,28 +1616,120 @@ function openEduModal(edu) {
   overlay.querySelector('.pfm-cancel').onclick     = close;
   overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
 
-  overlay.querySelector('#pfm-form').addEventListener('submit', async (e) => {
+  // DOM elements
+  const formEl          = overlay.querySelector('#pfm-form');
+  const schoolInput     = overlay.querySelector('#pfm-school-input');
+  const degreeInput     = overlay.querySelector('#pfm-degree-input');
+  const isCurrentToggle = overlay.querySelector('#pfm-edu-is-current');
+  const yearEndWrap     = overlay.querySelector('#pfm-year-end-wrap');
+  const yearStartEl     = overlay.querySelector('#pfm-year-start');
+  const yearEndEl       = overlay.querySelector('#pfm-year-end');
+  const gpaInput        = overlay.querySelector('#pfm-gpa-input');
+  const descInput       = overlay.querySelector('#pfm-edu-desc-input');
+  const previewCard     = overlay.querySelector('#pfm-edu-preview-card');
+
+  // ── 1. Campus Pills Click ──
+  overlay.querySelector('#pfm-campus-pills').addEventListener('click', e => {
+    const btn = e.target.closest('[data-school]');
+    if (!btn) return;
+    schoolInput.value = btn.dataset.school;
+    updatePreview();
+  });
+
+  // ── 2. Degree Pills Click ──
+  overlay.querySelector('#pfm-degree-pills').addEventListener('click', e => {
+    const btn = e.target.closest('[data-degree]');
+    if (!btn) return;
+    degreeInput.value = btn.dataset.degree;
+    updatePreview();
+  });
+
+  // ── 3. Toggle Current Studying ──
+  function syncCurrentToggle() {
+    isCurrent = isCurrentToggle.checked;
+    yearEndWrap.style.opacity = isCurrent ? '0.5' : '1';
+    yearEndWrap.style.pointerEvents = isCurrent ? 'none' : 'auto';
+    yearEndEl.disabled = isCurrent;
+    updatePreview();
+  }
+  isCurrentToggle.addEventListener('change', syncCurrentToggle);
+
+  // ── 4. GPA Pills ──
+  overlay.querySelector('#pfm-gpa-pills').addEventListener('click', e => {
+    const btn = e.target.closest('[data-gpa]');
+    if (!btn) return;
+    gpaInput.value = btn.dataset.gpa;
+    updatePreview();
+  });
+
+  // ── 5. Honors Bullets Toggle ──
+  overlay.querySelector('#pfm-honors-pills').addEventListener('click', e => {
+    const btn = e.target.closest('[data-honor]');
+    if (!btn) return;
+    descInput.value = toggleBulletInText(descInput.value, btn.dataset.honor);
+    updatePreview();
+  });
+
+  // ── 6. Live Preview ──
+  function updatePreview() {
+    const school = schoolInput.value.trim() || 'School / University Name';
+    const degree = degreeInput.value.trim() || 'Degree / Program Title';
+    const yStart = yearStartEl.value;
+    const yEnd   = isCurrent ? 'Present' : (yearEndEl.value || 'Present');
+    const gpa    = gpaInput.value.trim();
+    const desc   = descInput.value.trim();
+
+    previewCard.innerHTML = `
+      <div class="pfm-preview-card-header">
+        <div>
+          <div class="pfm-preview-card-title">${school}</div>
+          <div class="pfm-preview-card-sub">
+            <span>${degree}</span>
+            ${gpa ? `<span class="badge badge--neutral">GPA: ${gpa}</span>` : ''}
+          </div>
+        </div>
+        <div class="pfm-preview-card-date">${yStart ? `${yStart} – ${yEnd}` : ''}</div>
+      </div>
+      ${desc ? `<div class="pfm-preview-card-desc">${desc}</div>` : ''}
+    `;
+  }
+
+  schoolInput.addEventListener('input', updatePreview);
+  degreeInput.addEventListener('input', updatePreview);
+  yearStartEl.addEventListener('change', updatePreview);
+  yearEndEl.addEventListener('change', updatePreview);
+  gpaInput.addEventListener('input', updatePreview);
+  descInput.addEventListener('input', updatePreview);
+
+  updatePreview();
+
+  // ── Form Submit ──
+  formEl.addEventListener('submit', async (e) => {
     e.preventDefault();
     const errEl   = overlay.querySelector('#pfm-error');
     const saveBtn = overlay.querySelector('.pfm-save-btn');
     saveBtn.disabled  = true;
     saveBtn.innerHTML = `${SPIN_ICON} Saving…`;
-    const form = new FormData(e.target);
+
     const data = {
-      school: formVal(form, 'school'), degree: formVal(form, 'degree'),
-      year_start: formVal(form, 'year_start'), year_end: formVal(form, 'year_end'),
-      gpa: formVal(form, 'gpa'), description: formVal(form, 'description'),
-      is_current: !formVal(form, 'year_end'),
+      school: (schoolInput.value || '').trim(),
+      degree: (degreeInput.value || '').trim(),
+      year_start: yearStartEl.value ? parseInt(yearStartEl.value, 10) : null,
+      year_end: isCurrent ? null : (yearEndEl.value ? parseInt(yearEndEl.value, 10) : null),
+      gpa: (gpaInput.value || '').trim() || null,
+      description: (descInput.value || '').trim() || null,
+      is_current: isCurrent,
     };
+
     try {
       if (!data.school || !data.degree) throw new Error('School and degree are required.');
       if (edu) {
         await apiPut(`/jobseeker/education/${edu.id}`, data);
         const idx = EDU.findIndex(e => e.id === edu.id);
-        EDU[idx] = { ...EDU[idx], ...data, period: data.year_start + ' – ' + (data.year_end || 'Present') };
+        EDU[idx] = { ...EDU[idx], ...data, period: (data.year_start || '') + ' – ' + (data.year_end || 'Present') };
       } else {
         const res = await apiPost('/jobseeker/education', data);
-        EDU.unshift({ ...data, id: res.id, period: data.year_start + ' – ' + (data.year_end || 'Present') });
+        EDU.unshift({ ...data, id: res.id, period: (data.year_start || '') + ' – ' + (data.year_end || 'Present') });
       }
       close();
       renderAbout();
