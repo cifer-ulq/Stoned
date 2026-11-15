@@ -26,7 +26,7 @@ function downloadCredentialsCSV(creds) {
       `"${(c.batch || '').replace(/"/g, '""')}"`,
       `"${(c.section || '').replace(/"/g, '""')}"`,
       `"${(c.temporary_password || '').replace(/"/g, '""')}"`,
-      `"https://stoned-two.vercel.app/login/"`
+      `"${(typeof window !== 'undefined' && window.location ? window.location.origin + '/login/' : 'https://chmsu-hireme.vercel.app/login/')}"`
     ]);
   });
   const csvContent = rows.map(r => r.join(',')).join('\r\n');
@@ -426,7 +426,7 @@ export function openAlumniImportModal(onSuccess) {
           </div>
           <div class="sim-result-hero__sub">
             ${success
-              ? `Alumni accounts are active and immediately visible in the Alumni Tracker.`
+              ? `Alumni accounts are active and immediately visible in the Alumni Tracker. No automated emails have been sent to graduates.`
               : `All rows were skipped. Please review the reasons below.`}
           </div>
         </div>
@@ -448,7 +448,7 @@ export function openAlumniImportModal(onSuccess) {
         <div style="display:flex;align-items:center;gap:8px;">
           ${icon('key', 14)}
           <span style="font-size:0.85rem;color:var(--text-primary);">
-            Temporary Password format: <strong>CHMSU@&lt;student_id&gt;</strong>. Alumni will be required to create their private password upon first login.
+            Temporary Password format: <strong>CHMSU@&lt;student_id&gt;</strong>. No emails were sent; download the credentials CSV below to distribute login details to alumni.
           </span>
         </div>
         ${creds.length > 0 ? `

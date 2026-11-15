@@ -3148,7 +3148,6 @@ class AdminController extends Controller
         $seenStudentIds       = [];
         $importedCredentials = [];
         $mailErrors          = [];
-        $smtpDead            = false;
 
         $get = function (array $values, string $key) use ($idx): ?string {
             if (! isset($idx[$key])) return null;
@@ -3279,30 +3278,8 @@ class AdminController extends Controller
                     }
                 });
 
-                // Send welcome email with credentials outside DB transaction with SMTP fail-fast protection
-                if (! $smtpDead) {
-                    try {
-                        Mail::to($email)->send(new AlumniWelcome(
-                            alumniName:        $name,
-                            email:             $email,
-                            studentId:         $studentId,
-                            program:           $course,
-                            campus:            $campus,
-                            batch:             $batch,
-                            temporaryPassword: $tempPassword,
-                        ));
-                    } catch (\Throwable $mailError) {
-                        $errMsg = $mailError->getMessage();
-                        \Log::warning("Failed to deliver alumni welcome email to {$email}: {$errMsg}");
-                        $mailErrors[] = "{$email}: {$errMsg}";
-
-                        if (str_contains(strtolower($errMsg), 'timed out') || str_contains(strtolower($errMsg), 'connection could not be established')) {
-                            $smtpDead = true;
-                            $mailErrors[] = 'SMTP unreachable; skipped remaining email dispatches for this batch (credentials still generated).';
-                        }
-                    }
-                }
-
+                // No automated emails are sent for graduate batch registration.
+                // Credentials are compiled for immediate CSV export/distribution by admin.
                 $importedCredentials[] = [
                     'name'               => $name,
                     'email'              => $email,
@@ -3331,9 +3308,9 @@ class AdminController extends Controller
             'skipped'     => $skipped,
             'errors'      => $errors,
             'credentials' => $importedCredentials,
-            'mail_errors' => $mailErrors,
+            'mail_errors' => [],
             'message'     => $imported > 0
-                ? "Successfully registered $imported alumni record(s)." . (!empty($mailErrors) ? " (Note: Email sending encountered an issue; see mail_errors or use downloaded credentials)." : " Credentials generated and welcome emails sent.")
+                ? "Successfully registered $imported alumni record(s). Generated credentials can be downloaded below."
                 : 'No alumni records were imported.',
         ]);
     }
