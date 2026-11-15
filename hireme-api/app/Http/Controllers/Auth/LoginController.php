@@ -73,6 +73,28 @@ class LoginController extends Controller
                 }
             }
 
+            if ($user->role === 'graduate') {
+                $approvalStatus = $user->graduateProfile?->approval_status ?? 'approved';
+                if ($approvalStatus === 'pending') {
+                    $user->tokens()->delete();
+                    return response()->json([
+                        'success' => false,
+                        'code'    => 'ACCOUNT_PENDING_APPROVAL',
+                        'message' => 'Your alumni account is currently pending verification and approval by the Administrator or Alumni Relations Office. You will be able to log in once your graduation record has been verified.',
+                    ], 403);
+                }
+
+                if ($approvalStatus === 'rejected') {
+                    $user->tokens()->delete();
+                    $reason = $user->graduateProfile?->rejection_reason;
+                    return response()->json([
+                        'success' => false,
+                        'code'    => 'ACCOUNT_REJECTED',
+                        'message' => 'Your alumni account registration was not approved.' . ($reason ? ' Reason: ' . $reason : ' Please contact the Alumni Relations Office or System Administrator.'),
+                    ], 403);
+                }
+            }
+
             $isActiveOjt = false;
             if ($user->role === 'student') {
                 $isActiveOjt = StudentOjtInterest::where('student_user_id', $user->id)
@@ -505,7 +527,7 @@ class LoginController extends Controller
 
         $user->load(['companyProfile', 'studentProfile', 'supervisorProfile', 'jobseekerProfile', 'graduateProfile']);
 
-        // Check if student has pending or rejected approval status
+        // Check if student or graduate has pending or rejected approval status
         if ($user->role === 'student') {
             $approvalStatus = $user->studentProfile?->approval_status ?? 'approved';
             if ($approvalStatus === 'pending') {
@@ -522,6 +544,28 @@ class LoginController extends Controller
                     'success'               => true,
                     'account_status'        => 'rejected',
                     'message'               => 'Password reset successfully. Your student account registration was previously declined. Please contact your coordinator.',
+                    'requires_verification' => true,
+                    'role'                  => $user->role,
+                ]);
+            }
+        }
+
+        if ($user->role === 'graduate') {
+            $approvalStatus = $user->graduateProfile?->approval_status ?? 'approved';
+            if ($approvalStatus === 'pending') {
+                return response()->json([
+                    'success'               => true,
+                    'account_status'        => 'pending_approval',
+                    'message'               => 'Password reset successfully! Please note that your alumni account is still pending verification by the Alumni Relations Office.',
+                    'requires_verification' => true,
+                    'role'                  => $user->role,
+                ]);
+            }
+            if ($approvalStatus === 'rejected') {
+                return response()->json([
+                    'success'               => true,
+                    'account_status'        => 'rejected',
+                    'message'               => 'Password reset successfully. Your alumni account registration was previously declined. Please contact the Alumni Relations Office.',
                     'requires_verification' => true,
                     'role'                  => $user->role,
                 ]);

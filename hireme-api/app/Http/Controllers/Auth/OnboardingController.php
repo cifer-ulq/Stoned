@@ -24,11 +24,11 @@ class OnboardingController extends Controller
             return response()->json(['message' => 'Onboarding already completed'], 409);
         }
 
-        $isStudentPending = false;
+        $isPending = false;
 
         match ($user->role) {
-            'student'   => $isStudentPending = $this->saveStudentProfile($user, $request),
-            'graduate'  => $this->saveGraduateProfile($user, $request),
+            'student'   => $isPending = $this->saveStudentProfile($user, $request),
+            'graduate'  => $isPending = $this->saveGraduateProfile($user, $request),
             'company'   => $this->saveCompanyProfile($user, $request),
             'supervisor'=> $this->saveSupervisorProfile($user, $request),
             'jobseeker' => $this->saveJobseekerProfile($user, $request),
@@ -37,12 +37,16 @@ class OnboardingController extends Controller
 
         $user->update(['onboarding_completed' => true]);
 
-        if ($user->role === 'student' && $isStudentPending) {
-            // Revoke current session token so student cannot enter /main/ until approved
+        if ($isPending) {
+            // Revoke current session token so student/graduate cannot enter portal until approved
             $user->tokens()->delete();
 
+            $pendingMsg = $user->role === 'graduate'
+                ? 'Registration submitted successfully. Your alumni account is pending verification by the Administrator or Alumni Relations Office.'
+                : 'Registration submitted successfully. Your account is pending verification by an OJT Coordinator or Administrator.';
+
             return response()->json([
-                'message'          => 'Registration submitted successfully. Your account is pending verification by an OJT Coordinator or Administrator.',
+                'message'          => $pendingMsg,
                 'pending_approval' => true,
                 'user'             => [
                     'id'                   => $user->id,
@@ -166,8 +170,35 @@ class OnboardingController extends Controller
         return true;
     }
 
-    private function saveGraduateProfile($user, Request $request): void
+    private function saveGraduateProfile($user, Request $request): bool
     {
+        $studentId = StudentIdHelper::sanitize($request->input('student_id', ''));
+        if (empty($studentId)) {
+            abort(response()->json([
+                'message' => 'CHMSU Student ID Number is required for graduate verification.',
+                'errors'  => ['student_id' => ['Please enter your CHMSU Student ID Number to verify your graduation record.']],
+            ], 422));
+        }
+
+        if (!preg_match('/^[A-Z0-9\-]{5,25}$/i', $studentId)) {
+            abort(response()->json([
+                'message' => 'Invalid Student ID format. Must contain at least 5 alphanumeric characters.',
+                'errors'  => ['student_id' => ['Invalid Student ID format. Example: AGM05120400 or 2021-00123.']],
+            ], 422));
+        }
+
+        // Check if student_id is already registered by another graduate
+        $existingGrad = \App\Models\GraduateProfile::where('student_id', $studentId)
+            ->where('user_id', '!=', $user->id)
+            ->first();
+
+        if ($existingGrad) {
+            abort(response()->json([
+                'message' => "Student ID '{$studentId}' is already registered in the system.",
+                'errors'  => ['student_id' => ["Student ID '{$studentId}' is already registered in the system."]],
+            ], 422));
+        }
+
         $data = $request->only(['year_graduated', 'campus', 'course', 'section', 'employment_status']);
         if (isset($data['course'])) {
             $data['course'] = CourseNormalizer::normalize($data['course']);
@@ -175,26 +206,59 @@ class OnboardingController extends Controller
         if (isset($data['section'])) {
             $data['section'] = SectionNormalizer::normalize($data['section']);
         }
+
+        $data['student_id']          = $studentId;
+        $data['registration_source'] = 'self';
+        $data['approval_status']     = 'pending';
+
         $user->graduateProfile()->updateOrCreate(
             ['user_id' => $user->id],
             $data
         );
 
-        if ($user->studentProfile) {
-            $user->studentProfile->update(array_filter([
-                'program'    => $data['course'] ?? null,
-                'campus'     => $data['campus'] ?? null,
-                'section'    => $data['section'] ?? null,
-                'batch'      => $data['year_graduated'] ?? null,
-                'year_level' => 'Graduated',
-                'status'     => 'alumni',
-            ]));
-        }
+        $user->studentProfile()->updateOrCreate(
+            ['user_id' => $user->id],
+            array_filter([
+                'school'              => 'Carlos Hilado Memorial State University',
+                'program'             => $data['course'] ?? null,
+                'campus'              => $data['campus'] ?? null,
+                'section'             => $data['section'] ?? null,
+                'batch'               => $data['year_graduated'] ?? null,
+                'year_level'          => 'Graduated',
+                'status'              => 'alumni',
+                'student_id'          => $studentId,
+                'registration_source' => 'self',
+                'approval_status'     => 'pending',
+            ])
+        );
 
         $user->jobseekerProfile()->updateOrCreate(
             ['user_id' => $user->id],
-            ['profile_completed' => true]
+            ['profile_completed' => false]
         );
+
+        // Notify Admins of new pending graduate registration
+        try {
+            $admins = User::where('role', 'admin')->get();
+            foreach ($admins as $admin) {
+                AppNotification::send(
+                    $admin->id,
+                    'graduate_pending_approval',
+                    'New Graduate Registration',
+                    "{$user->name} ({$studentId}) has registered as an alumnus for " . ($data['course'] ?? 'CHMSU') . " (Batch " . ($data['year_graduated'] ?? '—') . ") and requires account verification.",
+                    [
+                        'graduate_id'   => $user->id,
+                        'graduate_name' => $user->name,
+                        'student_id'    => $studentId,
+                        'route'         => '/analytics?tab=pending',
+                    ]
+                );
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[OnboardingController] Graduate notification failed: ' . $e->getMessage());
+        }
+
+        return true;
     }
 
     /**

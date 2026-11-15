@@ -3389,4 +3389,136 @@ class AdminController extends Controller
             ]),
         ]);
     }
+
+    /**
+     * GET /api/admin/alumni/pending
+     * Retrieve all self-registered graduates awaiting administrative verification.
+     */
+    public function listPendingAlumni(Request $request)
+    {
+        $this->requireAdmin($request);
+
+        $graduates = User::where('role', 'graduate')
+            ->whereHas('graduateProfile', function ($q) {
+                $q->where('approval_status', 'pending');
+            })
+            ->with(['graduateProfile', 'studentProfile'])
+            ->latest()
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'count'   => $graduates->count(),
+            'data'    => $graduates->map(fn($g) => [
+                'id'                => $g->id,
+                'name'              => $g->name,
+                'email'             => $g->email,
+                'student_id'        => $g->graduateProfile?->student_id ?: ($g->studentProfile?->student_id ?? '—'),
+                'course'            => $g->graduateProfile?->course ?: ($g->studentProfile?->program ?? '—'),
+                'campus'            => $g->graduateProfile?->campus ?: ($g->studentProfile?->campus ?? 'Alijis Campus'),
+                'batch'             => $g->graduateProfile?->year_graduated ?: ($g->studentProfile?->batch ?? '—'),
+                'section'           => $g->graduateProfile?->section ?: ($g->studentProfile?->section ?? '—'),
+                'employment_status' => $g->graduateProfile?->employment_status ?? 'looking',
+                'registered_at'     => $g->created_at?->format('M d, Y h:i A') ?? '—',
+            ]),
+        ]);
+    }
+
+    /**
+     * POST /api/admin/alumni/{id}/approve
+     * Approve a self-registered alumnus and grant full access to the portal.
+     */
+    public function approveAlumni(Request $request, $id)
+    {
+        $this->requireAdmin($request);
+        $user = User::where('role', 'graduate')->findOrFail($id);
+
+        if ($user->graduateProfile) {
+            $user->graduateProfile->update([
+                'approval_status' => 'approved',
+                'approved_by'     => $request->user()->id,
+                'approved_at'     => now(),
+            ]);
+        }
+        if ($user->studentProfile) {
+            $user->studentProfile->update([
+                'approval_status' => 'approved',
+                'approved_by'     => $request->user()->id,
+                'approved_at'     => now(),
+            ]);
+        }
+        if ($user->jobseekerProfile) {
+            $user->jobseekerProfile->update([
+                'profile_completed' => true,
+            ]);
+        }
+
+        try {
+            AppNotification::send(
+                $user->id,
+                'alumni_account_approved',
+                'Alumni Account Verified & Approved',
+                'Your CHMSU HireMe alumni account has been approved by the Administrator. You now have full access to the platform.',
+                ['route' => '/jobseeker/']
+            );
+        } catch (\Throwable $e) {
+            \Log::warning('[approveAlumni] In-app notification failed: ' . $e->getMessage());
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Alumnus {$user->name} has been verified and approved.",
+        ]);
+    }
+
+    /**
+     * POST /api/admin/alumni/{id}/reject
+     * Decline a graduate self-registration (wiping fake data by default).
+     */
+    public function rejectAlumni(Request $request, $id)
+    {
+        $this->requireAdmin($request);
+        $user = User::where('role', 'graduate')->findOrFail($id);
+
+        $reason = trim($request->input('reason', 'Verification declined: Student record could not be confirmed with registrar archives.'));
+        $wipeRequested = $request->boolean('wipe_data', true);
+
+        if ($wipeRequested) {
+            $name = $user->name;
+            \Illuminate\Support\Facades\DB::transaction(function () use ($user) {
+                $user->tokens()->delete();
+                $user->graduateProfile()?->delete();
+                $user->studentProfile()?->delete();
+                $user->jobseekerProfile()?->delete();
+                $user->delete();
+            });
+
+            return response()->json([
+                'success' => true,
+                'wiped'   => true,
+                'message' => "Alumni registration for {$name} was declined and account records were removed.",
+            ]);
+        }
+
+        if ($user->graduateProfile) {
+            $user->graduateProfile->update([
+                'approval_status'  => 'rejected',
+                'rejection_reason' => $reason,
+                'approved_by'      => $request->user()->id,
+            ]);
+        }
+        if ($user->studentProfile) {
+            $user->studentProfile->update([
+                'approval_status'  => 'rejected',
+                'rejection_reason' => $reason,
+                'approved_by'      => $request->user()->id,
+            ]);
+        }
+        $user->tokens()->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => "Alumni registration for {$user->name} was declined.",
+        ]);
+    }
 }

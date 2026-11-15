@@ -467,6 +467,9 @@ Route::middleware('auth:sanctum')->prefix('admin')->group(function () {
     Route::post('students/{id}/reject',            [AdminController::class, 'rejectStudent']);
     Route::delete('students/{id}',                 [AdminController::class, 'deleteStudent']);
     Route::post('alumni/import',                   [AdminController::class, 'importAlumni']);
+    Route::get('alumni/pending',                   [AdminController::class, 'listPendingAlumni']);
+    Route::post('alumni/{id}/approve',             [AdminController::class, 'approveAlumni']);
+    Route::post('alumni/{id}/reject',              [AdminController::class, 'rejectAlumni']);
     Route::post('students/promote-graduates',      [AdminController::class, 'promoteGraduates']);
 
     Route::get('ojt',                              [AdminController::class, 'listOjt']);

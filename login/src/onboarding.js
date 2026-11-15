@@ -94,6 +94,7 @@ const formData = {
   middleName: '',
   studentId: '',
   // Graduate
+  graduateStudentId: '',
   graduateYearGraduated: '',
   graduateCampus: 'Alijis Campus',
   graduateCourse: 'Bachelor of Science in Information Technology',
@@ -1067,6 +1068,15 @@ function renderGraduateInfo() {
           </div>
         </div>
 
+        <div class="ob-field ob-field--full ob-reveal" style="--delay:.24s">
+          <div class="ob-field__input-wrap">
+            <span class="ob-field__icon">${icon('award', 16)}</span>
+            <input class="ob-field__input" type="text" id="graduate-student-id" maxlength="25" style="text-transform:uppercase; font-weight:700; letter-spacing:0.04em;" placeholder=" " value="${formData.graduateStudentId || ''}" />
+            <label class="ob-field__label" for="graduate-student-id">CHMSU Student ID Number <span style="color:#ef4444;font-weight:700;">*</span></label>
+          </div>
+          <span class="ob-field__hint" style="font-size:0.75rem;color:#6b7280;margin-top:4px;display:block;">Required for registrar archive verification (e.g. AGM05120400 or 2021-00123).</span>
+        </div>
+
         <div class="ob-field ob-field--full ob-reveal" style="--delay:.26s">
           <div class="ob-field__input-wrap ob-field__select-wrap">
             <span class="ob-field__icon">${icon('briefcase', 16)}</span>
@@ -1228,6 +1238,18 @@ async function handleNext() {
       wrap?.style.setProperty('border-color', '#ef4444');
       alert('Student ID is required. Please enter your valid CHMSU Student ID to proceed.');
       document.getElementById('student-id')?.focus();
+      return;
+    }
+  }
+
+  if (stepId === 'graduate-info') {
+    const sId = (document.getElementById('graduate-student-id')?.value || formData.graduateStudentId || '').trim();
+    if (!sId || sId.length < 5) {
+      const wrap = document.getElementById('graduate-student-id')?.closest('.ob-field__input-wrap');
+      wrap?.classList.add('ob-field__input-wrap--error');
+      wrap?.style.setProperty('border-color', '#ef4444');
+      alert('CHMSU Student ID Number is required for graduate verification (minimum 5 alphanumeric characters). Example: AGM05120400 or 2021-00123.');
+      document.getElementById('graduate-student-id')?.focus();
       return;
     }
   }
@@ -1414,15 +1436,16 @@ async function completeRegistration(credentials) {
       return;
     }
 
-    if (formData.userType === 'student' && onbData.pending_approval) {
+    if (onbData.pending_approval) {
       localStorage.removeItem('hireme_token');
       localStorage.removeItem('hireme_user');
       sessionStorage.removeItem('hireme-signup');
       showPendingApprovalModal({
         name: credentials.name,
-        studentId: formData.studentId,
-        program: formData.program,
+        studentId: formData.userType === 'graduate' ? formData.graduateStudentId : formData.studentId,
+        program: formData.userType === 'graduate' ? formData.graduateCourse : formData.program,
         email: credentials.email,
+        userType: formData.userType,
       });
       return;
     }
@@ -1470,10 +1493,11 @@ async function completeOAuthOnboarding() {
       localStorage.removeItem('hireme_token');
       localStorage.removeItem('hireme_user');
       showPendingApprovalModal({
-        name: cachedUser?.name || 'Student',
-        studentId: formData.studentId,
-        program: formData.program,
+        name: cachedUser?.name || (formData.userType === 'graduate' ? 'Alumnus' : 'Student'),
+        studentId: formData.userType === 'graduate' ? formData.graduateStudentId : formData.studentId,
+        program: formData.userType === 'graduate' ? formData.graduateCourse : formData.program,
         email: cachedUser?.email || '',
+        userType: formData.userType,
       });
       return;
     }
@@ -1505,6 +1529,7 @@ function buildProfilePayload() {
   }
   if (role === 'graduate') {
     return {
+      student_id:        formData.graduateStudentId,
       year_graduated:    formData.graduateYearGraduated,
       campus:            formData.graduateCampus,
       course:            formData.graduateCourse,
@@ -1558,6 +1583,7 @@ function saveStepData() {
     formData.graduateCourse        = document.getElementById('graduate-course')?.value || formData.graduateCourse || 'Bachelor of Science in Information Technology';
     const rawGradSec               = document.getElementById('graduate-section')?.value || '';
     formData.graduateSection       = rawGradSec.trim().toUpperCase().slice(-1);
+    formData.graduateStudentId     = (document.getElementById('graduate-student-id')?.value || formData.graduateStudentId || '').trim().toUpperCase();
     formData.graduateYearGraduated = document.getElementById('graduate-year')?.value || formData.graduateYearGraduated || `${CURRENT_YEAR - 1}-${CURRENT_YEAR}`;
     formData.graduateEmploymentStatus = formData.graduateEmploymentStatus || 'looking';
   }
@@ -1787,6 +1813,7 @@ function attachSecurityEvents() {
 render();
 
 function showPendingApprovalModal(info) {
+  const isGraduate = info.userType === 'graduate';
   const overlay = document.createElement('div');
   overlay.className = 'ob-modal-overlay';
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.68);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px;';
@@ -1796,16 +1823,18 @@ function showPendingApprovalModal(info) {
         ${icon('hourglass', 28)}
       </div>
       <h2 style="font-size:1.35rem;font-weight:700;color:var(--text-primary, #111827);margin:0 0 10px;line-height:1.3;">
-        Registration Submitted for Approval
+        ${isGraduate ? 'Alumni Registration Pending Verification' : 'Registration Submitted for Approval'}
       </h2>
       <p style="font-size:0.9rem;color:var(--text-secondary, #4B5563);line-height:1.6;margin:0 0 20px;">
-        Thank you, <strong>${escapeHtml(info.name)}</strong>! Your student registration with Student ID <strong>${escapeHtml(info.studentId)}</strong> has been recorded.
+        Thank you, <strong>${escapeHtml(info.name)}</strong>! Your ${isGraduate ? 'alumni' : 'student'} registration with Student ID <strong>${escapeHtml(info.studentId)}</strong> has been recorded.
       </p>
       <div style="background:var(--bg-secondary, #F9FAFB);border:1px solid var(--border-default, #E5E7EB);border-radius:12px;padding:16px 18px;margin-bottom:24px;text-align:left;font-size:0.84rem;line-height:1.55;color:var(--text-secondary, #374151);">
         <div style="font-weight:700;color:#10B981;margin-bottom:5px;display:flex;align-items:center;gap:6px;">
           ${icon('info', 16)} Verification in Progress
         </div>
-        Your account is currently in <strong>Pending</strong> status. An OJT Coordinator or Administrator will verify your student credentials before your account is activated. You will be able to log in as soon as it is approved.
+        ${isGraduate
+          ? 'Your account is currently in <strong>Pending</strong> status. The Administrator or Alumni Relations Office will verify your graduation credentials against university archives before your account is activated. You will be able to log in once your record has been confirmed.'
+          : 'Your account is currently in <strong>Pending</strong> status. An OJT Coordinator or Administrator will verify your student credentials before your account is activated. You will be able to log in as soon as it is approved.'}
       </div>
       <a href="./index.html" class="ob-btn ob-btn--primary ob-btn--full" style="margin-top: 4px;">
         Return to Sign In

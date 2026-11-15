@@ -1,6 +1,7 @@
 import { icon, renderIcons } from '../components/icons.js';
-import { apiGet, apiGetCached, getCached } from '../api/client.js';
+import { apiGet, apiPost, apiGetCached, getCached } from '../api/client.js';
 import { openAlumniImportModal } from '../components/alumni-import-modal.js';
+import { escapeHtml } from '../components/data-table.js';
 
 /* ─────────────────────────────────────────────────────────────
    HELPERS & SVG GRAPH GENERATORS (ORIGINAL CAREER PATH)
@@ -1387,11 +1388,16 @@ function renderAnalytics(container, batches, overall, peoData, onImportSuccess, 
       <button class="peo-tab-btn ${_currentTab === 'career' ? 'peo-tab-btn--active' : ''}" data-tab="career">
         ${icon('briefcase', 14)} Career Path &amp; Batch Trends
       </button>
+      <button class="peo-tab-btn ${_currentTab === 'pending' ? 'peo-tab-btn--active' : ''}" data-tab="pending" style="display:inline-flex;align-items:center;gap:6px;">
+        ${icon('clock', 14)} Pending Approvals <span class="badge badge--warning" id="pending-alumni-badge" style="display:none;font-size:0.7rem;padding:2px 6px;border-radius:10px;">0</span>
+      </button>
     </div>
 
     <!-- Main Dynamic Content Container -->
     <div id="analytics-view-content">
-      ${_currentTab === 'peo' ? `
+      ${_currentTab === 'pending' ? `
+        <div id="pending-alumni-mount"></div>
+      ` : _currentTab === 'peo' ? `
         <!-- Top Cohort & Database Filter Control Center for PEO Analytics -->
         <div class="peo-filter-card">
           <div class="peo-filter-row-top">
@@ -1466,7 +1472,9 @@ function renderAnalytics(container, batches, overall, peoData, onImportSuccess, 
     btn.classList.add('peo-tab-btn--active');
 
     const viewWrap = container.querySelector('#analytics-view-content');
-    if (_currentTab === 'peo') {
+    if (_currentTab === 'pending') {
+      renderPendingAlumniView(container);
+    } else if (_currentTab === 'peo') {
       viewWrap.innerHTML = `
         <div class="peo-filter-card">
           <div class="peo-filter-row-top">
@@ -1523,10 +1531,225 @@ function renderAnalytics(container, batches, overall, peoData, onImportSuccess, 
     renderIcons();
   });
 
-  if (_currentTab === 'peo') {
+  if (_currentTab === 'pending') {
+    renderPendingAlumniView(container);
+  } else if (_currentTab === 'peo') {
     setupPeoListeners(container, peoData, onPeoFilterChange);
   } else {
     setupCareerViewListeners(container, batches);
+  }
+
+  // Pre-fetch pending count for tab badge
+  apiGet('/admin/alumni/pending').then(res => {
+    const count = res?.count ?? 0;
+    const badge = container.querySelector('#pending-alumni-badge');
+    if (badge) {
+      badge.textContent = count;
+      badge.style.display = count > 0 ? 'inline-block' : 'none';
+    }
+  }).catch(() => {});
+}
+
+async function renderPendingAlumniView(container) {
+  const viewWrap = container.querySelector('#analytics-view-content');
+  if (!viewWrap) return;
+
+  viewWrap.innerHTML = `
+    <div style="display:flex;justify-content:center;align-items:center;min-height:240px;">
+      <span class="sim-spinner" style="width:28px;height:28px;border:3px solid rgba(0,89,48,0.2);border-top-color:#005930;border-radius:50%;animation:spin 0.8s linear infinite;"></span>
+    </div>
+  `;
+
+  try {
+    const res = await apiGet('/admin/alumni/pending');
+    const items = res?.data || [];
+    const count = items.length;
+
+    // Update badge in tab
+    const badge = container.querySelector('#pending-alumni-badge');
+    if (badge) {
+      badge.textContent = count;
+      badge.style.display = count > 0 ? 'inline-block' : 'none';
+    }
+
+    if (count === 0) {
+      viewWrap.innerHTML = `
+        <div style="background:var(--bg-surface);border:1px solid var(--border-color);border-radius:var(--radius-xl);padding:48px 24px;text-align:center;margin-top:12px;">
+          <div style="width:64px;height:64px;border-radius:50%;background:rgba(16,185,129,0.1);color:#10B981;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+            ${icon('check-circle', 32)}
+          </div>
+          <h3 style="font-size:1.15rem;font-weight:700;color:var(--text-primary);margin:0 0 8px;">No Pending Alumni Registrations</h3>
+          <p style="color:var(--text-secondary);font-size:0.875rem;max-width:440px;margin:0 auto 16px;">
+            All self-registered graduates have been reviewed. New graduate signups awaiting graduation record confirmation will appear here.
+          </p>
+        </div>
+      `;
+      renderIcons();
+      return;
+    }
+
+    viewWrap.innerHTML = `
+      <div style="background:var(--bg-surface);border:1px solid var(--border-color);border-radius:var(--radius-xl);overflow:hidden;box-shadow:var(--shadow-sm);margin-top:12px;">
+        <div style="padding:16px 20px;border-bottom:1px solid var(--border-color);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;background:rgba(245,158,11,0.04);">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="display:inline-flex;color:#D97706;">${icon('clock', 18)}</span>
+            <div>
+              <strong style="font-size:0.95rem;color:var(--text-primary);">Awaiting Alumni Verification (${count})</strong>
+              <div style="font-size:0.75rem;color:var(--text-secondary);">Verify Student ID and graduation credentials against CHMSU registrar records before granting platform access.</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="overflow-x:auto;">
+          <table class="sim-table" style="width:100%;font-size:0.82rem;border-collapse:collapse;">
+            <thead>
+              <tr style="background:var(--bg-secondary);border-bottom:1px solid var(--border-color);text-align:left;">
+                <th style="padding:12px 16px;font-weight:600;color:var(--text-secondary);">Graduate Name &amp; Email</th>
+                <th style="padding:12px 16px;font-weight:600;color:var(--text-secondary);">Student ID</th>
+                <th style="padding:12px 16px;font-weight:600;color:var(--text-secondary);">Program &amp; Campus</th>
+                <th style="padding:12px 16px;font-weight:600;color:var(--text-secondary);">Batch / Section</th>
+                <th style="padding:12px 16px;font-weight:600;color:var(--text-secondary);">Employment</th>
+                <th style="padding:12px 16px;font-weight:600;color:var(--text-secondary);">Registered</th>
+                <th style="padding:12px 16px;font-weight:600;color:var(--text-secondary);text-align:right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${items.map(row => `
+                <tr id="alumni-row-${row.id}" style="border-bottom:1px solid var(--border-color);transition:background 0.15s;">
+                  <td style="padding:14px 16px;">
+                    <div style="font-weight:600;color:var(--text-primary);">${escapeHtml(row.name)}</div>
+                    <div style="font-size:0.75rem;color:var(--text-tertiary);">${escapeHtml(row.email)}</div>
+                  </td>
+                  <td style="padding:14px 16px;">
+                    <span style="display:inline-block;padding:3px 8px;border-radius:6px;background:rgba(0,89,48,0.08);color:#005930;font-weight:700;font-family:monospace;letter-spacing:0.04em;">
+                      ${escapeHtml(row.student_id)}
+                    </span>
+                  </td>
+                  <td style="padding:14px 16px;">
+                    <div style="color:var(--text-primary);font-weight:500;">${escapeHtml(row.course)}</div>
+                    <div style="font-size:0.75rem;color:var(--text-secondary);">${escapeHtml(row.campus)}</div>
+                  </td>
+                  <td style="padding:14px 16px;">
+                    <div>Batch ${escapeHtml(row.batch)}</div>
+                    <div style="font-size:0.75rem;color:var(--text-tertiary);">Sec ${escapeHtml(row.section || '—')}</div>
+                  </td>
+                  <td style="padding:14px 16px;">
+                    <span class="badge" style="text-transform:capitalize;font-size:0.72rem;">${escapeHtml(row.employment_status || 'Looking')}</span>
+                  </td>
+                  <td style="padding:14px 16px;color:var(--text-secondary);font-size:0.78rem;">
+                    ${escapeHtml(row.registered_at)}
+                  </td>
+                  <td style="padding:14px 16px;text-align:right;white-space:nowrap;">
+                    <button type="button" class="btn btn--sm btn--primary btn-approve-alumni" data-id="${row.id}" data-name="${escapeHtml(row.name)}" style="background:#005930;border-color:#005930;padding:5px 12px;font-size:0.75rem;display:inline-flex;align-items:center;gap:4px;margin-right:6px;">
+                      ${icon('check', 13)} Approve
+                    </button>
+                    <button type="button" class="btn btn--sm btn--outline btn-decline-alumni" data-id="${row.id}" data-name="${escapeHtml(row.name)}" style="color:#DC2626;border-color:rgba(220,38,38,0.3);padding:5px 10px;font-size:0.75rem;display:inline-flex;align-items:center;gap:4px;">
+                      ${icon('x', 13)} Decline
+                    </button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+
+    renderIcons();
+
+    // Attach approve handlers
+    viewWrap.querySelectorAll('.btn-approve-alumni').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        const name = btn.dataset.name;
+        if (!confirm(`Approve alumnus account for ${name}? This will grant them immediate access to the Jobseeker portal.`)) return;
+
+        btn.disabled = true;
+        btn.innerHTML = `Approving…`;
+
+        try {
+          const aRes = await apiPost(`/admin/alumni/${id}/approve`);
+          if (aRes?.success) {
+            const tr = viewWrap.querySelector(`#alumni-row-${id}`);
+            if (tr) {
+              tr.style.background = 'rgba(16,185,129,0.12)';
+              setTimeout(() => {
+                tr.remove();
+                const remaining = viewWrap.querySelectorAll('tbody tr').length;
+                const badge = container.querySelector('#pending-alumni-badge');
+                if (badge) {
+                  badge.textContent = remaining;
+                  badge.style.display = remaining > 0 ? 'inline-block' : 'none';
+                }
+                if (remaining === 0) renderPendingAlumniView(container);
+              }, 400);
+            }
+          } else {
+            alert(aRes?.message || 'Failed to approve alumnus.');
+            btn.disabled = false;
+            btn.innerHTML = `${icon('check', 13)} Approve`;
+            renderIcons();
+          }
+        } catch (err) {
+          alert('Error approving alumnus: ' + (err?.message || 'Server error'));
+          btn.disabled = false;
+          btn.innerHTML = `${icon('check', 13)} Approve`;
+          renderIcons();
+        }
+      });
+    });
+
+    // Attach decline handlers
+    viewWrap.querySelectorAll('.btn-decline-alumni').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        const name = btn.dataset.name;
+        const reason = prompt(`Reason for declining alumni registration for ${name}:`, 'Student ID not found in CHMSU registrar archives');
+        if (reason === null) return;
+
+        btn.disabled = true;
+        btn.innerHTML = `Declining…`;
+
+        try {
+          const dRes = await apiPost(`/admin/alumni/${id}/reject`, { reason, wipe_data: true });
+          if (dRes?.success) {
+            const tr = viewWrap.querySelector(`#alumni-row-${id}`);
+            if (tr) {
+              tr.style.background = 'rgba(239,68,68,0.12)';
+              setTimeout(() => {
+                tr.remove();
+                const remaining = viewWrap.querySelectorAll('tbody tr').length;
+                const badge = container.querySelector('#pending-alumni-badge');
+                if (badge) {
+                  badge.textContent = remaining;
+                  badge.style.display = remaining > 0 ? 'inline-block' : 'none';
+                }
+                if (remaining === 0) renderPendingAlumniView(container);
+              }, 400);
+            }
+          } else {
+            alert(dRes?.message || 'Failed to decline registration.');
+            btn.disabled = false;
+            btn.innerHTML = `${icon('x', 13)} Decline`;
+            renderIcons();
+          }
+        } catch (err) {
+          alert('Error declining registration: ' + (err?.message || 'Server error'));
+          btn.disabled = false;
+          btn.innerHTML = `${icon('x', 13)} Decline`;
+          renderIcons();
+        }
+      });
+    });
+
+  } catch (err) {
+    viewWrap.innerHTML = `
+      <div style="padding:32px;text-align:center;color:#DC2626;">
+        ${icon('alert-circle', 24)}
+        <p style="margin-top:8px;">Failed to load pending alumni: ${escapeHtml(err?.message || 'Connection error')}</p>
+      </div>
+    `;
+    renderIcons();
   }
 }
 
