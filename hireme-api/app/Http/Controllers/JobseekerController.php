@@ -194,6 +194,38 @@ class JobseekerController extends Controller
             ];
         }
 
+        // Normalized degree and batch
+        $course = $gradProfile?->course ?? $user->studentProfile?->program ?? 'Bachelor of Science in Information Technology';
+        $gradYear = $gradProfile?->year_graduated ?? $user->studentProfile?->batch ?? null;
+        $batchDisplay = $gradYear 
+            ? (preg_match('/^\d{4}$/', $gradYear) ? "Class of {$gradYear}" : "Batch {$gradYear}") 
+            : 'Alumni';
+
+        // Current Employment status & display
+        $employmentStatus = $gradProfile?->employment_status ?? ($hiredJobData ? 'employed' : 'looking');
+        $employmentDisplay = null;
+        if ($hiredJobData && !empty($hiredJobData['title']) && !empty($hiredJobData['company'])) {
+            $employmentDisplay = "{$hiredJobData['title']} at {$hiredJobData['company']}";
+            $employmentStatus = 'employed';
+        } else {
+            $curExp = StudentExperience::where('user_id', $user->id)
+                ->where('is_current', true)
+                ->latest('period_start')
+                ->first();
+            if ($curExp && !empty($curExp->role) && !empty($curExp->company)) {
+                $employmentDisplay = "{$curExp->role} at {$curExp->company}";
+                $employmentStatus = 'employed';
+            } elseif ($employmentStatus === 'employed') {
+                $employmentDisplay = 'Employed';
+            } elseif ($employmentStatus === 'freelance') {
+                $employmentDisplay = 'Freelance / Self-Employed';
+            } elseif ($employmentStatus === 'studying') {
+                $employmentDisplay = 'Pursuing Further Studies';
+            } else {
+                $employmentDisplay = 'Open to Opportunities';
+            }
+        }
+
         return response()->json([
             'profile' => [
                 'id'           => $user->id,
@@ -210,12 +242,16 @@ class JobseekerController extends Controller
                 'desired_job_title'   => $profile?->desired_job_title,
                 'work_preference'     => $profile?->work_preference,
                 'years_of_experience' => $profile?->years_of_experience,
-                // Graduate onboarding data
+                // Graduate degree & batch
+                'program'                    => $course,
+                'year_level'                 => $batchDisplay,
                 'graduate_year_graduated'    => $gradProfile?->year_graduated,
                 'graduate_campus'            => $gradProfile?->campus,
-                'graduate_course'            => $gradProfile?->course,
+                'graduate_course'            => $course,
                 'graduate_section'           => $gradProfile?->section,
-                'graduate_employment_status' => $gradProfile?->employment_status,
+                'graduate_employment_status' => $employmentStatus,
+                'employment_status'          => $employmentStatus,
+                'employment_display'         => $employmentDisplay,
                 'resume_type'                => $profile?->resume_type ?? ($user->role === 'student' ? 'objective' : 'summary'),
                 'resume_objective'           => $profile?->resume_objective ?? '',
             ],
@@ -698,19 +734,26 @@ class JobseekerController extends Controller
     {
         $user = $request->user();
         $data = $request->validate([
-            'bio'              => ['nullable', 'string', 'max:1500'],
-            'headline'         => ['nullable', 'string', 'max:160'],
-            'phone'            => ['nullable', 'string', 'max:30'],
-            'location'         => ['nullable', 'string', 'max:120'],
-            'linkedin_url'     => ['nullable', 'max:255'],
-            'portfolio_url'    => ['nullable', 'max:255'],
-            'resume_type'      => ['nullable', 'in:summary,objective'],
-            'resume_objective' => ['nullable', 'string', 'max:1500'],
+            'bio'               => ['nullable', 'string', 'max:1500'],
+            'headline'          => ['nullable', 'string', 'max:160'],
+            'phone'             => ['nullable', 'string', 'max:30'],
+            'location'          => ['nullable', 'string', 'max:120'],
+            'linkedin_url'      => ['nullable', 'max:255'],
+            'portfolio_url'     => ['nullable', 'max:255'],
+            'resume_type'       => ['nullable', 'in:summary,objective'],
+            'resume_objective'  => ['nullable', 'string', 'max:1500'],
+            'course'            => ['nullable', 'string', 'max:255'],
+            'year_graduated'    => ['nullable', 'string', 'max:50'],
+            'employment_status' => ['nullable', 'string', 'max:50'],
         ]);
+
+        $jobseekerFields = array_intersect_key($data, array_flip([
+            'bio', 'headline', 'phone', 'location', 'linkedin_url', 'portfolio_url', 'resume_type', 'resume_objective'
+        ]));
 
         $user->jobseekerProfile()->updateOrCreate(
             ['user_id' => $user->id],
-            $data
+            $jobseekerFields
         );
 
         if ($user->studentProfile && (isset($data['resume_type']) || isset($data['resume_objective']))) {
@@ -718,6 +761,18 @@ class JobseekerController extends Controller
                 'resume_type'      => $data['resume_type'] ?? null,
                 'resume_objective' => $data['resume_objective'] ?? null,
             ]));
+        }
+
+        if (isset($data['course']) || isset($data['year_graduated']) || isset($data['employment_status'])) {
+            $gradData = [];
+            if (isset($data['course']))            $gradData['course'] = $data['course'];
+            if (isset($data['year_graduated']))    $gradData['year_graduated'] = $data['year_graduated'];
+            if (isset($data['employment_status'])) $gradData['employment_status'] = $data['employment_status'];
+
+            $user->graduateProfile()->updateOrCreate(
+                ['user_id' => $user->id],
+                $gradData
+            );
         }
 
         return response()->json(['message' => 'Updated.']);

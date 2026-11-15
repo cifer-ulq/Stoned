@@ -682,6 +682,34 @@ function openEditAboutModal() {
         <div class="pfm-divider"></div>
         <div class="pfm-section">
           <div class="pfm-section-label">
+            ${icon('graduationCap', 13)}
+            Academic &amp; Career
+          </div>
+          <div class="pfm-fields">
+            <div style="display:flex;gap:10px;">
+              <div class="form-group" style="flex:2;">
+                <label class="pfm-label">Degree / Program</label>
+                <input class="form-input pfm-input" name="course" placeholder="e.g. Bachelor of Science in Information Technology" value="${escapeHtml(P.graduate_course || P.program || '')}">
+              </div>
+              <div class="form-group" style="flex:1;">
+                <label class="pfm-label">Graduation Year / Batch</label>
+                <input class="form-input pfm-input" name="year_graduated" placeholder="e.g. 2025-2026" value="${escapeHtml(P.graduate_year_graduated || P.year_graduated || '')}">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="pfm-label">Employment Status</label>
+              <select class="form-input pfm-input" name="employment_status" style="width:100%;box-sizing:border-box;padding:8px 12px;border:1px solid var(--border-default);background:var(--bg-elevated);color:var(--text-primary);border-radius:10px;">
+                <option value="employed" ${(P.graduate_employment_status === 'employed' || P.employment_status === 'employed') ? 'selected' : ''}>Employed</option>
+                <option value="looking" ${(P.graduate_employment_status === 'looking' || P.graduate_employment_status === 'seeking_employment' || P.employment_status === 'looking' || P.employment_status === 'seeking_employment') ? 'selected' : ''}>Open to Work / Seeking Opportunities</option>
+                <option value="freelance" ${(P.graduate_employment_status === 'freelance' || P.employment_status === 'freelance') ? 'selected' : ''}>Freelance / Self-Employed</option>
+                <option value="studying" ${(P.graduate_employment_status === 'studying' || P.employment_status === 'studying') ? 'selected' : ''}>Pursuing Further Studies</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="pfm-divider"></div>
+        <div class="pfm-section">
+          <div class="pfm-section-label">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
             Links
           </div>
@@ -740,14 +768,46 @@ function openEditAboutModal() {
       phone: formVal(form, 'phone'), location: formVal(form, 'location'),
       github_url: formVal(form, 'github_url'), linkedin_url: formVal(form, 'linkedin_url'),
       portfolio_url: formVal(form, 'portfolio_url'),
+      course: formVal(form, 'course'),
+      year_graduated: formVal(form, 'year_graduated'),
+      employment_status: formVal(form, 'employment_status'),
     };
     try {
       await apiPut('/jobseeker/about', data);
       Object.assign(P, data);
+      P.graduate_course = data.course || P.graduate_course;
+      P.program = data.course || P.program;
+      P.graduate_year_graduated = data.year_graduated || P.graduate_year_graduated;
+      P.graduate_employment_status = data.employment_status || P.graduate_employment_status;
+      P.employment_status = data.employment_status || P.employment_status;
+      if (data.year_graduated) {
+        P.year_level = data.year_graduated.length === 4 ? `Class of ${data.year_graduated}` : `Batch ${data.year_graduated}`;
+      }
+
       const headerHeadline = document.getElementById('profile-headline');
       if (headerHeadline) headerHeadline.textContent = P.headline || '';
       const metaLocation = document.getElementById('profile-location');
       if (metaLocation) metaLocation.textContent = P.location || '—';
+
+      const progEl = document.getElementById('profile-program');
+      if (progEl) {
+        const batchText = P.year_level || (P.graduate_year_graduated ? (P.graduate_year_graduated.length === 4 ? `Class of ${P.graduate_year_graduated}` : `Batch ${P.graduate_year_graduated}`) : '');
+        progEl.textContent = [P.graduate_course || P.program, batchText].filter(Boolean).join(' · ') || 'CHMSU Alumni';
+      }
+
+      const empEl = document.getElementById('profile-employment');
+      if (empEl) {
+        if (P.employment_status === 'employed') {
+          empEl.textContent = 'Employed';
+        } else if (P.employment_status === 'freelance') {
+          empEl.textContent = 'Freelance / Self-Employed';
+        } else if (P.employment_status === 'studying') {
+          empEl.textContent = 'Pursuing Further Studies';
+        } else {
+          empEl.textContent = 'Open to Opportunities';
+        }
+      }
+
       close();
       renderAbout();
     } catch (err) {
@@ -2844,8 +2904,9 @@ export async function renderPortfolio(container, params = {}) {
         </div>
         <div class="profile-header__bottom">
           <div class="profile-header__meta">
-            <span class="profile-header__meta-item">${icon('mapPin', 14)} <span id="profile-location">—</span></span>
-            <span class="profile-header__meta-item">${icon('briefcase', 14)} <span id="profile-program">—</span></span>
+            <span class="profile-header__meta-item" id="profile-location-wrap">${icon('mapPin', 14)} <span id="profile-location">—</span></span>
+            <span class="profile-header__meta-item" id="profile-program-wrap">${icon('graduationCap', 14)} <span id="profile-program">—</span></span>
+            <span class="profile-header__meta-item" id="profile-employment-wrap">${icon('briefcase', 14)} <span id="profile-employment">—</span></span>
           </div>
           <div class="profile-header__links" id="profile-links"></div>
         </div>
@@ -2977,7 +3038,37 @@ export async function renderPortfolio(container, params = {}) {
   }
 
   container.querySelector('#profile-location').textContent = P.location || '—';
-  container.querySelector('#profile-program').textContent  = [P.program, P.year_level].filter(Boolean).join(' · ') || '—';
+
+  const progEl = container.querySelector('#profile-program');
+  if (progEl) {
+    const batchText = P.year_level || (P.graduate_year_graduated ? (P.graduate_year_graduated.length === 4 ? `Class of ${P.graduate_year_graduated}` : `Batch ${P.graduate_year_graduated}`) : '');
+    const progText = [P.graduate_course || P.program, batchText].filter(Boolean).join(' · ');
+    progEl.textContent = progText || 'CHMSU Alumni';
+  }
+
+  const empEl = container.querySelector('#profile-employment');
+  if (empEl) {
+    let empText = P.employment_display;
+    if (!empText) {
+      if (hiredJob && hiredJob.title && hiredJob.company) {
+        empText = `${hiredJob.title} at ${hiredJob.company}`;
+      } else {
+        const curExp = EXP.find(e => e.is_current);
+        if (curExp) {
+          empText = `${curExp.role} at ${curExp.company}`;
+        } else if (P.graduate_employment_status === 'freelance' || P.employment_status === 'freelance') {
+          empText = 'Freelance / Self-Employed';
+        } else if (P.graduate_employment_status === 'studying' || P.employment_status === 'studying') {
+          empText = 'Pursuing Further Studies';
+        } else if (P.graduate_employment_status === 'employed' || P.employment_status === 'employed') {
+          empText = 'Employed';
+        } else {
+          empText = 'Open to Opportunities';
+        }
+      }
+    }
+    empEl.textContent = empText;
+  }
 
   const linksEl = container.querySelector('#profile-links');
   const links = [];

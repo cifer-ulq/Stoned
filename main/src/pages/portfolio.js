@@ -3391,7 +3391,7 @@ export async function renderPortfolio(container, params = {}) {
         <div class="profile-header__bottom">
           <div class="profile-header__meta">
             <span class="profile-header__meta-item">${icon('mapPin', 14)} <span id="profile-location">—</span></span>
-            <span class="profile-header__meta-item">${icon('briefcase', 14)} <span id="profile-program">—</span></span>
+            <span class="profile-header__meta-item">${icon('graduationCap', 14)} <span id="profile-program">—</span></span>
           </div>
           <div class="profile-header__links" id="profile-links"></div>
         </div>

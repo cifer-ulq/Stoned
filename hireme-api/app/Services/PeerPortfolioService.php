@@ -108,6 +108,9 @@ class PeerPortfolioService
 
         // Active OJT deployment for active students
         $activeOjt = null;
+        $employmentStatus = $gp?->employment_status ?? 'looking';
+        $employmentDisplay = null;
+
         if (!$isAlumni) {
             $activeInterest = StudentOjtInterest::with('posting')
                 ->where('student_user_id', $targetUser->id)
@@ -123,6 +126,30 @@ class PeerPortfolioService
                     'duration'   => $activeInterest->posting->duration,
                     'start_date' => $activeInterest->updated_at ? $activeInterest->updated_at->format('M Y') : null,
                 ];
+            }
+        } else {
+            $hiredApp = \App\Models\JobApplication::where('applicant_user_id', $targetUser->id)
+                ->where('status', 'hired')
+                ->with('jobListing.company')
+                ->latest('updated_at')
+                ->first();
+            if ($hiredApp && $hiredApp->jobListing) {
+                $employmentDisplay = "{$hiredApp->jobListing->title} at " . ($hiredApp->jobListing->company?->name ?? 'Company');
+                $employmentStatus = 'employed';
+            } else {
+                $curExp = $experience->firstWhere('is_current', true);
+                if ($curExp && !empty($curExp->role) && !empty($curExp->company)) {
+                    $employmentDisplay = "{$curExp->role} at {$curExp->company}";
+                    $employmentStatus = 'employed';
+                } elseif ($employmentStatus === 'employed') {
+                    $employmentDisplay = 'Employed';
+                } elseif ($employmentStatus === 'freelance') {
+                    $employmentDisplay = 'Freelance / Self-Employed';
+                } elseif ($employmentStatus === 'studying') {
+                    $employmentDisplay = 'Pursuing Further Studies';
+                } else {
+                    $employmentDisplay = 'Open to Opportunities';
+                }
             }
         }
 
@@ -147,6 +174,8 @@ class PeerPortfolioService
                 'linkedin_url' => $sp?->linkedin_url ?? $jp?->linkedin_url,
                 'portfolio_url'=> $sp?->portfolio_url ?? $jp?->portfolio_url,
                 'status'       => $isAlumni ? 'alumni' : ($sp?->status ?? 'active'),
+                'employment_status'  => $employmentStatus,
+                'employment_display' => $employmentDisplay,
                 'resume_type'  => $sp?->resume_type ?? $jp?->resume_type ?? ($targetUser->role === 'student' ? 'objective' : 'summary'),
                 'resume_objective' => $sp?->resume_objective ?? $jp?->resume_objective ?? '',
             ],
