@@ -275,13 +275,32 @@ export default async function OjtManagementPage(container) {
 
     <!-- Supervisors Section -->
     <div style="margin:var(--space-6) 0 var(--space-4);">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-4);">
-        <h2 style="font-size:var(--text-lg);font-weight:var(--weight-semibold);display:flex;align-items:center;gap:8px;margin:0;">${icon('users',18)} Program Coordinators</h2>
-        <span style="font-size:var(--text-xs);color:var(--text-tertiary);">Coordinators assigned by program &amp; campus</span>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-4);flex-wrap:wrap;gap:10px;">
+        <div>
+          <h2 style="font-size:var(--text-lg);font-weight:var(--weight-semibold);display:flex;align-items:center;gap:8px;margin:0;">
+            ${icon('users',18)} Program Coordinators
+          </h2>
+          <span style="font-size:var(--text-xs);color:var(--text-tertiary);">Coordinators assigned by program &amp; campus (3 per page)</span>
+        </div>
       </div>
       <div class="table-wrapper anim-fade-in-up">
-        <table class="table" id="sup-table"><thead><tr><th>Name</th><th>Email</th><th>Campus</th><th>Course</th><th>Registered</th><th style="width:70px;text-align:right;">Action</th></tr></thead><tbody id="sup-tbody"><tr><td colspan="6" style="text-align:center;color:var(--text-tertiary);padding:24px;">Loading…</td></tr></tbody></table>
+        <table class="table" id="sup-table">
+          <thead>
+            <tr>
+              <th style="min-width:180px;">Coordinator</th>
+              <th>Email</th>
+              <th>Campus</th>
+              <th>Assigned Program</th>
+              <th style="min-width:110px;">Registered</th>
+              <th style="width:130px;text-align:right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="sup-tbody">
+            <tr><td colspan="6" style="text-align:center;color:var(--text-tertiary);padding:24px;">Loading…</td></tr>
+          </tbody>
+        </table>
       </div>
+      <div id="sup-pagination" style="display:flex;justify-content:center;gap:8px;margin-top:var(--space-4);flex-wrap:wrap;"></div>
     </div>
 
     <!-- OJT Pull-Out Requests & Dean Endorsement Section -->
@@ -292,7 +311,7 @@ export default async function OjtManagementPage(container) {
             ${icon('file-text',18)} OJT Pull-Out Requests &amp; Dean Endorsement
             <span id="pullout-badge-count" class="badge badge--warning" style="font-size:0.75rem;padding:2px 8px;border-radius:12px;display:none;">0 Pending</span>
           </h2>
-          <p style="font-size:var(--text-xs);color:var(--text-tertiary);margin:2px 0 0;">Review coordinator-recommended pull-outs, generate official Dean letters, and dispatch via print or email.</p>
+          <p style="font-size:var(--text-xs);color:var(--text-tertiary);margin:2px 0 0;">Review coordinator-recommended pull-outs, generate official Dean letters, and dispatch via print or email (5 per page).</p>
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
           <select class="form-select" id="filter-pullout-status" style="width:auto;padding:6px 28px 6px 10px;font-size:var(--text-xs);">
@@ -309,13 +328,13 @@ export default async function OjtManagementPage(container) {
         <table class="table" id="pullout-table">
           <thead>
             <tr>
-              <th>Student</th>
+              <th style="min-width:180px;">Student</th>
               <th>Program &amp; Section</th>
               <th>Company</th>
               <th>Reason Category</th>
               <th>Coordinator Recommendation</th>
               <th>Status</th>
-              <th style="width:130px;text-align:right;">Actions</th>
+              <th style="width:110px;text-align:right;">Actions</th>
             </tr>
           </thead>
           <tbody id="pullout-tbody">
@@ -323,6 +342,7 @@ export default async function OjtManagementPage(container) {
           </tbody>
         </table>
       </div>
+      <div id="pullout-pagination" style="display:flex;justify-content:center;gap:8px;margin-top:var(--space-4);flex-wrap:wrap;"></div>
     </div>
 
     <!-- Trainees Section -->
@@ -347,7 +367,15 @@ export default async function OjtManagementPage(container) {
     </div>
     <div class="table-wrapper anim-fade-in-up">
       <table class="table" id="ojt-table">
-        <thead><tr><th>Student</th><th>Company</th><th>Hours Progress</th><th>Status</th><th>Actions</th></tr></thead>
+        <thead>
+          <tr>
+            <th style="min-width:180px;">Student</th>
+            <th>Company</th>
+            <th>Hours Progress</th>
+            <th>Status</th>
+            <th style="width:100px;text-align:right;">Actions</th>
+          </tr>
+        </thead>
         <tbody id="ojt-tbody"></tbody>
       </table>
     </div>
@@ -390,87 +418,233 @@ export default async function OjtManagementPage(container) {
     renderIcons();
   }
 
-  /* ── Table rows ── */
+  /* ── Universal Pagination Builder ── */
+  function buildPaginationHtml({ currentPage, totalPages, totalItems, perPage, itemName = 'items' }) {
+    if (totalPages <= 1) {
+      if (totalItems > 0) {
+        return `
+          <div style="display:flex;justify-content:space-between;align-items:center;width:100%;font-size:var(--text-xs);color:var(--text-tertiary);padding:4px 0;">
+            <span>Showing all <strong>${totalItems}</strong> ${itemName}</span>
+          </div>
+        `;
+      }
+      return '';
+    }
+
+    const start = (currentPage - 1) * perPage + 1;
+    const end = Math.min(currentPage * perPage, totalItems);
+
+    const pages = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (currentPage > 3) pages.push('…');
+      for (let i = Math.max(2, currentPage - 1); i <= Math.min(totalPages - 1, currentPage + 1); i++) pages.push(i);
+      if (currentPage < totalPages - 2) pages.push('…');
+      pages.push(totalPages);
+    }
+
+    const pageButtons = pages.map(p => p === '…'
+      ? `<span style="padding:0 4px;align-self:center;color:var(--text-tertiary);font-size:var(--text-xs);">…</span>`
+      : `<button type="button" class="an-pg-btn ${p === currentPage ? 'an-pg-btn--active' : ''}" data-p="${p}">${p}</button>`
+    ).join('');
+
+    return `
+      <div style="display:flex;justify-content:space-between;align-items:center;width:100%;flex-wrap:wrap;gap:12px;padding:4px 0;">
+        <span style="font-size:var(--text-xs);color:var(--text-tertiary);">
+          Showing <strong>${start}–${end}</strong> of <strong>${totalItems}</strong> ${itemName}
+        </span>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <button type="button" class="an-pg-btn an-pg-btn--nav" data-p="${currentPage - 1}" ${currentPage === 1 ? 'disabled' : ''} aria-label="Previous page">
+            ${icon('chevronLeft', 14)}
+          </button>
+          ${pageButtons}
+          <button type="button" class="an-pg-btn an-pg-btn--nav" data-p="${currentPage + 1}" ${currentPage >= totalPages ? 'disabled' : ''} aria-label="Next page">
+            ${icon('chevronRight', 14)}
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  /* ── Trainee Details Modal ── */
+  function openTraineeDetailModal(t) {
+    const existing = document.getElementById('trainee-detail-modal-overlay');
+    if (existing) existing.remove();
+
+    const backdrop = document.createElement('div');
+    backdrop.id = 'trainee-detail-modal-overlay';
+    backdrop.className = 'modal-backdrop';
+    backdrop.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,0.65);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:99999;padding:16px;';
+
+    const initials = (t.name || 'ST').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+    const barColor = t.pct >= 100 ? '#3B82F6' : t.pct >= 40 ? '#10B981' : '#F59E0B';
+
+    backdrop.innerHTML = `
+      <div class="modal ac-modal" style="max-width:540px;width:100%;max-height:90vh;overflow-y:auto;background:var(--bg-card,#fff);border-radius:14px;box-shadow:0 25px 50px rgba(0,0,0,0.25);">
+        <div class="ac-modal__header" style="background:linear-gradient(135deg, #005930 0%, #00361d 100%);color:#fff;padding:18px 22px;display:flex;align-items:center;justify-content:space-between;border-radius:14px 14px 0 0;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            ${t.avatar_url
+              ? `<img src="${storageUrl(t.avatar_url)}" style="width:40px;height:40px;border-radius:10px;object-fit:cover;border:2px solid rgba(255,255,255,0.2);" />`
+              : `<div class="entity-card__avatar" style="width:40px;height:40px;font-size:0.85rem;background:rgba(255,255,255,0.2);color:#fff;font-weight:700;border-radius:10px;display:flex;align-items:center;justify-content:center;">${initials}</div>`}
+            <div>
+              <h3 style="margin:0;font-size:1.1rem;font-weight:700;color:#fff;">${t.name}</h3>
+              <p style="margin:2px 0 0;font-size:0.78rem;color:rgba(255,255,255,0.85);">${t.program || 'Student'}${t.campus ? ' &bull; ' + t.campus : ''}</p>
+            </div>
+          </div>
+          <button type="button" class="modal__close" id="trainee-modal-close" style="background:none;border:none;color:#fff;cursor:pointer;padding:4px;" aria-label="Close">
+            ${icon('x', 18)}
+          </button>
+        </div>
+
+        <div style="padding:20px 22px;display:flex;flex-direction:column;gap:16px;">
+          <!-- Status & Placement Card -->
+          <div style="background:var(--bg-elevated);border:1px solid var(--border-subtle);border-radius:10px;padding:14px 16px;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
+              <div>
+                <span style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-tertiary);font-weight:600;">Host Company</span>
+                <div style="font-size:1rem;font-weight:700;color:var(--text-primary);margin-top:2px;">${t.company}</div>
+                ${t.posting_title ? `<div style="font-size:0.82rem;color:var(--text-secondary);">${t.posting_title}</div>` : ''}
+                ${t.location ? `<div style="font-size:0.75rem;color:var(--text-tertiary);margin-top:2px;">${t.location}</div>` : ''}
+              </div>
+              <span class="badge badge--${STATUS_COLORS[t.status] || 'neutral'}" style="font-size:0.75rem;">${t.status}</span>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding-top:10px;border-top:1px solid var(--border-subtle);font-size:0.8rem;">
+              <div>
+                <span style="color:var(--text-tertiary);font-size:0.72rem;display:block;">Contact Email</span>
+                <span style="color:var(--text-primary);font-weight:500;">${t.email || '—'}</span>
+              </div>
+              <div>
+                <span style="color:var(--text-tertiary);font-size:0.72rem;display:block;">Placement Date</span>
+                <span style="color:var(--text-primary);font-weight:500;">${t.accepted_at || '—'}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Hours Progress Card -->
+          <div style="background:var(--bg-elevated);border:1px solid var(--border-subtle);border-radius:10px;padding:14px 16px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <span style="font-size:0.75rem;font-weight:600;color:var(--text-secondary);">OJT Hours Progress</span>
+              <span style="font-size:0.85rem;font-weight:700;color:var(--text-primary);">${t.hours_done || 0} / ${t.hours_required || 0} hrs (${t.pct || 0}%)</span>
+            </div>
+            <div class="progress-bar" style="height:8px;background:var(--border-subtle);border-radius:4px;overflow:hidden;">
+              <div class="progress-bar__fill" style="width:${t.pct || 0}%;background:${barColor};height:100%;transition:width 0.3s;"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;font-size:0.72rem;color:var(--text-tertiary);">
+              <span>0 hrs rendered</span>
+              <span>Target: ${t.hours_required || 0} hrs</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="ac-modal__footer" style="padding:14px 22px;border-top:1px solid var(--border-subtle);display:flex;justify-content:space-between;align-items:center;background:var(--bg-secondary);border-radius:0 0 14px 14px;">
+          <button type="button" class="btn btn--outline btn--sm" id="trainee-modal-close-btn" style="padding:6px 14px;">Close</button>
+          <button type="button" class="btn btn--primary btn--sm" id="trainee-modal-goto-student" style="background:#005930;border-color:#005930;padding:6px 14px;gap:6px;display:inline-flex;align-items:center;">
+            ${icon('user', 14)} <span>View in Student Directory</span>
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(backdrop);
+    renderIcons();
+
+    const close = () => backdrop.remove();
+    backdrop.querySelector('#trainee-modal-close')?.addEventListener('click', close);
+    backdrop.querySelector('#trainee-modal-close-btn')?.addEventListener('click', close);
+    backdrop.addEventListener('click', e => { if (e.target === backdrop) close(); });
+    backdrop.querySelector('#trainee-modal-goto-student')?.addEventListener('click', () => {
+      close();
+      window.location.hash = `#/students?search=${encodeURIComponent(t.name)}`;
+    });
+  }
+
+  /* ── Trainees Table rows ── */
+  let currentTrainees = [];
   function renderRows(data) {
-    if (!data.length) {
+    currentTrainees = data || [];
+    if (!currentTrainees.length) {
       tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><p class="empty-state__text">No trainees found</p></div></td></tr>`;
       return;
     }
-    tbody.innerHTML = data.map(s => {
+    tbody.innerHTML = currentTrainees.map((s, idx) => {
       const barColor = s.pct >= 100 ? '#3B82F6' : s.pct >= 40 ? '#10B981' : '#F59E0B';
-      const initials = s.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+      const initials = (s.name || 'ST').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
       return `
         <tr>
-          <td>
+          <td style="vertical-align:middle;">
             <div style="display:flex;align-items:center;gap:10px;">
               ${s.avatar_url
-                ? `<img src="${storageUrl(s.avatar_url)}" style="width:32px;height:32px;border-radius:8px;object-fit:cover;flex-shrink:0;" />`
-                : `<div class="entity-card__avatar" style="width:32px;height:32px;font-size:0.6rem;flex-shrink:0;">${initials}</div>`}
+                ? `<img src="${storageUrl(s.avatar_url)}" style="width:34px;height:34px;border-radius:8px;object-fit:cover;flex-shrink:0;" />`
+                : `<div class="entity-card__avatar" style="width:34px;height:34px;font-size:0.65rem;flex-shrink:0;">${initials}</div>`}
               <div>
-                <div style="font-weight:var(--weight-medium);font-size:var(--text-sm);">${s.name}</div>
+                <div style="font-weight:var(--weight-semibold);font-size:var(--text-sm);color:var(--text-primary);">${s.name}</div>
                 <div style="font-size:var(--text-xs);color:var(--text-tertiary);">${s.program}${s.campus ? ' · ' + s.campus : ''}</div>
               </div>
             </div>
           </td>
-          <td>
-            <div style="font-size:var(--text-sm);font-weight:var(--weight-medium);">${s.company}</div>
-            ${s.posting_title ? `<div style="font-size:var(--text-xs);color:var(--text-tertiary);">${s.posting_title}</div>` : ''}
+          <td style="vertical-align:middle;">
+            <div style="font-size:var(--text-sm);font-weight:var(--weight-semibold);color:var(--text-primary);">${s.company}</div>
+            ${s.posting_title ? `<div style="font-size:var(--text-xs);color:var(--text-secondary);">${s.posting_title}</div>` : ''}
             ${s.location ? `<div style="font-size:var(--text-xs);color:var(--text-tertiary);">${s.location}</div>` : ''}
           </td>
-          <td>
+          <td style="vertical-align:middle;">
             ${s.hours_required > 0 ? `
-            <div style="display:flex;align-items:center;gap:8px;">
-              <div class="progress-bar" style="flex:1;">
-                <div class="progress-bar__fill" style="width:${s.pct}%;background:${barColor};"></div>
+            <div style="display:flex;align-items:center;gap:10px;max-width:200px;">
+              <div class="progress-bar" style="flex:1;height:6px;background:var(--border-subtle);border-radius:3px;overflow:hidden;">
+                <div class="progress-bar__fill" style="width:${s.pct}%;background:${barColor};height:100%;"></div>
               </div>
-              <span style="font-size:var(--text-xs);font-weight:var(--weight-semibold);width:60px;text-align:right;white-space:nowrap;">${s.hours_done}/${s.hours_required}h</span>
+              <span style="font-size:var(--text-xs);font-weight:var(--weight-semibold);text-align:right;white-space:nowrap;">${s.hours_done}/${s.hours_required}h</span>
             </div>` : `<span style="font-size:var(--text-xs);color:var(--text-tertiary);">${s.duration || 'Tracking not started'}</span>`}
           </td>
-          <td><span class="badge badge--${STATUS_COLORS[s.status] || 'neutral'}">${s.status}</span></td>
-          <td>
-            <div style="display:flex;gap:4px;">
-              <button class="btn btn--ghost btn--sm">${icon('eye', 13)}</button>
+          <td style="vertical-align:middle;"><span class="badge badge--${STATUS_COLORS[s.status] || 'neutral'}">${s.status}</span></td>
+          <td style="text-align:right;vertical-align:middle;white-space:nowrap;">
+            <div style="display:inline-flex;justify-content:flex-end;">
+              <button type="button" class="btn btn--outline btn--sm btn-view-trainee" data-idx="${idx}" style="padding:4px 10px;font-size:0.75rem;height:30px;gap:5px;display:inline-flex;align-items:center;border-radius:6px;">
+                ${icon('eye', 13)} <span>Details</span>
+              </button>
             </div>
           </td>
         </tr>
       `;
     }).join('');
     renderIcons();
-  }
 
-  /* ── Pagination ── */
-  function renderPagination(meta) {
-    pagEl.innerHTML = '';
-    if (meta.last_page <= 1) return;
-    const total = meta.last_page;
-    const cur   = meta.current_page;
-    const pages = [];
-    if (total <= 7) {
-      for (let i = 1; i <= total; i++) pages.push(i);
-    } else {
-      pages.push(1);
-      if (cur > 3) pages.push('…');
-      for (let i = Math.max(2, cur - 1); i <= Math.min(total - 1, cur + 1); i++) pages.push(i);
-      if (cur < total - 2) pages.push('…');
-      pages.push(total);
-    }
-    pagEl.innerHTML = [
-      `<button class="an-pg-btn an-pg-btn--nav" data-p="${cur - 1}" ${cur === 1 ? 'disabled' : ''}>${icon('chevronLeft', 14)}</button>`,
-      ...pages.map(p => p === '…'
-        ? `<span style="padding:0 4px;align-self:center;color:var(--text-tertiary);">…</span>`
-        : `<button class="an-pg-btn ${p === cur ? 'an-pg-btn--active' : ''}" data-p="${p}">${p}</button>`),
-      `<button class="an-pg-btn an-pg-btn--nav" data-p="${cur + 1}" ${cur === total ? 'disabled' : ''}>${icon('chevronRight', 14)}</button>`,
-    ].join('');
-    renderIcons();
-    pagEl.querySelectorAll('.an-pg-btn[data-p]').forEach(btn => {
+    tbody.querySelectorAll('.btn-view-trainee').forEach(btn => {
       btn.addEventListener('click', () => {
-        currentPage = parseInt(btn.dataset.p);
-        fetchAndRender();
+        const idx = parseInt(btn.dataset.idx, 10);
+        const trainee = currentTrainees[idx];
+        if (trainee) openTraineeDetailModal(trainee);
       });
     });
   }
 
-  /* ── Fetch + render ── */
+  /* ── Trainees Pagination (10 per page) ── */
+  let lastTraineeTotal = 0;
+  function renderPagination(meta) {
+    pagEl.innerHTML = buildPaginationHtml({
+      currentPage: meta.current_page || 1,
+      totalPages: meta.last_page || 1,
+      totalItems: lastTraineeTotal,
+      perPage: 10,
+      itemName: 'trainees'
+    });
+    renderIcons();
+
+    pagEl.querySelectorAll('.an-pg-btn[data-p]:not([disabled])').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const targetPage = parseInt(btn.dataset.p, 10);
+        if (targetPage && targetPage !== currentPage) {
+          currentPage = targetPage;
+          fetchAndRender();
+        }
+      });
+    });
+  }
+
+  /* ── Fetch + render (Trainees: 10 per page) ── */
   function applyOjtResponse(res) {
     if (!res || res.message) {
       tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><h3 class="empty-state__title">Failed to load</h3><p class="empty-state__text">${res?.message || 'Check your connection or login session.'}</p></div></td></tr>`;
@@ -478,6 +652,7 @@ export default async function OjtManagementPage(container) {
     }
 
     if (res.stats) renderStats(res.stats);
+    lastTraineeTotal = res.total != null ? res.total : 0;
     countEl.textContent = res.total != null ? `${res.total} trainee${res.total !== 1 ? 's' : ''}` : '';
     renderRows(Array.isArray(res.data) ? res.data : []);
     renderPagination({ current_page: res.current_page, last_page: res.last_page });
@@ -486,7 +661,7 @@ export default async function OjtManagementPage(container) {
   async function fetchAndRender(force = false) {
     const search = container.querySelector('#ojt-search').value.trim();
     const status = container.querySelector('#filter-status').value;
-    const params = new URLSearchParams({ per_page: 20, page: currentPage });
+    const params = new URLSearchParams({ per_page: 10, page: currentPage });
     if (search) params.set('search', search);
     if (status) params.set('status', status);
 
@@ -523,37 +698,101 @@ export default async function OjtManagementPage(container) {
     fetchAndRender();
   });
 
-  /* ── Load Supervisors ── */
+  /* ── Load Supervisors (3 per page) ── */
   let currentSupervisors = [];
-  function renderSupervisors(stb, list) {
-    currentSupervisors = list || [];
+  let supCurrentPage = 1;
+  const supPerPage = 3;
+  const supPagEl = container.querySelector('#sup-pagination');
+
+  function renderSupervisorsTable() {
+    const stb = container.querySelector('#sup-tbody');
+    if (!stb) return;
+
     if (!currentSupervisors.length) {
       stb.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-tertiary);padding:24px;">No coordinators registered yet</td></tr>`;
+      if (supPagEl) supPagEl.innerHTML = '';
       return;
     }
-    stb.innerHTML = currentSupervisors.map(s => {
-      const init = s.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-      return `<tr>
-        <td><div style="display:flex;align-items:center;gap:8px;"><div class="entity-card__avatar" style="width:30px;height:30px;font-size:.55rem;flex-shrink:0;">${init}</div><span style="font-weight:var(--weight-medium);font-size:var(--text-sm);">${s.name}</span></div></td>
-        <td style="font-size:var(--text-sm);">${s.email}</td>
-        <td><span class="badge" style="background:#ECFDF5;color:#047857;border:1px solid #A7F3D0;font-size:.65rem;font-weight:600;">${s.campus || 'Alijis Campus'}</span></td>
-        <td><span class="badge badge--info" style="font-size:.65rem;">${s.course || '—'}</span></td>
-        <td style="font-size:var(--text-xs);color:var(--text-tertiary);">${s.created_at||''}</td>
-        <td style="text-align:right;">
-          <button class="btn-icon btn-resend-supervisor" data-id="${s.id}" data-name="${s.name}" data-email="${s.email}" title="Reset Temporary Password & Resend Welcome Email" style="background:transparent;border:none;cursor:pointer;color:var(--text-tertiary);padding:4px 6px;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;transition:color .15s;margin-right:4px;">
-            ${icon('mail', 14)}
-          </button>
-          <button class="btn-icon btn-del-supervisor" data-id="${s.id}" data-name="${s.name}" title="Remove coordinator" style="background:transparent;border:none;cursor:pointer;color:var(--text-tertiary);padding:4px 6px;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;transition:color .15s;">
-            ${icon('trash-2', 14)}
-          </button>
-        </td>
-      </tr>`;
+
+    const supTotalPages = Math.max(1, Math.ceil(currentSupervisors.length / supPerPage));
+    if (supCurrentPage > supTotalPages) supCurrentPage = supTotalPages;
+    if (supCurrentPage < 1) supCurrentPage = 1;
+
+    const pageSlice = currentSupervisors.slice((supCurrentPage - 1) * supPerPage, supCurrentPage * supPerPage);
+
+    stb.innerHTML = pageSlice.map(s => {
+      const init = (s.name || 'CO').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+      const cDisp = formatCourseDisplay(s.course || '');
+      const cMeta = getCourseMeta(s.course || '');
+      return `
+        <tr>
+          <td style="vertical-align:middle;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div class="entity-card__avatar" style="width:32px;height:32px;font-size:0.65rem;flex-shrink:0;">${init}</div>
+              <div>
+                <div style="font-weight:var(--weight-semibold);font-size:var(--text-sm);color:var(--text-primary);">${s.name}</div>
+                <div style="font-size:var(--text-xs);color:var(--text-tertiary);">${s.email}</div>
+              </div>
+            </div>
+          </td>
+          <td style="vertical-align:middle;font-size:var(--text-sm);color:var(--text-secondary);">${s.email}</td>
+          <td style="vertical-align:middle;">
+            <span class="badge" style="background:#ECFDF5;color:#047857;border:1px solid #A7F3D0;font-size:0.68rem;font-weight:600;">
+              ${s.campus || 'Alijis Campus'}
+            </span>
+          </td>
+          <td style="vertical-align:middle;">
+            <div style="display:flex;flex-direction:column;gap:2px;max-width:240px;">
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span class="badge badge--info" style="font-size:0.65rem;font-weight:700;padding:1px 6px;">${cMeta.code}</span>
+                <span style="font-size:var(--text-xs);font-weight:var(--weight-medium);color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${s.course || ''}">
+                  ${cDisp.isTrade ? cDisp.primaryTitle : (s.course || '—')}
+                </span>
+              </div>
+              <span style="font-size:10.5px;color:var(--text-tertiary);">${cMeta.category || ''}</span>
+            </div>
+          </td>
+          <td style="vertical-align:middle;font-size:var(--text-xs);color:var(--text-tertiary);">${s.created_at || '—'}</td>
+          <td style="text-align:right;vertical-align:middle;white-space:nowrap;">
+            <div style="display:inline-flex;align-items:center;justify-content:flex-end;gap:6px;">
+              <button type="button" class="btn btn--outline btn--sm btn-resend-supervisor" data-id="${s.id}" data-name="${s.name}" data-email="${s.email}" title="Reset Temporary Password & Resend Welcome Email" style="padding:4px 9px;font-size:0.75rem;height:30px;gap:5px;display:inline-flex;align-items:center;border-radius:6px;">
+                ${icon('mail', 13)} <span>Resend</span>
+              </button>
+              <button type="button" class="btn btn--ghost btn--sm btn-del-supervisor" data-id="${s.id}" data-name="${s.name}" title="Remove coordinator" style="color:var(--color-error,#ef4444);padding:4px 8px;height:30px;display:inline-flex;align-items:center;justify-content:center;border-radius:6px;">
+                ${icon('trash-2', 14)}
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
     }).join('');
+
     renderIcons();
 
+    if (supPagEl) {
+      supPagEl.innerHTML = buildPaginationHtml({
+        currentPage: supCurrentPage,
+        totalPages: supTotalPages,
+        totalItems: currentSupervisors.length,
+        perPage: supPerPage,
+        itemName: 'coordinators'
+      });
+      renderIcons();
+
+      supPagEl.querySelectorAll('.an-pg-btn[data-p]:not([disabled])').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const targetPage = parseInt(btn.dataset.p, 10);
+          if (targetPage && targetPage !== supCurrentPage) {
+            supCurrentPage = targetPage;
+            renderSupervisorsTable();
+          }
+        });
+      });
+    }
+
     stb.querySelectorAll('.btn-resend-supervisor').forEach(btn => {
-      btn.addEventListener('mouseenter', () => { btn.style.color = '#005930'; });
-      btn.addEventListener('mouseleave', () => { btn.style.color = 'var(--text-tertiary)'; });
+      btn.addEventListener('mouseenter', () => { btn.style.borderColor = '#005930'; btn.style.color = '#005930'; });
+      btn.addEventListener('mouseleave', () => { btn.style.borderColor = 'var(--border-default)'; btn.style.color = ''; });
       btn.addEventListener('click', async () => {
         const id = btn.dataset.id;
         const name = btn.dataset.name;
@@ -572,15 +811,15 @@ export default async function OjtManagementPage(container) {
           alert('Network error while requesting password reset.');
         } finally {
           btn.disabled = false;
-          btn.innerHTML = icon('mail', 14);
+          btn.innerHTML = `${icon('mail', 13)} <span>Resend</span>`;
           renderIcons();
         }
       });
     });
 
     stb.querySelectorAll('.btn-del-supervisor').forEach(btn => {
-      btn.addEventListener('mouseenter', () => { btn.style.color = '#EF4444'; });
-      btn.addEventListener('mouseleave', () => { btn.style.color = 'var(--text-tertiary)'; });
+      btn.addEventListener('mouseenter', () => { btn.style.color = '#DC2626'; btn.style.background = 'rgba(239,68,68,0.1)'; });
+      btn.addEventListener('mouseleave', () => { btn.style.color = 'var(--color-error,#ef4444)'; btn.style.background = 'transparent'; });
       btn.addEventListener('click', async () => {
         const id = btn.dataset.id;
         const name = btn.dataset.name;
@@ -602,6 +841,11 @@ export default async function OjtManagementPage(container) {
     });
   }
 
+  function renderSupervisors(stb, list) {
+    currentSupervisors = list || [];
+    renderSupervisorsTable();
+  }
+
   async function loadSupervisors(force = false) {
     const stb = container.querySelector('#sup-tbody');
     if (!stb) return;
@@ -621,12 +865,14 @@ export default async function OjtManagementPage(container) {
   }
   loadSupervisors();
 
-  /* ── Load Pull-Out Requests ── */
+  /* ── Load Pull-Out Requests (5 per page) ── */
   let allPullOuts = [];
+  let pullOutCurrentPage = 1;
+  const pullOutPerPage = 5;
+  const poPagEl = container.querySelector('#pullout-pagination');
 
   async function loadPullOutRequests(force = false) {
     const ptbody = container.querySelector('#pullout-tbody');
-    const badgeCount = container.querySelector('#pullout-badge-count');
     if (!ptbody) return;
 
     try {
@@ -635,6 +881,7 @@ export default async function OjtManagementPage(container) {
       renderPullOutTable();
     } catch (err) {
       ptbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text-tertiary);padding:20px;">Could not load pull-out requests: ${err.message}</td></tr>`;
+      if (poPagEl) poPagEl.innerHTML = '';
     }
   }
 
@@ -662,10 +909,17 @@ export default async function OjtManagementPage(container) {
 
     if (!filtered.length) {
       ptbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text-tertiary);padding:24px;">No pull-out requests found in this filter view.</td></tr>`;
+      if (poPagEl) poPagEl.innerHTML = '';
       return;
     }
 
-    ptbody.innerHTML = filtered.map(p => {
+    const pullOutTotalPages = Math.max(1, Math.ceil(filtered.length / pullOutPerPage));
+    if (pullOutCurrentPage > pullOutTotalPages) pullOutCurrentPage = pullOutTotalPages;
+    if (pullOutCurrentPage < 1) pullOutCurrentPage = 1;
+
+    const pageSlice = filtered.slice((pullOutCurrentPage - 1) * pullOutPerPage, pullOutCurrentPage * pullOutPerPage);
+
+    ptbody.innerHTML = pageSlice.map(p => {
       const statusBadge = 
         p.status === 'recommended_by_supervisor' ? '<span class="badge badge--warning">Recommended &bull; Action Needed</span>' :
         p.status === 'printed_pending_signature' ? '<span class="badge" style="background:#EEF2FF;color:#4338ca;font-weight:700;">Printed &bull; Awaiting Signature</span>' :
@@ -674,42 +928,72 @@ export default async function OjtManagementPage(container) {
         p.status === 'rejected' ? '<span class="badge badge--error">Declined</span>' :
         '<span class="badge badge--neutral">Pending Coordinator</span>';
 
+      const stInit = (p.student_name || 'S').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+
       return `
         <tr>
-          <td>
-            <div style="font-weight:var(--weight-semibold);font-size:var(--text-sm);">${p.student_name}</div>
-            <div style="font-size:var(--text-xs);color:var(--text-tertiary);">${p.student_number || 'No ID'} &bull; ${p.student_email || ''}</div>
+          <td style="vertical-align:middle;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div class="entity-card__avatar" style="width:34px;height:34px;font-size:0.65rem;flex-shrink:0;">${stInit}</div>
+              <div>
+                <div style="font-weight:var(--weight-semibold);font-size:var(--text-sm);color:var(--text-primary);">${p.student_name}</div>
+                <div style="font-size:var(--text-xs);color:var(--text-tertiary);">${p.student_number || 'No ID'} &bull; ${p.student_email || ''}</div>
+              </div>
+            </div>
           </td>
-          <td>
-            <div style="font-size:var(--text-xs);font-weight:var(--weight-medium);">${p.course}</div>
-            <div style="font-size:var(--text-xs);color:var(--text-tertiary);">${p.section || '—'}</div>
+          <td style="vertical-align:middle;">
+            <div style="font-size:var(--text-xs);font-weight:var(--weight-semibold);color:var(--text-primary);max-width:200px;line-height:1.3;" title="${p.course}">${p.course}</div>
+            <div style="font-size:var(--text-xs);color:var(--text-tertiary);margin-top:2px;">Section: ${p.section || '—'}</div>
           </td>
-          <td>
-            <div style="font-size:var(--text-sm);font-weight:var(--weight-medium);">${p.company_name}</div>
-            <div style="font-size:var(--text-xs);color:var(--text-tertiary);">${p.hours_rendered_snapshot} / ${p.required_hours_snapshot} hrs rendered</div>
+          <td style="vertical-align:middle;">
+            <div style="font-size:var(--text-sm);font-weight:var(--weight-semibold);color:var(--text-primary);">${p.company_name}</div>
+            <div style="font-size:var(--text-xs);color:var(--text-tertiary);margin-top:2px;">${p.hours_rendered_snapshot} / ${p.required_hours_snapshot} hrs rendered</div>
           </td>
-          <td>
-            <span class="badge badge--neutral" style="text-transform:capitalize;font-size:0.75rem;">
+          <td style="vertical-align:middle;">
+            <span class="badge badge--neutral" style="text-transform:capitalize;font-size:0.75rem;font-weight:600;">
               ${(p.reason_category || '').replace(/_/g, ' ')}
             </span>
           </td>
-          <td>
-            <div style="font-size:var(--text-xs);font-weight:var(--weight-medium);color:var(--text-primary);">${p.supervisor_name || 'Coordinator'}</div>
-            <div style="font-size:var(--text-xs);color:var(--text-tertiary);max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${p.supervisor_remarks || ''}">
+          <td style="vertical-align:middle;">
+            <div style="font-size:var(--text-xs);font-weight:var(--weight-semibold);color:var(--text-primary);">${p.supervisor_name || 'Coordinator'}</div>
+            <div style="font-size:var(--text-xs);color:var(--text-tertiary);max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;" title="${p.supervisor_remarks || ''}">
               ${p.supervisor_remarks || 'No remarks'}
             </div>
           </td>
-          <td>${statusBadge}</td>
-          <td style="text-align:right;">
-            <button class="btn btn--primary btn--sm btn-process-pullout" data-id="${p.id}" style="padding:4px 10px;font-size:var(--text-xs);gap:4px;background:#005930;border-color:#005930;">
-              ${icon('file-text', 12)} Process
-            </button>
+          <td style="vertical-align:middle;">${statusBadge}</td>
+          <td style="text-align:right;vertical-align:middle;white-space:nowrap;">
+            <div style="display:inline-flex;align-items:center;justify-content:flex-end;">
+              <button type="button" class="btn btn--primary btn--sm btn-process-pullout" data-id="${p.id}" style="padding:6px 14px;font-size:0.75rem;font-weight:600;gap:6px;background:#005930;border-color:#005930;border-radius:6px;display:inline-flex;align-items:center;box-shadow:0 1px 2px rgba(0,0,0,0.06);">
+                ${icon('file-text', 13)} <span>Process</span>
+              </button>
+            </div>
           </td>
         </tr>
       `;
     }).join('');
 
     renderIcons();
+
+    if (poPagEl) {
+      poPagEl.innerHTML = buildPaginationHtml({
+        currentPage: pullOutCurrentPage,
+        totalPages: pullOutTotalPages,
+        totalItems: filtered.length,
+        perPage: pullOutPerPage,
+        itemName: 'requests'
+      });
+      renderIcons();
+
+      poPagEl.querySelectorAll('.an-pg-btn[data-p]:not([disabled])').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const targetPage = parseInt(btn.dataset.p, 10);
+          if (targetPage && targetPage !== pullOutCurrentPage) {
+            pullOutCurrentPage = targetPage;
+            renderPullOutTable();
+          }
+        });
+      });
+    }
 
     ptbody.querySelectorAll('.btn-process-pullout').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -724,7 +1008,10 @@ export default async function OjtManagementPage(container) {
     });
   }
 
-  container.querySelector('#filter-pullout-status')?.addEventListener('change', renderPullOutTable);
+  container.querySelector('#filter-pullout-status')?.addEventListener('change', () => {
+    pullOutCurrentPage = 1;
+    renderPullOutTable();
+  });
   loadPullOutRequests();
 
   // Real-time reactive updates when supervisor recommends or pull-out updates occur
