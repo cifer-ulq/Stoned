@@ -909,7 +909,7 @@ export default async function OjtManagementPage(container) {
     const backdrop = document.createElement('div');
     backdrop.className = 'modal-backdrop';
     backdrop.innerHTML = `
-      <div class="modal ac-modal sup-modal" style="max-width:520px;">
+      <div class="modal ac-modal sup-modal" style="max-width:540px;width:95vw;">
 
         <!-- Header -->
         <div class="ac-modal__header" style="background:linear-gradient(135deg,var(--color-primary-bg-strong),var(--color-primary-bg));">
@@ -1105,11 +1105,11 @@ export default async function OjtManagementPage(container) {
         placeholderEl.style.display = 'none';
         selectedWrapEl.innerHTML = `
           <span class="sup-course-trigger__code">${meta.code}</span>
-          <div style="display:flex;flex-direction:column;min-width:0;text-align:left;line-height:1.2;">
-            <span class="sup-course-trigger__title" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${selectedCourse}">
+          <div class="sup-course-trigger__text">
+            <span class="sup-course-trigger__title" title="${selectedCourse}">
               ${display.isTrade ? `${display.primaryTitle} (${display.degreeBadge})` : selectedCourse}
             </span>
-            <span style="font-size:0.68rem;color:var(--text-tertiary);">${meta.category}</span>
+            <span class="sup-course-trigger__sub">${meta.category}</span>
           </div>
           ${countTag}
         `;
