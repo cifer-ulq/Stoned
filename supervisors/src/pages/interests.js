@@ -1413,74 +1413,305 @@ function studentDetailCard(s, state) {
   `;
 }
 
-// ── Upload Endorsement Letter Modal ───────────────────────────────────────────
+// ── Helper: Resolve College & Department by Program ─────────────────────────
+function resolveCollegeAndDept(program) {
+  const p = (program || '').toLowerCase();
+  if (p.includes('information technology') || p.includes('computer science') || p.includes('information systems') || p.includes('bsit') || p.includes('bscs') || p.includes('bsis')) {
+    return {
+      college: 'College of Industrial Technology',
+      department: 'Department of Information Technology',
+    };
+  }
+  if (p.includes('engineering') || p.includes('cpe')) {
+    return {
+      college: 'College of Engineering and Technology',
+      department: 'Department of Computer Engineering',
+    };
+  }
+  if (p.includes('industrial technology') || p.includes('automotive') || p.includes('electrical') || p.includes('electronics') || p.includes('drafting')) {
+    return {
+      college: 'College of Industrial Technology',
+      department: 'Department of Industrial Technology',
+    };
+  }
+  if (p.includes('business') || p.includes('accountancy') || p.includes('hospitality') || p.includes('management')) {
+    return {
+      college: 'College of Business Management and Accountancy',
+      department: 'Department of Business Administration',
+    };
+  }
+  if (p.includes('education')) {
+    return {
+      college: 'College of Education',
+      department: 'Department of Teacher Education',
+    };
+  }
+  return {
+    college: 'College of Industrial Technology',
+    department: 'Academic Internship and Training Department',
+  };
+}
+
+function escHtml(str = '') {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+// ── Upload / Dynamic Endorsement Letter Modal ────────────────────────────────
 function showEndorsementUploadModal(interestId, slot, students, body, bd, allInterests, onUpdate) {
-  const record      = students.find(s => String(s.id) === String(interestId));
-  const studentName = record?.student?.name || 'Student';
-  const program     = record?.student?.program || '';
-  const company     = slot.company || slot.company_name || '';
-  const posting     = slot.title || slot.slotTitle || 'OJT Position';
-  const hasExisting = !!record?.endorsement_letter;
+  const record         = students.find(s => String(s.id) === String(interestId));
+  const studentName    = record?.student?.name || 'Student';
+  const studentId      = record?.student?.student_id || record?.student?.studentId || ('CHMSU-' + (record?.student?.id || interestId));
+  const program        = record?.student?.program || 'Bachelor of Science in Information Technology';
+  const section        = record?.student?.section || 'A';
+  const yearLevel      = record?.student?.year_level || record?.student?.yearLevel || '4th Year';
+  const company        = slot.company || slot.company_name || 'Host Partner Company';
+  const companyAddress = slot.location || slot.full_address || 'Negros Occidental, Philippines';
+  const contactName    = slot.contact_name || 'The Internship Director / Human Resources Management';
+  const posting        = slot.title || slot.slotTitle || 'OJT Industry Trainee';
+  const duration       = slot.duration || '600 Hours';
+  const hasExisting    = !!record?.endorsement_letter;
+  const existingUrl    = record?.endorsement_letter_url || null;
+
+  // Resolve dynamic college & department based on program
+  const deptInfo = resolveCollegeAndDept(program);
+
+  // Supervisor info from local storage
+  let supervisorUser = {};
+  try { supervisorUser = JSON.parse(localStorage.getItem('hireme_user') || '{}'); } catch {}
+  const supervisorName  = supervisorUser?.name || 'Prof. Mariene Labrador';
+  const supervisorEmail = supervisorUser?.email || 'ojt.coordinator@chmsu.edu.ph';
+  const supervisorTitle = supervisorUser?.position || 'OJT Academic Coordinator';
+
+  const todayDate = new Date().toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+  const refCode = `CHMSU-CIER-OJT-2026-${String(interestId).padStart(4, '0')}`;
+
+  const defaultBody = `Carlos Hilado Memorial State University, through the ${deptInfo.college} and the CIER Internship Directorate, is pleased to officially endorse our qualified bona fide student for deployment in your organization:`;
+
+  let currentMode = 'template'; // 'template' | 'upload'
 
   const modal = document.createElement('div');
   modal.className = 'modal-backdrop modal-backdrop--visible';
   modal.style.zIndex = '9999';
   modal.innerHTML = `
-    <div class="modal modal--visible" style="max-width:520px;padding:0;">
-      <div class="modal__header" style="border-bottom:1px solid var(--border-default);padding:18px 24px;">
+    <div class="modal modal--visible" style="max-width:880px;width:95vw;max-height:92vh;display:flex;flex-direction:column;padding:0;overflow:hidden;border-radius:14px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);">
+      <!-- Header -->
+      <div class="modal__header" style="border-bottom:1px solid var(--border-default);padding:16px 24px;display:flex;align-items:center;justify-content:space-between;background:var(--bg-card);flex-shrink:0;">
         <div style="display:flex;align-items:center;gap:12px;min-width:0;">
           <div style="width:40px;height:40px;border-radius:10px;background:#00593014;color:#005930;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${icon('fileText', 20)}</div>
           <div style="min-width:0;">
-            <h3 class="modal__title" style="margin:0;font-size:1.14rem;font-weight:700;">Send Endorsement Letter</h3>
-            <p style="font-size:0.79rem;color:var(--text-secondary);margin:2px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${studentName}${program ? ' · ' + program : ''}</p>
+            <h3 class="modal__title" style="margin:0;font-size:1.12rem;font-weight:700;">Official Endorsement Letter</h3>
+            <p style="font-size:0.78rem;color:var(--text-secondary);margin:2px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+              <strong>${escHtml(studentName)}</strong> &bull; ${escHtml(program)} &bull; ${escHtml(company)}
+            </p>
           </div>
         </div>
-        <button class="modal__close" id="el-modal-close">${icon('x', 20)}</button>
+        <button class="modal__close" id="el-modal-close" style="background:none;border:none;cursor:pointer;color:var(--text-tertiary);">${icon('x', 20)}</button>
       </div>
 
-      <div class="modal__body" style="padding:20px 24px;">
-        <!-- Posting Context -->
-        <div style="background:var(--bg-secondary);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:12px 14px;margin-bottom:18px;">
-          <p style="font-size:0.71rem;color:var(--text-tertiary);margin:0 0 2px;text-transform:uppercase;letter-spacing:0.05em;">Placement For</p>
-          <p style="font-weight:700;font-size:0.915rem;margin:0;color:var(--text-primary);">${posting}</p>
-          ${company ? `<p style="font-size:0.79rem;color:var(--text-secondary);margin:2px 0 0;">${icon('building', 11)} ${company}</p>` : ''}
+      <!-- Mode Selector Tabs -->
+      <div style="background:#f8fafc;padding:10px 24px;border-bottom:1px solid var(--border-default);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;flex-shrink:0;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <button type="button" class="btn btn--sm" id="el-tab-template" style="background:#005930;color:#ffffff;border-color:#005930;font-weight:700;display:inline-flex;align-items:center;gap:6px;border-radius:8px;">
+            ${icon('sparkles', 13)} Official Dynamic Template
+          </button>
+          <button type="button" class="btn btn--sm btn--outline" id="el-tab-upload" style="color:var(--text-secondary);border-color:var(--border-default);background:#ffffff;font-weight:600;display:inline-flex;align-items:center;gap:6px;border-radius:8px;">
+            ${icon('upload', 13)} Upload Custom File
+          </button>
         </div>
 
-        ${record?.endorsement_letter_url ? `
-          <div style="margin-bottom:14px;padding:8px 12px;background:#ecfdf5;border:1px solid rgba(16,185,129,0.25);border-radius:6px;display:flex;align-items:center;justify-content:space-between;font-size:0.78rem;">
-            <span style="color:#065f46;font-weight:600;display:inline-flex;align-items:center;gap:6px;">${icon('fileCheck', 13)} Current letter on file</span>
-            <a href="${record.endorsement_letter_url.startsWith('http') ? record.endorsement_letter_url : 'http://localhost:8000' + (record.endorsement_letter_url.startsWith('/') ? '' : '/') + record.endorsement_letter_url}" target="_blank" rel="noopener" style="color:#005930;font-weight:700;text-decoration:underline;display:inline-flex;align-items:center;gap:4px;">${icon('externalLink', 11)} View Current PDF</a>
-          </div>` : ''}
+        ${existingUrl ? `
+          <a href="${existingUrl.startsWith('http') ? existingUrl : 'http://localhost:8000' + (existingUrl.startsWith('/') ? '' : '/') + existingUrl}" target="_blank" rel="noopener" style="font-size:0.76rem;color:#005930;font-weight:700;text-decoration:underline;display:inline-flex;align-items:center;gap:5px;">
+            ${icon('fileCheck', 13)} View Current Letter PDF
+          </a>` : ''}
+      </div>
 
-        <!-- File Upload Area -->
-        <div class="form-group" style="margin-bottom:12px;">
-          <label class="form-label" style="font-size:0.81rem;font-weight:600;margin-bottom:6px;display:block;">
-            Endorsement Letter Document ${hasExisting ? '<span style="color:#D97706;font-size:0.73rem;">(replace existing)</span>' : ''}
-          </label>
-          <label id="el-drop-zone" class="ojts-dropzone">
-            <span style="color:var(--text-tertiary)">${icon('upload', 24)}</span>
-            <span style="font-size:0.85rem;font-weight:600;color:var(--text-primary)">Click to select file or drag &amp; drop</span>
-            <span style="font-size:0.75rem;color:var(--text-tertiary)">PDF, DOCX, JPG or PNG (up to 5MB)</span>
-            <input type="file" id="el-file-input" accept=".pdf,.docx,.jpg,.jpeg,.png" style="display:none;" />
-          </label>
-        </div>
+      <!-- Modal Body (Scrollable) -->
+      <div class="modal__body" style="flex:1;overflow-y:auto;padding:20px 24px;background:#f1f5f9;">
+        <!-- PANE 1: Dynamic Template & Real-time Live Letter -->
+        <div id="el-pane-template">
+          <!-- Editor Customization Controls (Collapsible / Compact) -->
+          <div style="background:#ffffff;border:1px solid var(--border-default);border-radius:10px;padding:16px;margin-bottom:18px;box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+              <span style="font-size:0.78rem;font-weight:700;color:#005930;text-transform:uppercase;letter-spacing:0.05em;display:inline-flex;align-items:center;gap:6px;">
+                ${icon('edit3', 13)} Template Customization Controls (Editable)
+              </span>
+              <span style="font-size:0.72rem;color:var(--text-tertiary);">Adjust text below to update the preview in real-time</span>
+            </div>
 
-        <!-- File Preview -->
-        <div id="el-file-preview" style="display:none;padding:10px 14px;background:#05966910;border:1px solid #05966925;border-radius:var(--radius-md);align-items:center;gap:10px;margin-bottom:12px;">
-          <span style="color:#059669;flex-shrink:0;">${icon('fileText', 18)}</span>
-          <div style="flex:1;min-width:0;">
-            <p id="el-file-name" style="font-weight:600;font-size:0.85rem;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-primary);"></p>
-            <p id="el-file-size" style="font-size:0.75rem;color:var(--text-tertiary);margin:2px 0 0;"></p>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:12px;margin-bottom:12px;">
+              <div>
+                <label style="display:block;font-size:0.76rem;font-weight:600;color:var(--text-secondary);margin-bottom:4px;">
+                  Addressee / Recipient (Company Contact)
+                </label>
+                <input type="text" id="el-input-contact" value="${escHtml(contactName)}" class="form-input" style="width:100%;font-size:0.84rem;padding:7px 10px;border-radius:6px;border:1px solid #cbd5e1;" />
+              </div>
+              <div>
+                <label style="display:block;font-size:0.76rem;font-weight:600;color:var(--text-secondary);margin-bottom:4px;">
+                  Special Coordinator Remarks / Instructions (Optional)
+                </label>
+                <input type="text" id="el-input-notes" placeholder="e.g. Cleared for hybrid schedule. Trainee has completed occupational safety orientation." value="${escHtml(record?.coordinator_note || '')}" class="form-input" style="width:100%;font-size:0.84rem;padding:7px 10px;border-radius:6px;border:1px solid #cbd5e1;" />
+              </div>
+            </div>
+
+            <div>
+              <label style="display:block;font-size:0.76rem;font-weight:600;color:var(--text-secondary);margin-bottom:4px;">
+                Introductory Endorsement Statement
+              </label>
+              <textarea id="el-input-body" rows="2" class="form-input" style="width:100%;font-size:0.82rem;padding:8px 10px;border-radius:6px;border:1px solid #cbd5e1;resize:vertical;">${escHtml(defaultBody)}</textarea>
+            </div>
           </div>
-          <button id="el-file-clear" style="background:none;border:none;cursor:pointer;color:var(--text-tertiary);padding:2px;">${icon('x', 14)}</button>
+
+          <!-- Official Stationery Paper Container -->
+          <div id="el-letter-paper" style="background:#ffffff;border:1.5px solid #cbd5e1;border-radius:8px;padding:32px 36px;box-shadow:0 4px 20px rgba(0,0,0,0.06);font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;color:#1e293b;position:relative;">
+            <!-- Top University Accent Bar -->
+            <div style="height:4px;background:#005930;border-radius:2px 2px 0 0;margin:-32px -36px 20px -36px;"></div>
+            <div style="height:2px;background:#D97706;margin:-20px -36px 24px -36px;"></div>
+
+            <!-- Letterhead -->
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;border-bottom:2px solid #005930;padding-bottom:14px;margin-bottom:18px;">
+              <div>
+                <h2 style="margin:0;font-size:1.18rem;font-weight:800;color:#005930;letter-spacing:-0.01em;">CARLOS HILADO MEMORIAL STATE UNIVERSITY</h2>
+                <p style="margin:2px 0 0;font-size:0.83rem;color:#475569;font-weight:600;">Center for Internationalization and External Relations (CIER)</p>
+                <p style="margin:2px 0 0;font-size:0.82rem;color:#005930;font-weight:700;">${escHtml(deptInfo.college)} &mdash; ${escHtml(deptInfo.department)}</p>
+                <p style="margin:2px 0 0;font-size:0.73rem;color:#64748b;">Mabini Street, Talisay City, Negros Occidental 6115, Philippines &bull; www.chmsu.edu.ph</p>
+              </div>
+              <div style="text-align:right;">
+                <span style="display:inline-block;padding:3px 8px;background:#ecfdf5;border:1px solid #00593033;border-radius:4px;font-size:0.71rem;font-weight:700;color:#005930;">
+                  OFFICIAL ISSUANCE
+                </span>
+                <p style="margin:4px 0 0;font-size:0.72rem;color:#64748b;">Ref: ${refCode}</p>
+              </div>
+            </div>
+
+            <!-- Document Title -->
+            <div style="text-align:center;margin:16px 0 20px;">
+              <h3 style="margin:0;font-size:1.02rem;font-weight:800;color:#005930;letter-spacing:0.04em;text-transform:uppercase;">
+                OFFICIAL ENDORSEMENT MEMORANDUM FOR ON-THE-JOB TRAINING
+              </h3>
+              <p style="margin:4px 0 0;font-size:0.76rem;color:#64748b;">
+                Date: <strong>${todayDate}</strong> &nbsp;|&nbsp; Academic Year 2026&ndash;2027
+              </p>
+            </div>
+
+            <!-- Addressee Block -->
+            <div style="margin-bottom:18px;font-size:0.84rem;line-height:1.45;">
+              <p style="margin:0;font-weight:700;color:#0f172a;">TO: <span id="el-prev-contact">${escHtml(contactName)}</span></p>
+              <p style="margin:1px 0 0;font-weight:700;color:#005930;">${escHtml(company)}</p>
+              <p style="margin:1px 0 0;color:#64748b;font-size:0.78rem;">${escHtml(companyAddress)}</p>
+            </div>
+
+            <!-- Salutation -->
+            <p style="margin:0 0 12px;font-size:0.86rem;font-weight:600;color:#0f172a;">Dear Industry Partner,</p>
+
+            <!-- Paragraph 1 -->
+            <p id="el-prev-body" style="margin:0 0 14px;font-size:0.85rem;line-height:1.6;color:#334155;">
+              ${escHtml(defaultBody)}
+            </p>
+
+            <!-- Trainee Highlight Card -->
+            <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-left:4px solid #005930;border-radius:6px;padding:12px 16px;margin:0 0 16px;">
+              <div style="font-size:0.95rem;font-weight:800;color:#005930;margin-bottom:4px;">
+                ${escHtml(studentName)}
+              </div>
+              <div style="font-size:0.79rem;color:#334155;line-height:1.5;">
+                <strong>Student ID:</strong> ${escHtml(studentId)} &nbsp;&bull;&nbsp; <strong>Degree Program:</strong> ${escHtml(program)}<br>
+                <strong>Academic Standing:</strong> ${escHtml(yearLevel)} &ndash; Section ${escHtml(section)} &nbsp;&bull;&nbsp; <strong>Status:</strong> Cleared for Deployment
+              </div>
+            </div>
+
+            <!-- Paragraph 2 -->
+            <p style="margin:0 0 12px;font-size:0.85rem;line-height:1.6;color:#334155;">
+              The aforementioned student has successfully completed all university pre-deployment clearances and academic prerequisites. The student is authorized to render a required minimum of <strong>${escHtml(duration)}</strong> of specialized industry training for the position of <strong>&ldquo;${escHtml(posting)}&rdquo;</strong>.
+            </p>
+
+            <!-- Paragraph 3 -->
+            <p style="margin:0 0 14px;font-size:0.85rem;line-height:1.6;color:#334155;">
+              This endorsement is anchored on our active Memorandum of Agreement (MOA). The student has been instructed to observe the utmost professionalism, workplace safety rules, data confidentiality, and your company's operating protocols.
+            </p>
+
+            <!-- Real-time Coordinator Remarks Box (if any) -->
+            <div id="el-prev-notes-box" style="display:${record?.coordinator_note ? 'block' : 'none'};background:#fffbeb;border:1px solid #fde68a;border-left:3px solid #D97706;border-radius:6px;padding:8px 12px;margin:0 0 14px;font-size:0.8rem;color:#92400e;">
+              <strong>SPECIAL INSTRUCTIONS / REMARKS:</strong> <span id="el-prev-notes-text">${escHtml(record?.coordinator_note || '')}</span>
+            </div>
+
+            <!-- Paragraph 4 -->
+            <p style="margin:0 0 24px;font-size:0.85rem;line-height:1.6;color:#334155;">
+              Thank you very much for your continuous partnership and dedication in training our university students.
+            </p>
+
+            <!-- Sign-off & Seal Block -->
+            <div style="display:flex;align-items:flex-end;justify-content:space-between;border-top:1px dashed #cbd5e1;padding-top:16px;margin-top:20px;">
+              <div>
+                <p style="margin:0 0 14px;font-size:0.75rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">
+                  ENDORSED AND CERTIFIED BY:
+                </p>
+                <p style="margin:0;font-size:0.98rem;font-weight:800;color:#005930;text-transform:uppercase;">
+                  ${escHtml(supervisorName)}
+                </p>
+                <p style="margin:2px 0 0;font-size:0.78rem;color:#475569;">${escHtml(supervisorTitle)} &ndash; ${escHtml(deptInfo.department)}</p>
+                <p style="margin:1px 0 0;font-size:0.76rem;color:#64748b;">${escHtml(deptInfo.college)}, CHMSU</p>
+                <p style="margin:1px 0 0;font-size:0.74rem;color:#64748b;">Email: ${escHtml(supervisorEmail)}</p>
+              </div>
+
+              <!-- Digital Stamp Box -->
+              <div style="background:#ecfdf5;border:1.5px solid #005930;border-radius:8px;padding:8px 12px;text-align:center;min-width:180px;">
+                <span style="font-size:0.73rem;font-weight:800;color:#005930;display:block;">CHMSU CIER ENDORSED</span>
+                <span style="font-size:0.69rem;color:#065f46;display:block;">Digitally Verified &bull; Official</span>
+                <span style="font-size:0.66rem;color:#64748b;font-family:monospace;display:block;margin-top:2px;">SEC: ${refCode}</span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <p id="el-error" style="color:#EF4444;font-size:0.81rem;margin:0;display:none;padding:8px 12px;background:#EF444412;border-radius:var(--radius-sm);"></p>
+        <!-- PANE 2: Custom Document Upload (Hidden by default) -->
+        <div id="el-pane-upload" style="display:none;">
+          <div class="form-group" style="margin-bottom:12px;">
+            <label class="form-label" style="font-size:0.81rem;font-weight:600;margin-bottom:6px;display:block;">
+              Select Scanned Endorsement Letter ${hasExisting ? '<span style="color:#D97706;font-size:0.73rem;">(replace existing)</span>' : ''}
+            </label>
+            <label id="el-drop-zone" class="ojts-dropzone">
+              <span style="color:var(--text-tertiary)">${icon('upload', 24)}</span>
+              <span style="font-size:0.85rem;font-weight:600;color:var(--text-primary)">Click to select file or drag &amp; drop</span>
+              <span style="font-size:0.75rem;color:var(--text-tertiary)">PDF, DOCX, JPG or PNG (up to 5MB)</span>
+              <input type="file" id="el-file-input" accept=".pdf,.docx,.jpg,.jpeg,.png" style="display:none;" />
+            </label>
+          </div>
+
+          <!-- File Preview -->
+          <div id="el-file-preview" style="display:none;padding:10px 14px;background:#05966910;border:1px solid #05966925;border-radius:var(--radius-md);align-items:center;gap:10px;margin-bottom:12px;">
+            <span style="color:#059669;flex-shrink:0;">${icon('fileText', 18)}</span>
+            <div style="flex:1;min-width:0;">
+              <p id="el-file-name" style="font-weight:600;font-size:0.85rem;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-primary);"></p>
+              <p id="el-file-size" style="font-size:0.75rem;color:var(--text-tertiary);margin:2px 0 0;"></p>
+            </div>
+            <button id="el-file-clear" style="background:none;border:none;cursor:pointer;color:var(--text-tertiary);padding:2px;">${icon('x', 14)}</button>
+          </div>
+        </div>
+
+        <p id="el-error" style="color:#EF4444;font-size:0.81rem;margin:12px 0 0;display:none;padding:8px 12px;background:#EF444412;border-radius:var(--radius-sm);"></p>
       </div>
 
-      <div class="modal__footer" style="border-top:1px solid var(--border-default);padding:14px 24px;display:flex;justify-content:flex-end;gap:8px;">
-        <button class="btn btn--outline" id="el-cancel">Cancel</button>
-        <button class="btn btn--primary" id="el-submit" style="background:#005930;border-color:#005930;color:#fff;gap:6px;">${icon('send', 14)} Send Endorsement Letter</button>
+      <!-- Footer -->
+      <div class="modal__footer" style="border-top:1px solid var(--border-default);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;background:var(--bg-card);flex-shrink:0;">
+        <button type="button" class="btn btn--outline" id="el-print-btn" style="gap:6px;font-size:0.82rem;">
+          ${icon('printer', 14)} Print Official Letter
+        </button>
+
+        <div style="display:flex;align-items:center;gap:8px;">
+          <button class="btn btn--outline" id="el-cancel">Cancel</button>
+          <button class="btn btn--primary" id="el-submit" style="background:#005930;border-color:#005930;color:#fff;gap:6px;font-weight:700;">
+            ${icon('send', 14)} Send Endorsement Letter
+          </button>
+        </div>
       </div>
     </div>
   `;
@@ -1492,6 +1723,94 @@ function showEndorsementUploadModal(interestId, slot, students, body, bd, allInt
   modal.querySelector('#el-cancel').addEventListener('click', closeModal);
   modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
 
+  // Tab switching
+  const tabTemplate = modal.querySelector('#el-tab-template');
+  const tabUpload   = modal.querySelector('#el-tab-upload');
+  const paneTemplate = modal.querySelector('#el-pane-template');
+  const paneUpload   = modal.querySelector('#el-pane-upload');
+  const printBtn     = modal.querySelector('#el-print-btn');
+
+  tabTemplate.addEventListener('click', () => {
+    currentMode = 'template';
+    tabTemplate.style.background = '#005930';
+    tabTemplate.style.color = '#ffffff';
+    tabTemplate.style.borderColor = '#005930';
+    tabUpload.style.background = '#ffffff';
+    tabUpload.style.color = 'var(--text-secondary)';
+    tabUpload.style.borderColor = 'var(--border-default)';
+    paneTemplate.style.display = 'block';
+    paneUpload.style.display = 'none';
+    printBtn.style.display = 'inline-flex';
+  });
+
+  tabUpload.addEventListener('click', () => {
+    currentMode = 'upload';
+    tabUpload.style.background = '#005930';
+    tabUpload.style.color = '#ffffff';
+    tabUpload.style.borderColor = '#005930';
+    tabTemplate.style.background = '#ffffff';
+    tabTemplate.style.color = 'var(--text-secondary)';
+    tabTemplate.style.borderColor = 'var(--border-default)';
+    paneUpload.style.display = 'block';
+    paneTemplate.style.display = 'none';
+    printBtn.style.display = 'none';
+  });
+
+  // Real-time Preview Synchronizers
+  const inputContact = modal.querySelector('#el-input-contact');
+  const prevContact  = modal.querySelector('#el-prev-contact');
+  inputContact?.addEventListener('input', () => {
+    prevContact.textContent = inputContact.value.trim() || 'The Internship Director / Human Resources Management';
+  });
+
+  const inputBody = modal.querySelector('#el-input-body');
+  const prevBody  = modal.querySelector('#el-prev-body');
+  inputBody?.addEventListener('input', () => {
+    prevBody.textContent = inputBody.value.trim() || defaultBody;
+  });
+
+  const inputNotes     = modal.querySelector('#el-input-notes');
+  const prevNotesBox   = modal.querySelector('#el-prev-notes-box');
+  const prevNotesText  = modal.querySelector('#el-prev-notes-text');
+  inputNotes?.addEventListener('input', () => {
+    const val = inputNotes.value.trim();
+    if (val) {
+      prevNotesBox.style.display = 'block';
+      prevNotesText.textContent = val;
+    } else {
+      prevNotesBox.style.display = 'none';
+    }
+  });
+
+  // Print button
+  printBtn.addEventListener('click', () => {
+    const paperHtml = modal.querySelector('#el-letter-paper').innerHTML;
+    const printWin = window.open('', '_blank', 'width=850,height=950');
+    if (printWin) {
+      printWin.document.write(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Official CHMSU Endorsement Letter - ${escHtml(studentName)}</title>
+            <style>
+              @page { size: letter portrait; margin: 15mm; }
+              body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; margin: 0; padding: 20px; line-height: 1.5; background: #fff; }
+              @media print { body { padding: 0; } }
+            </style>
+          </head>
+          <body>
+            ${paperHtml}
+            <script>
+              window.onload = function() { window.print(); };
+            </script>
+          </body>
+        </html>
+      `);
+      printWin.document.close();
+    }
+  });
+
+  // File Upload Handlers (for Tab 2)
   const fileInput = modal.querySelector('#el-file-input');
   const dropZone  = modal.querySelector('#el-drop-zone');
   const preview   = modal.querySelector('#el-file-preview');
@@ -1534,30 +1853,37 @@ function showEndorsementUploadModal(interestId, slot, students, body, bd, allInt
     }
   });
 
+  // Submit Handler
   modal.querySelector('#el-submit').addEventListener('click', async () => {
-    const file      = fileInput.files[0];
     const submitBtn = modal.querySelector('#el-submit');
+    errEl.style.display = 'none';
 
-    if (!file) {
-      errEl.textContent = 'Please select an endorsement letter document to upload.';
-      errEl.style.display = 'block';
-      return;
-    }
+    const formData = new FormData();
 
-    if (file.size > 5 * 1024 * 1024) {
-      errEl.textContent = 'File too large. Maximum size is 5MB.';
-      errEl.style.display = 'block';
-      return;
+    if (currentMode === 'template') {
+      formData.append('is_generated', '1');
+      formData.append('contact_person', inputContact?.value?.trim() || '');
+      formData.append('coordinator_note', inputNotes?.value?.trim() || '');
+      formData.append('custom_body', inputBody?.value?.trim() || '');
+    } else {
+      const file = fileInput.files[0];
+      if (!file) {
+        errEl.textContent = 'Please select an endorsement letter document to upload.';
+        errEl.style.display = 'block';
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        errEl.textContent = 'File too large. Maximum size is 5MB.';
+        errEl.style.display = 'block';
+        return;
+      }
+      formData.append('endorsement_letter', file);
     }
 
     submitBtn.disabled = true;
     submitBtn.innerHTML = `${icon('clock', 14)} Sending…`;
-    errEl.style.display = 'none';
 
     try {
-      const formData = new FormData();
-      formData.append('endorsement_letter', file);
-
       const res = await apiUpload(`/supervisor/recommend/${interestId}`, formData);
 
       if (res?.success) {

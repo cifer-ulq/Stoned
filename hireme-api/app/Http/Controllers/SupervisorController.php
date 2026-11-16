@@ -279,9 +279,12 @@ class SupervisorController extends Controller
                     'coordinator_note'         => $i->coordinator_note,
                     'ojt_start_date'           => $i->ojt_start_date?->format('M d, Y'),
                     'student'                  => [
-                        'id'       => $i->student->id,
-                        'name'     => $i->student->name,
-                        'email'    => $i->student->email,
+                        'id'                     => $i->student->id,
+                        'name'                   => $i->student->name,
+                        'email'                  => $i->student->email,
+                        'student_id'             => $i->student->studentProfile?->student_id ?? ('CHMSU-' . $i->student->id),
+                        'section'                => $i->student->studentProfile?->section ?? 'A',
+                        'year_level'             => $i->student->studentProfile?->year_level ?? '4th Year',
                         'headline'               => $i->student->studentProfile?->headline,
                         'program'                => $i->student->studentProfile?->program,
                         'location'               => $i->student->studentProfile?->location,
@@ -296,6 +299,9 @@ class SupervisorController extends Controller
                         'department'      => $i->posting->department,
                         'industry'        => $i->posting->industry,
                         'location'        => $i->posting->location,
+                        'duration'        => $i->posting->duration ?? '600 Hours',
+                        'contact_name'    => $i->posting->contact_name,
+                        'contact_phone'   => $i->posting->contact_phone,
                         'company_color'   => $i->posting->company_color,
                         'company_initial' => $i->posting->company_initial,
                     ],
@@ -486,19 +492,36 @@ class SupervisorController extends Controller
 
         $validated = $request->validate([
             'endorsement_letter' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
+            'is_generated'       => ['nullable'],
+            'contact_person'     => ['nullable', 'string', 'max:255'],
+            'coordinator_note'   => ['nullable', 'string', 'max:1000'],
+            'custom_body'        => ['nullable', 'string', 'max:2000'],
         ]);
 
         $letterPath = null;
         if ($request->hasFile('endorsement_letter')) {
             $letterPath = $request->file('endorsement_letter')
                 ->store('endorsement-letters', 'public');
+        } else {
+            // Dynamically generate the official CHMSU Endorsement Memorandum PDF
+            $letterPath = \App\Services\EndorsementPdfService::generateAndStore(
+                $interest,
+                $request->user(),
+                [
+                    'contact_person'   => $request->input('contact_person'),
+                    'coordinator_note' => $request->input('coordinator_note'),
+                    'custom_body'      => $request->input('custom_body'),
+                ]
+            );
         }
 
         $interest->update([
-            'status'             => 'endorsed',
-            'endorsed_by'        => $request->user()->id,
-            'endorsed_at'        => now(),
-            'endorsement_letter' => $letterPath,
+            'status'                     => 'endorsed',
+            'endorsed_by'                => $request->user()->id,
+            'endorsed_at'                => now(),
+            'endorsement_letter'         => $letterPath,
+            'endorsement_letter_sent_at' => now(),
+            'coordinator_note'           => $request->input('coordinator_note', $interest->coordinator_note),
         ]);
 
         // Notify company that endorsement letter has been sent
@@ -628,14 +651,16 @@ class SupervisorController extends Controller
                     'max_overtime_hours'         => (float) ($i->max_overtime_hours ?? 0),
                     'estimated_end_date'         => $i->estimated_end_date?->format('M d, Y'),
                     'student'         => [
-                        'id'         => $i->student->id,
-                        'name'       => $i->student->name,
-                        'email'      => $i->student->email,
-                        'program'    => $sp?->program ?? '—',
-                        'year_level' => $sp?->year_level ?? '',
-                        'headline'   => $sp?->headline ?? '',
-                        'location'   => $sp?->location ?? '',
-                        'phone'      => $sp?->phone ?? '',
+                        'id'                     => $i->student->id,
+                        'name'                   => $i->student->name,
+                        'email'                  => $i->student->email,
+                        'student_id'             => $sp?->student_id ?? ('CHMSU-' . $i->student->id),
+                        'section'                => $sp?->section ?? 'A',
+                        'program'                => $sp?->program ?? '—',
+                        'year_level'             => $sp?->year_level ?? '4th Year',
+                        'headline'               => $sp?->headline ?? '',
+                        'location'               => $sp?->location ?? '',
+                        'phone'                  => $sp?->phone ?? '',
                         'skills'                 => $sp?->skills ?? [],
                         'gpa'                    => $sp?->gpa ?? '',
                         'requirements_drive_url' => $sp?->requirements_drive_url,
