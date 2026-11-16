@@ -891,6 +891,10 @@ class SupervisorController extends Controller
             $latestReq = $student->ojtRequirements?->sortByDesc('id')->first();
             $hasDrive = !empty($latestReq?->drive_url) || !empty($sp?->requirements_drive_url);
 
+            $reqStatus = $latestReq ? $latestReq->status : 'not_assigned';
+            $isMissingReqs = in_array($reqStatus, ['not_assigned', 'pending', 'needs_revision']);
+            $isOverdue = (bool) ($latestReq && $latestReq->due_date && $latestReq->due_date->isPast() && in_array($reqStatus, ['pending', 'needs_revision']));
+
             return [
                 'id'             => $student->id,
                 'name'           => $student->name,
@@ -901,7 +905,18 @@ class SupervisorController extends Controller
                 'year'           => $sp?->year_level ?? '—',
                 'section'        => $cleanSection ?: '—',
                 'studentId'      => $sp?->student_id ?? '—',
-                'requirements_drive_url' => $sp?->requirements_drive_url,
+                'requirements_drive_url'   => $sp?->requirements_drive_url,
+                'requirements_status'      => $reqStatus,
+                'is_missing_requirements'  => $isMissingReqs,
+                'is_requirements_overdue'  => $isOverdue,
+                'requirements_status_text' => match ($reqStatus) {
+                    'not_assigned'   => 'Not Assigned',
+                    'pending'        => 'Not Submitted',
+                    'needs_revision' => 'Revision Needed',
+                    'submitted'      => 'Ready for Review',
+                    'verified'       => 'Verified & Approved',
+                    default          => 'Not Assigned',
+                },
                 'requirements'           => $latestReq ? [
                     'id'                 => $latestReq->id,
                     'title'              => $latestReq->title,
@@ -992,6 +1007,31 @@ class SupervisorController extends Controller
                 'evaluations'    => ['midterm' => 'n/a', 'final' => 'n/a'],
             ];
         });
+
+        $reqFilter = $request->query('requirements_status');
+        if ($reqFilter) {
+            $data = $data->filter(function ($item) use ($reqFilter) {
+                if ($reqFilter === 'missing') {
+                    return $item['is_missing_requirements'] === true;
+                }
+                if ($reqFilter === 'not_assigned') {
+                    return $item['requirements_status'] === 'not_assigned';
+                }
+                if ($reqFilter === 'not_submitted' || $reqFilter === 'pending') {
+                    return $item['requirements_status'] === 'pending';
+                }
+                if ($reqFilter === 'needs_revision') {
+                    return $item['requirements_status'] === 'needs_revision';
+                }
+                if ($reqFilter === 'submitted') {
+                    return $item['requirements_status'] === 'submitted';
+                }
+                if ($reqFilter === 'verified') {
+                    return $item['requirements_status'] === 'verified';
+                }
+                return true;
+            })->values();
+        }
 
         $sections = $data->pluck('section')
             ->filter(fn($s) => $s && $s !== '—')

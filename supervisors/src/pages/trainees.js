@@ -29,43 +29,59 @@ const STATUS_BADGES = {
 const BAR_COLOR = pct => pct >= 75 ? '#005930' : pct >= 40 ? '#10B981' : '#F59E0B';
 
 /* ── Requirements Indicator Helper ──
-   Only shows an indicator when requirements require action (not submitted, revision needed, or awaiting review).
-   When requirements are met and approved (verified), the indicator is completely gone. ── */
+   Shows distinct badge indicators for all requirement statuses:
+   Not Assigned, Not Submitted (flagged if overdue), Revision Needed, Ready for Review, and Verified. ── */
 function renderRequirementsIndicator(t) {
   const req = t.requirements;
-  if (!req) return '';
+  const rStatus = t.requirements_status || (req ? req.status : 'not_assigned');
 
-  // If requirements are verified and approved, the indicator is GONE
-  if (req.status === 'verified' || req.is_verified) {
-    return '';
-  }
-
-  // Revision requested by supervisor
-  if (req.status === 'needs_revision' || req.needs_revision) {
+  // 1. Not Assigned (No packet created for this student yet)
+  if (!req || rStatus === 'not_assigned') {
     return `
       <div style="margin-top:4px;">
-        <span class="badge" style="background:#FEE2E2;color:#991B1B;border:1px solid #FCA5A5;font-size:0.74rem;padding:2px 8px;font-weight:700;border-radius:4px;display:inline-flex;align-items:center;gap:4px;" title="Revision requested: ${escapeHtml(req.supervisor_remarks || 'Update required documents')}">
+        <span class="badge-req-indicator badge-req-indicator--unassigned" title="No OJT requirements packet assigned yet — click View to assign">
+          ${icon('alertCircle', 11)} Reqs: Not Assigned
+        </span>
+      </div>`;
+  }
+
+  // 2. Verified and approved
+  if (rStatus === 'verified' || req.status === 'verified' || req.is_verified) {
+    return `
+      <div style="margin-top:4px;">
+        <span class="badge-req-indicator badge-req-indicator--verified" title="All pre-deployment requirements verified and approved">
+          ${icon('checkCircle', 11)} Reqs: Verified
+        </span>
+      </div>`;
+  }
+
+  // 3. Revision requested by supervisor
+  if (rStatus === 'needs_revision' || req.status === 'needs_revision' || req.needs_revision) {
+    return `
+      <div style="margin-top:4px;">
+        <span class="badge-req-indicator badge-req-indicator--revision" title="Revision requested: ${escapeHtml(req.supervisor_remarks || 'Update required documents')}">
           ${icon('alertTriangle', 11)} Reqs: Revision Needed
         </span>
       </div>`;
   }
 
-  // Student submitted, waiting for supervisor review/verification
-  if (req.status === 'submitted') {
+  // 4. Student submitted, waiting for supervisor review/verification
+  if (rStatus === 'submitted' || req.status === 'submitted') {
     return `
       <div style="margin-top:4px;">
-        <span class="badge" style="background:#EFF6FF;color:#1D4ED8;border:1px solid #93C5FD;font-size:0.74rem;padding:2px 8px;font-weight:700;border-radius:4px;display:inline-flex;align-items:center;gap:4px;" title="Student submitted Google Drive folder — click to review and verify">
+        <span class="badge-req-indicator badge-req-indicator--submitted" title="Student submitted Google Drive folder — click to review and verify">
           ${icon('folder', 11)} Reqs: Ready for Review
         </span>
       </div>`;
   }
 
-  // Assigned but student has not submitted yet
-  if (req.status === 'pending' || req.is_pending) {
+  // 5. Assigned but student has not submitted yet
+  if (rStatus === 'pending' || req.status === 'pending' || req.is_pending) {
+    const isOverdue = t.is_requirements_overdue || (req.due_date && new Date(req.due_date) < new Date());
     return `
       <div style="margin-top:4px;">
-        <span class="badge" style="background:#FFFBEB;color:#B45309;border:1px solid #FCD34D;font-size:0.74rem;padding:2px 8px;font-weight:700;border-radius:4px;display:inline-flex;align-items:center;gap:4px;" title="Document packet assigned but student has not submitted files yet">
-          ${icon('clock', 11)} Reqs: Not Submitted
+        <span class="badge-req-indicator badge-req-indicator--pending" title="Document packet assigned but student has not submitted files yet${isOverdue ? ' (Past Due Date)' : ''}">
+          ${icon('clock', 11)} Reqs: Not Submitted ${isOverdue ? '<strong style="color:#DC2626;font-size:0.68rem;margin-left:2px;">(Overdue)</strong>' : ''}
         </span>
       </div>`;
   }
@@ -408,6 +424,9 @@ export default function traineesPage(container) {
         <button class="tr2-tab-btn" data-status="Undeployed">
           Undeployed <span class="tr2-tab-count" id="count-undeployed">0</span>
         </button>
+        <button class="tr2-tab-btn" data-status="Missing Requirements" title="Students who haven't completed, submitted, or been assigned OJT requirements">
+          ${icon('alertCircle', 14)} Missing Reqs <span class="tr2-tab-count tr2-tab-count--rose" id="count-missing-reqs">0</span>
+        </button>
         <button class="tr2-tab-btn" data-status="Emergency">
           Leave &amp; Notice <span class="tr2-tab-count" id="count-emergency">0</span>
         </button>
@@ -424,6 +443,19 @@ export default function traineesPage(container) {
         </div>
 
         <div class="tr2-filter-tools">
+          <div class="tr2-select-wrap">
+            ${icon('clipboardCheck', 14)}
+            <select class="tr2-select" id="trainee-requirements-filter" title="Filter by Requirements Compliance">
+              <option value="">All Requirements</option>
+              <option value="missing">⚠️ Missing / Incomplete Reqs</option>
+              <option value="not_assigned">📋 Not Assigned (No Packet)</option>
+              <option value="not_submitted">⏳ Assigned (Not Submitted)</option>
+              <option value="needs_revision">🔄 Revision Needed</option>
+              <option value="submitted">📥 Ready for Review</option>
+              <option value="verified">✅ Verified &amp; Met</option>
+            </select>
+          </div>
+
           <div class="tr2-select-wrap">
             ${icon('filter', 14)}
             <select class="tr2-select" id="trainee-section-filter" title="Filter by Section">
@@ -672,11 +704,12 @@ export default function traineesPage(container) {
   }
 
   function updateTabCounts(list) {
-    const total      = list.length;
-    const active     = list.filter(t => t.status === 'Active OJT').length;
-    const pending    = list.filter(t => t.approval_status === 'pending').length;
-    const undeployed = list.filter(t => t.status === 'Undeployed').length;
-    const emergency  = list.filter(t => t.emergency_status !== 'none' || t.status.includes('Leave') || t.status.includes('Emergency')).length;
+    const total       = list.length;
+    const active      = list.filter(t => t.status === 'Active OJT').length;
+    const pending     = list.filter(t => t.approval_status === 'pending').length;
+    const undeployed  = list.filter(t => t.status === 'Undeployed').length;
+    const emergency   = list.filter(t => t.emergency_status !== 'none' || t.status.includes('Leave') || t.status.includes('Emergency')).length;
+    const missingReqs = list.filter(t => !t.requirements || t.requirements.status === 'pending' || t.requirements.status === 'needs_revision' || t.is_missing_requirements).length;
 
     const setEl = (id, val) => {
       const el = container.querySelector(id);
@@ -688,6 +721,7 @@ export default function traineesPage(container) {
     setEl('#count-pending', pending);
     setEl('#count-undeployed', undeployed);
     setEl('#count-emergency', emergency);
+    setEl('#count-missing-reqs', missingReqs);
   }
 
   function syncStatusTabUi() {
@@ -713,6 +747,7 @@ export default function traineesPage(container) {
   /* ── Event listeners for filtering ── */
   const searchInput    = container.querySelector('#trainee-search');
   const searchClear    = container.querySelector('#trainee-search-clear');
+  const reqSelect      = container.querySelector('#trainee-requirements-filter');
   const sectionSelect  = container.querySelector('#trainee-section-filter');
   const sortSelect     = container.querySelector('#trainee-sort-filter');
   const resetBtn       = container.querySelector('#trainee-reset-filters');
@@ -767,6 +802,13 @@ export default function traineesPage(container) {
     searchInput.focus();
   });
 
+  if (reqSelect) {
+    reqSelect.addEventListener('change', () => {
+      currentPage = 1;
+      applyFilters();
+    });
+  }
+
   sectionSelect.addEventListener('change', () => {
     currentPage = 1;
     applyFilters();
@@ -780,6 +822,7 @@ export default function traineesPage(container) {
   resetBtn.addEventListener('click', () => {
     searchInput.value = '';
     searchClear.style.display = 'none';
+    if (reqSelect) reqSelect.value = '';
     sectionSelect.value = '';
     sortSelect.value = 'name_asc';
     activeStatusTab = '';
@@ -912,9 +955,10 @@ export default function traineesPage(container) {
   function applyFilters() {
     const q       = searchInput.value.toLowerCase().trim();
     const section = sectionSelect.value;
+    const reqVal  = reqSelect ? reqSelect.value : '';
     const sortVal = sortSelect.value;
 
-    const hasActiveFilters = Boolean(q || activeStatusTab || section || sortVal !== 'name_asc');
+    const hasActiveFilters = Boolean(q || activeStatusTab || section || reqVal || sortVal !== 'name_asc');
     resetBtn.style.display = hasActiveFilters ? 'inline-flex' : 'none';
 
     filteredTrainees = allTrainees.filter(t => {
@@ -931,7 +975,7 @@ export default function traineesPage(container) {
         }
       }
 
-      // Status matching
+      // Status matching (Status Tabs)
       if (activeStatusTab) {
         if (activeStatusTab === 'Pending Approval') {
           if (t.approval_status !== 'pending' && t.status !== 'Pending Approval') return false;
@@ -939,6 +983,9 @@ export default function traineesPage(container) {
           if (t.emergency_status === 'none' && !t.status.includes('Leave') && !t.status.includes('Emergency')) return false;
         } else if (activeStatusTab === 'Placed') {
           if (!t.hasPlacement) return false;
+        } else if (activeStatusTab === 'Missing Requirements') {
+          const isMissing = !t.requirements || t.requirements.status === 'pending' || t.requirements.status === 'needs_revision' || t.is_missing_requirements;
+          if (!isMissing) return false;
         } else {
           if (t.status !== activeStatusTab) return false;
         }
@@ -946,6 +993,25 @@ export default function traineesPage(container) {
 
       // Section matching
       if (section && t.section !== section) return false;
+
+      // Requirements filter matching (Dropdown)
+      if (reqVal) {
+        const rStatus = t.requirements_status || (t.requirements ? t.requirements.status : 'not_assigned');
+        if (reqVal === 'missing') {
+          const isMissing = !t.requirements || rStatus === 'not_assigned' || rStatus === 'pending' || rStatus === 'needs_revision' || t.is_missing_requirements;
+          if (!isMissing) return false;
+        } else if (reqVal === 'not_assigned') {
+          if (t.requirements && rStatus !== 'not_assigned') return false;
+        } else if (reqVal === 'not_submitted') {
+          if (!t.requirements || (rStatus !== 'pending' && !t.requirements.is_pending)) return false;
+        } else if (reqVal === 'needs_revision') {
+          if (!t.requirements || (rStatus !== 'needs_revision' && !t.requirements.needs_revision)) return false;
+        } else if (reqVal === 'submitted') {
+          if (!t.requirements || rStatus !== 'submitted') return false;
+        } else if (reqVal === 'verified') {
+          if (!t.requirements || (rStatus !== 'verified' && !t.requirements.is_verified)) return false;
+        }
+      }
 
       return true;
     });
@@ -1001,6 +1067,7 @@ export default function traineesPage(container) {
         emptyReset.addEventListener('click', () => {
           searchInput.value = '';
           searchClear.style.display = 'none';
+          if (reqSelect) reqSelect.value = '';
           sectionSelect.value = '';
           sortSelect.value = 'name_asc';
           activeStatusTab = '';

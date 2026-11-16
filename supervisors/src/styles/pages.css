@@ -326,6 +326,53 @@
   background: #FEF3C7;
   color: #92400E;
 }
+.tr2-tab-count--rose {
+  background: #FEE2E2;
+  color: #991B1B;
+}
+
+/* Requirements Indicators in Table */
+.badge-req-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.74rem;
+  padding: 2.5px 8px;
+  font-weight: 700;
+  border-radius: 4px;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+.badge-req-indicator svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+.badge-req-indicator--unassigned {
+  background: #F1F5F9;
+  color: #475569;
+  border: 1px solid #CBD5E1;
+}
+.badge-req-indicator--pending {
+  background: #FFFBEB;
+  color: #B45309;
+  border: 1px solid #FCD34D;
+}
+.badge-req-indicator--revision {
+  background: #FEE2E2;
+  color: #991B1B;
+  border: 1px solid #FCA5A5;
+}
+.badge-req-indicator--submitted {
+  background: #EFF6FF;
+  color: #1D4ED8;
+  border: 1px solid #93C5FD;
+}
+.badge-req-indicator--verified {
+  background: rgba(0, 89, 48, 0.08);
+  color: #005930;
+  border: 1px solid rgba(0, 89, 48, 0.25);
+}
 
 /* Filter toolbar row */
 .tr2-filter-toolbar {
