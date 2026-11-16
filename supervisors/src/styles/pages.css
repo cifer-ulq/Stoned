@@ -1822,6 +1822,117 @@
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
+/* ── Live Tab Count Badges ── */
+.ojts-tab-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(100, 116, 139, 0.12);
+  color: var(--text-secondary);
+  margin-left: 3px;
+  line-height: 1.2;
+  min-width: 17px;
+  transition: all var(--duration-fast);
+}
+.ojts-filter-btn--active .ojts-tab-pill {
+  background: rgba(0, 89, 48, 0.12);
+  color: #005930;
+}
+.ojts-tab-pill--warn {
+  background: #FEF3C7;
+  color: #B45309;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+.ojts-filter-btn--active .ojts-tab-pill--warn {
+  background: #B45309;
+  color: #ffffff;
+  border-color: #B45309;
+}
+.ojts-tab-pill--green {
+  background: #ECFDF5;
+  color: #059669;
+}
+.ojts-tab-pill--fill {
+  background: #FFFBEB;
+  color: #D97706;
+}
+.ojts-tab-pill--closed {
+  background: #F1F5F9;
+  color: #64748B;
+}
+
+/* ── Registered Company Select & Search Controls ── */
+.ojts-company-select-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 250px;
+}
+.ojts-company-select-wrap .ojts-select-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #005930;
+  pointer-events: none;
+  display: inline-flex;
+}
+.ojts-select {
+  width: 100%;
+  height: 38px;
+  padding: 0 14px 0 34px;
+  font-size: var(--text-xs);
+  font-weight: 500;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  outline: none;
+  cursor: pointer;
+  transition: border-color var(--duration-fast), box-shadow var(--duration-fast);
+}
+.ojts-select:focus {
+  border-color: #005930;
+  box-shadow: 0 0 0 2px rgba(0, 89, 48, 0.12);
+}
+.ojts-search-clear {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: 3px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: color var(--duration-fast), background var(--duration-fast);
+}
+.ojts-search-clear:hover {
+  color: var(--text-primary);
+  background: rgba(0, 0, 0, 0.05);
+}
+.ojts-filter-active-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 14px;
+  background: rgba(0, 89, 48, 0.04);
+  border: 1px solid rgba(0, 89, 48, 0.14);
+  border-radius: 8px;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  margin-top: 10px;
+  animation: fadeIn 0.15s ease-out;
+}
+
 /* ── Postings Grid (3 columns on desktop, enlarged cards) ── */
 .ojts-grid {
   display: grid;

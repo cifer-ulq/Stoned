@@ -323,6 +323,43 @@ class SupervisorController extends Controller
     }
 
     /**
+     * GET /supervisor/companies
+     * Returns all registered partner companies with active posting counts.
+     * Ensures only companies registered in our system are returned.
+     */
+    public function companies(Request $request)
+    {
+        $companies = User::where('role', 'company')
+            ->with('companyProfile')
+            ->get()
+            ->map(function ($u) {
+                $companyName = $u->companyProfile?->company_name ?: $u->name;
+                $postingsCount = OjtPosting::where(function ($q) use ($u, $companyName) {
+                    $q->where('company_user_id', $u->id)
+                      ->orWhere('company_name', 'ilike', $companyName);
+                })->count();
+
+                return [
+                    'id'             => $u->id,
+                    'name'           => $companyName,
+                    'email'          => $u->email,
+                    'avatar_url'     => $u->avatar_url,
+                    'industry'       => $u->companyProfile?->company_type ?? 'Partner Company',
+                    'location'       => $u->companyProfile?->company_location ?? '',
+                    'is_active'      => ($u->companyProfile?->status ?? 'Active') === 'Active',
+                    'postings_count' => $postingsCount,
+                ];
+            })
+            ->sortBy('name')
+            ->values();
+
+        return response()->json([
+            'success' => true,
+            'data'    => $companies,
+        ]);
+    }
+
+    /**
      * POST /supervisor/request-endorsement/{interestId}
      * OJT Coordinator requests an endorsement letter for a company-reviewed student.
      * Gate: interest must be at status company_reviewed.

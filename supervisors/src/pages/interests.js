@@ -92,15 +92,46 @@ export default function interestsPage(container) {
       <div class="ojts-filter-bar">
         <div class="ojts-search-box">
           <span class="ojts-search-icon">${icon('search', 15)}</span>
-          <input type="text" id="ojts-search-input" class="ojts-search-input" placeholder="Search by job position, host company, or course program..." />
+          <input type="text" id="ojts-search-input" class="ojts-search-input" placeholder="Search by job position, host company, or course program..." autocomplete="off" />
+          <button type="button" id="ojts-search-clear" class="ojts-search-clear" style="display:none;" aria-label="Clear search" title="Clear search">
+            ${icon('x', 14)}
+          </button>
         </div>
+
+        <!-- Registered Company Filter Dropdown (Strictly Registered Companies in System) -->
+        <div class="ojts-company-select-wrap">
+          <span class="ojts-select-icon">${icon('building', 14)}</span>
+          <select id="ojts-company-filter" class="ojts-select" title="Filter by Registered Host Company">
+            <option value="">All Registered Companies</option>
+          </select>
+        </div>
+
+        <!-- Status Filter Tabs with Live Count Badges (Including 5th Closed/Full Tab) -->
         <div class="ojts-filter-tabs" id="ojts-filter-tabs">
-          <button class="ojts-filter-btn ojts-filter-btn--active" data-filter="all">All Listings</button>
-          <button class="ojts-filter-btn" data-filter="pending" id="ojts-filter-pending-btn">Action Required</button>
-          <button class="ojts-filter-btn" data-filter="open">Open</button>
-          <button class="ojts-filter-btn" data-filter="filling_up">Filling Up</button>
+          <button class="ojts-filter-btn ojts-filter-btn--active" data-filter="all">
+            All Listings <span class="ojts-tab-pill" id="tab-cnt-all">0</span>
+          </button>
+          <button class="ojts-filter-btn" data-filter="pending" id="ojts-filter-pending-btn">
+            ${icon('clock', 12)} Action Required <span class="ojts-tab-pill ojts-tab-pill--warn" id="tab-cnt-pending">0</span>
+          </button>
+          <button class="ojts-filter-btn" data-filter="open">
+            Open <span class="ojts-tab-pill ojts-tab-pill--green" id="tab-cnt-open">0</span>
+          </button>
+          <button class="ojts-filter-btn" data-filter="filling_up">
+            Filling Up <span class="ojts-tab-pill ojts-tab-pill--fill" id="tab-cnt-filling">0</span>
+          </button>
+          <button class="ojts-filter-btn" data-filter="closed">
+            Closed / Full <span class="ojts-tab-pill ojts-tab-pill--closed" id="tab-cnt-closed">0</span>
+          </button>
         </div>
+
+        <button type="button" class="btn btn--ghost btn--sm" id="ojts-reset-filters" style="display:none;font-size:0.8rem;gap:4px;padding:6px 12px;color:#b91c1c;" title="Reset all search and filter options">
+          ${icon('x', 13)} Reset Filters
+        </button>
       </div>
+
+      <!-- Active Filter Summary Context Strip -->
+      <div id="ojts-filter-summary" class="ojts-filter-active-summary" style="display:none;"></div>
 
       <!-- ── Postings Body ── -->
       <div id="int-body">
@@ -169,9 +200,63 @@ async function loadPage(container) {
     }
   });
 
+  // Load registered companies: /supervisor/companies → fallback to /chat/companies
+  let registeredCompanies = [];
+  try {
+    const cRes = await apiGet('/supervisor/companies');
+    if (cRes?.success && Array.isArray(cRes.data)) {
+      registeredCompanies = cRes.data;
+    }
+  } catch {}
+
+  if (!registeredCompanies.length) {
+    try {
+      const cRes = await apiGet('/chat/companies');
+      if (Array.isArray(cRes?.data)) {
+        registeredCompanies = cRes.data;
+      }
+    } catch {}
+  }
+
   if (!container || !document.contains(container)) return;
   updateStats(container, slots, interests);
-  setupFiltersAndRender(container, slots, interests);
+  setupFiltersAndRender(container, slots, interests, registeredCompanies);
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function getSlotMetrics(slot, interests) {
+  const si = interests.filter(i => String(i.slotId ?? i.posting?.id ?? i.ojt_posting_id) === String(slot.id));
+  const pendingLetters   = si.filter(i => i.status === 'endorsement_requested').length;
+  const pendingApprovals = si.filter(i => i.status === 'company_accepted').length;
+  const activeOrPlaced   = si.filter(i => ['company_accepted', 'accepted', 'ojt_confirmed', 'ojt_started'].includes(i.status)).length;
+  const slotsTotal       = Number(slot.slots_total || slot.slots || 0);
+
+  let slotsLeft = slot.slots_remaining !== undefined && slot.slots_remaining !== null
+    ? Number(slot.slots_remaining)
+    : (slotsTotal ? Math.max(0, slotsTotal - activeOrPlaced) : null);
+  if (slotsTotal > 0 && activeOrPlaced > 0 && (slotsLeft === null || slotsLeft >= slotsTotal)) {
+    slotsLeft = Math.max(0, slotsTotal - activeOrPlaced);
+  }
+  if (slotsTotal > 0 && slotsLeft !== null && (slotsTotal - slotsLeft) < activeOrPlaced) {
+    slotsLeft = Math.max(0, slotsTotal - activeOrPlaced);
+  }
+
+  const hasActionRequired = (pendingLetters > 0 || pendingApprovals > 0);
+  const isClosed = slot.status === 'closed' || (slotsTotal > 0 && slotsLeft === 0);
+  const isFillingUp = !isClosed && (slot.status === 'filling_up' || (slotsTotal > 0 && slotsLeft !== null && slotsLeft > 0 && slotsLeft <= 2 && (slotsTotal - slotsLeft) > 0));
+  const isOpen = !isClosed && !isFillingUp && (slot.status === 'open' || !slot.status || slotsLeft === null || slotsLeft > 2);
+
+  return {
+    si,
+    pendingLetters,
+    pendingApprovals,
+    hasActionRequired,
+    slotsTotal,
+    slotsLeft,
+    isOpen,
+    isFillingUp,
+    isClosed,
+  };
 }
 
 // ── Stats ────────────────────────────────────────────────────────────────────
@@ -184,89 +269,226 @@ function updateStats(container, slots, interests) {
 
   const pendingInterests = interests.filter(i => i.status === 'endorsement_requested' || i.status === 'company_accepted');
 
-  if (stListings) stListings.textContent = slots.filter(s => s.status !== 'closed').length;
+  if (stListings) stListings.textContent = slots.filter(s => !getSlotMetrics(s, interests).isClosed).length;
   if (stTotal)    stTotal.textContent    = interests.length;
   if (stPending)  stPending.textContent  = pendingInterests.length;
   if (stRecd)     stRecd.textContent     = interests.filter(i => i.status === 'endorsed' || i.status === 'ojt_started' || i.status === 'accepted' || i.status === 'ojt_confirmed').length;
-
-  const pendingFilterBtn = container.querySelector('#ojts-filter-pending-btn');
-  if (pendingFilterBtn) {
-    const lettersCount = interests.filter(i => i.status === 'endorsement_requested').length;
-    const approvalsCount = interests.filter(i => i.status === 'company_accepted').length;
-    const totalActions = lettersCount + approvalsCount;
-    const isApprovalOnly = lettersCount === 0 && approvalsCount > 0;
-    pendingFilterBtn.innerHTML = `
-      ${icon('clock', 13)} Action Required
-      ${totalActions > 0 ? `<span class="ojts-card__urgent-badge${isApprovalOnly ? ' ojts-card__urgent-badge--approve' : ''}" style="padding:1px 7px;font-size:0.71rem;margin-left:4px;"><span class="ojts-pulse-dot${isApprovalOnly ? ' ojts-pulse-dot--green' : ''}" style="width:5px;height:5px;"></span> ${totalActions}</span>` : ''}
-    `;
-  }
 }
 
 // ── Search and Filter Handling ───────────────────────────────────────────────
-function setupFiltersAndRender(container, slots, interests) {
+function setupFiltersAndRender(container, slots, interests, registeredCompanies = []) {
   const body = (container && container.querySelector('#int-body')) || document.getElementById('int-body');
   if (!body) return;
-  const searchInput = (container && container.querySelector('#ojts-search-input')) || document.getElementById('ojts-search-input');
-  const filterTabs = container ? container.querySelectorAll('.ojts-filter-btn') : document.querySelectorAll('.ojts-filter-btn');
 
-  let currentFilter = 'all';
-  let searchQuery = '';
+  const searchInput    = (container && container.querySelector('#ojts-search-input')) || document.getElementById('ojts-search-input');
+  const searchClearBtn = (container && container.querySelector('#ojts-search-clear')) || document.getElementById('ojts-search-clear');
+  const companySelect  = (container && container.querySelector('#ojts-company-filter')) || document.getElementById('ojts-company-filter');
+  const filterTabs     = container ? container.querySelectorAll('.ojts-filter-btn') : document.querySelectorAll('.ojts-filter-btn');
+  const resetBtn       = (container && container.querySelector('#ojts-reset-filters')) || document.getElementById('ojts-reset-filters');
+  const filterSummary  = (container && container.querySelector('#ojts-filter-summary')) || document.getElementById('ojts-filter-summary');
+
+  let currentFilter     = 'all';
+  let searchQuery       = '';
+  let selectedCompanyId = '';
+
+  // Populate registered company filter dropdown
+  if (companySelect && registeredCompanies.length) {
+    const prevVal = companySelect.value;
+    const compOptions = registeredCompanies.map(c => {
+      const compNameLower = (c.name || '').toLowerCase().trim();
+      const count = slots.filter(s => {
+        const matchId = s.company_user_id !== undefined && s.company_user_id !== null && String(s.company_user_id) === String(c.id);
+        const matchName = compNameLower && (s.company || s.company_name || '').toLowerCase().trim() === compNameLower;
+        return matchId || matchName;
+      }).length;
+      return { ...c, count };
+    });
+
+    compOptions.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+
+    companySelect.innerHTML = `
+      <option value="">All Registered Companies (${registeredCompanies.length})</option>
+      ${compOptions.map(c => `
+        <option value="${c.id}">${c.name} (${c.count} listing${c.count === 1 ? '' : 's'})</option>
+      `).join('')}
+    `;
+    if (prevVal) companySelect.value = prevVal;
+  }
+
+  function updateTabCounts(targetSlots) {
+    let allCnt = targetSlots.length;
+    let pendingCnt = 0;
+    let openCnt = 0;
+    let fillingCnt = 0;
+    let closedCnt = 0;
+
+    targetSlots.forEach(s => {
+      const m = getSlotMetrics(s, interests);
+      if (m.hasActionRequired) pendingCnt++;
+      if (m.isOpen) openCnt++;
+      if (m.isFillingUp) fillingCnt++;
+      if (m.isClosed) closedCnt++;
+    });
+
+    const cAll    = (container && container.querySelector('#tab-cnt-all')) || document.getElementById('tab-cnt-all');
+    const cPend   = (container && container.querySelector('#tab-cnt-pending')) || document.getElementById('tab-cnt-pending');
+    const cOpen   = (container && container.querySelector('#tab-cnt-open')) || document.getElementById('tab-cnt-open');
+    const cFill   = (container && container.querySelector('#tab-cnt-filling')) || document.getElementById('tab-cnt-filling');
+    const cClosed = (container && container.querySelector('#tab-cnt-closed')) || document.getElementById('tab-cnt-closed');
+
+    if (cAll)    cAll.textContent = allCnt;
+    if (cPend)   cPend.textContent = pendingCnt;
+    if (cOpen)   cOpen.textContent = openCnt;
+    if (cFill)   cFill.textContent = fillingCnt;
+    if (cClosed) cClosed.textContent = closedCnt;
+  }
+
+  function resetAllFilters() {
+    currentFilter = 'all';
+    searchQuery = '';
+    selectedCompanyId = '';
+    if (searchInput) searchInput.value = '';
+    if (companySelect) companySelect.value = '';
+    filterTabs.forEach(b => {
+      b.classList.toggle('ojts-filter-btn--active', b.dataset.filter === 'all');
+    });
+    applyFilter();
+  }
 
   function applyFilter() {
     const currentBody = (container && container.querySelector('#int-body')) || document.getElementById('int-body');
     if (!currentBody) return;
-    let filtered = [...slots];
 
-    // Status / Pending filter (Letters required or OJT final approval required)
-    if (currentFilter === 'pending') {
-      filtered = filtered.filter(s => {
-        const si = interests.filter(i => String(i.slotId ?? i.posting?.id ?? i.ojt_posting_id) === String(s.id));
-        return si.some(i => i.status === 'endorsement_requested' || i.status === 'company_accepted');
+    // 1. Filter by Company (Strictly matches registered company ID or name)
+    let baseList = [...slots];
+    if (selectedCompanyId) {
+      const compObj = registeredCompanies.find(c => String(c.id) === String(selectedCompanyId));
+      const targetCompName = compObj?.name?.toLowerCase().trim();
+      baseList = baseList.filter(s => {
+        const matchesId = s.company_user_id !== undefined && s.company_user_id !== null && String(s.company_user_id) === String(selectedCompanyId);
+        const compName = (s.company || s.company_name || '').toLowerCase().trim();
+        const matchesName = targetCompName && compName === targetCompName;
+        return matchesId || matchesName;
       });
-    } else if (currentFilter === 'open') {
-      filtered = filtered.filter(s => s.status === 'open' || !s.status);
-    } else if (currentFilter === 'filling_up') {
-      filtered = filtered.filter(s => s.status === 'filling_up');
     }
 
-    // Search query filter
+    // 2. Filter by Search Query
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
-      filtered = filtered.filter(s => {
+      baseList = baseList.filter(s => {
         const title   = (s.slotTitle || s.title || '').toLowerCase();
         const company = (s.company || s.company_name || '').toLowerCase();
         const dept    = (s.department || '').toLowerCase();
+        const loc     = (s.location || '').toLowerCase();
+        const sched   = (s.schedule_type || s.schedule || '').toLowerCase();
         const courses = Array.isArray(s.preferred_courses)
           ? s.preferred_courses.join(' ').toLowerCase()
           : (s.preferred_courses || s.preferredCourse || '').toLowerCase();
-        return title.includes(q) || company.includes(q) || dept.includes(q) || courses.includes(q);
+        return title.includes(q) || company.includes(q) || dept.includes(q) || loc.includes(q) || sched.includes(q) || courses.includes(q);
       });
     }
 
-    renderGrid(currentBody, filtered, interests, container);
+    // Update live pill counts based on current search & company scope
+    updateTabCounts(baseList);
+
+    // 3. Filter by Status Tab
+    let filtered = [...baseList];
+    if (currentFilter === 'pending') {
+      filtered = filtered.filter(s => getSlotMetrics(s, interests).hasActionRequired);
+    } else if (currentFilter === 'open') {
+      filtered = filtered.filter(s => getSlotMetrics(s, interests).isOpen);
+    } else if (currentFilter === 'filling_up') {
+      filtered = filtered.filter(s => getSlotMetrics(s, interests).isFillingUp);
+    } else if (currentFilter === 'closed') {
+      filtered = filtered.filter(s => getSlotMetrics(s, interests).isClosed);
+    }
+
+    // Update Clear button & Reset button states
+    const hasActiveFilters = !!(searchQuery.trim() || selectedCompanyId || currentFilter !== 'all');
+    if (resetBtn) resetBtn.style.display = hasActiveFilters ? 'inline-flex' : 'none';
+    if (searchClearBtn) searchClearBtn.style.display = searchQuery.trim() ? 'inline-flex' : 'none';
+
+    // Update Contextual Active Filter Summary Strip
+    if (filterSummary) {
+      if (hasActiveFilters) {
+        const compObj = registeredCompanies.find(c => String(c.id) === String(selectedCompanyId));
+        const parts = [];
+        if (selectedCompanyId && compObj) {
+          parts.push(`Company: <strong>${compObj.name}</strong>`);
+        }
+        if (currentFilter !== 'all') {
+          const tabLabels = {
+            pending: 'Action Required',
+            open: 'Open',
+            filling_up: 'Filling Up',
+            closed: 'Closed / Full',
+          };
+          parts.push(`Status: <strong>${tabLabels[currentFilter] || currentFilter}</strong>`);
+        }
+        if (searchQuery.trim()) {
+          parts.push(`Search: &ldquo;<strong>${searchQuery.trim()}</strong>&rdquo;`);
+        }
+
+        filterSummary.innerHTML = `
+          <span>Showing <strong>${filtered.length}</strong> of <strong>${slots.length}</strong> listings (${parts.join(' &bull; ')})</span>
+          <button type="button" id="ojts-summary-clear-btn" style="color:#0284C7;text-decoration:underline;cursor:pointer;padding:0;background:none;border:none;font-size:0.75rem;font-weight:600;">Clear all</button>
+        `;
+        filterSummary.style.display = 'flex';
+        filterSummary.querySelector('#ojts-summary-clear-btn')?.addEventListener('click', () => {
+          resetAllFilters();
+        });
+      } else {
+        filterSummary.style.display = 'none';
+        filterSummary.innerHTML = '';
+      }
+    }
+
+    renderGrid(currentBody, filtered, interests, container, registeredCompanies, resetAllFilters);
   }
 
+  // Event Listeners
   if (searchInput) {
-    searchInput.addEventListener('input', e => {
+    searchInput.oninput = (e) => {
       searchQuery = e.target.value;
       applyFilter();
-    });
+    };
+  }
+
+  if (searchClearBtn) {
+    searchClearBtn.onclick = () => {
+      searchQuery = '';
+      if (searchInput) searchInput.value = '';
+      applyFilter();
+    };
+  }
+
+  if (companySelect) {
+    companySelect.onchange = (e) => {
+      selectedCompanyId = e.target.value;
+      applyFilter();
+    };
+  }
+
+  if (resetBtn) {
+    resetBtn.onclick = () => {
+      resetAllFilters();
+    };
   }
 
   filterTabs.forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.onclick = () => {
       filterTabs.forEach(b => b.classList.remove('ojts-filter-btn--active'));
       btn.classList.add('ojts-filter-btn--active');
       currentFilter = btn.dataset.filter;
       applyFilter();
-    });
+    };
   });
 
   applyFilter();
 }
 
 // ── Slot Grid ────────────────────────────────────────────────────────────────
-function renderGrid(body, slots, interests, container) {
+function renderGrid(body, slots, interests, container, registeredCompanies = [], resetAllFilters = null) {
   if (!body) return;
   if (!slots.length) {
     body.innerHTML = `
@@ -274,19 +496,30 @@ function renderGrid(body, slots, interests, container) {
         <div class="ojts-empty__icon">${icon('briefcase', 32)}</div>
         <h3 class="ojts-empty__title">No OJT Listings Found</h3>
         <p class="ojts-empty__text">No partner listings matched your current search or filter criteria.</p>
+        <button type="button" class="btn btn--outline btn--sm" id="ojts-empty-reset" style="margin-top:14px;gap:6px;">
+          ${icon('x', 13)} Reset Filters
+        </button>
       </div>`;
+    body.querySelector('#ojts-empty-reset')?.addEventListener('click', () => {
+      if (resetAllFilters) resetAllFilters();
+    });
     return;
   }
 
   const STATUS_CFG = {
-    open:       { label: 'Open',       color: '#059669', bg: '#05966914' },
-    filling_up: { label: 'Filling Up', color: '#D97706', bg: '#D9770614' },
-    closed:     { label: 'Closed',     color: '#64748B', bg: '#64748B14' },
+    open:       { label: 'Open',          color: '#059669', bg: '#05966914' },
+    filling_up: { label: 'Filling Up',    color: '#D97706', bg: '#D9770614' },
+    closed:     { label: 'Closed / Full', color: '#64748B', bg: '#64748B14' },
   };
 
   body.innerHTML = `<div class="ojts-grid">
     ${slots.map(slot => {
-      const sc         = STATUS_CFG[slot.status] || STATUS_CFG.open;
+      const m          = getSlotMetrics(slot, interests);
+      let statusKey    = 'open';
+      if (m.isClosed) statusKey = 'closed';
+      else if (m.isFillingUp) statusKey = 'filling_up';
+
+      const sc         = STATUS_CFG[statusKey] || STATUS_CFG.open;
       const initial    = slot.companyInitial || slot.company_name?.[0] || slot.company?.[0] || '?';
       const title      = slot.slotTitle  || slot.title       || 'OJT Position';
       const company    = slot.company    || slot.company_name || 'Partner Company';
@@ -297,26 +530,14 @@ function renderGrid(body, slots, interests, container) {
       const rawCourse  = Array.isArray(slot.preferred_courses) ? slot.preferred_courses[0] : (slot.preferred_courses || slot.preferredCourse || '');
       const sched      = slot.schedule_type === 'half_day' ? 'Half Day' : slot.schedule_type === 'full_day' ? 'Full Day' : (slot.schedule || '');
 
-      const si            = interests.filter(i => String(i.slotId ?? i.posting?.id ?? i.ojt_posting_id) === String(slot.id));
-      const pending       = si.filter(i => i.status === 'endorsement_requested').length;
-      const pendingAccept = si.filter(i => i.status === 'company_accepted').length;
+      const si            = m.si;
+      const pending       = m.pendingLetters;
+      const pendingAccept = m.pendingApprovals;
       const recd          = si.filter(i => i.status === 'recommended' || i.status === 'endorsed').length;
-      const accepted      = si.filter(i => i.status === 'accepted' || i.status === 'ojt_confirmed' || i.status === 'ojt_started').length;
-      const activeOrPlaced = si.filter(i => ['company_accepted', 'accepted', 'ojt_confirmed', 'ojt_started'].includes(i.status)).length;
-      const slotsTotal    = Number(slot.slots_total || slot.slots || 0);
+      const slotsTotal    = m.slotsTotal;
+      const slotsLeft     = m.slotsLeft;
 
-      // Remaining slots: use backend value, defensively clamped to actual active/placed trainees
-      let slotsLeft = slot.slots_remaining !== undefined && slot.slots_remaining !== null
-        ? Number(slot.slots_remaining)
-        : (slotsTotal ? Math.max(0, slotsTotal - activeOrPlaced) : null);
-      if (slotsTotal > 0 && activeOrPlaced > 0 && (slotsLeft === null || slotsLeft >= slotsTotal)) {
-        slotsLeft = Math.max(0, slotsTotal - activeOrPlaced);
-      }
-      if (slotsTotal > 0 && slotsLeft !== null && (slotsTotal - slotsLeft) < activeOrPlaced) {
-        slotsLeft = Math.max(0, slotsTotal - activeOrPlaced);
-      }
-
-      const slotsUsed     = slotsTotal ? Math.max(activeOrPlaced, (slotsLeft !== null ? slotsTotal - slotsLeft : 0)) : 0;
+      const slotsUsed     = slotsTotal ? Math.max(0, slotsTotal - (slotsLeft !== null ? slotsLeft : 0)) : 0;
       const slotsPct      = slotsTotal ? Math.min(100, Math.round((slotsUsed / slotsTotal) * 100)) : 0;
       const hasUrgentEndorsement = pending > 0;
       const hasUrgentApproval    = pendingAccept > 0;
@@ -446,14 +667,13 @@ function renderGrid(body, slots, interests, container) {
                                e.target.closest('.ojts-card__pill-warn') ||
                                e.target.closest('.ojts-card__pill-good--urgent') ||
                                e.target.closest('.ojts-card__pill-good'));
-      const si = interests.filter(i => String(i.slotId ?? i.posting?.id ?? i.ojt_posting_id) === String(slot.id));
-      const hasActionRequired = si.some(i => i.status === 'endorsement_requested' || i.status === 'company_accepted');
-      const initialTab = (isActionClick && hasActionRequired) ? 'applications' : 'details';
+      const m = getSlotMetrics(slot, interests);
+      const initialTab = (isActionClick && m.hasActionRequired) ? 'applications' : 'details';
 
       showInterestedModal(slot, interests, updated => {
         interests = updated;
         updateStats(container, slots, interests);
-        setupFiltersAndRender(container, slots, interests);
+        setupFiltersAndRender(container, slots, interests, registeredCompanies);
       }, { initialTab });
     });
   });

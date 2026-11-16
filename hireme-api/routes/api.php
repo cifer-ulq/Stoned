@@ -242,6 +242,7 @@ Route::middleware('auth:sanctum')->prefix('supervisor')->group(function () {
     Route::get('dashboard',            [SupervisorController::class, 'dashboard']);
     Route::get('interests',            [SupervisorController::class, 'interests']);
     Route::get('interests/count',      [SupervisorController::class, 'interestCount']);
+    Route::get('companies',            [SupervisorController::class, 'companies']);
     Route::get('posting/{id}/applications', [SupervisorController::class, 'postingApplications']);
     Route::post('recommend/{id}',              [SupervisorController::class, 'recommend']);
     Route::post('reject/{id}',                 [SupervisorController::class, 'reject']);
