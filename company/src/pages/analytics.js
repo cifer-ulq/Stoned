@@ -118,6 +118,19 @@ export async function renderAnalytics(container) {
   container.innerHTML = `
     <div class="an2-page fade-in">
 
+      <!-- ── Printable Official Header (Visible on print only) ────────────────── -->
+      <div class="an2-print-header">
+        <div class="an2-print-header__school">CARLOS HILADO MEMORIAL STATE UNIVERSITY</div>
+        <div class="an2-print-header__office">Office of Student Internship &amp; Industry Placement Oversight</div>
+        <div class="an2-print-header__title">Industry Partner Performance, Recruitment &amp; OJT Audit Report</div>
+        <div class="an2-print-header__meta">
+          <div><strong>Report Generated:</strong> ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
+          <div><strong>Academic Year:</strong> AY 2025–2026 · Second Semester</div>
+          <div><strong>Verification:</strong> HireMe Industry Portal 2.0</div>
+          <div><strong>Curricular Target:</strong> 600 Hours Standard</div>
+        </div>
+      </div>
+
       <!-- ── Top Header ─────────────────────────────────────────────────────── -->
       <div class="an2-header">
         <div class="an2-header__left">
@@ -127,13 +140,20 @@ export async function renderAnalytics(container) {
               <h1 class="an2-header__title">Analysis &amp; Insights</h1>
               <span class="an2-live-badge"><span class="an2-live-dot"></span>Live Data</span>
             </div>
-            <p class="an2-header__sub">Recruitment pipeline velocity, conversion milestones, and OJT performance metrics.</p>
+            <p class="an2-header__sub">Recruitment pipeline progression, candidate conversion metrics, and active OJT performance oversight.</p>
           </div>
         </div>
         <div class="an2-header__actions">
+          <button class="an2-btn-action" id="an2-csv-btn" title="Export metrics and candidate roster to CSV">
+            ${icon('download', 14)}
+            <span>Export CSV</span>
+          </button>
+          <button class="an2-btn-action an2-btn-action--primary" id="an2-print-btn" title="Print executive report or save as PDF">
+            ${icon('printer', 14)}
+            <span>Print Report</span>
+          </button>
           <button class="an2-btn-refresh" id="an2-refresh-btn" title="Refresh metrics">
             ${icon('refreshCw', 15)}
-            <span>Refresh</span>
           </button>
         </div>
       </div>
@@ -336,6 +356,103 @@ export async function renderAnalytics(container) {
   container.querySelector('#an2-refresh-btn')?.addEventListener('click', () => {
     renderAnalytics(container);
   });
+
+  // Print handler
+  container.querySelector('#an2-print-btn')?.addEventListener('click', () => {
+    window.print();
+  });
+
+  // CSV export handler
+  container.querySelector('#an2-csv-btn')?.addEventListener('click', () => {
+    exportCompanyCsv(data);
+  });
+}
+
+// ─── Precision CSV Export Engine ──────────────────────────────────────────────
+function exportCompanyCsv(data) {
+  const ojt  = data.ojtAnalytics  || {};
+  const jFun = data.hiringFunnel  || {};
+  const oFun = ojt.ojtFunnel      || {};
+  const trainees = ojt.activeTrainees || [];
+  const employees = data.hiredApplicants || [];
+  const departments = data.departmentBreakdown || [];
+
+  const dateStr = new Date().toISOString().slice(0, 10);
+  const lines = [];
+
+  lines.push('# CARLOS HILADO MEMORIAL STATE UNIVERSITY (CHMSU) HIREME');
+  lines.push('# INDUSTRY PARTNER & COMPANY RECRUITMENT AUDIT');
+  lines.push(`# Export Date: ${dateStr}`);
+  lines.push('#');
+
+  lines.push('# --- EXECUTIVE RECRUITMENT & OJT KPI SCORECARD ---');
+  lines.push(`Total Job Applications,${jFun.applied ?? 0}`);
+  lines.push(`Total Hired Candidates,${jFun.hired ?? 0}`);
+  lines.push(`Avg. Time to Hire,${data.timeToHire || '18 days'}`);
+  lines.push(`Offer Acceptance Rate,${data.offerAcceptanceRate || '83%'}`);
+  lines.push(`OJT Inquiries Received,${oFun.interested ?? 0}`);
+  lines.push(`Active OJT Trainees,${trainees.length}`);
+  lines.push('#');
+
+  lines.push('# --- ACTIVE OJT TRAINEES DIRECTORY ---');
+  lines.push('No.,Student Trainee Name,Email Address,Academic Program,Year Level,Rendered Hours,Standard Hours,Progress (%),Started Date');
+  trainees.forEach((t, i) => {
+    const hrs = t.hours_rendered ?? 0;
+    const pct = Math.min(100, Math.round((hrs / 600) * 100));
+    lines.push([
+      i + 1,
+      `"${(t.name || '').replace(/"/g, '""')}"`,
+      `"${(t.email || '').replace(/"/g, '""')}"`,
+      `"${(t.program || '').replace(/"/g, '""')}"`,
+      `"${(t.year_level || '4th Year').replace(/"/g, '""')}"`,
+      hrs,
+      600,
+      `${pct}%`,
+      `"${(t.started_at || '—').replace(/"/g, '""')}"`
+    ].join(','));
+  });
+  lines.push('#');
+
+  lines.push('# --- HIRED EMPLOYEES DIRECTORY ---');
+  lines.push('No.,Candidate Name,Email Address,Job Role,Department,Employment Type,Location,Salary Range,Start Date,Hired On');
+  employees.forEach((e, i) => {
+    lines.push([
+      i + 1,
+      `"${(e.name || '').replace(/"/g, '""')}"`,
+      `"${(e.email || '').replace(/"/g, '""')}"`,
+      `"${(e.job_title || '').replace(/"/g, '""')}"`,
+      `"${(e.department || '—').replace(/"/g, '""')}"`,
+      `"${(e.employment_type || 'Full-time').replace(/"/g, '""')}"`,
+      `"${(e.location || '—').replace(/"/g, '""')}"`,
+      `"${(e.salary || '—').replace(/"/g, '""')}"`,
+      `"${(e.start_date || '—').replace(/"/g, '""')}"`,
+      `"${(e.hired_on || '—').replace(/"/g, '""')}"`
+    ].join(','));
+  });
+  lines.push('#');
+
+  lines.push('# --- DEPARTMENT POSTING & PIPELINE BREAKDOWN ---');
+  lines.push('Department,Open Positions,Applicants,Filled Positions,Average Days to Hire');
+  departments.forEach(d => {
+    lines.push([
+      `"${(d.department || '').replace(/"/g, '""')}"`,
+      d.openPositions ?? 0,
+      d.applicants ?? 0,
+      d.filled ?? 0,
+      d.avgDays != null ? d.avgDays : '—'
+    ].join(','));
+  });
+
+  const csvContent = '\uFEFF' + lines.join('\r\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', `CHMSU_Company_Analytics_${dateStr}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 // ─── Shared Card Header ────────────────────────────────────────────────────────

@@ -3434,6 +3434,35 @@
   align-items: center;
   gap: var(--space-2);
 }
+.an2-btn-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 14px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--duration-fast);
+}
+.an2-btn-action:hover {
+  background: var(--bg-secondary);
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
+}
+.an2-btn-action--primary {
+  background: #005930;
+  color: #ffffff;
+  border-color: #005930;
+}
+.an2-btn-action--primary:hover {
+  background: #004525;
+  border-color: #004525;
+  color: #ffffff;
+}
 .an2-btn-refresh {
   display: inline-flex;
   align-items: center;
@@ -4396,6 +4425,89 @@
   .an2-tabs         { width: 100%; }
   .an2-tab          { flex: 1; justify-content: center; padding: 7px 10px; }
 }
+
+/* ── Printable Official Header ── */
+.an2-print-header {
+  display: none;
+  border-bottom: 2px solid #005930;
+  padding-bottom: 12px;
+  margin-bottom: 18px;
+}
+.an2-print-header__school {
+  font-size: 15pt;
+  font-weight: 800;
+  color: #005930;
+  letter-spacing: 0.04em;
+}
+.an2-print-header__office {
+  font-size: 10.5pt;
+  color: #374151;
+  font-weight: 600;
+  margin-top: 2px;
+}
+.an2-print-header__title {
+  font-size: 12pt;
+  font-weight: 700;
+  color: #111827;
+  margin-top: 5px;
+}
+.an2-print-header__meta {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px;
+  font-size: 8.5pt;
+  color: #4B5563;
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px dashed #D1D5DB;
+}
+
+/* ── Print Media Rules ── */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm 10mm;
+  }
+  .sidebar-left, .navbar, .mobile-bottom-nav, .an2-header__actions, .an2-tabs-bar {
+    display: none !important;
+  }
+  body, .an2-page {
+    background: #ffffff !important;
+    color: #000000 !important;
+    padding: 0 !important;
+    font-size: 8.5pt !important;
+  }
+  .an2-print-header {
+    display: block !important;
+  }
+  .an2-panel {
+    display: flex !important;
+    animation: none !important;
+  }
+  .an2-card {
+    border: 1px solid #D1D5DB !important;
+    box-shadow: none !important;
+    padding: 10px 12px !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .an2-kpi {
+    border: 1px solid #D1D5DB !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+  }
+  .an2-table {
+    font-size: 7.5pt !important;
+  }
+  .an2-table th, .an2-table td {
+    padding: 5px 8px !important;
+  }
+  .an2-table tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
+
 
 
 /* ===========================

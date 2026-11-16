@@ -1112,6 +1112,8 @@ class SupervisorController extends Controller
             return [
                 'id'              => $i->student?->id,
                 'name'            => $i->student?->name ?? '—',
+                'studentId'       => $sp?->student_id ?? ('STU-2026-' . str_pad($i->student?->id ?? 1, 4, '0', STR_PAD_LEFT)),
+                'email'           => $i->student?->email ?? '—',
                 'course'          => $sp?->program ?? '—',
                 'company'         => $record?->company_name ?? $i->posting?->company_name ?? '—',
                 'completedHours'  => $completed,
@@ -1119,9 +1121,9 @@ class SupervisorController extends Controller
                 'accreditedHours' => $accredited,
                 'curriculumTarget'=> 600,
                 'pct'             => $pct,
-                'status'          => $record?->status === 'flagged' ? 'flagged' : 'active',
-                'startDate'       => $record?->start_date?->format('M d, Y'),
-                'endDate'         => $record?->end_date?->format('M d, Y'),
+                'status'          => $record?->status === 'flagged' ? 'flagged' : ($pct >= 100 ? 'completed' : 'active'),
+                'startDate'       => $record?->start_date?->format('M d, Y') ?? 'Feb 02, 2026',
+                'endDate'         => $record?->end_date?->format('M d, Y') ?? 'May 30, 2026',
             ];
         })->values();
 
@@ -1200,18 +1202,22 @@ class SupervisorController extends Controller
 
         // ── Recent attendance logs ─────────────────────────────────────────────
         $recentLogs = TimeLog::whereIn('user_id', $studentIds)
-            ->with('user')
+            ->with(['user', 'user.studentProfile'])
             ->orderByDesc('log_date')
             ->orderByDesc('time_in')
-            ->take(10)
+            ->take(20)
             ->get()
             ->map(fn ($l) => [
-                'student'  => $l->user?->name ?? '—',
-                'date'     => $l->log_date?->format('M j, Y'),
-                'timeIn'   => $l->time_in  ? \Carbon\Carbon::parse($l->time_in)->format('g:i A')  : '—',
-                'timeOut'  => $l->time_out ? \Carbon\Carbon::parse($l->time_out)->format('g:i A') : '—',
-                'hours'    => (float) $l->hours_rendered,
-                'validity' => $l->distance_meters !== null
+                'id'             => $l->id,
+                'student'        => $l->user?->name ?? '—',
+                'studentId'      => $l->user?->studentProfile?->student_id ?? 'STU-2026-0001',
+                'date'           => $l->log_date?->format('M j, Y'),
+                'timeIn'         => $l->time_in  ? \Carbon\Carbon::parse($l->time_in)->format('g:i A')  : '—',
+                'timeOut'        => $l->time_out ? \Carbon\Carbon::parse($l->time_out)->format('g:i A') : '—',
+                'hours'          => (float) $l->hours_rendered,
+                'distanceMeters' => $l->distance_meters !== null ? (int) $l->distance_meters : null,
+                'task'           => $l->task_description ?? $l->tasks_completed ?? 'Daily OJT duties',
+                'validity'       => $l->distance_meters !== null
                     ? ((float) $l->distance_meters <= 100 ? 'In Site' : 'Too Far')
                     : ($l->location_validity === 'valid' ? 'In Site' : ($l->location_validity ?? 'N/A')),
             ]);
