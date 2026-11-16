@@ -273,48 +273,62 @@ export default async function OjtManagementPage(container) {
       </div>
     </div>
 
-    <!-- Supervisors Section -->
-    <div style="margin:var(--space-6) 0 var(--space-4);">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-4);flex-wrap:wrap;gap:10px;">
-        <div>
-          <h2 style="font-size:var(--text-lg);font-weight:var(--weight-semibold);display:flex;align-items:center;gap:8px;margin:0;">
-            ${icon('users',18)} Program Coordinators
-          </h2>
-          <span style="font-size:var(--text-xs);color:var(--text-tertiary);">Coordinators assigned by program &amp; campus (3 per page)</span>
+    <!-- Program Coordinators Section -->
+    <div class="ojt-table-card anim-fade-in-up" id="sup-section">
+      <div class="ojt-table-card__header">
+        <div class="ojt-table-card__title-group">
+          <div class="ojt-table-card__icon" style="background:rgba(16,185,129,0.12);color:#047857;">
+            ${icon('users', 18)}
+          </div>
+          <div>
+            <h3 class="ojt-table-card__title">Program Coordinators</h3>
+            <p class="ojt-table-card__subtitle">Academic supervisors designated to oversee student internships by campus &amp; discipline (3 per page)</p>
+          </div>
+        </div>
+        <div class="ojt-table-card__actions">
+          <span class="ojt-count-pill" id="sup-count-pill">
+            <span class="ojt-count-pill__dot" style="background:#10B981;"></span>
+            <span id="sup-count-text">0 Coordinators</span>
+          </span>
         </div>
       </div>
-      <div class="table-wrapper anim-fade-in-up">
-        <table class="table" id="sup-table">
+      <div class="ojt-table-responsive">
+        <table class="ojt-table" id="sup-table">
           <thead>
             <tr>
-              <th style="min-width:180px;">Coordinator</th>
-              <th>Email</th>
-              <th>Campus</th>
-              <th>Assigned Program</th>
+              <th style="min-width:200px;">Coordinator</th>
+              <th style="min-width:180px;">Email</th>
+              <th style="min-width:130px;">Campus</th>
+              <th style="min-width:220px;">Assigned Program</th>
               <th style="min-width:110px;">Registered</th>
-              <th style="width:130px;text-align:right;">Actions</th>
+              <th class="text-right" style="width:88px;min-width:88px;">Actions</th>
             </tr>
           </thead>
           <tbody id="sup-tbody">
-            <tr><td colspan="6" style="text-align:center;color:var(--text-tertiary);padding:24px;">Loading…</td></tr>
+            <tr><td colspan="6" style="text-align:center;color:var(--text-tertiary);padding:32px;">Loading coordinators…</td></tr>
           </tbody>
         </table>
       </div>
-      <div id="sup-pagination" style="display:flex;justify-content:center;gap:8px;margin-top:var(--space-4);flex-wrap:wrap;"></div>
+      <div class="ojt-table-card__footer" id="sup-pagination"></div>
     </div>
 
     <!-- OJT Pull-Out Requests & Dean Endorsement Section -->
-    <div style="margin:var(--space-6) 0 var(--space-4);" id="pullout-section">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-4);flex-wrap:wrap;gap:10px;">
-        <div>
-          <h2 style="font-size:var(--text-lg);font-weight:var(--weight-semibold);display:flex;align-items:center;gap:8px;margin:0;">
-            ${icon('file-text',18)} OJT Pull-Out Requests &amp; Dean Endorsement
-            <span id="pullout-badge-count" class="badge badge--warning" style="font-size:0.75rem;padding:2px 8px;border-radius:12px;display:none;">0 Pending</span>
-          </h2>
-          <p style="font-size:var(--text-xs);color:var(--text-tertiary);margin:2px 0 0;">Review coordinator-recommended pull-outs, generate official Dean letters, and dispatch via print or email (5 per page).</p>
+    <div class="ojt-table-card anim-fade-in-up" id="pullout-section">
+      <div class="ojt-table-card__header">
+        <div class="ojt-table-card__title-group">
+          <div class="ojt-table-card__icon" style="background:rgba(99,102,241,0.12);color:#4F46E5;">
+            ${icon('file-text', 18)}
+          </div>
+          <div>
+            <h3 class="ojt-table-card__title">
+              OJT Pull-Out Requests &amp; Dean Endorsement
+              <span id="pullout-badge-count" class="badge badge--warning" style="font-size:0.72rem;padding:2px 8px;border-radius:12px;display:none;margin-left:6px;">0 Pending</span>
+            </h3>
+            <p class="ojt-table-card__subtitle">Review coordinator-recommended pull-outs, generate official Dean letters, and dispatch via print or email (5 per page)</p>
+          </div>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <select class="form-select" id="filter-pullout-status" style="width:auto;padding:6px 28px 6px 10px;font-size:var(--text-xs);">
+        <div class="ojt-table-card__actions">
+          <select class="form-select" id="filter-pullout-status" style="width:auto;padding:6px 28px 6px 10px;font-size:0.75rem;border-radius:8px;height:34px;">
             <option value="">All Requests</option>
             <option value="recommended_by_supervisor" selected>Awaiting Dean Letter / Action</option>
             <option value="printed_pending_signature">Printed (Awaiting Physical Signature)</option>
@@ -324,62 +338,77 @@ export default async function OjtManagementPage(container) {
           </select>
         </div>
       </div>
-      <div class="table-wrapper anim-fade-in-up">
-        <table class="table" id="pullout-table">
+      <div class="ojt-table-responsive">
+        <table class="ojt-table" id="pullout-table">
           <thead>
             <tr>
-              <th style="min-width:180px;">Student</th>
-              <th>Program &amp; Section</th>
-              <th>Company</th>
-              <th>Reason Category</th>
-              <th>Coordinator Recommendation</th>
-              <th>Status</th>
-              <th style="width:110px;text-align:right;">Actions</th>
+              <th style="min-width:200px;">Student</th>
+              <th style="min-width:180px;">Program &amp; Section</th>
+              <th style="min-width:180px;">Company</th>
+              <th style="min-width:140px;">Reason</th>
+              <th style="min-width:180px;">Coordinator Recommendation</th>
+              <th style="min-width:140px;">Status</th>
+              <th class="text-right" style="width:88px;min-width:88px;">Actions</th>
             </tr>
           </thead>
           <tbody id="pullout-tbody">
-            <tr><td colspan="7" style="text-align:center;color:var(--text-tertiary);padding:24px;">Loading pull-out requests…</td></tr>
+            <tr><td colspan="7" style="text-align:center;color:var(--text-tertiary);padding:32px;">Loading pull-out requests…</td></tr>
           </tbody>
         </table>
       </div>
-      <div id="pullout-pagination" style="display:flex;justify-content:center;gap:8px;margin-top:var(--space-4);flex-wrap:wrap;"></div>
+      <div class="ojt-table-card__footer" id="pullout-pagination"></div>
     </div>
 
     <!-- Trainees Section -->
-    <div style="margin:var(--space-6) 0 var(--space-2);">
-      <h2 style="font-size:var(--text-lg);font-weight:var(--weight-semibold);margin-bottom:var(--space-4);display:flex;align-items:center;gap:8px;">${icon('briefcase',18)} Trainees</h2>
-    </div>
-    <div class="toolbar">
-      <div class="toolbar__left">
-        <div class="search-box">
-          ${icon('search', 15)}
-          <input class="search-box__input" id="ojt-search" placeholder="Search trainee or company…" />
+    <div class="ojt-table-card anim-fade-in-up" id="trainees-section">
+      <div class="ojt-table-card__header">
+        <div class="ojt-table-card__title-group">
+          <div class="ojt-table-card__icon" style="background:rgba(139,92,246,0.12);color:#7C3AED;">
+            ${icon('briefcase', 18)}
+          </div>
+          <div>
+            <h3 class="ojt-table-card__title">Trainees</h3>
+            <p class="ojt-table-card__subtitle">Active student placements, hours rendered tracking, and host companies (10 per page)</p>
+          </div>
         </div>
-        <select class="form-select" id="filter-status" style="width:auto;padding:7px 32px 7px 10px;">
-          <option value="">All Statuses</option>
-          <option>Ongoing</option><option>Completed</option>
-          <option>Endorsed</option><option>Accepted</option><option>Endorsement Requested</option><option>Interested</option>
-        </select>
+        <div class="ojt-table-card__actions">
+          <div class="search-box" style="width:230px;">
+            ${icon('search', 14)}
+            <input class="search-box__input" id="ojt-search" placeholder="Search trainee or company…" style="height:34px;padding-top:4px;padding-bottom:4px;font-size:0.78rem;" />
+          </div>
+          <select class="form-select" id="filter-status" style="width:auto;padding:6px 28px 6px 10px;font-size:0.75rem;border-radius:8px;height:34px;">
+            <option value="">All Statuses</option>
+            <option>Ongoing</option>
+            <option>Completed</option>
+            <option>Endorsed</option>
+            <option>Accepted</option>
+            <option>Endorsement Requested</option>
+            <option>Interested</option>
+          </select>
+          <span class="ojt-count-pill" id="ojt-count-pill">
+            <span class="ojt-count-pill__dot" style="background:#7C3AED;"></span>
+            <span id="ojt-count">0 Trainees</span>
+          </span>
+        </div>
       </div>
-      <div class="toolbar__right">
-        <span id="ojt-count" style="font-size:var(--text-sm);color:var(--text-tertiary);"></span>
+      <div class="ojt-table-responsive">
+        <table class="ojt-table" id="ojt-table">
+          <thead>
+            <tr>
+              <th style="min-width:210px;">Student</th>
+              <th style="min-width:190px;">Host Company</th>
+              <th style="min-width:180px;">Hours Progress</th>
+              <th style="min-width:120px;">Status</th>
+              <th class="text-right" style="width:88px;min-width:88px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="ojt-tbody">
+            <tr><td colspan="5" style="text-align:center;color:var(--text-tertiary);padding:32px;">Loading trainees…</td></tr>
+          </tbody>
+        </table>
       </div>
+      <div class="ojt-table-card__footer" id="ojt-pagination"></div>
     </div>
-    <div class="table-wrapper anim-fade-in-up">
-      <table class="table" id="ojt-table">
-        <thead>
-          <tr>
-            <th style="min-width:180px;">Student</th>
-            <th>Company</th>
-            <th>Hours Progress</th>
-            <th>Status</th>
-            <th style="width:100px;text-align:right;">Actions</th>
-          </tr>
-        </thead>
-        <tbody id="ojt-tbody"></tbody>
-      </table>
-    </div>
-    <div id="ojt-pagination" style="display:flex;justify-content:center;gap:8px;margin-top:var(--space-5);flex-wrap:wrap;"></div>
   `;
 
   renderIcons();
@@ -600,10 +629,10 @@ export default async function OjtManagementPage(container) {
             </div>` : `<span style="font-size:var(--text-xs);color:var(--text-tertiary);">${s.duration || 'Tracking not started'}</span>`}
           </td>
           <td style="vertical-align:middle;"><span class="badge badge--${STATUS_COLORS[s.status] || 'neutral'}">${s.status}</span></td>
-          <td style="text-align:right;vertical-align:middle;white-space:nowrap;">
-            <div style="display:inline-flex;justify-content:flex-end;">
-              <button type="button" class="btn btn--outline btn--sm btn-view-trainee" data-idx="${idx}" style="padding:4px 10px;font-size:0.75rem;height:30px;gap:5px;display:inline-flex;align-items:center;border-radius:6px;">
-                ${icon('eye', 13)} <span>Details</span>
+          <td class="text-right" style="white-space:nowrap;">
+            <div class="ojt-action-group">
+              <button type="button" class="ojt-btn-icon ojt-btn-icon--view btn-view-trainee" data-idx="${idx}" title="View Full Trainee Details" aria-label="View Details">
+                ${icon('eye', 15)}
               </button>
             </div>
           </td>
@@ -708,8 +737,13 @@ export default async function OjtManagementPage(container) {
     const stb = container.querySelector('#sup-tbody');
     if (!stb) return;
 
+    const supCountText = container.querySelector('#sup-count-text');
+    if (supCountText) {
+      supCountText.textContent = `${currentSupervisors.length} Coordinator${currentSupervisors.length !== 1 ? 's' : ''}`;
+    }
+
     if (!currentSupervisors.length) {
-      stb.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-tertiary);padding:24px;">No coordinators registered yet</td></tr>`;
+      stb.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-tertiary);padding:32px;">No coordinators registered yet</td></tr>`;
       if (supPagEl) supPagEl.innerHTML = '';
       return;
     }
@@ -726,40 +760,40 @@ export default async function OjtManagementPage(container) {
       const cMeta = getCourseMeta(s.course || '');
       return `
         <tr>
-          <td style="vertical-align:middle;">
+          <td>
             <div style="display:flex;align-items:center;gap:10px;">
-              <div class="entity-card__avatar" style="width:32px;height:32px;font-size:0.65rem;flex-shrink:0;">${init}</div>
+              <div class="entity-card__avatar" style="width:34px;height:34px;font-size:0.68rem;background:linear-gradient(135deg,rgba(0,89,48,0.12),rgba(16,185,129,0.06));border:1px solid rgba(0,89,48,0.18);color:#005930;font-weight:700;border-radius:8px;flex-shrink:0;">${init}</div>
               <div>
                 <div style="font-weight:var(--weight-semibold);font-size:var(--text-sm);color:var(--text-primary);">${s.name}</div>
-                <div style="font-size:var(--text-xs);color:var(--text-tertiary);">${s.email}</div>
+                <div style="font-size:var(--text-xs);color:var(--text-tertiary);">Academic Coordinator</div>
               </div>
             </div>
           </td>
-          <td style="vertical-align:middle;font-size:var(--text-sm);color:var(--text-secondary);">${s.email}</td>
-          <td style="vertical-align:middle;">
-            <span class="badge" style="background:#ECFDF5;color:#047857;border:1px solid #A7F3D0;font-size:0.68rem;font-weight:600;">
+          <td style="font-size:var(--text-sm);color:var(--text-secondary);font-weight:500;">${s.email}</td>
+          <td>
+            <span class="badge" style="background:#ECFDF5;color:#047857;border:1px solid #A7F3D0;font-size:0.7rem;font-weight:600;padding:2px 8px;border-radius:6px;">
               ${s.campus || 'Alijis Campus'}
             </span>
           </td>
-          <td style="vertical-align:middle;">
-            <div style="display:flex;flex-direction:column;gap:2px;max-width:240px;">
+          <td>
+            <div style="display:flex;flex-direction:column;gap:3px;max-width:260px;">
               <div style="display:flex;align-items:center;gap:6px;">
-                <span class="badge badge--info" style="font-size:0.65rem;font-weight:700;padding:1px 6px;">${cMeta.code}</span>
-                <span style="font-size:var(--text-xs);font-weight:var(--weight-medium);color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${s.course || ''}">
+                <span class="badge badge--info" style="font-size:0.65rem;font-weight:700;padding:1px 6px;border-radius:4px;">${cMeta.code}</span>
+                <span style="font-size:0.8rem;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${s.course || ''}">
                   ${cDisp.isTrade ? cDisp.primaryTitle : (s.course || '—')}
                 </span>
               </div>
-              <span style="font-size:10.5px;color:var(--text-tertiary);">${cMeta.category || ''}</span>
+              <span style="font-size:0.7rem;color:var(--text-tertiary);">${cMeta.category || ''}</span>
             </div>
           </td>
-          <td style="vertical-align:middle;font-size:var(--text-xs);color:var(--text-tertiary);">${s.created_at || '—'}</td>
-          <td style="text-align:right;vertical-align:middle;white-space:nowrap;">
-            <div style="display:inline-flex;align-items:center;justify-content:flex-end;gap:6px;">
-              <button type="button" class="btn btn--outline btn--sm btn-resend-supervisor" data-id="${s.id}" data-name="${s.name}" data-email="${s.email}" title="Reset Temporary Password & Resend Welcome Email" style="padding:4px 9px;font-size:0.75rem;height:30px;gap:5px;display:inline-flex;align-items:center;border-radius:6px;">
-                ${icon('mail', 13)} <span>Resend</span>
+          <td style="font-size:var(--text-xs);color:var(--text-tertiary);">${s.created_at || '—'}</td>
+          <td class="text-right" style="white-space:nowrap;">
+            <div class="ojt-action-group">
+              <button type="button" class="ojt-btn-icon ojt-btn-icon--mail btn-resend-supervisor" data-id="${s.id}" data-name="${s.name}" data-email="${s.email}" title="Reset Temporary Password &amp; Resend Welcome Email" aria-label="Resend Email">
+                ${icon('mail', 15)}
               </button>
-              <button type="button" class="btn btn--ghost btn--sm btn-del-supervisor" data-id="${s.id}" data-name="${s.name}" title="Remove coordinator" style="color:var(--color-error,#ef4444);padding:4px 8px;height:30px;display:inline-flex;align-items:center;justify-content:center;border-radius:6px;">
-                ${icon('trash-2', 14)}
+              <button type="button" class="ojt-btn-icon ojt-btn-icon--delete btn-del-supervisor" data-id="${s.id}" data-name="${s.name}" title="Remove Coordinator" aria-label="Remove Coordinator">
+                ${icon('trash-2', 15)}
               </button>
             </div>
           </td>
@@ -791,15 +825,13 @@ export default async function OjtManagementPage(container) {
     }
 
     stb.querySelectorAll('.btn-resend-supervisor').forEach(btn => {
-      btn.addEventListener('mouseenter', () => { btn.style.borderColor = '#005930'; btn.style.color = '#005930'; });
-      btn.addEventListener('mouseleave', () => { btn.style.borderColor = 'var(--border-default)'; btn.style.color = ''; });
       btn.addEventListener('click', async () => {
         const id = btn.dataset.id;
         const name = btn.dataset.name;
         const email = btn.dataset.email;
         if (!confirm(`Reset temporary password and resend welcome email to coordinator "${name}" (${email})?`)) return;
         btn.disabled = true;
-        btn.innerHTML = `<span class="spinner-sm"></span>`;
+        btn.innerHTML = `<span class="spinner-sm" style="margin:0;"></span>`;
         try {
           const res = await apiPost(`/admin/supervisors/${id}/resend-welcome`, {});
           if (res?.success) {
@@ -811,7 +843,7 @@ export default async function OjtManagementPage(container) {
           alert('Network error while requesting password reset.');
         } finally {
           btn.disabled = false;
-          btn.innerHTML = `${icon('mail', 13)} <span>Resend</span>`;
+          btn.innerHTML = icon('mail', 15);
           renderIcons();
         }
       });
@@ -908,7 +940,7 @@ export default async function OjtManagementPage(container) {
     }
 
     if (!filtered.length) {
-      ptbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text-tertiary);padding:24px;">No pull-out requests found in this filter view.</td></tr>`;
+      ptbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text-tertiary);padding:32px;">No pull-out requests found in this filter view.</td></tr>`;
       if (poPagEl) poPagEl.innerHTML = '';
       return;
     }
@@ -921,50 +953,50 @@ export default async function OjtManagementPage(container) {
 
     ptbody.innerHTML = pageSlice.map(p => {
       const statusBadge = 
-        p.status === 'recommended_by_supervisor' ? '<span class="badge badge--warning">Recommended &bull; Action Needed</span>' :
-        p.status === 'printed_pending_signature' ? '<span class="badge" style="background:#EEF2FF;color:#4338ca;font-weight:700;">Printed &bull; Awaiting Signature</span>' :
-        p.status === 'emailed_to_dean' ? '<span class="badge badge--info">Emailed to Dean &bull; Awaiting Reply</span>' :
-        p.status === 'approved' ? '<span class="badge badge--success">Approved by Dean</span>' :
-        p.status === 'rejected' ? '<span class="badge badge--error">Declined</span>' :
-        '<span class="badge badge--neutral">Pending Coordinator</span>';
+        p.status === 'recommended_by_supervisor' ? '<span class="badge badge--warning" style="font-size:0.7rem;font-weight:600;padding:2px 8px;border-radius:6px;">Recommended &bull; Action Needed</span>' :
+        p.status === 'printed_pending_signature' ? '<span class="badge" style="background:#EEF2FF;color:#4338ca;font-weight:700;font-size:0.7rem;padding:2px 8px;border-radius:6px;">Printed &bull; Awaiting Signature</span>' :
+        p.status === 'emailed_to_dean' ? '<span class="badge badge--info" style="font-size:0.7rem;font-weight:600;padding:2px 8px;border-radius:6px;">Emailed &bull; Awaiting Dean Reply</span>' :
+        p.status === 'approved' ? '<span class="badge badge--success" style="font-size:0.7rem;font-weight:600;padding:2px 8px;border-radius:6px;">Approved by Dean</span>' :
+        p.status === 'rejected' ? '<span class="badge badge--error" style="font-size:0.7rem;font-weight:600;padding:2px 8px;border-radius:6px;">Declined</span>' :
+        '<span class="badge badge--neutral" style="font-size:0.7rem;padding:2px 8px;border-radius:6px;">Pending Coordinator</span>';
 
       const stInit = (p.student_name || 'S').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 
       return `
         <tr>
-          <td style="vertical-align:middle;">
+          <td>
             <div style="display:flex;align-items:center;gap:10px;">
-              <div class="entity-card__avatar" style="width:34px;height:34px;font-size:0.65rem;flex-shrink:0;">${stInit}</div>
+              <div class="entity-card__avatar" style="width:34px;height:34px;font-size:0.68rem;background:linear-gradient(135deg,rgba(99,102,241,0.12),rgba(139,92,246,0.06));border:1px solid rgba(99,102,241,0.18);color:#4F46E5;font-weight:700;border-radius:8px;flex-shrink:0;">${stInit}</div>
               <div>
                 <div style="font-weight:var(--weight-semibold);font-size:var(--text-sm);color:var(--text-primary);">${p.student_name}</div>
                 <div style="font-size:var(--text-xs);color:var(--text-tertiary);">${p.student_number || 'No ID'} &bull; ${p.student_email || ''}</div>
               </div>
             </div>
           </td>
-          <td style="vertical-align:middle;">
-            <div style="font-size:var(--text-xs);font-weight:var(--weight-semibold);color:var(--text-primary);max-width:200px;line-height:1.3;" title="${p.course}">${p.course}</div>
-            <div style="font-size:var(--text-xs);color:var(--text-tertiary);margin-top:2px;">Section: ${p.section || '—'}</div>
+          <td>
+            <div style="font-size:0.8rem;font-weight:600;color:var(--text-primary);max-width:200px;line-height:1.3;" title="${p.course}">${p.course}</div>
+            <div style="font-size:var(--text-xs);color:var(--text-tertiary);margin-top:2px;">Section: <strong style="color:var(--text-secondary);">${p.section || '—'}</strong></div>
           </td>
-          <td style="vertical-align:middle;">
-            <div style="font-size:var(--text-sm);font-weight:var(--weight-semibold);color:var(--text-primary);">${p.company_name}</div>
+          <td>
+            <div style="font-size:0.82rem;font-weight:600;color:var(--text-primary);">${p.company_name}</div>
             <div style="font-size:var(--text-xs);color:var(--text-tertiary);margin-top:2px;">${p.hours_rendered_snapshot} / ${p.required_hours_snapshot} hrs rendered</div>
           </td>
-          <td style="vertical-align:middle;">
-            <span class="badge badge--neutral" style="text-transform:capitalize;font-size:0.75rem;font-weight:600;">
+          <td>
+            <span class="badge badge--neutral" style="text-transform:capitalize;font-size:0.7rem;font-weight:600;padding:2px 8px;border-radius:6px;">
               ${(p.reason_category || '').replace(/_/g, ' ')}
             </span>
           </td>
-          <td style="vertical-align:middle;">
-            <div style="font-size:var(--text-xs);font-weight:var(--weight-semibold);color:var(--text-primary);">${p.supervisor_name || 'Coordinator'}</div>
+          <td>
+            <div style="font-size:0.78rem;font-weight:600;color:var(--text-primary);">${p.supervisor_name || 'Coordinator'}</div>
             <div style="font-size:var(--text-xs);color:var(--text-tertiary);max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;" title="${p.supervisor_remarks || ''}">
               ${p.supervisor_remarks || 'No remarks'}
             </div>
           </td>
-          <td style="vertical-align:middle;">${statusBadge}</td>
-          <td style="text-align:right;vertical-align:middle;white-space:nowrap;">
-            <div style="display:inline-flex;align-items:center;justify-content:flex-end;">
-              <button type="button" class="btn btn--primary btn--sm btn-process-pullout" data-id="${p.id}" style="padding:6px 14px;font-size:0.75rem;font-weight:600;gap:6px;background:#005930;border-color:#005930;border-radius:6px;display:inline-flex;align-items:center;box-shadow:0 1px 2px rgba(0,0,0,0.06);">
-                ${icon('file-text', 13)} <span>Process</span>
+          <td>${statusBadge}</td>
+          <td class="text-right" style="white-space:nowrap;">
+            <div class="ojt-action-group">
+              <button type="button" class="ojt-btn-icon ojt-btn-icon--primary btn-process-pullout" data-id="${p.id}" title="Process Dean Endorsement &amp; Official Letter" aria-label="Process Request">
+                ${icon('file-text', 15)}
               </button>
             </div>
           </td>
