@@ -1965,5 +1965,327 @@ input[type="range"]::-webkit-slider-thumb {
   }
 }
 
+/* ══════════════════════════════════════════════════════════════
+   MATCHING & SCORING REDESIGN (EXECUTIVE INSTITUTIONAL SUITE)
+   ══════════════════════════════════════════════════════════════ */
+
+.matching-analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4, 16px);
+  margin-top: var(--space-4, 16px);
+}
+
+@media (max-width: 1200px) {
+  .matching-analytics-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .matching-analytics-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.matching-formula-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.matching-formula-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.matching-formula-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.78rem;
+}
+
+.matching-formula-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: var(--text-primary, #1e293b);
+}
+
+.matching-formula-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.matching-formula-weight {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+}
+
+.matching-formula-track {
+  height: 5px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  overflow: hidden;
+}
+
+.matching-formula-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.5s ease;
+}
+
+.matching-thresholds {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-subtle, #f1f5f9);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.matching-threshold-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.matching-threshold-pill--strong {
+  background: rgba(16, 185, 129, 0.09);
+  color: #047857;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.matching-threshold-pill--mod {
+  background: rgba(245, 158, 11, 0.09);
+  color: #b45309;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.matching-threshold-pill--weak {
+  background: rgba(239, 68, 68, 0.09);
+  color: #b91c1c;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+/* Gap Analysis Diagnostic Card */
+.matching-gap-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px 20px;
+}
+
+@media (max-width: 768px) {
+  .matching-gap-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.matching-gap-item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  background: #fafbfc;
+  border: 1px solid var(--border-subtle, #f1f5f9);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.matching-gap-item:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.matching-gap-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.78rem;
+}
+
+.matching-gap-skill {
+  font-weight: 600;
+  color: var(--text-primary, #0f172a);
+}
+
+.matching-gap-stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.matching-gap-demand {
+  font-size: 0.7rem;
+  color: var(--text-secondary, #64748b);
+}
+
+.matching-gap-pct {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 4px;
+}
+
+.matching-gap-pct--high {
+  background: rgba(16, 185, 129, 0.1);
+  color: #047857;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.matching-gap-pct--mid {
+  background: rgba(245, 158, 11, 0.1);
+  color: #b45309;
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.matching-gap-pct--low {
+  background: rgba(239, 68, 68, 0.1);
+  color: #b91c1c;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.matching-gap-track {
+  height: 6px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  overflow: hidden;
+}
+
+.matching-gap-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #005930, #10b981);
+  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Toolbar & Filters */
+.matching-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.matching-search-input {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #ffffff;
+  border: 1px solid var(--border-default, #e2e8f0);
+  border-radius: var(--radius-md, 8px);
+  padding: 6px 12px;
+  font-size: var(--text-xs, 0.75rem);
+  color: var(--text-primary, #0f172a);
+  transition: border-color 0.15s ease;
+  min-width: 220px;
+}
+
+.matching-search-input:focus-within {
+  border-color: var(--color-primary, #005930);
+  box-shadow: 0 0 0 2px rgba(0, 89, 48, 0.1);
+}
+
+.matching-search-input input {
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: inherit;
+  color: inherit;
+  width: 100%;
+}
+
+.matching-select {
+  background: #ffffff;
+  border: 1px solid var(--border-default, #e2e8f0);
+  border-radius: var(--radius-md, 8px);
+  padding: 6px 10px;
+  font-size: var(--text-xs, 0.75rem);
+  color: var(--text-secondary, #475569);
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.matching-select:focus {
+  border-color: var(--color-primary, #005930);
+}
+
+/* Top Skills List in Matching Card */
+.matching-skills-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.matching-skill-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.matching-skill-rank {
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--text-secondary, #475569);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.matching-skill-name {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-primary, #0f172a);
+  width: 110px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.matching-skill-track {
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  overflow: hidden;
+}
+
+.matching-skill-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #005930, #10b981);
+  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.matching-skill-count {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+  min-width: 24px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+
 
 
