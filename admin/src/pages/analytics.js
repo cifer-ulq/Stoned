@@ -100,7 +100,7 @@ function donut(inPct, size = 80, strokeW = 10, colorIn = '#6366F1', colorOut = '
 /* ─────────────────────────────────────────────────────────────
    ORIGINAL STUDENT TABLE (PAGINATED IN BATCH PANEL)
    ───────────────────────────────────────────────────────────── */
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 5;
 
 function studentTableRows(students, page) {
   const start = page * PAGE_SIZE;
@@ -1021,8 +1021,74 @@ function renderCqiInsights(peoData) {
    ───────────────────────────────────────────────────────────── */
 let _tableSearch = '';
 let _tablePage = 0;
-let _tablePageSize = 10;
+let _tablePageSize = 5;
 let _tableStatusFilter = '';
+
+function renderPeoScoreCell(peoObj) {
+  const p = peoObj || { score: '—', is_met: false, evidence: '' };
+  const rawScore = p.score;
+  const numScore = parseFloat(rawScore);
+  const isNum = !isNaN(numScore);
+  const formattedScore = isNum ? numScore.toFixed(2) : (rawScore || '—');
+
+  if (p.is_met) {
+    return `<span class="alumni-score-cell alumni-score-cell--met" title="${p.evidence || 'Meets institutional standard'}">${formattedScore} ${icon('check', 11)}</span>`;
+  }
+  if (isNum && numScore >= 2.5) {
+    return `<span class="alumni-score-cell alumni-score-cell--approaching" title="${p.evidence || 'Approaching benchmark'}">${formattedScore}</span>`;
+  }
+  if (isNum) {
+    return `<span class="alumni-score-cell alumni-score-cell--low" title="${p.evidence || 'Needs review'}">${formattedScore}</span>`;
+  }
+  return `<span class="alumni-score-cell alumni-score-cell--na">—</span>`;
+}
+
+function buildAlumniPaginationHtml({ currentPage, totalPages, totalItems, perPage, itemName = 'graduates' }) {
+  if (totalPages <= 1) {
+    if (totalItems > 0) {
+      return `
+        <div style="display:flex;justify-content:space-between;align-items:center;width:100%;font-size:var(--text-xs);color:var(--text-tertiary);padding:4px 0;">
+          <span>Showing all <strong>${totalItems}</strong> ${itemName}</span>
+        </div>
+      `;
+    }
+    return '';
+  }
+
+  const start = (currentPage - 1) * perPage + 1;
+  const end = Math.min(currentPage * perPage, totalItems);
+
+  const pages = [];
+  if (totalPages <= 7) {
+    for (let i = 1; i <= totalPages; i++) pages.push(i);
+  } else {
+    pages.push(1);
+    if (currentPage > 3) pages.push('…');
+    for (let i = Math.max(2, currentPage - 1); i <= Math.min(totalPages - 1, currentPage + 1); i++) pages.push(i);
+    if (currentPage < totalPages - 2) pages.push('…');
+    pages.push(totalPages);
+  }
+
+  const pageButtons = pages.map(p => p === '…'
+    ? `<span style="padding:0 4px;align-self:center;color:var(--text-tertiary);font-size:var(--text-xs);">…</span>`
+    : `<button type="button" class="an-pg-btn ${p === currentPage ? 'an-pg-btn--active' : ''}" data-p="${p}">${p}</button>`
+  ).join('');
+
+  return `
+    <div style="display:flex;align-items:center;justify-content:space-between;width:100%;flex-wrap:wrap;gap:12px;font-size:var(--text-xs);color:var(--text-secondary);">
+      <div>Showing <strong>${start}–${end}</strong> of <strong>${totalItems}</strong> ${itemName} (${perPage} per page)</div>
+      <div style="display:flex;align-items:center;gap:4px;">
+        <button type="button" class="an-pg-btn an-pg-btn--nav" data-p="${currentPage - 1}" ${currentPage <= 1 ? 'disabled' : ''} title="Previous Page">
+          ${icon('chevronLeft', 14)}
+        </button>
+        ${pageButtons}
+        <button type="button" class="an-pg-btn an-pg-btn--nav" data-p="${currentPage + 1}" ${currentPage >= totalPages ? 'disabled' : ''} title="Next Page">
+          ${icon('chevronRight', 14)}
+        </button>
+      </div>
+    </div>
+  `;
+}
 
 function renderAlumniMatrixTable(drilldown) {
   const list = drilldown || [];
@@ -1067,80 +1133,77 @@ function renderAlumniMatrixTable(drilldown) {
 
     const metCount = (p1.is_met ? 1 : 0) + (p2.is_met ? 1 : 0) + (p3.is_met ? 1 : 0);
     const overallBadge = metCount === 3
-      ? `<span class="badge" style="background:rgba(0,89,48,0.1);color:#005930;font-weight:600;font-size:0.68rem;">3/3 Achieved</span>`
+      ? `<span class="alumni-score-cell alumni-score-cell--met" style="font-size:0.72rem;padding:3px 9px;">${icon('checkCircle', 12)} 3/3 Achieved</span>`
       : (metCount >= 1
-        ? `<span class="badge" style="background:rgba(245,158,11,0.12);color:#D97706;font-weight:600;font-size:0.68rem;">${metCount}/3 Progressing</span>`
-        : `<span class="badge" style="background:rgba(239,68,68,0.12);color:#EF4444;font-weight:600;font-size:0.68rem;">Under Review</span>`);
+        ? `<span class="alumni-score-cell alumni-score-cell--approaching" style="font-size:0.72rem;padding:3px 9px;">${metCount}/3 Progressing</span>`
+        : `<span class="alumni-score-cell alumni-score-cell--low" style="font-size:0.72rem;padding:3px 9px;">${icon('alertCircle', 12)} Under Review</span>`);
 
     return `
       <tr class="an-tbl-row">
-        <td class="an-tbl-td an-tbl-td--num">${startIdx + idx + 1}</td>
+        <td class="an-tbl-td an-tbl-td--num" style="font-weight:600;color:var(--text-tertiary);">${startIdx + idx + 1}</td>
         <td class="an-tbl-td">
-          <div class="an-tbl-name">
-            <div class="an-tbl-avatar">${(a.name || 'Alum').split(' ').map(w => w[0]).slice(0, 2).join('')}</div>
+          <div class="an-tbl-name" style="display:flex;align-items:center;gap:10px;">
+            <div class="an-tbl-avatar" style="width:34px;height:34px;min-width:34px;border-radius:50%;background:#e0f2fe;color:#0369a1;font-weight:700;font-size:0.75rem;display:flex;align-items:center;justify-content:center;border:1px solid #bae6fd;">
+              ${(a.name || 'Alum').split(' ').map(w => w[0]).slice(0, 2).join('')}
+            </div>
             <div>
-              <div style="font-weight:600;color:var(--text-primary);">${a.name}</div>
-              <div style="font-size:0.68rem;color:var(--text-tertiary);">${a.current_role} &middot; <strong>${a.employer}</strong></div>
+              <div style="font-weight:700;color:var(--text-primary);font-size:0.84rem;line-height:1.25;">${a.name}</div>
+              <div style="font-size:0.72rem;color:var(--text-tertiary);margin-top:2px;display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
+                <span>${a.current_role}</span>
+                <span style="opacity:0.5;">&bull;</span>
+                <strong style="color:var(--text-secondary);font-weight:600;">${a.employer}</strong>
+              </div>
             </div>
           </div>
         </td>
-        <td class="an-tbl-td"><span class="an-tbl-section">${a.batch}</span></td>
-        <td class="an-tbl-td"><span class="an-tbl-section">Sec ${a.section}</span></td>
-        <td class="an-tbl-td">
-          <span class="peo-alumni-cell-score ${p1.is_met ? 'peo-alumni-cell-score--met' : 'peo-alumni-cell-score--unmet'}" title="${p1.evidence || ''}">
-            ${p1.score} ${p1.is_met ? icon('check', 11) : ''}
-          </span>
+        <td class="an-tbl-td" style="white-space:nowrap;">
+          <span class="alumni-batch-pill">${a.batch || '—'}</span>
         </td>
         <td class="an-tbl-td">
-          <span class="peo-alumni-cell-score ${p2.is_met ? 'peo-alumni-cell-score--met' : 'peo-alumni-cell-score--unmet'}" title="${p2.evidence || ''}">
-            ${p2.score} ${p2.is_met ? icon('check', 11) : ''}
-          </span>
+          <span class="alumni-section-badge">Sec ${a.section || '—'}</span>
         </td>
-        <td class="an-tbl-td">
-          <span class="peo-alumni-cell-score ${p3.is_met ? 'peo-alumni-cell-score--met' : 'peo-alumni-cell-score--unmet'}" title="${p3.evidence || ''}">
-            ${p3.score} ${p3.is_met ? icon('check', 11) : ''}
-          </span>
+        <td class="an-tbl-td" style="text-align:center;">
+          ${renderPeoScoreCell(p1)}
         </td>
-        <td class="an-tbl-td">${overallBadge}</td>
-        <td class="an-tbl-td" style="text-align:right;">
-          <button class="btn btn--outline btn--sm btn-inspect-alumni" data-alumni-id="${a.id}" style="padding:4px 8px;font-size:0.7rem;display:inline-flex;align-items:center;gap:4px;">
-            ${icon('eye', 12)} Evidence
+        <td class="an-tbl-td" style="text-align:center;">
+          ${renderPeoScoreCell(p2)}
+        </td>
+        <td class="an-tbl-td" style="text-align:center;">
+          ${renderPeoScoreCell(p3)}
+        </td>
+        <td class="an-tbl-td" style="text-align:center;">${overallBadge}</td>
+        <td class="an-tbl-td" style="text-align:center;width:60px;">
+          <button type="button" class="ojt-btn-icon ojt-btn-icon--view btn-inspect-alumni" data-alumni-id="${a.id}" title="View Graduate PEO Evidence & Rubrics" aria-label="View PEO Evidence">
+            ${icon('eye', 14)}
           </button>
         </td>
       </tr>
     `;
   }).join('');
 
-  const pageButtons = [];
-  const maxButtons = 5;
-  let startPage = Math.max(0, _tablePage - Math.floor(maxButtons / 2));
-  let endPage = Math.min(totalPages, startPage + maxButtons);
-  if (endPage - startPage < maxButtons) {
-    startPage = Math.max(0, endPage - maxButtons);
-  }
-
-  for (let p = startPage; p < endPage; p++) {
-    pageButtons.push(`
-      <button class="peo-pg-btn ${p === _tablePage ? 'peo-pg-btn--active' : ''}" data-page="${p}">
-        ${p + 1}
-      </button>
-    `);
-  }
+  const paginationFooterHtml = buildAlumniPaginationHtml({
+    currentPage: _tablePage + 1,
+    totalPages,
+    totalItems: totalCount,
+    perPage: _tablePageSize,
+    itemName: 'graduates'
+  });
 
   return `
-    <div class="peo-table-card" id="peo-matrix-container">
-      <div class="peo-table-toolbar">
-        <div class="peo-table-title">
-          ${icon('clipboardCheck', 16)} Individual Graduate PEO Evaluation Matrix
-          <span class="badge badge--neutral" style="font-size:0.7rem;margin-left:6px;">${totalCount} In Cohort</span>
+    <div class="ojt-table-card" id="peo-matrix-container">
+      <div class="ojt-table-card__header">
+        <div class="ojt-table-card__title">
+          ${icon('clipboardCheck', 18)} Individual Graduate PEO Evaluation Matrix
+          <span class="ojt-count-pill"><span class="ojt-count-pill__dot"></span>${totalCount} In Cohort</span>
         </div>
-        <div class="peo-table-actions">
-          <div class="peo-search-box" style="min-width:200px;">
+        <div class="ojt-table-card__actions">
+          <div class="peo-search-box" style="min-width:220px;">
             ${icon('search', 13)}
             <input type="text" id="alumni-table-search" class="peo-search-input"
               placeholder="Search graduate name, employer, role..." value="${_tableSearch.replace(/"/g, '&quot;')}" />
           </div>
-          <select id="alumni-page-size" class="peo-filter-select" style="padding:5px 24px 5px 8px;">
+          <select id="alumni-page-size" class="peo-filter-select" style="padding:5px 24px 5px 8px;" title="Rows per page">
+            <option value="5" ${_tablePageSize === 5 ? 'selected' : ''}>5 per page</option>
             <option value="10" ${_tablePageSize === 10 ? 'selected' : ''}>10 per page</option>
             <option value="25" ${_tablePageSize === 25 ? 'selected' : ''}>25 per page</option>
             <option value="50" ${_tablePageSize === 50 ? 'selected' : ''}>50 per page</option>
@@ -1148,42 +1211,29 @@ function renderAlumniMatrixTable(drilldown) {
         </div>
       </div>
 
-      <div class="an-tbl-wrap">
-        <table class="an-tbl">
+      <div class="ojt-table-responsive">
+        <table class="ojt-table">
           <thead>
             <tr>
-              <th class="an-tbl-th an-tbl-th--num">#</th>
+              <th class="an-tbl-th an-tbl-th--num" style="width:40px;">#</th>
               <th class="an-tbl-th">Graduate &amp; Verified Role</th>
-              <th class="an-tbl-th">Batch</th>
-              <th class="an-tbl-th">Section</th>
-              <th class="an-tbl-th" title="PEO 1: Degree Employment Alignment">PEO 1 Alignment</th>
-              <th class="an-tbl-th" title="PEO 2: Career Mobility, Leadership & Certifications">PEO 2 Progression</th>
-              <th class="an-tbl-th" title="PEO 3: Industry Skill & Project Relevancy">PEO 3 Relevancy</th>
-              <th class="an-tbl-th">Accreditation Status</th>
-              <th class="an-tbl-th" style="text-align:right;">Actions</th>
+              <th class="an-tbl-th" style="white-space:nowrap;width:110px;">Batch</th>
+              <th class="an-tbl-th" style="width:80px;">Section</th>
+              <th class="an-tbl-th" style="text-align:center;width:125px;" title="PEO 1: Degree Employment Alignment">PEO 1 Alignment</th>
+              <th class="an-tbl-th" style="text-align:center;width:130px;" title="PEO 2: Career Mobility, Leadership & Certifications">PEO 2 Progression</th>
+              <th class="an-tbl-th" style="text-align:center;width:125px;" title="PEO 3: Industry Skill & Project Relevancy">PEO 3 Relevancy</th>
+              <th class="an-tbl-th" style="text-align:center;width:140px;">Accreditation Status</th>
+              <th class="an-tbl-th" style="text-align:center;width:60px;">Actions</th>
             </tr>
           </thead>
           <tbody>
-            ${rowsHtml || `<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--text-secondary);">No graduates match the active filter and search query.</td></tr>`}
+            ${rowsHtml || `<tr><td colspan="9" style="text-align:center;padding:36px 16px;color:var(--text-secondary);font-size:0.84rem;">No graduates match the active filter and search query.</td></tr>`}
           </tbody>
         </table>
       </div>
 
-      <div class="peo-pagination">
-        <div class="peo-pagination-info">
-          ${totalCount > 0
-            ? `Showing <strong>${startIdx + 1}–${endIdx}</strong> of <strong>${totalCount}</strong> graduates`
-            : 'No matching records'}
-        </div>
-        <div class="peo-pagination-btns">
-          <button class="peo-pg-btn" id="btn-pg-prev" ${_tablePage === 0 ? 'disabled' : ''} title="Previous Page">
-            ${icon('chevronLeft', 13)}
-          </button>
-          ${pageButtons.join('')}
-          <button class="peo-pg-btn" id="btn-pg-next" ${_tablePage >= totalPages - 1 ? 'disabled' : ''} title="Next Page">
-            ${icon('chevronRight', 13)}
-          </button>
-        </div>
+      <div class="ojt-table-card__footer" id="peo-matrix-pagination">
+        ${paginationFooterHtml}
       </div>
     </div>
   `;
@@ -1305,6 +1355,17 @@ function setupTableEvents(container, drilldown) {
       refreshTableView(container, drilldown);
     });
   }
+
+  // Bind pagination page buttons & previous / next
+  container.querySelectorAll('#peo-matrix-pagination .an-pg-btn[data-p]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const p = parseInt(btn.dataset.p, 10);
+      if (!isNaN(p) && p >= 1) {
+        _tablePage = p - 1;
+        refreshTableView(container, drilldown);
+      }
+    });
+  });
 
   container.querySelector('#btn-pg-prev')?.addEventListener('click', () => {
     if (_tablePage > 0) {
@@ -1449,11 +1510,11 @@ function renderAnalytics(container, batches, overall, peoData, onImportSuccess, 
         <!-- 3 PEO Core Accreditation Triad Grid (Replacing Spider Graph) -->
         ${renderPeoTriad(peoData)}
 
-        <!-- CQI Accreditation Insights -->
-        ${renderCqiInsights(peoData)}
-
-        <!-- Paginated Graduate Evaluation Table -->
+        <!-- Paginated Graduate Evaluation Table (5 per pagination) -->
         ${renderAlumniMatrixTable(peoData?.alumni_drilldown || [])}
+
+        <!-- CQI Accreditation Insights & Continuous Quality Improvement Action Plan -->
+        ${renderCqiInsights(peoData)}
       ` : renderCareerView(batches, overall)}
     </div>
   `;
