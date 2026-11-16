@@ -23,7 +23,12 @@ const CAMPUSES = [
 
 const COURSE_GROUPS = [
   {
+    id: 'ccs',
     group: 'College of Computer Studies (CCS)',
+    short: 'CCS',
+    icon: 'cpu',
+    color: '#005930',
+    badgeBg: 'rgba(0, 89, 48, 0.08)',
     courses: [
       'Bachelor of Science in Information Technology',
       'Bachelor of Science in Information Systems',
@@ -31,14 +36,24 @@ const COURSE_GROUPS = [
     ],
   },
   {
+    id: 'coe',
     group: 'College of Engineering',
+    short: 'Engineering',
+    icon: 'layers',
+    color: '#2563EB',
+    badgeBg: 'rgba(37, 99, 235, 0.08)',
     courses: [
       'Bachelor of Science in Computer Engineering',
       'Bachelor of Science in Electronics Engineering',
     ],
   },
   {
+    id: 'cit',
     group: 'College of Industrial Technology (CIT)',
+    short: 'Industrial Tech',
+    icon: 'tool',
+    color: '#D97706',
+    badgeBg: 'rgba(217, 119, 6, 0.08)',
     courses: [
       'Bachelor of Science in Industrial Technology - Major in Architectural Drafting Technology',
       'Bachelor of Science in Industrial Technology - Major in Automotive Technology',
@@ -50,14 +65,24 @@ const COURSE_GROUPS = [
     ],
   },
   {
+    id: 'cotv',
     group: 'College of Education / Technical-Vocational',
+    short: 'Education',
+    icon: 'book-open',
+    color: '#7C3AED',
+    badgeBg: 'rgba(124, 58, 237, 0.08)',
     courses: [
       'Bachelor of Technical Vocational Teacher Education - Major in Electrical Technology',
       'Bachelor of Technical Vocational Teacher Education - Major in Electronics Technology',
     ],
   },
   {
+    id: 'other',
     group: 'Business & Other Programs',
+    short: 'Business & Others',
+    icon: 'briefcase',
+    color: '#0D9488',
+    badgeBg: 'rgba(13, 148, 136, 0.08)',
     courses: [
       'Bachelor of Science in Business Administration',
       'Bachelor of Science in Accountancy',
@@ -72,6 +97,25 @@ const COURSE_GROUPS = [
 ];
 
 const COURSES = COURSE_GROUPS.flatMap(g => g.courses);
+
+function formatCourseDisplay(courseName) {
+  if (courseName.includes(' - Major in ')) {
+    const [base, major] = courseName.split(' - Major in ');
+    const shortBase = base.replace('Bachelor of Science in ', 'BS ').replace('Bachelor of ', 'B ');
+    return {
+      primaryTitle: `Major in ${major}`,
+      degreeBadge: shortBase,
+      fullName: courseName,
+      isTrade: true,
+    };
+  }
+  return {
+    primaryTitle: courseName,
+    degreeBadge: null,
+    fullName: courseName,
+    isTrade: false,
+  };
+}
 
 const COURSE_META = {
   'Bachelor of Science in Information Technology': {
@@ -970,11 +1014,24 @@ export default async function OjtManagementPage(container) {
                     <div class="sup-course-dropdown" id="sup-course-dropdown" role="listbox">
                       <div class="sup-course-search-wrap">
                         <span class="sup-course-search-icon">${icon('search', 14)}</span>
-                        <input type="text" class="sup-course-search-input" id="sup-course-search" placeholder="Search program name or code (e.g. BSIT)..." autocomplete="off" />
+                        <input type="text" class="sup-course-search-input" id="sup-course-search" placeholder="Search program, code (e.g. BSIT), or college..." autocomplete="off" />
                         <button type="button" class="sup-course-search-clear" id="sup-course-search-clear" style="display:none;" title="Clear search">${icon('x', 12)}</button>
                       </div>
+
+                      <!-- College Filter Tabs -->
+                      <div class="sup-college-tabs" id="sup-college-tabs">
+                        <button type="button" class="sup-college-tab sup-college-tab--active" data-college="all">
+                          All <span class="sup-tab-badge">${COURSES.length}</span>
+                        </button>
+                        ${COURSE_GROUPS.map(g => `
+                          <button type="button" class="sup-college-tab" data-college="${g.id}">
+                            ${g.short} <span class="sup-tab-badge">${g.courses.length}</span>
+                          </button>
+                        `).join('')}
+                      </div>
+
                       <div class="sup-course-list-header">
-                        <span>AVAILABLE PROGRAMS</span>
+                        <span>PROGRAMS GROUPED BY COLLEGE</span>
                         <span class="sup-course-count" id="sup-course-count">${COURSES.length} programs</span>
                       </div>
                       <div class="sup-course-list" id="sup-course-list"></div>
@@ -1031,6 +1088,7 @@ export default async function OjtManagementPage(container) {
     const clearBtn = backdrop.querySelector('#sup-course-clear');
     const triggerIconEl = backdrop.querySelector('#sup-course-trigger-icon');
 
+    let activeCollegeId = 'all';
     let selectedCourse = '';
     let focusedIndex = -1;
     let filteredCourses = [...COURSES];
@@ -1038,6 +1096,7 @@ export default async function OjtManagementPage(container) {
     function updateTriggerDisplay() {
       if (selectedCourse) {
         const meta = getCourseMeta(selectedCourse);
+        const display = formatCourseDisplay(selectedCourse);
         const count = courseCountMap[selectedCourse] || 0;
         const countTag = count > 0
           ? `<span class="sup-course-trigger__badge sup-badge--busy">${icon('user-check', 11)} ${count} active</span>`
@@ -1046,7 +1105,12 @@ export default async function OjtManagementPage(container) {
         placeholderEl.style.display = 'none';
         selectedWrapEl.innerHTML = `
           <span class="sup-course-trigger__code">${meta.code}</span>
-          <span class="sup-course-trigger__title" title="${selectedCourse}">${selectedCourse}</span>
+          <div style="display:flex;flex-direction:column;min-width:0;text-align:left;line-height:1.2;">
+            <span class="sup-course-trigger__title" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${selectedCourse}">
+              ${display.isTrade ? `${display.primaryTitle} (${display.degreeBadge})` : selectedCourse}
+            </span>
+            <span style="font-size:0.68rem;color:var(--text-tertiary);">${meta.category}</span>
+          </div>
           ${countTag}
         `;
         selectedWrapEl.style.display = 'flex';
@@ -1063,17 +1127,40 @@ export default async function OjtManagementPage(container) {
 
     function renderOptions(query = '') {
       const q = query.trim().toLowerCase();
-      filteredCourses = COURSES.filter(c => {
-        if (!q) return true;
-        const meta = getCourseMeta(c);
-        return c.toLowerCase().includes(q) ||
-               meta.code.toLowerCase().includes(q) ||
-               meta.category.toLowerCase().includes(q);
+
+      let totalVisibleCourses = 0;
+      const visibleGroups = [];
+      const flatListForFocus = [];
+
+      COURSE_GROUPS.forEach(group => {
+        if (activeCollegeId !== 'all' && group.id !== activeCollegeId) {
+          return;
+        }
+
+        const matchedInGroup = group.courses.filter(c => {
+          if (!q) return true;
+          const meta = getCourseMeta(c);
+          return c.toLowerCase().includes(q) ||
+                 meta.code.toLowerCase().includes(q) ||
+                 meta.category.toLowerCase().includes(q) ||
+                 group.group.toLowerCase().includes(q) ||
+                 group.short.toLowerCase().includes(q);
+        });
+
+        if (matchedInGroup.length > 0) {
+          totalVisibleCourses += matchedInGroup.length;
+          matchedInGroup.forEach(c => flatListForFocus.push(c));
+          visibleGroups.push({
+            group,
+            courses: matchedInGroup,
+          });
+        }
       });
 
-      countBadgeEl.textContent = `${filteredCourses.length} program${filteredCourses.length === 1 ? '' : 's'}`;
+      filteredCourses = flatListForFocus;
+      countBadgeEl.textContent = `${totalVisibleCourses} program${totalVisibleCourses === 1 ? '' : 's'}`;
 
-      if (filteredCourses.length === 0) {
+      if (totalVisibleCourses === 0) {
         listContainer.style.display = 'none';
         emptyState.style.display = 'flex';
         return;
@@ -1082,38 +1169,66 @@ export default async function OjtManagementPage(container) {
       listContainer.style.display = 'flex';
       emptyState.style.display = 'none';
 
-      listContainer.innerHTML = filteredCourses.map((c, idx) => {
-        const meta = getCourseMeta(c);
-        const count = courseCountMap[c] || 0;
-        const isSelected = c === selectedCourse;
-        const isFocused = idx === focusedIndex;
-        const countTag = count > 0
-          ? `<span class="sup-item-badge sup-item-badge--busy">${icon('user-check', 11)} ${count} active coordinator${count > 1 ? 's' : ''}</span>`
-          : `<span class="sup-item-badge sup-item-badge--free">${icon('check', 11)} Available &bull; No coordinator</span>`;
+      let runningIndex = 0;
+      listContainer.innerHTML = visibleGroups.map(({ group, courses }) => {
+        const groupItemsHtml = courses.map(c => {
+          const meta = getCourseMeta(c);
+          const display = formatCourseDisplay(c);
+          const count = courseCountMap[c] || 0;
+          const isSelected = c === selectedCourse;
+          const isFocused = runningIndex === focusedIndex;
+          runningIndex++;
 
-        return `
-          <div class="sup-course-item ${isSelected ? 'sup-course-item--selected' : ''} ${isFocused ? 'sup-course-item--focused' : ''}" 
-               data-course="${c}" 
-               role="option" 
-               aria-selected="${isSelected}"
-               tabindex="-1">
-            <div class="sup-course-item__avatar">
-              <span class="sup-course-item__code">${meta.code}</span>
-            </div>
-            <div class="sup-course-item__info">
-              <div class="sup-course-item__name" title="${c}">${c}</div>
-              <div class="sup-course-item__meta">
-                <span class="sup-course-item__dept">${meta.category}</span>
-                <span style="opacity:0.4;">&bull;</span>
-                ${countTag}
+          const countTag = count > 0
+            ? `<span class="sup-item-badge sup-item-badge--busy">${icon('user-check', 11)} ${count} active coordinator${count > 1 ? 's' : ''}</span>`
+            : `<span class="sup-item-badge sup-item-badge--free">${icon('check', 11)} Available &bull; No coordinator</span>`;
+
+          return `
+            <div class="sup-course-item ${isSelected ? 'sup-course-item--selected' : ''} ${isFocused ? 'sup-course-item--focused' : ''}" 
+                 data-course="${c}" 
+                 role="option" 
+                 aria-selected="${isSelected}"
+                 tabindex="-1">
+              <div class="sup-course-item__avatar" style="background:${group.badgeBg};border:1px solid ${group.color}22;">
+                <span class="sup-course-item__code" style="color:${group.color};">${meta.code}</span>
+              </div>
+              <div class="sup-course-item__info">
+                <div class="sup-course-item__name">
+                  ${display.primaryTitle}
+                </div>
+                <div class="sup-course-item__meta">
+                  ${display.degreeBadge ? `<span class="sup-course-item__degree-tag">${display.degreeBadge}</span>` : ''}
+                  <span class="sup-course-item__dept">${meta.category}</span>
+                  <span style="opacity:0.35;">&bull;</span>
+                  ${countTag}
+                </div>
+              </div>
+              <div class="sup-course-item__check">
+                ${icon('check', 15)}
               </div>
             </div>
-            <div class="sup-course-item__check">
-              ${icon('check', 15)}
+          `;
+        }).join('');
+
+        return `
+          <div class="sup-course-group-card">
+            <div class="sup-course-group-header">
+              <div class="sup-course-group-left">
+                <span class="sup-course-group-icon" style="color:${group.color};background:${group.badgeBg};">
+                  ${icon(group.icon, 13)}
+                </span>
+                <span class="sup-course-group-name">${group.group}</span>
+              </div>
+              <span class="sup-course-group-pill">${courses.length} ${courses.length === 1 ? 'program' : 'programs'}</span>
+            </div>
+            <div class="sup-course-group-items">
+              ${groupItemsHtml}
             </div>
           </div>
         `;
       }).join('');
+
+      renderIcons();
 
       listContainer.querySelectorAll('.sup-course-item').forEach(itemEl => {
         itemEl.addEventListener('click', (e) => {
@@ -1123,6 +1238,19 @@ export default async function OjtManagementPage(container) {
         });
       });
     }
+
+    // College tabs filter handler
+    backdrop.querySelectorAll('.sup-college-tab').forEach(tabBtn => {
+      tabBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        activeCollegeId = tabBtn.getAttribute('data-college') || 'all';
+        backdrop.querySelectorAll('.sup-college-tab').forEach(t => {
+          t.classList.toggle('sup-college-tab--active', t.getAttribute('data-college') === activeCollegeId);
+        });
+        focusedIndex = -1;
+        renderOptions(searchInput.value);
+      });
+    });
 
     function selectCourse(course) {
       selectedCourse = course;
