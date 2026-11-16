@@ -1417,18 +1417,28 @@ function studentDetailCard(s, state) {
 function resolveCollegeAndDept(program) {
   const p = (program || '').toLowerCase();
   if (p.includes('information technology') || p.includes('computer science') || p.includes('information systems') || p.includes('bsit') || p.includes('bscs') || p.includes('bsis')) {
+    let department = 'Department of Information Technology';
+    if (p.includes('information systems') || p.includes('bsis')) {
+      department = 'Department of Information Systems';
+    } else if (p.includes('computer science') || p.includes('bscs')) {
+      department = 'Department of Computer Science';
+    }
     return {
-      college: 'College of Industrial Technology',
-      department: 'Department of Information Technology',
+      college: 'College of Computer Studies',
+      department,
     };
   }
-  if (p.includes('engineering') || p.includes('cpe')) {
+  if (p.includes('engineering') || p.includes('cpe') || p.includes('ece')) {
+    let department = 'Department of Computer Engineering';
+    if (p.includes('electronics')) {
+      department = 'Department of Electronics Engineering';
+    }
     return {
-      college: 'College of Engineering and Technology',
-      department: 'Department of Computer Engineering',
+      college: 'College of Engineering',
+      department,
     };
   }
-  if (p.includes('industrial technology') || p.includes('automotive') || p.includes('electrical') || p.includes('electronics') || p.includes('drafting')) {
+  if (p.includes('industrial technology') || p.includes('automotive') || p.includes('drafting') || p.includes('mechanical') || p.includes('food trades')) {
     return {
       college: 'College of Industrial Technology',
       department: 'Department of Industrial Technology',
@@ -1440,15 +1450,15 @@ function resolveCollegeAndDept(program) {
       department: 'Department of Business Administration',
     };
   }
-  if (p.includes('education')) {
+  if (p.includes('teacher education') || p.includes('btvted') || p.includes('education')) {
     return {
       college: 'College of Education',
-      department: 'Department of Teacher Education',
+      department: 'Department of Technical-Vocational Education',
     };
   }
   return {
-    college: 'College of Industrial Technology',
-    department: 'Academic Internship and Training Department',
+    college: 'College of Computer Studies',
+    department: 'Department of Information Technology',
   };
 }
 

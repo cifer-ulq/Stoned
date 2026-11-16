@@ -25,20 +25,38 @@ class EndorsementPdfService
             str_contains($prog, 'bscs') ||
             str_contains($prog, 'bsis')
         ) {
+            $dept = 'Department of Information Technology';
+            if (str_contains($prog, 'information systems') || str_contains($prog, 'bsis')) {
+                $dept = 'Department of Information Systems';
+            } elseif (str_contains($prog, 'computer science') || str_contains($prog, 'bscs')) {
+                $dept = 'Department of Computer Science';
+            }
+
             return [
-                'college'    => 'College of Industrial Technology',
-                'department' => 'Department of Information Technology',
+                'college'    => 'College of Computer Studies',
+                'department' => $dept,
             ];
         }
 
-        if (str_contains($prog, 'engineering') || str_contains($prog, 'cpe')) {
+        if (str_contains($prog, 'engineering') || str_contains($prog, 'cpe') || str_contains($prog, 'ece')) {
+            $dept = 'Department of Computer Engineering';
+            if (str_contains($prog, 'electronics')) {
+                $dept = 'Department of Electronics Engineering';
+            }
+
             return [
-                'college'    => 'College of Engineering and Technology',
-                'department' => 'Department of Computer Engineering',
+                'college'    => 'College of Engineering',
+                'department' => $dept,
             ];
         }
 
-        if (str_contains($prog, 'industrial technology') || str_contains($prog, 'automotive') || str_contains($prog, 'electrical') || str_contains($prog, 'electronics') || str_contains($prog, 'drafting')) {
+        if (
+            str_contains($prog, 'industrial technology') ||
+            str_contains($prog, 'automotive') ||
+            str_contains($prog, 'drafting') ||
+            str_contains($prog, 'mechanical') ||
+            str_contains($prog, 'food trades')
+        ) {
             return [
                 'college'    => 'College of Industrial Technology',
                 'department' => 'Department of Industrial Technology',
@@ -52,16 +70,16 @@ class EndorsementPdfService
             ];
         }
 
-        if (str_contains($prog, 'education')) {
+        if (str_contains($prog, 'teacher education') || str_contains($prog, 'btvted') || str_contains($prog, 'education')) {
             return [
                 'college'    => 'College of Education',
-                'department' => 'Department of Teacher Education',
+                'department' => 'Department of Technical-Vocational Education',
             ];
         }
 
         return [
-            'college'    => 'College of Industrial Technology',
-            'department' => 'Academic Internship and Training Department',
+            'college'    => 'College of Computer Studies',
+            'department' => 'Department of Information Technology',
         ];
     }
 
