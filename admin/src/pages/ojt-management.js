@@ -553,17 +553,17 @@ export default async function OjtManagementPage(container) {
           </div>
 
           <!-- Hours Progress Card -->
-          <div style="background:var(--bg-elevated);border:1px solid var(--border-subtle);border-radius:10px;padding:14px 16px;">
+          <div style="background:var(--bg-elevated);border:1px solid var(--border-default,#e2e8f0);border-radius:10px;padding:14px 16px;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
               <span style="font-size:0.75rem;font-weight:600;color:var(--text-secondary);">OJT Hours Progress</span>
-              <span style="font-size:0.85rem;font-weight:700;color:var(--text-primary);">${t.hours_done || 0} / ${t.hours_required || 0} hrs (${t.pct || 0}%)</span>
+              <span style="font-size:0.85rem;font-weight:700;color:var(--text-primary);">${parseFloat(t.hours_done || 0)} / ${parseFloat(t.hours_required || 0)} hrs (${t.pct || 0}%)</span>
             </div>
-            <div class="progress-bar" style="height:8px;background:var(--border-subtle);border-radius:4px;overflow:hidden;">
-              <div class="progress-bar__fill" style="width:${t.pct || 0}%;background:${barColor};height:100%;transition:width 0.3s;"></div>
+            <div style="width:100%;height:8px;background:#E2E8F0;border-radius:9999px;overflow:hidden;">
+              <div style="width:${Math.min(100, Math.max(0, t.pct || 0))}%;background:${barColor};height:100%;border-radius:9999px;transition:width 0.3s ease;"></div>
             </div>
             <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;font-size:0.72rem;color:var(--text-tertiary);">
               <span>0 hrs rendered</span>
-              <span>Target: ${t.hours_required || 0} hrs</span>
+              <span>Target: ${parseFloat(t.hours_required || 0)} hrs</span>
             </div>
           </div>
         </div>
@@ -601,9 +601,15 @@ export default async function OjtManagementPage(container) {
     tbody.innerHTML = currentTrainees.map((s, idx) => {
       const barColor = s.pct >= 100 ? '#3B82F6' : s.pct >= 40 ? '#10B981' : '#F59E0B';
       const initials = (s.name || 'ST').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+      const doneHours = parseFloat(s.hours_done || 0);
+      const reqHours = parseFloat(s.hours_required || 0);
+      const formattedDone = doneHours % 1 === 0 ? doneHours.toString() : doneHours.toFixed(1);
+      const formattedReq = reqHours % 1 === 0 ? reqHours.toString() : reqHours.toFixed(1);
+      const safePct = Math.min(100, Math.max(0, s.pct || 0));
+
       return `
         <tr>
-          <td style="vertical-align:middle;">
+          <td>
             <div style="display:flex;align-items:center;gap:10px;">
               ${s.avatar_url
                 ? `<img src="${storageUrl(s.avatar_url)}" style="width:34px;height:34px;border-radius:8px;object-fit:cover;flex-shrink:0;" />`
@@ -614,21 +620,24 @@ export default async function OjtManagementPage(container) {
               </div>
             </div>
           </td>
-          <td style="vertical-align:middle;">
+          <td>
             <div style="font-size:var(--text-sm);font-weight:var(--weight-semibold);color:var(--text-primary);">${s.company}</div>
             ${s.posting_title ? `<div style="font-size:var(--text-xs);color:var(--text-secondary);">${s.posting_title}</div>` : ''}
             ${s.location ? `<div style="font-size:var(--text-xs);color:var(--text-tertiary);">${s.location}</div>` : ''}
           </td>
-          <td style="vertical-align:middle;">
-            ${s.hours_required > 0 ? `
-            <div style="display:flex;align-items:center;gap:10px;max-width:200px;">
-              <div class="progress-bar" style="flex:1;height:6px;background:var(--border-subtle);border-radius:3px;overflow:hidden;">
-                <div class="progress-bar__fill" style="width:${s.pct}%;background:${barColor};height:100%;"></div>
+          <td>
+            ${reqHours > 0 ? `
+            <div class="st-progress-wrap" style="max-width:160px;">
+              <div class="st-progress-header">
+                <span class="st-progress-hours">${formattedDone} / ${formattedReq}h</span>
+                <span class="st-progress-pct" style="color:${barColor};font-weight:700;">${safePct}%</span>
               </div>
-              <span style="font-size:var(--text-xs);font-weight:var(--weight-semibold);text-align:right;white-space:nowrap;">${s.hours_done}/${s.hours_required}h</span>
+              <div class="st-progress-track" style="width:100%;height:6px;background:#E2E8F0;border-radius:9999px;overflow:hidden;">
+                <div class="st-progress-fill" style="width:${safePct}%;background:${barColor};height:100%;border-radius:9999px;transition:width 0.3s ease;"></div>
+              </div>
             </div>` : `<span style="font-size:var(--text-xs);color:var(--text-tertiary);">${s.duration || 'Tracking not started'}</span>`}
           </td>
-          <td style="vertical-align:middle;"><span class="badge badge--${STATUS_COLORS[s.status] || 'neutral'}">${s.status}</span></td>
+          <td><span class="badge badge--${STATUS_COLORS[s.status] || 'neutral'}">${s.status}</span></td>
           <td class="text-right" style="white-space:nowrap;">
             <div class="ojt-action-group">
               <button type="button" class="ojt-btn-icon ojt-btn-icon--view btn-view-trainee" data-idx="${idx}" title="View Full Trainee Details" aria-label="View Details">
@@ -776,14 +785,11 @@ export default async function OjtManagementPage(container) {
             </span>
           </td>
           <td>
-            <div style="display:flex;flex-direction:column;gap:3px;max-width:260px;">
-              <div style="display:flex;align-items:center;gap:6px;">
-                <span class="badge badge--info" style="font-size:0.65rem;font-weight:700;padding:1px 6px;border-radius:4px;">${cMeta.code}</span>
-                <span style="font-size:0.8rem;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${s.course || ''}">
-                  ${cDisp.isTrade ? cDisp.primaryTitle : (s.course || '—')}
-                </span>
-              </div>
-              <span style="font-size:0.7rem;color:var(--text-tertiary);">${cMeta.category || ''}</span>
+            <div style="display:flex;flex-direction:column;gap:3px;max-width:320px;">
+              <span style="font-size:0.82rem;font-weight:600;color:var(--text-primary);line-height:1.35;" title="${s.course || ''}">
+                ${s.course || '—'}
+              </span>
+              ${cMeta.category ? `<span style="font-size:0.7rem;color:var(--text-tertiary);">${cMeta.category}</span>` : ''}
             </div>
           </td>
           <td style="font-size:var(--text-xs);color:var(--text-tertiary);">${s.created_at || '—'}</td>
