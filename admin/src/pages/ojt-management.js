@@ -1,6 +1,7 @@
 import { apiGet, apiGetCached, getCached, apiPost, apiDelete, storageUrl } from '../api/client.js';
 import { icon, renderIcons } from '../components/icons.js';
 import { openAdminPullOutModal } from '../components/admin-pullout-modal.js';
+import { escapeHtml } from '../components/data-table.js';
 
 const STATUS_COLORS = {
   'Ongoing':                 'success',
@@ -255,21 +256,55 @@ export default async function OjtManagementPage(container) {
     </div>
 
     <!-- Analytics Section -->
-    <div style="margin:var(--space-6) 0 var(--space-4);">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-4);">
-        <h2 style="font-size:var(--text-lg);font-weight:var(--weight-semibold);display:flex;align-items:center;gap:8px;margin:0;">${icon('bar-chart-3',18)} OJT Analytics</h2>
-        <span style="font-size:var(--text-xs);color:var(--text-tertiary);background:var(--bg-elevated);padding:4px 10px;border-radius:20px;border:1px solid var(--border-subtle);">Real-time data</span>
+    <div class="ojt-analytics-container anim-fade-in-up" id="ojt-analytics-section">
+      <div class="ojt-analytics-header">
+        <div class="ojt-analytics-header__info">
+          <div class="ojt-analytics-header__icon">
+            ${icon('bar-chart-3', 20)}
+          </div>
+          <div>
+            <div class="ojt-analytics-header__title-row">
+              <h2 class="ojt-analytics-header__title">OJT Internship Analytics</h2>
+              <span class="ojt-pulse-badge">
+                <span class="ojt-pulse-dot"></span>
+                <span>Live Telemetry</span>
+              </span>
+            </div>
+            <p class="ojt-analytics-header__subtitle">
+              Cohort deployment velocity, hours milestone progression, and industry partner engagements
+            </p>
+          </div>
+        </div>
+        <div class="ojt-analytics-header__actions">
+          <button class="btn btn--outline btn--sm" id="btn-refresh-analytics" title="Refresh Live Analytics" style="display:inline-flex;align-items:center;gap:6px;font-size:var(--text-xs);padding:6px 14px;border-radius:20px;">
+            <span class="ojt-refresh-icon" style="display:inline-flex;">${icon('refresh-cw', 13)}</span> Refresh Data
+          </button>
+        </div>
       </div>
-      <!-- Analytics Summary Mini-Stats -->
-      <div id="analytics-summary" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:var(--space-4);"></div>
-      <!-- Charts Grid -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4);">
-        <div class="stat-card" style="padding:20px;" id="chart-status"><p style="color:var(--text-tertiary);font-size:var(--text-sm);">Loading analytics…</p></div>
-        <div class="stat-card" style="padding:20px;" id="chart-histogram"><p style="color:var(--text-tertiary);font-size:var(--text-sm);">Loading…</p></div>
+
+      <!-- Executive KPI Cards -->
+      <div class="ojt-kpi-grid" id="analytics-summary">
+        ${Array(4).fill(`<div class="ojt-kpi-card" style="min-height:105px;opacity:.35;"></div>`).join('')}
       </div>
-      <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:var(--space-4);margin-top:var(--space-4);">
-        <div class="stat-card" style="padding:20px;" id="chart-companies"><p style="color:var(--text-tertiary);font-size:var(--text-sm);">Loading…</p></div>
-        <div class="stat-card" style="padding:20px;" id="chart-positions"><p style="color:var(--text-tertiary);font-size:var(--text-sm);">Loading…</p></div>
+
+      <!-- Charts Grid Row 1: Status & Progression -->
+      <div class="ojt-charts-grid">
+        <div class="ojt-chart-card" id="chart-status">
+          <div class="ojt-chart-card__body"><p style="color:var(--text-tertiary);font-size:var(--text-sm);margin:0;">Loading status distribution…</p></div>
+        </div>
+        <div class="ojt-chart-card" id="chart-histogram">
+          <div class="ojt-chart-card__body"><p style="color:var(--text-tertiary);font-size:var(--text-sm);margin:0;">Loading milestone progress…</p></div>
+        </div>
+      </div>
+
+      <!-- Charts Grid Row 2: Partners & Roles -->
+      <div class="ojt-charts-grid ojt-charts-grid--unequal">
+        <div class="ojt-chart-card" id="chart-companies">
+          <div class="ojt-chart-card__body"><p style="color:var(--text-tertiary);font-size:var(--text-sm);margin:0;">Loading partner distribution…</p></div>
+        </div>
+        <div class="ojt-chart-card" id="chart-positions">
+          <div class="ojt-chart-card__body"><p style="color:var(--text-tertiary);font-size:var(--text-sm);margin:0;">Loading position breakdown…</p></div>
+        </div>
       </div>
     </div>
 
@@ -1073,135 +1108,308 @@ export default async function OjtManagementPage(container) {
     const sm = res.summary || {};
     const sb = res.statusBreakdown || {};
 
-    // Summary mini-stats
+    // 1. Executive Summary KPI Cards
     const summaryEl = container.querySelector('#analytics-summary');
     const miniStats = [
-      {label:'Deployed',val:sm.totalDeployed||0,ic:'check-circle',color:'#10B981',bg:'rgba(16,185,129,.12)'},
-      {label:'Endorsed',val:sm.totalEndorsed||0,ic:'clipboard',color:'#8B5CF6',bg:'rgba(139,92,246,.12)'},
-      {label:'Supervisors',val:sm.supervisorCount||0,ic:'user-check',color:'#3B82F6',bg:'rgba(59,130,246,.12)'},
-      {label:'Trainee/Supervisor',val:sm.traineeRatio||0,ic:'activity',color:'#F59E0B',bg:'rgba(245,158,11,.12)'},
+      {
+        label: 'Total Deployed',
+        val: (sm.totalDeployed || 0).toLocaleString(),
+        ic: 'briefcase',
+        color: '#005930',
+        bg: 'rgba(0, 89, 48, 0.08)',
+        footnote: 'Active in Industry Placement',
+        dotColor: '#10B981'
+      },
+      {
+        label: 'Dean Endorsements',
+        val: (sm.totalEndorsed || 0).toLocaleString(),
+        ic: 'clipboard-check',
+        color: '#4F46E5',
+        bg: 'rgba(79, 70, 229, 0.08)',
+        footnote: 'Official MOA / Clearance Files',
+        dotColor: '#4F46E5'
+      },
+      {
+        label: 'Program Coordinators',
+        val: (sm.supervisorCount || 0).toLocaleString(),
+        ic: 'graduation-cap',
+        color: '#0284C7',
+        bg: 'rgba(2, 132, 199, 0.08)',
+        footnote: 'Academic Faculty Mentors',
+        dotColor: '#0284C7'
+      },
+      {
+        label: 'Supervision Ratio',
+        val: sm.traineeRatio != null ? `${sm.traineeRatio} : 1` : '0 : 1',
+        ic: 'activity',
+        color: '#0D9488',
+        bg: 'rgba(13, 148, 136, 0.08)',
+        footnote: 'Interns per Coordinator',
+        dotColor: '#0D9488'
+      },
     ];
-    summaryEl.innerHTML = miniStats.map(s => `
-      <div style="background:var(--bg-elevated);border:1px solid var(--border-subtle);border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:12px;">
-        <div style="width:36px;height:36px;border-radius:10px;background:${s.bg};color:${s.color};display:flex;align-items:center;justify-content:center;flex-shrink:0;">${icon(s.ic,16)}</div>
-        <div><div style="font-size:1.15rem;font-weight:var(--weight-bold);line-height:1.2;">${s.val}</div><div style="font-size:var(--text-xs);color:var(--text-tertiary);">${s.label}</div></div>
-      </div>`).join('');
-    renderIcons();
 
-    // Status Donut with center label
-    const ongoingCount = (sb.ongoing != null ? sb.ongoing : sb.onTrack) || 0;
-    const statusItems = [
-      {label:'Ongoing',val:ongoingCount,color:'#10B981'},
-      {label:'Completed',val:sb.completed||0,color:'#3B82F6'},
-      {label:'Pipeline Pending',val:sb.pending||0,color:'#8B5CF6'},
-    ];
-    const total = statusItems.reduce((a,b)=>a+b.val,0)||1;
-    let offset=0;
-    const circumference = 2 * Math.PI * 38;
-    const segs = statusItems.filter(s=>s.val>0).map(s=>{
-      const pct=s.val/total; const len=pct*circumference; const gap=circumference-len;
-      const seg=`<circle cx="60" cy="60" r="38" fill="none" stroke="${s.color}" stroke-width="12" stroke-dasharray="${len.toFixed(1)} ${gap.toFixed(1)}" stroke-dashoffset="-${offset.toFixed(1)}" stroke-linecap="round" style="transition:stroke-dasharray .8s,stroke-dashoffset .8s;"/>`;
-      offset+=len; return seg;
-    }).join('');
-    container.querySelector('#chart-status').innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-        <h3 style="font-size:.85rem;font-weight:var(--weight-semibold);margin:0;">Status Breakdown</h3>
-        <span style="font-size:var(--text-xs);color:var(--text-tertiary);">${total} total</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:28px;">
-        <div style="position:relative;flex-shrink:0;">
-          <svg viewBox="0 0 120 120" width="140" height="140" style="transform:rotate(-90deg);">
-            <circle cx="60" cy="60" r="38" fill="none" stroke="var(--border-subtle)" stroke-width="12" opacity=".3"/>
-            ${segs}
-          </svg>
-          <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
-            <span style="font-size:1.5rem;font-weight:800;line-height:1;">${total}</span>
-            <span style="font-size:.6rem;color:var(--text-tertiary);margin-top:2px;">TRAINEES</span>
+    summaryEl.innerHTML = miniStats.map(s => `
+      <div class="ojt-kpi-card anim-fade-in-up">
+        <div class="ojt-kpi-card__top">
+          <span class="ojt-kpi-card__label">${escapeHtml(s.label)}</span>
+          <div class="ojt-kpi-card__icon" style="background:${s.bg};color:${s.color};">
+            ${icon(s.ic, 18)}
           </div>
         </div>
-        <div style="display:flex;flex-direction:column;gap:8px;flex:1;">
-          ${statusItems.map(s => {
-            const pct = total > 0 ? Math.round(s.val/total*100) : 0;
-            return `<div style="display:flex;align-items:center;gap:8px;">
-              <div style="width:8px;height:8px;border-radius:50%;background:${s.color};flex-shrink:0;"></div>
-              <span style="font-size:var(--text-xs);flex:1;">${s.label}</span>
-              <span style="font-size:var(--text-xs);font-weight:var(--weight-semibold);min-width:20px;text-align:right;">${s.val}</span>
-              <span style="font-size:9px;color:var(--text-tertiary);width:30px;text-align:right;">${pct}%</span>
-            </div>`;
+        <div class="ojt-kpi-card__value">${s.val}</div>
+        <div class="ojt-kpi-card__footnote">
+          <span class="ojt-kpi-card__footnote-dot" style="background:${s.dotColor};"></span>
+          <span>${s.footnote}</span>
+        </div>
+      </div>
+    `).join('');
+
+    // 2. Status Breakdown Donut & Structured Breakdown
+    const ongoingCount = (sb.ongoing != null ? sb.ongoing : sb.onTrack) || 0;
+    const completedCount = sb.completed || 0;
+    const pendingCount = sb.pending || 0;
+    const statusItems = [
+      { label: 'Ongoing Placement', val: ongoingCount, color: '#005930', dot: '#10B981' },
+      { label: 'Completed Requirements', val: completedCount, color: '#2563EB', dot: '#3B82F6' },
+      { label: 'Pipeline Pending', val: pendingCount, color: '#D97706', dot: '#F59E0B' },
+    ];
+    const totalTrainees = statusItems.reduce((a, b) => a + b.val, 0);
+    const displayTotal = totalTrainees || 1;
+
+    const radius = 46;
+    const circumference = 2 * Math.PI * radius;
+    let offset = 0;
+    const segments = statusItems.filter(s => s.val > 0).map(s => {
+      const pct = s.val / displayTotal;
+      const len = pct * circumference;
+      const gap = circumference - len;
+      const seg = `<circle cx="65" cy="65" r="${radius}" fill="none" stroke="${s.color}" stroke-width="12" stroke-dasharray="${len.toFixed(2)} ${gap.toFixed(2)}" stroke-dashoffset="-${offset.toFixed(2)}" stroke-linecap="round" style="transition:stroke-dasharray .8s,stroke-dashoffset .8s;"/>`;
+      offset += len;
+      return seg;
+    }).join('');
+
+    const activePct = totalTrainees > 0 ? Math.round((ongoingCount / totalTrainees) * 100) : 0;
+
+    container.querySelector('#chart-status').innerHTML = `
+      <div class="ojt-chart-card__header">
+        <div class="ojt-chart-card__title-group">
+          <div class="ojt-chart-card__icon">${icon('pie-chart', 16)}</div>
+          <div>
+            <h3 class="ojt-chart-card__title">Cohort Status Breakdown</h3>
+            <p class="ojt-chart-card__subtitle">Real-time internship enrollment &amp; progression</p>
+          </div>
+        </div>
+        <span class="ojt-chart-card__badge">
+          <span style="font-weight:700;color:var(--text-primary);">${totalTrainees}</span> Interns Total
+        </span>
+      </div>
+      <div class="ojt-chart-card__body">
+        <div class="ojt-status-layout">
+          <div class="ojt-donut-container">
+            <svg viewBox="0 0 130 130" width="134" height="134" style="transform:rotate(-90deg);">
+              <circle cx="65" cy="65" r="${radius}" fill="none" stroke="#E2E8F0" stroke-width="12" opacity=".45"/>
+              ${segments || `<circle cx="65" cy="65" r="${radius}" fill="none" stroke="#E2E8F0" stroke-width="12" />`}
+            </svg>
+            <div class="ojt-donut-center">
+              <span class="ojt-donut-number">${totalTrainees}</span>
+              <span class="ojt-donut-label">Trainees</span>
+            </div>
+          </div>
+          <div class="ojt-status-list">
+            ${statusItems.map(s => {
+              const pct = totalTrainees > 0 ? Math.round((s.val / totalTrainees) * 100) : 0;
+              return `
+                <div class="ojt-status-row">
+                  <div class="ojt-status-row__meta">
+                    <span class="ojt-status-row__name">
+                      <span class="ojt-status-row__dot" style="background:${s.dot};"></span>
+                      ${escapeHtml(s.label)}
+                    </span>
+                    <div class="ojt-status-row__counts">
+                      <span class="ojt-status-row__val">${s.val}</span>
+                      <span class="ojt-status-row__pct">${pct}%</span>
+                    </div>
+                  </div>
+                  <div class="ojt-status-row__track">
+                    <div class="ojt-status-row__fill" style="width:${pct}%;background:${s.color};"></div>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+            <div style="margin-top:4px;padding:8px 12px;background:#FAFBFB;border:1px solid #F1F5F9;border-radius:8px;display:flex;align-items:center;gap:8px;font-size:0.73rem;color:var(--text-secondary);">
+              <span style="color:#005930;display:inline-flex;">${icon('activity', 13)}</span>
+              <span><strong>${activePct}%</strong> of registered students actively deployed in the field</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // 3. Hours Completion Milestone Progress
+    const hh = res.hoursHistogram || {};
+    const milestoneDefs = [
+      { key: '0-25%', phase: 'Phase 1', range: '0–150 hrs', label: 'Early Stage', desc: 'Workplace onboarding & initial orientation logging' },
+      { key: '25-50%', phase: 'Phase 2', range: '151–300 hrs', label: 'In Progress', desc: 'Core operational duties & daily supervisor verification' },
+      { key: '50-75%', phase: 'Phase 3', range: '301–450 hrs', label: 'Advanced', desc: 'Midterm competency evaluation & technical synthesis' },
+      { key: '75-100%', phase: 'Phase 4', range: '451–600 hrs', label: 'Near Completion', desc: 'Final deliverables, exit clearance & certificate signoff' },
+    ];
+    const totalWithHours = Object.values(hh).reduce((a, b) => a + b, 0) || 1;
+
+    container.querySelector('#chart-histogram').innerHTML = `
+      <div class="ojt-chart-card__header">
+        <div class="ojt-chart-card__title-group">
+          <div class="ojt-chart-card__icon">${icon('clock', 16)}</div>
+          <div>
+            <h3 class="ojt-chart-card__title">Hours Completion Milestones</h3>
+            <p class="ojt-chart-card__subtitle">Progression toward 600-hour graduation requirement</p>
+          </div>
+        </div>
+        <span class="ojt-chart-card__badge">
+          ${icon('target', 12)} 600h Target
+        </span>
+      </div>
+      <div class="ojt-chart-card__body">
+        <div class="ojt-milestone-list">
+          ${milestoneDefs.map(m => {
+            const count = hh[m.key] || 0;
+            const pct = totalWithHours > 0 ? Math.round((count / totalWithHours) * 100) : 0;
+            const isZero = count === 0;
+            return `
+              <div class="ojt-milestone-item" style="${isZero ? 'opacity:.7;' : ''}">
+                <div class="ojt-milestone-meta">
+                  <div class="ojt-milestone-title">
+                    <span class="ojt-milestone-badge">${m.phase}</span>
+                    <span>${m.range}</span>
+                    <span style="font-size:0.71rem;color:var(--text-tertiary);font-weight:400;">(${m.label})</span>
+                  </div>
+                  <div class="ojt-milestone-counts">
+                    <span class="ojt-milestone-val">${count} ${count === 1 ? 'Intern' : 'Interns'}</span>
+                    <span class="ojt-milestone-pct">${pct}%</span>
+                  </div>
+                </div>
+                <div class="ojt-milestone-track">
+                  <div class="ojt-milestone-fill" style="width:${pct}%;${isZero ? 'background:#CBD5E1;' : ''}"></div>
+                </div>
+                <div class="ojt-milestone-desc">${m.desc}</div>
+              </div>
+            `;
           }).join('')}
         </div>
-      </div>`;
-
-    // Hours Histogram
-    const hh = res.hoursHistogram||{};
-    const hhEntries = Object.entries(hh);
-    const maxHh = Math.max(...hhEntries.map(e=>e[1]),1);
-    const barGradients = ['linear-gradient(180deg,#EF4444,#DC2626)','linear-gradient(180deg,#F59E0B,#D97706)','linear-gradient(180deg,#3B82F6,#2563EB)','linear-gradient(180deg,#10B981,#059669)'];
-    const barLabels = ['Early Stage','In Progress','Almost There','Complete'];
-    container.querySelector('#chart-histogram').innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-        <h3 style="font-size:.85rem;font-weight:var(--weight-semibold);margin:0;">Hours Completion</h3>
-        <span style="font-size:var(--text-xs);color:var(--text-tertiary);">by progress range</span>
       </div>
-      <div style="position:relative;height:160px;display:flex;align-items:flex-end;gap:16px;padding:0 8px;">
-        ${[75,50,25].map(v => `<div style="position:absolute;left:0;right:0;bottom:${v/100*140}px;border-bottom:1px dashed var(--border-subtle);opacity:.3;"></div>`).join('')}
-        ${hhEntries.map(([label,val],i) => {
-          const h = maxHh > 0 ? Math.max(val/maxHh*140,6) : 6;
-          return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;z-index:1;">
-            <span style="font-size:.75rem;font-weight:700;">${val}</span>
-            <div style="width:100%;max-width:52px;background:${barGradients[i]};border-radius:8px 8px 4px 4px;height:${h}px;box-shadow:0 2px 8px ${['rgba(239,68,68,.3)','rgba(245,158,11,.3)','rgba(59,130,246,.3)','rgba(16,185,129,.3)'][i]};transition:height .6s;"></div>
-            <div style="text-align:center;"><div style="font-size:9px;font-weight:600;color:var(--text-secondary);">${label}</div><div style="font-size:8px;color:var(--text-tertiary);">${barLabels[i]}</div></div>
-          </div>`;
-        }).join('')}
-      </div>`;
+    `;
 
-    // Company Distribution
-    const cd = res.companyDistribution||{};
-    const cdEntries = Object.entries(cd);
-    const maxCd = Math.max(...cdEntries.map(e=>e[1]),1);
-    const companyColors = ['#6366F1','#8B5CF6','#EC4899','#F59E0B','#10B981','#3B82F6','#EF4444','#14B8A6','#F97316','#6B7280'];
+    // 4. Industry Partner Deployments (Host Companies)
+    const cd = res.companyDistribution || {};
+    const cdEntries = Object.entries(cd).sort((a, b) => b[1] - a[1]);
+    const maxCd = Math.max(...cdEntries.map(e => e[1]), 1);
+    const totalCdStudents = cdEntries.reduce((a, b) => a + b[1], 0) || 1;
+
+    function getInitials(name) {
+      if (!name) return 'CO';
+      const clean = name.replace(/[^\w\s]/g, '').trim();
+      const words = clean.split(/\s+/).filter(w => !['inc', 'corp', 'llc', 'ltd', 'studio', 'solutions', 'systems'].includes(w.toLowerCase()));
+      if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
+      if (words.length === 1 && words[0].length >= 2) return words[0].slice(0, 2).toUpperCase();
+      return name.slice(0, 2).toUpperCase();
+    }
+
     container.querySelector('#chart-companies').innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-        <h3 style="font-size:.85rem;font-weight:var(--weight-semibold);margin:0;">Company Distribution</h3>
-        <span style="font-size:var(--text-xs);color:var(--text-tertiary);">${cdEntries.length} partner${cdEntries.length!==1?'s':''}</span>
+      <div class="ojt-chart-card__header">
+        <div class="ojt-chart-card__title-group">
+          <div class="ojt-chart-card__icon">${icon('building-2', 16)}</div>
+          <div>
+            <h3 class="ojt-chart-card__title">Industry Partner Placements</h3>
+            <p class="ojt-chart-card__subtitle">Host Training Establishments (HTE) accommodating interns</p>
+          </div>
+        </div>
+        <span class="ojt-chart-card__badge">
+          <span style="font-weight:700;color:var(--text-primary);">${cdEntries.length}</span> Active Hosts
+        </span>
       </div>
-      ${cdEntries.length ? cdEntries.map(([name,val],i) => {
-        const pct = Math.round(val/maxCd*100);
-        const c = companyColors[i % companyColors.length];
-        return `<div style="margin-bottom:12px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
-            <div style="display:flex;align-items:center;gap:8px;font-size:var(--text-xs);">
-              <div style="width:6px;height:6px;border-radius:50%;background:${c};flex-shrink:0;"></div>
-              <span style="font-weight:var(--weight-medium);">${name}</span>
+      <div class="ojt-chart-card__body">
+        ${cdEntries.length ? `
+          <div class="ojt-partner-list">
+            ${cdEntries.map(([name, val], i) => {
+              const sharePct = Math.round((val / totalCdStudents) * 100);
+              const barPct = Math.round((val / maxCd) * 100);
+              const inits = getInitials(name);
+              const rankStr = i < 9 ? `0${i + 1}` : `${i + 1}`;
+              return `
+                <div class="ojt-partner-item">
+                  <div class="ojt-partner-rank">${rankStr}</div>
+                  <div class="ojt-partner-avatar">${inits}</div>
+                  <div class="ojt-partner-info">
+                    <div class="ojt-partner-name" title="${escapeHtml(name)}">${escapeHtml(name)}</div>
+                    <div class="ojt-partner-track-wrap">
+                      <div class="ojt-partner-track-fill" style="width:${barPct}%;"></div>
+                    </div>
+                  </div>
+                  <div class="ojt-partner-stat">
+                    <div class="ojt-partner-count">${val} ${val === 1 ? 'Intern' : 'Interns'}</div>
+                    <div class="ojt-partner-pct">${sharePct}% of cohort</div>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        ` : `
+          <div style="display:flex;flex-direction:column;align-items:center;padding:36px 20px;text-align:center;color:var(--text-tertiary);">
+            <div style="width:42px;height:42px;border-radius:50%;background:#F1F5F9;display:flex;align-items:center;justify-content:center;margin-bottom:10px;color:var(--text-secondary);">
+              ${icon('building-2', 20)}
             </div>
-            <span style="font-size:var(--text-xs);font-weight:var(--weight-bold);color:${c};">${val} trainee${val!==1?'s':''}</span>
+            <p style="font-size:var(--text-sm);font-weight:600;color:var(--text-secondary);margin:0 0 2px;">No Active Partner Placements</p>
+            <p style="font-size:var(--text-xs);margin:0;">Industry assignments will populate when students accept offers</p>
           </div>
-          <div style="height:8px;background:var(--border-subtle);border-radius:4px;overflow:hidden;">
-            <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,${c},${c}cc);border-radius:4px;transition:width .6s;"></div>
-          </div>
-        </div>`;
-      }).join('') : '<div style="display:flex;flex-direction:column;align-items:center;padding:30px;color:var(--text-tertiary);"><div style="width:40px;height:40px;border-radius:50%;background:var(--border-subtle);display:flex;align-items:center;justify-content:center;margin-bottom:8px;">' + icon('building-2',18) + '</div><p style="font-size:var(--text-sm);margin:0;">No deployments yet</p></div>'}`;
-
-    // Top Positions
-    const tp = res.topPositions||{};
-    const tpEntries = Object.entries(tp);
-    const medalColors = ['#F59E0B','#94A3B8','#CD7F32'];
-    container.querySelector('#chart-positions').innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-        <h3 style="font-size:.85rem;font-weight:var(--weight-semibold);margin:0;">Top OJT Positions</h3>
-        <span style="font-size:var(--text-xs);color:var(--text-tertiary);">${tpEntries.length} role${tpEntries.length!==1?'s':''}</span>
+        `}
       </div>
-      ${tpEntries.length ? `<div style="display:flex;flex-direction:column;gap:6px;">
-        ${tpEntries.map(([title,cnt],i) => {
-          const mc = i < 3 ? medalColors[i] : 'var(--text-tertiary)';
-          const bg = i < 3 ? mc + '18' : 'var(--border-subtle)';
-          return `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:${i===0 ? 'rgba(245,158,11,.06)' : 'transparent'};border:1px solid ${i===0 ? 'rgba(245,158,11,.15)' : 'transparent'};transition:background .2s;">
-            <div style="width:24px;height:24px;border-radius:50%;background:${bg};color:${mc};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex-shrink:0;">${i<3 ? `<span style="display:inline-flex;align-items:center;justify-content:center;">${icon('medal', 14)}</span>` : i+1}</div>
-            <span style="flex:1;font-size:var(--text-sm);font-weight:var(--weight-medium);">${title}</span>
-            <span style="font-size:var(--text-xs);font-weight:var(--weight-bold);background:var(--border-subtle);padding:2px 8px;border-radius:10px;">${cnt}</span>
-          </div>`;
-        }).join('')}
-      </div>` : '<div style="display:flex;flex-direction:column;align-items:center;padding:30px;color:var(--text-tertiary);"><div style="width:40px;height:40px;border-radius:50%;background:var(--border-subtle);display:flex;align-items:center;justify-content:center;margin-bottom:8px;">' + icon('briefcase',18) + '</div><p style="font-size:var(--text-sm);margin:0;">No positions yet</p></div>'}`;
+    `;
+
+    // 5. High-Demand Roles (Top Positions)
+    const tp = res.topPositions || {};
+    const tpEntries = Object.entries(tp).sort((a, b) => b[1] - a[1]);
+
+    container.querySelector('#chart-positions').innerHTML = `
+      <div class="ojt-chart-card__header">
+        <div class="ojt-chart-card__title-group">
+          <div class="ojt-chart-card__icon">${icon('briefcase', 16)}</div>
+          <div>
+            <h3 class="ojt-chart-card__title">Top Internship Roles</h3>
+            <p class="ojt-chart-card__subtitle">High-demand roles assigned to students</p>
+          </div>
+        </div>
+        <span class="ojt-chart-card__badge">
+          <span style="font-weight:700;color:var(--text-primary);">${tpEntries.length}</span> Tracked Roles
+        </span>
+      </div>
+      <div class="ojt-chart-card__body">
+        ${tpEntries.length ? `
+          <div class="ojt-roles-list">
+            ${tpEntries.map(([title, cnt], i) => {
+              const isTop = i < 3;
+              const rankStr = i < 9 ? `0${i + 1}` : `${i + 1}`;
+              return `
+                <div class="ojt-role-item">
+                  <div class="ojt-role-rank ${isTop ? 'ojt-role-rank--top' : 'ojt-role-rank--normal'}">${rankStr}</div>
+                  <div class="ojt-role-name" title="${escapeHtml(title)}">${escapeHtml(title)}</div>
+                  <div class="ojt-role-count-pill">${cnt} ${cnt === 1 ? 'Intern' : 'Interns'}</div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        ` : `
+          <div style="display:flex;flex-direction:column;align-items:center;padding:36px 20px;text-align:center;color:var(--text-tertiary);">
+            <div style="width:42px;height:42px;border-radius:50%;background:#F1F5F9;display:flex;align-items:center;justify-content:center;margin-bottom:10px;color:var(--text-secondary);">
+              ${icon('briefcase', 20)}
+            </div>
+            <p style="font-size:var(--text-sm);font-weight:600;color:var(--text-secondary);margin:0 0 2px;">No Role Data Available</p>
+            <p style="font-size:var(--text-xs);margin:0;">Job role titles will appear as trainees are assigned positions</p>
+          </div>
+        `}
+      </div>
+    `;
+
+    renderIcons();
   }
 
   async function loadAnalytics(force = false) {
@@ -1218,6 +1426,21 @@ export default async function OjtManagementPage(container) {
     }
   }
   loadAnalytics();
+
+  const refreshAnalyticsBtn = container.querySelector('#btn-refresh-analytics');
+  if (refreshAnalyticsBtn) {
+    refreshAnalyticsBtn.addEventListener('click', async () => {
+      const iconEl = refreshAnalyticsBtn.querySelector('.ojt-refresh-icon');
+      if (iconEl) iconEl.style.animation = 'spin 0.8s linear infinite';
+      refreshAnalyticsBtn.disabled = true;
+      try {
+        await loadAnalytics(true);
+      } finally {
+        if (iconEl) iconEl.style.animation = '';
+        refreshAnalyticsBtn.disabled = false;
+      }
+    });
+  }
 
   /* ── Register Supervisor Modal ── */
   container.querySelector('#btn-register-supervisor').addEventListener('click', () => {
