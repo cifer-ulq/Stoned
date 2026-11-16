@@ -417,6 +417,50 @@
   box-shadow: 0 0 0 3px rgba(0, 89, 48, 0.1);
 }
 
+/* ── Trainee Batch Action Floating Bar ── */
+.tr2-floating-batch-bar {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  background: #005930;
+  color: #ffffff;
+  border-radius: 12px;
+  padding: 10px 18px;
+  margin-bottom: 14px;
+  box-shadow: 0 8px 24px rgba(0, 89, 48, 0.22);
+  animation: fadeIn 0.18s ease-out;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.tr2-floating-batch-bar__left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.88rem;
+  color: #ffffff;
+  font-weight: 500;
+}
+.tr2-floating-batch-bar__left strong {
+  font-weight: 700;
+  color: #A7F3D0;
+}
+.tr2-floating-batch-bar__right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+@media (max-width: 768px) {
+  .tr2-floating-batch-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 12px 14px;
+  }
+  .tr2-floating-batch-bar__right {
+    justify-content: flex-end;
+  }
+}
+
 /* ── Table Card (Refined & Spacious) ── */
 .tr2-table-card {
   background: var(--bg-elevated);

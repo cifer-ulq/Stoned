@@ -1572,53 +1572,125 @@ class SupervisorController extends Controller
 
     /**
      * POST /api/supervisor/requirements/assign
-     * Assign requirements packet to one or more students and send notifications.
+     * Assign requirements packet to one or more students (or whole cohort/section) and send notifications.
      */
     public function assignRequirements(Request $request)
     {
         $supervisor = $request->user();
 
         $validated = $request->validate([
-            'student_ids'   => 'required|array|min:1',
+            'student_ids'   => 'nullable|array',
             'student_ids.*' => 'integer|exists:users,id',
+            'target_all'    => 'nullable|boolean',
+            'scope'         => 'nullable|string|in:all,selected,filtered,missing_only',
+            'section'       => 'nullable|string|max:50',
             'interest_id'   => 'nullable|integer|exists:student_ojt_interests,id',
             'posting_id'    => 'nullable|integer|exists:ojt_postings,id',
             'title'         => 'required|string|max:255',
             'items'         => 'required|array|min:1',
             'instructions'  => 'nullable|string|max:2000',
             'due_date'      => 'nullable|date',
+            'skip_verified' => 'nullable|boolean',
         ]);
 
+        $course = $this->getSupervisorCourse($request);
+
+        // Build base student pool under supervisor's program
+        $baseQuery = User::where('role', 'student')
+            ->whereDoesntHave('graduateProfile')
+            ->where(function ($q) {
+                $q->whereDoesntHave('studentProfile')
+                  ->orWhereHas('studentProfile', function ($sp) {
+                      $sp->where(function ($sq) {
+                          $sq->whereNull('status')->orWhere('status', '!=', 'alumni');
+                      })->where(function ($sq) {
+                          $sq->whereNull('year_level')->orWhere('year_level', 'not ilike', '%graduat%');
+                      });
+                  });
+            });
+
+        if ($course) {
+            $aliases = \App\Services\CourseNormalizer::getAliases($course);
+            $baseQuery->whereHas('studentProfile', fn($sp) => $sp->whereIn('program', $aliases));
+        }
+
+        if (!empty($validated['section'])) {
+            $sec = trim($validated['section']);
+            $baseQuery->whereHas('studentProfile', fn($sp) => $sp->where('section', 'like', "%{$sec}%"));
+        }
+
+        if (!empty($validated['student_ids'])) {
+            $baseQuery->whereIn('id', $validated['student_ids']);
+        } elseif (empty($validated['target_all'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please provide target student IDs or set target_all to true.',
+            ], 422);
+        }
+
+        $targetStudentIds = $baseQuery->pluck('id')->all();
+
+        if (empty($targetStudentIds)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No eligible student trainees found matching the selected scope.',
+            ], 422);
+        }
+
         $created = [];
+        $newlyAssigned = 0;
+        $updatedPending = 0;
+        $skippedVerified = 0;
+        $skipVerified = $validated['skip_verified'] ?? true;
+
         $supervisorName = $supervisor->name ?: 'OJT Coordinator';
         $supPrefix = (stripos($supervisorName, 'prof') === 0 || stripos($supervisorName, 'dr') === 0 || stripos($supervisorName, 'engr') === 0) ? '' : 'Prof. ';
         $displaySupervisor = $supPrefix . $supervisorName;
 
-        DB::transaction(function () use ($validated, $supervisor, $supervisorName, $displaySupervisor, &$created) {
-            foreach ($validated['student_ids'] as $studentId) {
-                // Ensure items are cleanly formatted strings or objects
-                $rawItems = array_map(function ($it) {
-                    if (is_array($it)) {
-                        return [
-                            'name'     => trim((string)($it['name'] ?? $it['title'] ?? '')),
-                            'required' => (bool)($it['required'] ?? true),
-                        ];
-                    }
+        DB::transaction(function () use (
+            $validated,
+            $supervisor,
+            $supervisorName,
+            $displaySupervisor,
+            $targetStudentIds,
+            $skipVerified,
+            &$created,
+            &$newlyAssigned,
+            &$updatedPending,
+            &$skippedVerified
+        ) {
+            // Clean items once for the batch
+            $rawItems = array_map(function ($it) {
+                if (is_array($it)) {
                     return [
-                        'name'     => trim((string)$it),
-                        'required' => true,
+                        'name'     => trim((string)($it['name'] ?? $it['title'] ?? '')),
+                        'required' => (bool)($it['required'] ?? true),
                     ];
-                }, $validated['items']);
+                }
+                return [
+                    'name'     => trim((string)$it),
+                    'required' => true,
+                ];
+            }, $validated['items']);
 
-                // Filter out empty items
-                $cleanItems = array_values(array_filter($rawItems, fn($it) => !empty($it['name'])));
+            $cleanItems = array_values(array_filter($rawItems, fn($it) => !empty($it['name'])));
+            if (empty($cleanItems)) {
+                return;
+            }
 
+            foreach ($targetStudentIds as $studentId) {
                 // Check for existing pending/submitted requirement for this student
                 $query = StudentOjtRequirement::where('student_user_id', $studentId);
                 if (!empty($validated['interest_id'])) {
                     $query->where('interest_id', $validated['interest_id']);
                 }
                 $existing = $query->latest()->first();
+
+                // Skip students who already have an approved and verified packet
+                if ($skipVerified && $existing && $existing->status === 'verified') {
+                    $skippedVerified++;
+                    continue;
+                }
 
                 // Fetch current drive_url from student profile if available
                 $studentUser = User::with('studentProfile')->find($studentId);
@@ -1638,6 +1710,7 @@ class SupervisorController extends Controller
                         'submitted_at'       => $profileDrive ? ($existing->submitted_at ?: now()) : null,
                     ]);
                     $reqRecord = $existing;
+                    $updatedPending++;
                 } else {
                     $reqRecord = StudentOjtRequirement::create([
                         'student_user_id'    => $studentId,
@@ -1652,6 +1725,7 @@ class SupervisorController extends Controller
                         'drive_url'          => $profileDrive,
                         'submitted_at'       => $profileDrive ? now() : null,
                     ]);
+                    $newlyAssigned++;
                 }
 
                 $created[] = $reqRecord;
@@ -1680,9 +1754,28 @@ class SupervisorController extends Controller
             }
         });
 
+        $msgParts = [];
+        if ($newlyAssigned > 0) {
+            $msgParts[] = "{$newlyAssigned} new packet" . ($newlyAssigned > 1 ? 's assigned' : ' assigned');
+        }
+        if ($updatedPending > 0) {
+            $msgParts[] = "{$updatedPending} pending packet" . ($updatedPending > 1 ? 's updated' : ' updated');
+        }
+        if ($skippedVerified > 0) {
+            $msgParts[] = "{$skippedVerified} verified student" . ($skippedVerified > 1 ? 's skipped (protected)' : ' skipped (protected)');
+        }
+        $summaryMsg = count($msgParts) > 0 ? implode(', ', $msgParts) . '.' : 'No changes were needed.';
+
         return response()->json([
             'success' => true,
-            'message' => count($created) . ' student requirement notice' . (count($created) !== 1 ? 's' : '') . ' dispatched successfully.',
+            'message' => $summaryMsg,
+            'summary' => [
+                'total_targeted'   => count($targetStudentIds),
+                'newly_assigned'   => $newlyAssigned,
+                'updated_pending'  => $updatedPending,
+                'skipped_verified' => $skippedVerified,
+                'errors'           => 0,
+            ],
             'data'    => $created,
         ]);
     }

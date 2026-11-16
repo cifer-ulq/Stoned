@@ -45,25 +45,54 @@ const PRESETS = {
   },
 };
 
+function escapeHtml(str = '') {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 /**
- * Open modal to assign OJT requirements to one or more students.
+ * Open modal to assign OJT requirements to one student or batch assign to multiple/all students.
  */
 export function openAssignRequirementsModal({
-  studentId,
+  studentId = null,
   studentName = 'Student',
   program = '',
   interestId = null,
   postingId = null,
+  // Batch parameters
+  isBatch = false,
+  selectedStudents = [],
+  filteredStudents = [],
+  allStudents = [],
+  initialScope = 'selected',
+  sectionFilterName = '',
   onAssigned = null,
 }) {
   const existing = document.getElementById('sup-req-modal-overlay');
   if (existing) existing.remove();
 
+  const isBatchMode = Boolean(isBatch || selectedStudents.length > 0 || (allStudents.length > 0 && !studentId));
+  
+  let currentScope = initialScope;
+  if (!isBatchMode) {
+    currentScope = 'single';
+  } else if (currentScope === 'selected' && selectedStudents.length === 0) {
+    currentScope = filteredStudents.length > 0 && filteredStudents.length < allStudents.length ? 'filtered' : 'all';
+  }
+
   const activePreset = PRESETS.pre_deployment;
   let items = [...activePreset.items];
+  let customTitle = activePreset.title;
+  let customNotes = activePreset.instructions;
 
   // Default due date to +14 days from now
-  const defaultDueDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  let customDueDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  let skipVerified = true;
 
   const overlay = document.createElement('div');
   overlay.id = 'sup-req-modal-overlay';
@@ -75,20 +104,47 @@ export function openAssignRequirementsModal({
     z-index: 10000; padding: 16px;
   `;
 
+  function resolveTargetStudents() {
+    if (!isBatchMode) {
+      return [{ id: studentId, name: studentName, course: program }];
+    }
+    if (currentScope === 'selected') {
+      return selectedStudents;
+    }
+    if (currentScope === 'filtered') {
+      return filteredStudents.length > 0 ? filteredStudents : allStudents;
+    }
+    return allStudents;
+  }
+
   function renderModal() {
+    const targetStudents = resolveTargetStudents();
+    const targetCount = targetStudents.length;
+
+    // Count verified trainees in current target
+    const verifiedInTarget = targetStudents.filter(s => {
+      const r = s.requirements;
+      return r && (r.status === 'verified' || r.is_verified);
+    }).length;
+
     overlay.innerHTML = `
-      <div style="background:var(--bg-card, #fff);border:1px solid var(--border-default, #e2e8f0);border-radius:14px;max-width:560px;width:100%;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 20px 45px rgba(0,0,0,0.22);overflow:hidden;animation:sup-modal-in .18s ease-out;">
+      <div style="background:var(--bg-card, #fff);border:1px solid var(--border-default, #e2e8f0);border-radius:14px;max-width:${isBatchMode ? '640px' : '560px'};width:100%;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 20px 45px rgba(0,0,0,0.22);overflow:hidden;animation:sup-modal-in .18s ease-out;">
         
         <!-- Header -->
         <div style="padding:18px 22px;border-bottom:1px solid var(--border-default, #e2e8f0);display:flex;align-items:flex-start;justify-content:space-between;background:linear-gradient(135deg, rgba(0,89,48,0.06) 0%, rgba(2,132,199,0.04) 100%);">
           <div style="display:flex;align-items:center;gap:12px;">
-            <div style="width:40px;height:40px;border-radius:10px;background:rgba(0,89,48,0.12);color:#005930;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-              ${icon('clipboardCheck', 20)}
+            <div style="width:42px;height:42px;border-radius:10px;background:rgba(0,89,48,0.12);color:#005930;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              ${icon('clipboardCheck', 22)}
             </div>
             <div>
-              <h3 style="margin:0;font-size:1.1rem;font-weight:700;color:var(--text-primary, #0f172a);">Assign OJT Requirements</h3>
+              <h3 style="margin:0;font-size:1.12rem;font-weight:700;color:var(--text-primary, #0f172a);">
+                ${isBatchMode ? 'Batch Assign OJT Requirement Packet' : 'Assign OJT Requirements'}
+              </h3>
               <p style="margin:2px 0 0;font-size:0.8rem;color:var(--text-secondary, #64748b);">
-                Target: <strong>${studentName}</strong> ${program ? `&middot; ${program}` : ''}
+                ${isBatchMode
+                  ? `CHMSU OJT Practicum &middot; Batch Dispatch to <strong>${targetCount}</strong> student${targetCount !== 1 ? 's' : ''}`
+                  : `Target: <strong>${escapeHtml(studentName)}</strong> ${program ? `&middot; ${escapeHtml(program)}` : ''}`
+                }
               </p>
             </div>
           </div>
@@ -100,16 +156,69 @@ export function openAssignRequirementsModal({
         <!-- Form Body -->
         <form id="sup-req-form" style="padding:20px 22px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:16px;">
           
+          ${isBatchMode ? `
+            <!-- Batch Audience Scope Selector -->
+            <div style="background:var(--bg-secondary, #f8fafc);border:1px solid var(--border-default, #e2e8f0);border-radius:10px;padding:12px 14px;">
+              <label style="display:block;font-size:0.75rem;font-weight:700;color:var(--text-primary, #1e293b);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.04em;">
+                Target Student Scope
+              </label>
+              <div style="display:grid;grid-template-columns:${selectedStudents.length > 0 ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)'};gap:8px;" id="sup-scope-group">
+                ${selectedStudents.length > 0 ? `
+                  <label style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:${currentScope === 'selected' ? '#ECFDF5' : '#ffffff'};border:1.5px solid ${currentScope === 'selected' ? '#005930' : '#e2e8f0'};border-radius:8px;cursor:pointer;font-size:0.8rem;font-weight:600;color:${currentScope === 'selected' ? '#005930' : '#475569'};transition:all .15s ease;">
+                    <input type="radio" name="req-scope" value="selected" ${currentScope === 'selected' ? 'checked' : ''} style="accent-color:#005930;" />
+                    <span>Selected (${selectedStudents.length})</span>
+                  </label>
+                ` : ''}
+                
+                <label style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:${currentScope === 'filtered' ? '#ECFDF5' : '#ffffff'};border:1.5px solid ${currentScope === 'filtered' ? '#005930' : '#e2e8f0'};border-radius:8px;cursor:pointer;font-size:0.8rem;font-weight:600;color:${currentScope === 'filtered' ? '#005930' : '#475569'};transition:all .15s ease;">
+                  <input type="radio" name="req-scope" value="filtered" ${currentScope === 'filtered' ? 'checked' : ''} style="accent-color:#005930;" />
+                  <span>Filtered (${filteredStudents.length || allStudents.length})${sectionFilterName ? ` · Sec ${sectionFilterName}` : ''}</span>
+                </label>
+
+                <label style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:${currentScope === 'all' ? '#ECFDF5' : '#ffffff'};border:1.5px solid ${currentScope === 'all' ? '#005930' : '#e2e8f0'};border-radius:8px;cursor:pointer;font-size:0.8rem;font-weight:600;color:${currentScope === 'all' ? '#005930' : '#475569'};transition:all .15s ease;">
+                  <input type="radio" name="req-scope" value="all" ${currentScope === 'all' ? 'checked' : ''} style="accent-color:#005930;" />
+                  <span>All Enrolled (${allStudents.length})</span>
+                </label>
+              </div>
+
+              <!-- Recipient summary and chip preview -->
+              <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:4px;max-height:68px;overflow-y:auto;padding-top:4px;">
+                ${targetStudents.slice(0, 15).map(s => `
+                  <span style="font-size:0.72rem;background:#ffffff;border:1px solid #cbd5e1;padding:2px 8px;border-radius:12px;color:#334155;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;">
+                    ${s.requirements?.status === 'verified' ? `<span style="color:#059669;" title="Already verified">${icon('checkCircle', 11)}</span>` : ''}
+                    ${escapeHtml(s.name)} ${s.section && s.section !== '—' ? `<strong style="color:#64748b;">(${escapeHtml(s.section)})</strong>` : ''}
+                  </span>
+                `).join('')}
+                ${targetCount > 15 ? `<span style="font-size:0.72rem;color:#64748b;padding:2px 6px;font-weight:600;">+${targetCount - 15} more trainees</span>` : ''}
+              </div>
+
+              <!-- Safe-Skip Verified Toggle -->
+              <div style="margin-top:10px;padding-top:8px;border-top:1px dashed #cbd5e1;">
+                <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:0.78rem;color:#005930;font-weight:600;">
+                  <input type="checkbox" id="sup-req-skip-verified" ${skipVerified ? 'checked' : ''} style="accent-color:#005930;margin-top:2px;width:15px;height:15px;" />
+                  <div>
+                    <span>Skip already verified trainees (Recommended)</span>
+                    <p style="margin:1px 0 0;font-size:0.72rem;color:#64748b;font-weight:400;">
+                      ${verifiedInTarget > 0
+                        ? `Protects <strong>${verifiedInTarget}</strong> student${verifiedInTarget !== 1 ? 's' : ''} in this group who already passed and verified this stage.`
+                        : 'Students with existing approved and verified packets will not be overwritten.'}
+                    </p>
+                  </div>
+                </label>
+              </div>
+            </div>
+          ` : ''}
+
           <!-- Preset selector -->
           <div>
             <label style="display:block;font-size:0.78rem;font-weight:700;color:var(--text-primary, #1e293b);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.03em;">
               Template Preset
             </label>
             <select id="sup-req-preset" class="form-select" style="width:100%;padding:8px 12px;font-size:0.85rem;border-radius:8px;border:1px solid var(--border-default, #cbd5e1);background:var(--bg-card,#fff);">
-              <option value="pre_deployment" selected>Pre-Deployment OJT Document Packet</option>
-              <option value="midterm">Midterm Progress & Performance Packet</option>
-              <option value="final_clearance">Final OJT Clearance & Completion Documents</option>
-              <option value="custom">Custom Requirements</option>
+              <option value="pre_deployment" ${customTitle.includes('Pre-Deployment') ? 'selected' : ''}>Pre-Deployment OJT Document Packet (CHED CMO 104)</option>
+              <option value="midterm" ${customTitle.includes('Midterm') ? 'selected' : ''}>Midterm Progress &amp; Performance Packet</option>
+              <option value="final_clearance" ${customTitle.includes('Final') ? 'selected' : ''}>Final OJT Clearance &amp; Completion Documents</option>
+              <option value="custom" ${(!customTitle.includes('Pre-Deployment') && !customTitle.includes('Midterm') && !customTitle.includes('Final')) ? 'selected' : ''}>Custom Requirements</option>
             </select>
           </div>
 
@@ -118,7 +227,7 @@ export function openAssignRequirementsModal({
             <label style="display:block;font-size:0.78rem;font-weight:700;color:var(--text-primary, #1e293b);margin-bottom:6px;">
               Packet Title
             </label>
-            <input type="text" id="sup-req-title" class="form-input" value="${activePreset.title}" required style="width:100%;padding:8px 12px;font-size:0.88rem;border-radius:8px;border:1px solid var(--border-default, #cbd5e1);" />
+            <input type="text" id="sup-req-title" class="form-input" value="${escapeHtml(customTitle)}" required style="width:100%;padding:8px 12px;font-size:0.88rem;border-radius:8px;border:1px solid var(--border-default, #cbd5e1);" />
           </div>
 
           <!-- Checklist Items -->
@@ -127,15 +236,15 @@ export function openAssignRequirementsModal({
               <label style="font-size:0.78rem;font-weight:700;color:var(--text-primary, #1e293b);text-transform:uppercase;letter-spacing:0.03em;">
                 Required Checklist Items (${items.length})
               </label>
-              <span style="font-size:0.72rem;color:#0284c7;font-weight:600;">Student will see this checklist</span>
+              <span style="font-size:0.72rem;color:#0284c7;font-weight:600;">Trainees will receive this exact checklist</span>
             </div>
             
-            <div id="sup-req-items-list" style="display:flex;flex-direction:column;gap:6px;max-height:170px;overflow-y:auto;padding:8px 10px;border:1px solid var(--border-default, #e2e8f0);border-radius:8px;background:var(--bg-secondary, #f8fafc);">
+            <div id="sup-req-items-list" style="display:flex;flex-direction:column;gap:6px;max-height:165px;overflow-y:auto;padding:8px 10px;border:1px solid var(--border-default, #e2e8f0);border-radius:8px;background:var(--bg-secondary, #f8fafc);">
               ${items.map((it, idx) => `
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 6px;background:#fff;border:1px solid #e2e8f0;border-radius:6px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 8px;background:#fff;border:1px solid #e2e8f0;border-radius:6px;">
                   <span style="font-size:0.8rem;color:#1e293b;display:flex;align-items:center;gap:6px;">
                     <span style="color:#005930;">${icon('checkCircle', 13)}</span>
-                    ${getReqItemName(it)}
+                    ${escapeHtml(getReqItemName(it))}
                   </span>
                   <button type="button" class="del-req-item-btn" data-idx="${idx}" style="background:none;border:none;cursor:pointer;color:#94a3b8;padding:2px;" title="Remove item">
                     ${icon('x', 14)}
@@ -159,7 +268,7 @@ export function openAssignRequirementsModal({
               Submission Deadline (Due Date)
             </label>
             <div style="display:flex;align-items:center;gap:8px;">
-              <input type="date" id="sup-req-due" value="${defaultDueDate}" style="padding:6px 10px;font-size:0.85rem;border-radius:6px;border:1px solid #cbd5e1;background:#fff;" />
+              <input type="date" id="sup-req-due" value="${customDueDate}" style="padding:6px 10px;font-size:0.85rem;border-radius:6px;border:1px solid #cbd5e1;background:#fff;" />
               <div style="display:flex;gap:4px;">
                 <button type="button" class="btn btn--ghost btn--xs quick-due" data-days="7" style="font-size:0.7rem;padding:3px 7px;">+7d</button>
                 <button type="button" class="btn btn--ghost btn--xs quick-due" data-days="14" style="font-size:0.7rem;padding:3px 7px;">+14d</button>
@@ -171,15 +280,20 @@ export function openAssignRequirementsModal({
           <!-- Instructions / Remarks -->
           <div>
             <label style="display:block;font-size:0.78rem;font-weight:700;color:var(--text-primary, #1e293b);margin-bottom:6px;">
-              Instructions / Notes for Student
+              Instructions / Notes for Trainees
             </label>
-            <textarea id="sup-req-notes" rows="2" style="width:100%;padding:8px 10px;font-size:0.82rem;border-radius:8px;border:1px solid #cbd5e1;resize:vertical;" placeholder="Optional guidelines...">${activePreset.instructions}</textarea>
+            <textarea id="sup-req-notes" rows="2" style="width:100%;padding:8px 10px;font-size:0.82rem;border-radius:8px;border:1px solid #cbd5e1;resize:vertical;" placeholder="Optional guidelines...">${escapeHtml(customNotes)}</textarea>
           </div>
 
           <!-- Notification preview alert -->
           <div style="padding:10px 12px;background:rgba(2,132,199,0.06);border:1px solid rgba(2,132,199,0.22);border-radius:8px;display:flex;align-items:flex-start;gap:8px;font-size:0.75rem;color:#0369a1;">
             <span style="color:#0284c7;flex-shrink:0;margin-top:1px;">${icon('bell', 14)}</span>
-            <span>Assigning this packet will immediately dispatch an in-app notification & checklist reminder to <strong>${studentName}</strong>.</span>
+            <span>
+              ${isBatchMode
+                ? `Assigning this packet will immediately dispatch in-app notifications and portfolio checklists to <strong>${targetCount} trainees</strong>.`
+                : `Assigning this packet will immediately dispatch an in-app notification & checklist reminder to <strong>${escapeHtml(studentName)}</strong>.`
+              }
+            </span>
           </div>
 
           <p id="sup-req-error" style="color:#dc2626;font-size:0.78rem;margin:0;display:none;"></p>
@@ -187,8 +301,8 @@ export function openAssignRequirementsModal({
           <!-- Footer -->
           <div style="display:flex;justify-content:flex-end;gap:8px;padding-top:12px;border-top:1px solid var(--border-default, #e2e8f0);">
             <button type="button" id="sup-req-cancel" class="btn btn--outline btn--sm">Cancel</button>
-            <button type="submit" id="sup-req-submit-btn" class="btn btn--primary btn--sm" style="background:#005930;border-color:#005930;color:#fff;gap:6px;">
-              ${icon('send', 13)} Assign & Notify Student
+            <button type="submit" id="sup-req-submit-btn" class="btn btn--primary btn--sm" style="background:#005930;border-color:#005930;color:#fff;gap:6px;font-weight:600;">
+              ${icon('send', 13)} ${isBatchMode ? `Dispatch Packet to ${targetCount} Trainee${targetCount !== 1 ? 's' : ''}` : 'Assign & Notify Student'}
             </button>
           </div>
 
@@ -208,11 +322,30 @@ export function openAssignRequirementsModal({
     const addItemBtn = overlay.querySelector('#sup-req-add-item-btn');
     const errEl = overlay.querySelector('#sup-req-error');
     const submitBtn = overlay.querySelector('#sup-req-submit-btn');
+    const skipVerifiedCheckbox = overlay.querySelector('#sup-req-skip-verified');
 
     const closeModal = () => overlay.remove();
     closeBtn.onclick = closeModal;
     cancelBtn.onclick = closeModal;
     overlay.onclick = (e) => { if (e.target === overlay) closeModal(); };
+
+    // Scope selection change
+    overlay.querySelectorAll('input[name="req-scope"]').forEach(radio => {
+      radio.onchange = () => {
+        currentScope = radio.value;
+        customTitle = titleInput.value;
+        customNotes = notesInput.value;
+        customDueDate = dueInput.value;
+        if (skipVerifiedCheckbox) skipVerified = skipVerifiedCheckbox.checked;
+        renderModal();
+      };
+    });
+
+    if (skipVerifiedCheckbox) {
+      skipVerifiedCheckbox.onchange = () => {
+        skipVerified = skipVerifiedCheckbox.checked;
+      };
+    }
 
     // Preset selection change
     presetSelect.onchange = () => {
@@ -226,6 +359,10 @@ export function openAssignRequirementsModal({
         notesInput.value = '';
         items = [];
       }
+      customTitle = titleInput.value;
+      customNotes = notesInput.value;
+      customDueDate = dueInput.value;
+      if (skipVerifiedCheckbox) skipVerified = skipVerifiedCheckbox.checked;
       renderModal();
     };
 
@@ -235,6 +372,7 @@ export function openAssignRequirementsModal({
         const days = parseInt(b.dataset.days, 10);
         const d = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
         dueInput.value = d;
+        customDueDate = d;
       };
     });
 
@@ -243,6 +381,10 @@ export function openAssignRequirementsModal({
       b.onclick = () => {
         const idx = parseInt(b.dataset.idx, 10);
         items.splice(idx, 1);
+        customTitle = titleInput.value;
+        customNotes = notesInput.value;
+        customDueDate = dueInput.value;
+        if (skipVerifiedCheckbox) skipVerified = skipVerifiedCheckbox.checked;
         renderModal();
       };
     });
@@ -253,6 +395,10 @@ export function openAssignRequirementsModal({
       if (v) {
         items.push(v);
         newItemInput.value = '';
+        customTitle = titleInput.value;
+        customNotes = notesInput.value;
+        customDueDate = dueInput.value;
+        if (skipVerifiedCheckbox) skipVerified = skipVerifiedCheckbox.checked;
         renderModal();
       }
     };
@@ -268,19 +414,29 @@ export function openAssignRequirementsModal({
         return;
       }
 
+      const targets = resolveTargetStudents();
+      const targetIds = targets.map(s => parseInt(s.id, 10)).filter(Boolean);
+
+      if (!targetIds.length) {
+        errEl.textContent = 'No eligible trainees selected to receive this packet.';
+        errEl.style.display = 'block';
+        return;
+      }
+
       submitBtn.disabled = true;
-      submitBtn.innerHTML = `${icon('loader', 14)} Dispatching...`;
+      submitBtn.innerHTML = `${icon('loader', 14)} Dispatching to ${targetIds.length} trainee${targetIds.length !== 1 ? 's' : ''}...`;
       errEl.style.display = 'none';
 
       try {
         const payload = {
-          student_ids:  [parseInt(studentId, 10)],
-          interest_id:  interestId ? parseInt(interestId, 10) : null,
-          posting_id:   postingId ? parseInt(postingId, 10) : null,
-          title:        titleInput.value.trim() || 'Pre-Deployment OJT Document Packet',
-          items:        items,
-          due_date:     dueInput.value || null,
-          instructions: notesInput.value.trim() || null,
+          student_ids:   targetIds,
+          interest_id:   interestId ? parseInt(interestId, 10) : null,
+          posting_id:    postingId ? parseInt(postingId, 10) : null,
+          title:         titleInput.value.trim() || 'Pre-Deployment OJT Document Packet',
+          items:         items,
+          due_date:      dueInput.value || null,
+          instructions:  notesInput.value.trim() || null,
+          skip_verified: skipVerifiedCheckbox ? skipVerifiedCheckbox.checked : true,
         };
 
         const res = await apiPost('/supervisor/requirements/assign', payload);
@@ -288,19 +444,19 @@ export function openAssignRequirementsModal({
         if (res?.success) {
           closeModal();
           if (typeof onAssigned === 'function') {
-            onAssigned(res.data);
+            onAssigned(res);
           }
         } else {
           errEl.textContent = res?.message || 'Failed to assign requirements. Please try again.';
           errEl.style.display = 'block';
           submitBtn.disabled = false;
-          submitBtn.innerHTML = `${icon('send', 13)} Assign & Notify Student`;
+          submitBtn.innerHTML = `${icon('send', 13)} ${isBatchMode ? `Dispatch Packet to ${targetIds.length} Trainees` : 'Assign & Notify Student'}`;
         }
       } catch (err) {
         errEl.textContent = err.message || 'An unexpected error occurred.';
         errEl.style.display = 'block';
         submitBtn.disabled = false;
-        submitBtn.innerHTML = `${icon('send', 13)} Assign & Notify Student`;
+        submitBtn.innerHTML = `${icon('send', 13)} ${isBatchMode ? `Dispatch Packet to ${targetIds.length} Trainees` : 'Assign & Notify Student'}`;
       }
     };
   }

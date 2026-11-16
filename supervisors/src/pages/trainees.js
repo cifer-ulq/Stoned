@@ -378,6 +378,9 @@ export default function traineesPage(container) {
         <button class="btn btn--outline btn--sm" onclick="location.hash='/map'" style="gap:7px;font-size:0.85rem;font-weight:600;padding:8px 14px;">
           ${icon('map', 15)} <span>Trainee Map</span>
         </button>
+        <button class="btn btn--outline btn--sm" id="batch-assign-packet-btn" style="gap:7px;font-size:0.85rem;font-weight:600;padding:8px 14px;border-color:#A7F3D0;background:#ECFDF5;color:#005930;" title="Batch assign OJT requirements packet to multiple or all students in one click">
+          ${icon('clipboardCheck', 15)} <span>Batch Packet</span>
+        </button>
         <button class="btn btn--primary btn--sm" id="batch-register-btn" style="gap:7px;font-size:0.85rem;font-weight:600;padding:8px 16px;">
           ${icon('upload', 15)} <span>Batch Register</span>
         </button>
@@ -446,12 +449,34 @@ export default function traineesPage(container) {
       </div>
     </div>
 
-    <!-- ═══ Redesigned Table Card (7 Neat Columns, No Student ID Column) ═══ -->
+    <!-- ═══ Floating Batch Action Bar ═══ -->
+    <div class="tr2-floating-batch-bar" id="tr2-batch-bar" style="display:none;">
+      <div class="tr2-floating-batch-bar__left">
+        ${icon('checkCircle', 18)}
+        <span><strong id="tr2-batch-selected-count">0</strong> trainee(s) selected</span>
+        <button type="button" class="btn btn--ghost btn--xs" id="tr2-batch-select-filtered" style="color:#ffffff;text-decoration:underline;padding:2px 6px;font-size:0.75rem;cursor:pointer;">
+          Select all <span id="tr2-batch-filtered-count">0</span> filtered
+        </button>
+      </div>
+      <div class="tr2-floating-batch-bar__right">
+        <button type="button" class="btn btn--ghost btn--sm" id="tr2-batch-clear-btn" style="color:#ffffff;border-color:rgba(255,255,255,0.35);font-size:0.78rem;">
+          Clear Selection
+        </button>
+        <button type="button" class="btn btn--primary btn--sm" id="tr2-batch-trigger-btn" style="background:#ffffff;color:#005930;border-color:#ffffff;font-weight:700;font-size:0.82rem;gap:6px;">
+          ${icon('clipboardCheck', 15)} Assign Requirement Packet
+        </button>
+      </div>
+    </div>
+
+    <!-- ═══ Redesigned Table Card (8 Neat Columns, Multi-Select Enabled) ═══ -->
     <div class="tr2-table-card anim-fade-in-up">
       <div class="tr2-table-wrap">
         <table class="tr2-table" id="trainee-table">
           <thead>
             <tr>
+              <th style="width:44px;text-align:center;padding:14px 8px;">
+                <input type="checkbox" id="tr2-select-all" title="Select all on this page" style="cursor:pointer;accent-color:#005930;width:16px;height:16px;vertical-align:middle;" />
+              </th>
               <th style="min-width:260px;">Student Trainee</th>
               <th style="width:125px;">Year Level</th>
               <th style="width:115px;">Section</th>
@@ -481,6 +506,7 @@ export default function traineesPage(container) {
   let currentPage = 1;
   let activeStatusTab = '';
   let activeKpiKey = 'all';
+  const selectedIds = new Set();
 
   loadTrainees();
 
@@ -515,6 +541,14 @@ export default function traineesPage(container) {
       renderKpis(allTrainees);
       updateTabCounts(allTrainees);
       applyFilters();
+
+      // Prune any deleted or un-enrolled IDs from selection
+      const validIds = new Set(allTrainees.map(t => t.id));
+      for (const id of selectedIds) {
+        if (!validIds.has(id)) selectedIds.delete(id);
+      }
+      updateBatchBar();
+
       handleDeepLink();
 
       if (isManualRefresh) {
@@ -523,7 +557,7 @@ export default function traineesPage(container) {
     } catch (err) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="7">
+          <td colspan="8">
             <div class="tr2-empty">
               <div class="tr2-empty__icon" style="background:#FEE2E2;color:#DC2626;">${icon('alertTriangle', 30)}</div>
               <h3 style="margin:4px 0 2px;font-size:1.15rem;font-weight:700;color:var(--text-primary);">Could not load trainees</h3>
@@ -767,6 +801,114 @@ export default function traineesPage(container) {
     });
   }
 
+  /* ── Batch Trainee Selection & Requirements Packet Dispatch ── */
+  function updateBatchBar() {
+    const bar = container.querySelector('#tr2-batch-bar');
+    const countEl = container.querySelector('#tr2-batch-selected-count');
+    const filteredCountEl = container.querySelector('#tr2-batch-filtered-count');
+    const masterCheckbox = container.querySelector('#tr2-select-all');
+
+    if (!bar) return;
+
+    const count = selectedIds.size;
+    if (countEl) countEl.textContent = count;
+    if (filteredCountEl) filteredCountEl.textContent = filteredTrainees.length;
+
+    // Calculate visible page items
+    const totalItems = filteredTrainees.length;
+    const totalPages = Math.max(1, Math.ceil(totalItems / PER_PAGE));
+    const safePage = Math.min(currentPage, totalPages);
+    const startIndex = (safePage - 1) * PER_PAGE;
+    const endIndex = Math.min(totalItems, startIndex + PER_PAGE);
+    const pageData = filteredTrainees.slice(startIndex, endIndex);
+
+    if (masterCheckbox) {
+      const allPageSelected = pageData.length > 0 && pageData.every(t => selectedIds.has(t.id));
+      const somePageSelected = pageData.some(t => selectedIds.has(t.id));
+      masterCheckbox.checked = allPageSelected;
+      masterCheckbox.indeterminate = !allPageSelected && somePageSelected;
+    }
+
+    bar.style.display = count > 0 ? 'flex' : 'none';
+  }
+
+  function triggerBatchRequirementsModal(scopeOverride = null) {
+    const selectedList = allTrainees.filter(t => selectedIds.has(t.id));
+    const sectionVal = sectionSelect ? sectionSelect.value : '';
+
+    openAssignRequirementsModal({
+      isBatch: true,
+      selectedStudents: selectedList,
+      filteredStudents: filteredTrainees,
+      allStudents: allTrainees,
+      initialScope: scopeOverride || (selectedList.length > 0 ? 'selected' : (filteredTrainees.length > 0 && filteredTrainees.length < allTrainees.length ? 'filtered' : 'all')),
+      sectionFilterName: sectionVal,
+      onAssigned: (res) => {
+        selectedIds.clear();
+        updateBatchBar();
+        showToast(res?.message || 'Requirement packets successfully dispatched to students!', 'success');
+        loadTrainees();
+      }
+    });
+  }
+
+  // Header Batch Packet button
+  const batchAssignPacketBtn = container.querySelector('#batch-assign-packet-btn');
+  if (batchAssignPacketBtn) {
+    batchAssignPacketBtn.addEventListener('click', () => {
+      triggerBatchRequirementsModal();
+    });
+  }
+
+  // Floating bar Trigger Assign button
+  const batchTriggerBtn = container.querySelector('#tr2-batch-trigger-btn');
+  if (batchTriggerBtn) {
+    batchTriggerBtn.addEventListener('click', () => {
+      triggerBatchRequirementsModal('selected');
+    });
+  }
+
+  // Floating bar Clear Selection button
+  const batchClearBtn = container.querySelector('#tr2-batch-clear-btn');
+  if (batchClearBtn) {
+    batchClearBtn.addEventListener('click', () => {
+      selectedIds.clear();
+      updateBatchBar();
+      renderTable();
+    });
+  }
+
+  // Floating bar Select All Filtered button
+  const batchSelectFilteredBtn = container.querySelector('#tr2-batch-select-filtered');
+  if (batchSelectFilteredBtn) {
+    batchSelectFilteredBtn.addEventListener('click', () => {
+      filteredTrainees.forEach(t => selectedIds.add(t.id));
+      updateBatchBar();
+      renderTable();
+    });
+  }
+
+  // Master checkbox in table header
+  const masterCheckbox = container.querySelector('#tr2-select-all');
+  if (masterCheckbox) {
+    masterCheckbox.addEventListener('change', () => {
+      const totalItems = filteredTrainees.length;
+      const totalPages = Math.max(1, Math.ceil(totalItems / PER_PAGE));
+      const safePage = Math.min(currentPage, totalPages);
+      const startIndex = (safePage - 1) * PER_PAGE;
+      const endIndex = Math.min(totalItems, startIndex + PER_PAGE);
+      const pageData = filteredTrainees.slice(startIndex, endIndex);
+
+      if (masterCheckbox.checked) {
+        pageData.forEach(t => selectedIds.add(t.id));
+      } else {
+        pageData.forEach(t => selectedIds.delete(t.id));
+      }
+      updateBatchBar();
+      renderTable();
+    });
+  }
+
   function applyFilters() {
     const q       = searchInput.value.toLowerCase().trim();
     const section = sectionSelect.value;
@@ -840,12 +982,12 @@ export default function traineesPage(container) {
 
     const totalItems = filteredTrainees.length;
 
-    // Empty state (7 Columns)
+    // Empty state (8 Columns)
     if (!totalItems) {
       paginationWrap.style.display = 'none';
       tbody.innerHTML = `
         <tr>
-          <td colspan="7">
+          <td colspan="8">
             <div class="tr2-empty">
               <div class="tr2-empty__icon">${icon('users', 34)}</div>
               <h3 style="margin:4px 0 2px;font-size:1.15rem;font-weight:700;color:var(--text-primary);">No trainees found</h3>
@@ -881,7 +1023,7 @@ export default function traineesPage(container) {
     const endIndex   = Math.min(totalItems, startIndex + PER_PAGE);
     const pageData   = filteredTrainees.slice(startIndex, endIndex);
 
-    // Rows rendering (7 Columns)
+    // Rows rendering (8 Columns)
     tbody.innerHTML = pageData.map(t => {
       const init = initials(t.name);
       const targetHours = (t.requiredHours && t.requiredHours > 0) ? t.requiredHours : 600;
@@ -892,7 +1034,12 @@ export default function traineesPage(container) {
       const badgeCfg = STATUS_BADGES[t.status] || { cls: 'tr2-badge--undeployed', text: t.status };
 
       return `
-        <tr data-id="${t.id}">
+        <tr data-id="${t.id}" style="${selectedIds.has(t.id) ? 'background:rgba(0,89,48,0.035);' : ''}">
+          <!-- 0. Multi-Select Checkbox -->
+          <td style="text-align:center;padding:14px 8px;" onclick="event.stopPropagation()">
+            <input type="checkbox" class="tr2-row-select" data-id="${t.id}" ${selectedIds.has(t.id) ? 'checked' : ''} style="cursor:pointer;accent-color:#005930;width:16px;height:16px;vertical-align:middle;" />
+          </td>
+
           <!-- 1. Student Trainee (with Avatar, Name, Email, & Neat Student ID micro-pill) -->
           <td>
             <div class="tr2-trainee-cell">
@@ -1122,6 +1269,27 @@ export default function traineesPage(container) {
         if (t) openModal(t);
       });
     });
+
+    // Wire up row checkbox clicks
+    tbody.querySelectorAll('.tr2-row-select').forEach(cb => {
+      cb.addEventListener('change', (e) => {
+        e.stopPropagation();
+        const id = parseInt(cb.dataset.id, 10);
+        if (cb.checked) {
+          selectedIds.add(id);
+        } else {
+          selectedIds.delete(id);
+        }
+        const row = cb.closest('tr');
+        if (row) {
+          row.style.background = cb.checked ? 'rgba(0,89,48,0.035)' : '';
+        }
+        updateBatchBar();
+      });
+    });
+
+    // Synchronize batch selection bar and master checkbox
+    updateBatchBar();
 
     // Pagination info & controls
     paginationWrap.style.display = 'flex';
