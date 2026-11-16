@@ -84,6 +84,24 @@ class EndorsementPdfService
     }
 
     /**
+     * Resolve campus institutional physical address.
+     */
+    public static function resolveCampusAddress(?string $campus): string
+    {
+        $c = strtolower($campus ?? '');
+        if (str_contains($c, 'alijis')) {
+            return 'Alijis Road, Bacolod City, Negros Occidental 6100, Philippines';
+        }
+        if (str_contains($c, 'fortune') || str_contains($c, 'towne')) {
+            return 'Fortune Towne, Brgy. Estefania, Bacolod City 6100, Philippines';
+        }
+        if (str_contains($c, 'binalbagan')) {
+            return 'Enclaro, Binalbagan, Negros Occidental 6107, Philippines';
+        }
+        return 'Mabini Street, Talisay City, Negros Occidental 6115, Philippines';
+    }
+
+    /**
      * Escape strings for PDF text streams.
      */
     public static function escape(string $str): string
@@ -145,8 +163,10 @@ class EndorsementPdfService
         $coordinatorName = self::escape($data['coordinator_name'] ?? 'Prof. Mariene Labrador');
         $coordinatorTitle= self::escape($data['coordinator_title'] ?? 'OJT Academic Coordinator');
         $coordinatorEmail= self::escape($data['coordinator_email'] ?? 'ojt.coordinator@chmsu.edu.ph');
-        $college         = self::escape($data['college'] ?? 'College of Industrial Technology');
+        $college         = self::escape($data['college'] ?? 'College of Computer Studies');
         $department      = self::escape($data['department'] ?? 'Department of Information Technology');
+        $campus          = self::escape($data['campus'] ?? 'Alijis Campus');
+        $campusAddress   = self::escape($data['campus_address'] ?? self::resolveCampusAddress($data['campus'] ?? 'Alijis Campus'));
         $coordinatorNote = trim((string)($data['coordinator_note'] ?? ''));
         $customBody      = trim((string)($data['custom_body'] ?? ''));
         $dateStr         = self::escape($data['date'] ?? date('F d, Y'));
@@ -184,7 +204,7 @@ class EndorsementPdfService
         $stream[] = 'BT';
         $stream[] = '/F2 8 Tf';
         $stream[] = '0.45 0.50 0.55 rg';
-        $stream[] = '50 696 Td (' . self::escape('Mabini Street, Talisay City, Negros Occidental 6115, Philippines • www.chmsu.edu.ph') . ') Tj';
+        $stream[] = '50 696 Td (' . $campusAddress . ' • www.chmsu.edu.ph) Tj';
         $stream[] = 'ET';
 
         // Header Divider
@@ -460,6 +480,7 @@ class EndorsementPdfService
 
         $coordinatorNote = $options['coordinator_note'] ?? $interest->coordinator_note ?? '';
         $customBody      = $options['custom_body'] ?? '';
+        $campus          = $options['campus'] ?? $supervisor->supervisorProfile?->campus ?? $sp?->campus ?? 'Alijis Campus';
 
         $pdfBinary = self::generatePdf([
             'student_name'      => $studentName,
@@ -467,6 +488,8 @@ class EndorsementPdfService
             'program'           => $program,
             'year_level'        => $yearLevel,
             'section'           => $section,
+            'campus'            => $campus,
+            'campus_address'    => self::resolveCampusAddress($campus),
             'company_name'      => $companyName,
             'company_address'   => $companyAddress,
             'contact_person'    => $contactPerson,

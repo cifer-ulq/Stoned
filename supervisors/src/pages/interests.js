@@ -1462,6 +1462,20 @@ function resolveCollegeAndDept(program) {
   };
 }
 
+function resolveCampusAddress(campus) {
+  const c = (campus || '').toLowerCase();
+  if (c.includes('alijis')) {
+    return 'Alijis Campus, Brgy. Alijis, Bacolod City 6100, Negros Occidental &bull; www.chmsu.edu.ph';
+  }
+  if (c.includes('fortune') || c.includes('towne')) {
+    return 'Fortune Towne Campus, Brgy. Estefania, Bacolod City 6100, Negros Occidental &bull; www.chmsu.edu.ph';
+  }
+  if (c.includes('binalbagan')) {
+    return 'Binalbagan Campus, Enclaro, Binalbagan 6107, Negros Occidental &bull; www.chmsu.edu.ph';
+  }
+  return 'Talisay (Main) Campus, Mabini Street, Talisay City 6115, Negros Occidental &bull; www.chmsu.edu.ph';
+}
+
 function escHtml(str = '') {
   return String(str ?? '')
     .replace(/&/g, '&amp;')
@@ -1493,9 +1507,11 @@ function showEndorsementUploadModal(interestId, slot, students, body, bd, allInt
   // Supervisor info from local storage
   let supervisorUser = {};
   try { supervisorUser = JSON.parse(localStorage.getItem('hireme_user') || '{}'); } catch {}
-  const supervisorName  = supervisorUser?.name || 'Prof. Mariene Labrador';
-  const supervisorEmail = supervisorUser?.email || 'ojt.coordinator@chmsu.edu.ph';
-  const supervisorTitle = supervisorUser?.position || 'OJT Academic Coordinator';
+  const supervisorName   = supervisorUser?.name || 'Prof. Mariene Labrador';
+  const supervisorEmail  = supervisorUser?.email || 'ojt.coordinator@chmsu.edu.ph';
+  const supervisorTitle  = supervisorUser?.position || 'OJT Academic Coordinator';
+  const supervisorCampus = supervisorUser?.supervisor_profile?.campus || supervisorUser?.campus || record?.student?.campus || 'Alijis Campus';
+  const campusAddressLine = resolveCampusAddress(supervisorCampus);
 
   const todayDate = new Date().toLocaleDateString('en-US', {
     year: 'numeric',
@@ -1592,7 +1608,7 @@ function showEndorsementUploadModal(interestId, slot, students, body, bd, allInt
                 <h2 style="margin:0;font-size:1.18rem;font-weight:800;color:#005930;letter-spacing:-0.01em;">CARLOS HILADO MEMORIAL STATE UNIVERSITY</h2>
                 <p style="margin:2px 0 0;font-size:0.83rem;color:#475569;font-weight:600;">Center for Internationalization and External Relations (CIER)</p>
                 <p style="margin:2px 0 0;font-size:0.82rem;color:#005930;font-weight:700;">${escHtml(deptInfo.college)} &mdash; ${escHtml(deptInfo.department)}</p>
-                <p style="margin:2px 0 0;font-size:0.73rem;color:#64748b;">Mabini Street, Talisay City, Negros Occidental 6115, Philippines &bull; www.chmsu.edu.ph</p>
+                <p style="margin:2px 0 0;font-size:0.73rem;color:#64748b;">${campusAddressLine}</p>
               </div>
               <div style="text-align:right;">
                 <span style="display:inline-block;padding:3px 8px;background:#ecfdf5;border:1px solid #00593033;border-radius:4px;font-size:0.71rem;font-weight:700;color:#005930;">
@@ -1668,7 +1684,7 @@ function showEndorsementUploadModal(interestId, slot, students, body, bd, allInt
                   ${escHtml(supervisorName)}
                 </p>
                 <p style="margin:2px 0 0;font-size:0.78rem;color:#475569;">${escHtml(supervisorTitle)} &ndash; ${escHtml(deptInfo.department)}</p>
-                <p style="margin:1px 0 0;font-size:0.76rem;color:#64748b;">${escHtml(deptInfo.college)}, CHMSU</p>
+                <p style="margin:1px 0 0;font-size:0.76rem;color:#64748b;">${escHtml(deptInfo.college)}, CHMSU (${escHtml(supervisorCampus)})</p>
                 <p style="margin:1px 0 0;font-size:0.74rem;color:#64748b;">Email: ${escHtml(supervisorEmail)}</p>
               </div>
 

@@ -14,41 +14,135 @@ const STATUS_COLORS = {
   'Interested':              'neutral',
 };
 
-const COURSES = [
-  'Bachelor of Science in Information Technology',
-  'Bachelor of Science in Computer Science',
-  'Bachelor of Science in Computer Engineering',
-  'Bachelor of Science in Information Systems',
-  'Bachelor of Science in Business Administration',
-  'Bachelor of Science in Accountancy',
-  'Bachelor of Secondary Education',
-  'Bachelor of Science in Hospitality Management',
-  'Bachelor of Science in Criminology',
-  'Bachelor of Science in Nursing',
-  'Bachelor of Science in Agriculture',
-  'Bachelor of Science in Fisheries',
+const CAMPUSES = [
+  'Alijis Campus',
+  'Talisay Campus',
+  'Fortune Towne Campus',
+  'Binalbagan Campus',
 ];
+
+const COURSE_GROUPS = [
+  {
+    group: 'College of Computer Studies (CCS)',
+    courses: [
+      'Bachelor of Science in Information Technology',
+      'Bachelor of Science in Information Systems',
+      'Bachelor of Science in Computer Science',
+    ],
+  },
+  {
+    group: 'College of Engineering',
+    courses: [
+      'Bachelor of Science in Computer Engineering',
+      'Bachelor of Science in Electronics Engineering',
+    ],
+  },
+  {
+    group: 'College of Industrial Technology (CIT)',
+    courses: [
+      'Bachelor of Science in Industrial Technology - Major in Architectural Drafting Technology',
+      'Bachelor of Science in Industrial Technology - Major in Automotive Technology',
+      'Bachelor of Science in Industrial Technology - Major in Computer Technology',
+      'Bachelor of Science in Industrial Technology - Major in Electrical Technology',
+      'Bachelor of Science in Industrial Technology - Major in Electronics Technology',
+      'Bachelor of Science in Industrial Technology - Major in Food Trades Technology',
+      'Bachelor of Science in Industrial Technology - Major in Mechanical Technology',
+    ],
+  },
+  {
+    group: 'College of Education / Technical-Vocational',
+    courses: [
+      'Bachelor of Technical Vocational Teacher Education - Major in Electrical Technology',
+      'Bachelor of Technical Vocational Teacher Education - Major in Electronics Technology',
+    ],
+  },
+  {
+    group: 'Business & Other Programs',
+    courses: [
+      'Bachelor of Science in Business Administration',
+      'Bachelor of Science in Accountancy',
+      'Bachelor of Secondary Education',
+      'Bachelor of Science in Hospitality Management',
+      'Bachelor of Science in Criminology',
+      'Bachelor of Science in Nursing',
+      'Bachelor of Science in Agriculture',
+      'Bachelor of Science in Fisheries',
+    ],
+  },
+];
+
+const COURSES = COURSE_GROUPS.flatMap(g => g.courses);
 
 const COURSE_META = {
   'Bachelor of Science in Information Technology': {
     code: 'BSIT',
-    category: 'Information & Computing',
+    category: 'College of Computer Studies',
     icon: 'cpu',
   },
   'Bachelor of Science in Computer Science': {
     code: 'BSCS',
-    category: 'Information & Computing',
-    icon: 'cpu',
-  },
-  'Bachelor of Science in Computer Engineering': {
-    code: 'BSCpE',
-    category: 'Engineering & Technology',
+    category: 'College of Computer Studies',
     icon: 'cpu',
   },
   'Bachelor of Science in Information Systems': {
     code: 'BSIS',
-    category: 'Information & Computing',
+    category: 'College of Computer Studies',
     icon: 'layers',
+  },
+  'Bachelor of Science in Computer Engineering': {
+    code: 'BSCpE',
+    category: 'College of Engineering',
+    icon: 'cpu',
+  },
+  'Bachelor of Science in Electronics Engineering': {
+    code: 'BSECE',
+    category: 'College of Engineering',
+    icon: 'activity',
+  },
+  'Bachelor of Science in Industrial Technology - Major in Architectural Drafting Technology': {
+    code: 'BSIT-ADT',
+    category: 'College of Industrial Technology',
+    icon: 'compass',
+  },
+  'Bachelor of Science in Industrial Technology - Major in Automotive Technology': {
+    code: 'BSIT-AT',
+    category: 'College of Industrial Technology',
+    icon: 'tool',
+  },
+  'Bachelor of Science in Industrial Technology - Major in Computer Technology': {
+    code: 'BSIT-CT',
+    category: 'College of Industrial Technology',
+    icon: 'cpu',
+  },
+  'Bachelor of Science in Industrial Technology - Major in Electrical Technology': {
+    code: 'BSIT-ET',
+    category: 'College of Industrial Technology',
+    icon: 'zap',
+  },
+  'Bachelor of Science in Industrial Technology - Major in Electronics Technology': {
+    code: 'BSIT-ELX',
+    category: 'College of Industrial Technology',
+    icon: 'activity',
+  },
+  'Bachelor of Science in Industrial Technology - Major in Food Trades Technology': {
+    code: 'BSIT-FT',
+    category: 'College of Industrial Technology',
+    icon: 'coffee',
+  },
+  'Bachelor of Science in Industrial Technology - Major in Mechanical Technology': {
+    code: 'BSIT-MT',
+    category: 'College of Industrial Technology',
+    icon: 'settings',
+  },
+  'Bachelor of Technical Vocational Teacher Education - Major in Electrical Technology': {
+    code: 'BTVTEd-ET',
+    category: 'College of Education / Tech-Voc',
+    icon: 'book-open',
+  },
+  'Bachelor of Technical Vocational Teacher Education - Major in Electronics Technology': {
+    code: 'BTVTEd-ELX',
+    category: 'College of Education / Tech-Voc',
+    icon: 'book-open',
   },
   'Bachelor of Science in Business Administration': {
     code: 'BSBA',
@@ -139,10 +233,10 @@ export default async function OjtManagementPage(container) {
     <div style="margin:var(--space-6) 0 var(--space-4);">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-4);">
         <h2 style="font-size:var(--text-lg);font-weight:var(--weight-semibold);display:flex;align-items:center;gap:8px;margin:0;">${icon('users',18)} Program Coordinators</h2>
-        <span style="font-size:var(--text-xs);color:var(--text-tertiary);">1 coordinator per course</span>
+        <span style="font-size:var(--text-xs);color:var(--text-tertiary);">Coordinators assigned by program &amp; campus</span>
       </div>
       <div class="table-wrapper anim-fade-in-up">
-        <table class="table" id="sup-table"><thead><tr><th>Name</th><th>Email</th><th>Course</th><th>Registered</th><th style="width:70px;text-align:right;">Action</th></tr></thead><tbody id="sup-tbody"><tr><td colspan="5" style="text-align:center;color:var(--text-tertiary);padding:24px;">Loading…</td></tr></tbody></table>
+        <table class="table" id="sup-table"><thead><tr><th>Name</th><th>Email</th><th>Campus</th><th>Course</th><th>Registered</th><th style="width:70px;text-align:right;">Action</th></tr></thead><tbody id="sup-tbody"><tr><td colspan="6" style="text-align:center;color:var(--text-tertiary);padding:24px;">Loading…</td></tr></tbody></table>
       </div>
     </div>
 
@@ -390,7 +484,7 @@ export default async function OjtManagementPage(container) {
   function renderSupervisors(stb, list) {
     currentSupervisors = list || [];
     if (!currentSupervisors.length) {
-      stb.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-tertiary);padding:24px;">No coordinators registered yet</td></tr>`;
+      stb.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-tertiary);padding:24px;">No coordinators registered yet</td></tr>`;
       return;
     }
     stb.innerHTML = currentSupervisors.map(s => {
@@ -398,6 +492,7 @@ export default async function OjtManagementPage(container) {
       return `<tr>
         <td><div style="display:flex;align-items:center;gap:8px;"><div class="entity-card__avatar" style="width:30px;height:30px;font-size:.55rem;flex-shrink:0;">${init}</div><span style="font-weight:var(--weight-medium);font-size:var(--text-sm);">${s.name}</span></div></td>
         <td style="font-size:var(--text-sm);">${s.email}</td>
+        <td><span class="badge" style="background:#ECFDF5;color:#047857;border:1px solid #A7F3D0;font-size:.65rem;font-weight:600;">${s.campus || 'Alijis Campus'}</span></td>
         <td><span class="badge badge--info" style="font-size:.65rem;">${s.course || '—'}</span></td>
         <td style="font-size:var(--text-xs);color:var(--text-tertiary);">${s.created_at||''}</td>
         <td style="text-align:right;">
@@ -821,10 +916,35 @@ export default async function OjtManagementPage(container) {
               </div>
             </div>
 
-            <!-- Section 2: Course -->
-            <div class="ac-section ac-section--last">
+            <!-- Section 2: Campus Assignment -->
+            <div class="ac-section">
               <div class="ac-section__label">
                 <span class="ac-section__num">2</span>
+                Campus Assignment
+              </div>
+              <div class="ac-grid">
+                <div class="ac-field ac-field--full">
+                  <label class="ac-label">Designated CHMSU Campus <span class="ac-req">*</span></label>
+                  <div style="display:grid;grid-template-columns:repeat(2, 1fr);gap:8px;" id="sup-campus-grid">
+                    ${CAMPUSES.map((camp) => `
+                      <button type="button" class="sup-campus-btn ${camp === 'Alijis Campus' ? 'sup-campus-btn--active' : ''}" data-campus="${camp}" style="display:flex;align-items:center;gap:8px;padding:9px 12px;border:1.5px solid ${camp === 'Alijis Campus' ? '#005930' : 'var(--border-subtle)'};border-radius:8px;background:${camp === 'Alijis Campus' ? 'rgba(0,89,48,0.06)' : 'var(--bg-elevated)'};cursor:pointer;text-align:left;font-size:var(--text-xs);font-weight:var(--weight-medium);transition:all .15s;">
+                        <span class="sup-campus-radio" style="width:14px;height:14px;border-radius:50%;border:2px solid ${camp === 'Alijis Campus' ? '#005930' : 'var(--text-tertiary)'};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                          ${camp === 'Alijis Campus' ? '<span style="width:6px;height:6px;border-radius:50%;background:#005930;"></span>' : ''}
+                        </span>
+                        <span class="sup-campus-text" style="color:${camp === 'Alijis Campus' ? '#005930' : 'var(--text-primary)'};font-weight:${camp === 'Alijis Campus' ? '600' : '500'};">${camp}</span>
+                      </button>
+                    `).join('')}
+                  </div>
+                  <input type="hidden" id="sup-campus" name="campus" value="Alijis Campus" />
+                  <span class="ac-error" id="err-sup-campus"></span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Section 3: Course -->
+            <div class="ac-section ac-section--last">
+              <div class="ac-section__label">
+                <span class="ac-section__num">3</span>
                 Program / Course
               </div>
               <div class="ac-grid">
@@ -1129,6 +1249,31 @@ export default async function OjtManagementPage(container) {
     };
     document.addEventListener('click', onDocClick);
 
+    // Campus selector logic
+    backdrop.querySelectorAll('.sup-campus-btn').forEach(cBtn => {
+      cBtn.addEventListener('click', () => {
+        const chosenCampus = cBtn.getAttribute('data-campus');
+        backdrop.querySelector('#sup-campus').value = chosenCampus;
+        backdrop.querySelectorAll('.sup-campus-btn').forEach(b => {
+          const isActive = b.getAttribute('data-campus') === chosenCampus;
+          b.style.borderColor = isActive ? '#005930' : 'var(--border-subtle)';
+          b.style.background = isActive ? 'rgba(0,89,48,0.06)' : 'var(--bg-elevated)';
+          const radio = b.querySelector('.sup-campus-radio');
+          if (radio) {
+            radio.style.borderColor = isActive ? '#005930' : 'var(--text-tertiary)';
+            radio.innerHTML = isActive ? '<span style="width:6px;height:6px;border-radius:50%;background:#005930;"></span>' : '';
+          }
+          const txt = b.querySelector('.sup-campus-text');
+          if (txt) {
+            txt.style.color = isActive ? '#005930' : 'var(--text-primary)';
+            txt.style.fontWeight = isActive ? '600' : '500';
+          }
+        });
+        const errCampus = backdrop.querySelector('#err-sup-campus');
+        if (errCampus) { errCampus.textContent = ''; errCampus.style.display = 'none'; }
+      });
+    });
+
     // Initial populate
     renderOptions('');
 
@@ -1149,6 +1294,7 @@ export default async function OjtManagementPage(container) {
 
       const name = backdrop.querySelector('#sup-name').value.trim();
       const email = backdrop.querySelector('#sup-email').value.trim();
+      const campus = backdrop.querySelector('#sup-campus').value.trim();
       const course = backdrop.querySelector('#sup-course').value;
 
       let valid = true;
@@ -1162,6 +1308,7 @@ export default async function OjtManagementPage(container) {
 
       if (!name) setErr('sup-name', 'Full name is required.');
       if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) setErr('sup-email', 'Valid email is required.');
+      if (!campus) setErr('sup-campus', 'Please select a designated campus.');
       if (!course) setErr('sup-course', 'Please select a course program.');
       if (!valid) return;
 
@@ -1170,7 +1317,7 @@ export default async function OjtManagementPage(container) {
       btn.innerHTML = '<span class="spinner-sm"></span> Registering…';
 
       try {
-        const res = await apiPost('/admin/supervisors', { name, email, course });
+        const res = await apiPost('/admin/supervisors', { name, email, campus, course });
 
         if (res?.supervisor) {
           const sucEl = backdrop.querySelector('#sup-success');

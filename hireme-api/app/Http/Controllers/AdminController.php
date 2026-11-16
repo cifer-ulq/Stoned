@@ -2140,10 +2140,12 @@ class AdminController extends Controller
             'name'   => ['required', 'string', 'max:255'],
             'email'  => ['required', 'email', 'unique:users,email'],
             'course' => ['required', 'string', 'max:255'],
+            'campus' => ['nullable', 'string', 'max:100'],
             'phone'  => ['nullable', 'string', 'max:50'],
         ]);
 
         $normalizedCourse = \App\Services\CourseNormalizer::normalize($data['course']) ?: $data['course'];
+        $campus = !empty($data['campus']) ? $data['campus'] : 'Alijis Campus';
 
         $tempPassword = 'CHMSU@Sup' . rand(1000, 9999);
         $user = User::create([
@@ -2160,6 +2162,7 @@ class AdminController extends Controller
             'company_name' => 'CHMSU',
             'position'     => $normalizedCourse,
             'course'       => $normalizedCourse,
+            'campus'       => $campus,
             'phone'        => $data['phone'] ?? null,
         ]);
 
@@ -2188,6 +2191,7 @@ class AdminController extends Controller
                 'email'      => $user->email,
                 'phone'      => $profile->phone,
                 'course'     => $normalizedCourse,
+                'campus'     => $profile->campus,
                 'created_at' => $user->created_at->toDateString(),
             ],
             'temp_password' => $tempPassword,
@@ -2251,6 +2255,7 @@ class AdminController extends Controller
                 'email'      => $u->email,
                 'phone'      => $u->supervisorProfile?->phone ?? '',
                 'course'     => $u->supervisorProfile?->course ?? $u->supervisorProfile?->position ?? '—',
+                'campus'     => $u->supervisorProfile?->campus ?? 'Alijis Campus',
                 'created_at' => $u->created_at?->toDateString(),
             ]);
 

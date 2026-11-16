@@ -36,6 +36,59 @@ class SupervisorController extends Controller
     }
 
     /**
+     * Get the campus assigned to the current supervisor.
+     */
+    private function getSupervisorCampus(Request $request): ?string
+    {
+        return $request->user()->supervisorProfile?->campus;
+    }
+
+    /**
+     * Scope query strictly to supervisor's program and campus (Option A).
+     */
+    private function applySupervisorScope($query, ?string $course, ?string $campus, string $relation = 'student.studentProfile')
+    {
+        if ($course) {
+            $aliases = \App\Services\CourseNormalizer::getAliases($course);
+            $query->whereHas($relation, function ($q) use ($aliases, $campus) {
+                $q->whereIn('program', $aliases);
+                if ($campus) {
+                    $q->where(function ($sub) use ($campus) {
+                        $sub->where('campus', $campus);
+                        if (in_array(strtolower($campus), ['talisay campus', 'main campus'])) {
+                            $sub->orWhere('campus', 'Main Campus')->orWhere('campus', 'Talisay Campus');
+                        }
+                    });
+                }
+            });
+        }
+        return $query;
+    }
+
+    /**
+     * Check if a student profile belongs to supervisor's program and campus.
+     */
+    private function authorizeStudentScope(?string $course, ?string $campus, $studentProfile): ?string
+    {
+        if ($course) {
+            $aliases = \App\Services\CourseNormalizer::getAliases($course);
+            if (!in_array($studentProfile?->program, $aliases, true)) {
+                return 'Unauthorized: This student does not belong to your assigned course program.';
+            }
+        }
+
+        if ($campus && $studentProfile?->campus) {
+            $match = ($studentProfile->campus === $campus) ||
+                     (in_array(strtolower($campus), ['talisay campus', 'main campus']) && in_array(strtolower($studentProfile->campus), ['talisay campus', 'main campus']));
+            if (!$match) {
+                return "Unauthorized: This student is registered in {$studentProfile->campus}, not your assigned {$campus}.";
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * GET /supervisor/dashboard
      * Aggregate stats for the supervisor dashboard.
      */
@@ -47,11 +100,12 @@ class SupervisorController extends Controller
         $user    = $request->user();
         $profile = $user->supervisorProfile;
         $course  = $this->getSupervisorCourse($request);
+        $campus  = $this->getSupervisorCampus($request);
 
         // Trainees in this supervisor's assigned course (or endorsed by this supervisor if unassigned)
         $endorsedAcceptedQuery = StudentOjtInterest::whereIn('status', ['ojt_started', 'accepted']);
         if ($course) {
-            $endorsedAcceptedQuery->whereHas('student.studentProfile', fn($q) => $q->where('program', $course));
+            $this->applySupervisorScope($endorsedAcceptedQuery, $course, $campus);
         } else {
             $endorsedAcceptedQuery->where('endorsed_by', $userId);
         }
@@ -62,7 +116,7 @@ class SupervisorController extends Controller
         // All endorsements in this supervisor's course
         $totalEndorsedQuery = StudentOjtInterest::whereIn('status', ['endorsed', 'ojt_started', 'accepted', 'rejected']);
         if ($course) {
-            $totalEndorsedQuery->whereHas('student.studentProfile', fn($q) => $q->where('program', $course));
+            $this->applySupervisorScope($totalEndorsedQuery, $course, $campus);
         } else {
             $totalEndorsedQuery->where('endorsed_by', $userId);
         }
@@ -71,21 +125,21 @@ class SupervisorController extends Controller
         // Pending endorsement letter requests
         $pendingInterestsQuery = StudentOjtInterest::where('status', 'endorsement_requested');
         if ($course) {
-            $pendingInterestsQuery->whereHas('student.studentProfile', fn($q) => $q->where('program', $course));
+            $this->applySupervisorScope($pendingInterestsQuery, $course, $campus);
         }
         $pendingInterests = $pendingInterestsQuery->count();
 
         // Pending final approvals (company accepted student after interview, awaiting coordinator approval)
         $pendingApprovalsQuery = StudentOjtInterest::where('status', 'company_accepted');
         if ($course) {
-            $pendingApprovalsQuery->whereHas('student.studentProfile', fn($q) => $q->where('program', $course));
+            $this->applySupervisorScope($pendingApprovalsQuery, $course, $campus);
         }
         $pendingApprovals = $pendingApprovalsQuery->count();
 
         // Endorsed students waiting for company to start OJT
         $pendingEndorsementsQuery = StudentOjtInterest::where('status', 'endorsed');
         if ($course) {
-            $pendingEndorsementsQuery->whereHas('student.studentProfile', fn($q) => $q->where('program', $course));
+            $this->applySupervisorScope($pendingEndorsementsQuery, $course, $campus);
         } else {
             $pendingEndorsementsQuery->where('endorsed_by', $userId);
         }
@@ -97,7 +151,7 @@ class SupervisorController extends Controller
         // Rejected by company
         $rejectedByCompanyQuery = StudentOjtInterest::where('status', 'rejected');
         if ($course) {
-            $rejectedByCompanyQuery->whereHas('student.studentProfile', fn($q) => $q->where('program', $course));
+            $this->applySupervisorScope($rejectedByCompanyQuery, $course, $campus);
         } else {
             $rejectedByCompanyQuery->where('endorsed_by', $userId);
         }
@@ -106,7 +160,7 @@ class SupervisorController extends Controller
         // Recent activity feed — updates for students in this course
         $recentActivityQuery = StudentOjtInterest::whereIn('status', ['endorsed', 'ojt_started', 'accepted', 'rejected']);
         if ($course) {
-            $recentActivityQuery->whereHas('student.studentProfile', fn($q) => $q->where('program', $course));
+            $this->applySupervisorScope($recentActivityQuery, $course, $campus);
         } else {
             $recentActivityQuery->where('endorsed_by', $userId);
         }
@@ -212,6 +266,7 @@ class SupervisorController extends Controller
                         ->join(''),
                     'position'     => $profile?->position ?? 'OJT Supervisor',
                     'course'       => $course ?? $profile?->course ?? '',
+                    'campus'       => $campus ?? $profile?->campus ?? '',
                     'company_name' => $profile?->company_name ?? '',
                 ],
                 'stats' => [
@@ -240,6 +295,7 @@ class SupervisorController extends Controller
     public function interests(Request $request)
     {
         $course = $this->getSupervisorCourse($request);
+        $campus = $this->getSupervisorCampus($request);
         $query = StudentOjtInterest::with([
             'student',
             'student.studentProfile',
@@ -258,7 +314,7 @@ class SupervisorController extends Controller
             ]);
 
         if ($course) {
-            $query->whereHas('student.studentProfile', fn($q) => $q->where('program', $course));
+            $this->applySupervisorScope($query, $course, $campus);
         }
 
         $interests = $query
@@ -320,9 +376,10 @@ class SupervisorController extends Controller
     public function interestCount(Request $request)
     {
         $course = $this->getSupervisorCourse($request);
+        $campus = $this->getSupervisorCampus($request);
         $query = StudentOjtInterest::whereIn('status', ['endorsement_requested', 'company_accepted']);
         if ($course) {
-            $query->whereHas('student.studentProfile', fn($q) => $q->where('program', $course));
+            $this->applySupervisorScope($query, $course, $campus);
         }
         $count = $query->count();
         return response()->json(['success' => true, 'count' => $count]);
@@ -397,10 +454,11 @@ class SupervisorController extends Controller
         $interest = StudentOjtInterest::with('student', 'student.studentProfile', 'posting', 'endorser')->findOrFail($id);
 
         $course = $this->getSupervisorCourse($request);
-        if ($course && $interest->student?->studentProfile?->program !== $course) {
+        $campus = $this->getSupervisorCampus($request);
+        if ($err = $this->authorizeStudentScope($course, $campus, $interest->student?->studentProfile)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Unauthorized: This student does not belong to your assigned course program.',
+                'message' => $err,
             ], 403);
         }
 
@@ -462,10 +520,11 @@ class SupervisorController extends Controller
         $interest = StudentOjtInterest::with('posting', 'student', 'student.studentProfile')->findOrFail($id);
 
         $course = $this->getSupervisorCourse($request);
-        if ($course && $interest->student?->studentProfile?->program !== $course) {
+        $campus = $this->getSupervisorCampus($request);
+        if ($err = $this->authorizeStudentScope($course, $campus, $interest->student?->studentProfile)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Unauthorized: This student does not belong to your assigned course program.',
+                'message' => $err,
             ], 403);
         }
 
@@ -558,10 +617,11 @@ class SupervisorController extends Controller
         $interest = StudentOjtInterest::with('student', 'student.studentProfile', 'posting')->findOrFail($id);
 
         $course = $this->getSupervisorCourse($request);
-        if ($course && $interest->student?->studentProfile?->program !== $course) {
+        $campus = $this->getSupervisorCampus($request);
+        if ($err = $this->authorizeStudentScope($course, $campus, $interest->student?->studentProfile)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Unauthorized: This student does not belong to your assigned course program.',
+                'message' => $err,
             ], 403);
         }
 
@@ -594,6 +654,7 @@ class SupervisorController extends Controller
 
         $supervisorId = $request->user()->id;
         $course       = $this->getSupervisorCourse($request);
+        $campus       = $this->getSupervisorCampus($request);
 
         $query = StudentOjtInterest::with([
             'student',
@@ -603,7 +664,7 @@ class SupervisorController extends Controller
             ->where('ojt_posting_id', $id);
 
         if ($course) {
-            $query->whereHas('student.studentProfile', fn($q) => $q->where('program', $course));
+            $this->applySupervisorScope($query, $course, $campus);
         }
 
         $interests = $query
@@ -684,6 +745,7 @@ class SupervisorController extends Controller
         app(\App\Services\OjtAbsenceService::class)->triggerSafely();
 
         $course = $this->getSupervisorCourse($request);
+        $campus = $this->getSupervisorCampus($request);
         $studentsQuery = User::where('role', 'student')
             ->whereDoesntHave('graduateProfile')
             ->where(function ($q) {
@@ -700,8 +762,7 @@ class SupervisorController extends Controller
             ->orderBy('name');
 
         if ($course) {
-            $aliases = \App\Services\CourseNormalizer::getAliases($course);
-            $studentsQuery->whereHas('studentProfile', fn($sp) => $sp->whereIn('program', $aliases));
+            $this->applySupervisorScope($studentsQuery, $course, $campus, 'studentProfile');
         }
 
         $students = $studentsQuery->get();
@@ -954,6 +1015,7 @@ class SupervisorController extends Controller
         app(\App\Services\OjtAbsenceService::class)->triggerSafely();
 
         $course = $this->getSupervisorCourse($request);
+        $campus = $this->getSupervisorCampus($request);
         // Include both legacy 'accepted' and current 'ojt_started' — they both mean the trainee is actively doing OJT
         $interestsQuery = StudentOjtInterest::whereIn('status', ['ojt_started', 'accepted'])
             ->with([
@@ -964,7 +1026,7 @@ class SupervisorController extends Controller
             ]);
 
         if ($course) {
-            $interestsQuery->whereHas('student.studentProfile', fn($q) => $q->where('program', $course));
+            $this->applySupervisorScope($interestsQuery, $course, $campus);
         }
 
         $interests = $interestsQuery->get();
@@ -1061,10 +1123,11 @@ class SupervisorController extends Controller
     public function monitoringStudentLogs(Request $request, $userId)
     {
         $course = $this->getSupervisorCourse($request);
+        $campus = $this->getSupervisorCampus($request);
         if ($course) {
             $student = User::with('studentProfile')->find($userId);
-            if (!$student || $student->studentProfile?->program !== $course) {
-                return response()->json(['error' => 'Unauthorized: Trainee does not belong to your assigned course program.'], 403);
+            if ($err = $this->authorizeStudentScope($course, $campus, $student?->studentProfile)) {
+                return response()->json(['error' => $err], 403);
             }
         }
 
@@ -1136,11 +1199,12 @@ class SupervisorController extends Controller
     {
         $userId = $request->user()->id;
         $course = $this->getSupervisorCourse($request);
+        $campus = $this->getSupervisorCampus($request);
 
         // All interests in this supervisor's course (or endorsed by supervisor if unassigned)
         $allEndorsedQuery = StudentOjtInterest::query();
         if ($course) {
-            $allEndorsedQuery->whereHas('student.studentProfile', fn($q) => $q->where('program', $course));
+            $this->applySupervisorScope($allEndorsedQuery, $course, $campus);
         } else {
             $allEndorsedQuery->where('endorsed_by', $userId);
         }
@@ -1193,7 +1257,7 @@ class SupervisorController extends Controller
         $allByThisSv = $allEndorsed->count();
         $pendingQuery = StudentOjtInterest::where('status', 'endorsement_requested');
         if ($course) {
-            $pendingQuery->whereHas('student.studentProfile', fn($q) => $q->where('program', $course));
+            $this->applySupervisorScope($pendingQuery, $course, $campus);
         }
         $pendingCount = $pendingQuery->count();
 
@@ -1348,6 +1412,7 @@ class SupervisorController extends Controller
         ]);
 
         $assignedCourse = $this->getSupervisorCourse($request);
+        $assignedCampus = $this->getSupervisorCampus($request);
 
         // ── Read & sanitise raw content ──────────────────────────────────────
         $content = file_get_contents($request->file('file')->getRealPath());
@@ -1436,7 +1501,7 @@ class SupervisorController extends Controller
             $course       = $rawCourse ? CourseNormalizer::normalize($rawCourse) : $assignedCourse;
             $year         = YearLevelNormalizer::normalize($get($values, 'year'), '4th Year');
             $section      = SectionNormalizer::normalize($get($values, 'section'));
-            $campus       = $get($values, 'campus') ?: 'Alijis Campus';
+            $campus       = $get($values, 'campus') ?: ($assignedCampus ?: 'Alijis Campus');
             $batchRaw     = $get($values, 'batch');
             $batch        = $batchRaw ? preg_replace('/\s*-\s*/', '-', trim($batchRaw)) : null;
             $birthDateRaw = $get($values, 'birth_date');
@@ -1656,6 +1721,7 @@ class SupervisorController extends Controller
         ]);
 
         $course = $this->getSupervisorCourse($request);
+        $campus = $this->getSupervisorCampus($request);
 
         // Build base student pool under supervisor's program
         $baseQuery = User::where('role', 'student')
@@ -1672,8 +1738,7 @@ class SupervisorController extends Controller
             });
 
         if ($course) {
-            $aliases = \App\Services\CourseNormalizer::getAliases($course);
-            $baseQuery->whereHas('studentProfile', fn($sp) => $sp->whereIn('program', $aliases));
+            $this->applySupervisorScope($baseQuery, $course, $campus, 'studentProfile');
         }
 
         if (!empty($validated['section'])) {
@@ -1937,6 +2002,7 @@ class SupervisorController extends Controller
     public function getEmergencyRequests(Request $request)
     {
         $course = $this->getSupervisorCourse($request);
+        $campus = $this->getSupervisorCampus($request);
 
         $query = OjtEmergencyRequest::with([
             'student.studentProfile',
@@ -1946,7 +2012,7 @@ class SupervisorController extends Controller
         ])->latest();
 
         if ($course) {
-            $query->whereHas('student.studentProfile', fn($q) => $q->where('program', $course));
+            $this->applySupervisorScope($query, $course, $campus);
         }
 
         $requests = $query->get()->map(function ($em) {
@@ -2191,10 +2257,10 @@ class SupervisorController extends Controller
     {
         $supervisor = $request->user();
         $course = $this->getSupervisorCourse($request);
+        $campus = $this->getSupervisorCampus($request);
         $studentQuery = User::where('role', 'student')->where('id', $id);
         if ($course) {
-            $aliases = \App\Services\CourseNormalizer::getAliases($course);
-            $studentQuery->whereHas('studentProfile', fn($sp) => $sp->whereIn('program', $aliases));
+            $this->applySupervisorScope($studentQuery, $course, $campus, 'studentProfile');
         }
         $student = $studentQuery->firstOrFail();
         $profile = $student->studentProfile;
@@ -2301,10 +2367,10 @@ class SupervisorController extends Controller
     public function rejectStudent(Request $request, $id)
     {
         $course = $this->getSupervisorCourse($request);
+        $campus = $this->getSupervisorCampus($request);
         $studentQuery = User::where('role', 'student')->where('id', $id);
         if ($course) {
-            $aliases = \App\Services\CourseNormalizer::getAliases($course);
-            $studentQuery->whereHas('studentProfile', fn($sp) => $sp->whereIn('program', $aliases));
+            $this->applySupervisorScope($studentQuery, $course, $campus, 'studentProfile');
         }
         $student = $studentQuery->firstOrFail();
         $profile = $student->studentProfile;
