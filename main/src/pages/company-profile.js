@@ -126,10 +126,16 @@ function render(container, company, jobs, ojt) {
                   ${icon('externalLink', 14)} Visit Website
                 </a>
               ` : ''}
-              ${company.contact_email ? `
-                <a href="mailto:${company.contact_email}" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 18px; border-radius: 10px; background: var(--color-primary); color: #fff; font-size: 0.85rem; font-weight: 600; text-decoration: none; box-shadow: 0 4px 12px rgba(74, 108, 247, 0.25); transition: all 0.2s;">
-                  ${icon('mail', 14)} Contact Company
-                </a>
+              ${company.id ? `
+                <button
+                  type="button"
+                  class="cp-message-company-btn"
+                  data-company-id="${company.id}"
+                  data-chat-trigger="true"
+                  style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 18px; border-radius: 10px; border: none; background: var(--color-primary); color: #fff; font-size: 0.85rem; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(0, 89, 48, 0.25); transition: all 0.2s;"
+                >
+                  ${icon('messageCircle', 15)} Message Company
+                </button>
               ` : ''}
             </div>
 
@@ -221,6 +227,34 @@ function render(container, company, jobs, ojt) {
 
   // Back button
   container.querySelector('#cp-back-btn')?.addEventListener('click', () => navigate('/companies'));
+
+  // Message Company button (in-app chat)
+  const msgCompanyBtn = container.querySelector('.cp-message-company-btn');
+  if (msgCompanyBtn) {
+    msgCompanyBtn.addEventListener('mouseenter', () => {
+      if (!msgCompanyBtn.disabled) {
+        msgCompanyBtn.style.filter = 'brightness(1.08)';
+        msgCompanyBtn.style.transform = 'translateY(-1px)';
+      }
+    });
+    msgCompanyBtn.addEventListener('mouseleave', () => {
+      msgCompanyBtn.style.filter = '';
+      msgCompanyBtn.style.transform = '';
+    });
+    msgCompanyBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (typeof window.openCompanyChat !== 'function') return;
+      msgCompanyBtn.disabled = true;
+      msgCompanyBtn.style.opacity = '0.75';
+      try {
+        await window.openCompanyChat(company.id);
+      } finally {
+        msgCompanyBtn.disabled = false;
+        msgCompanyBtn.style.opacity = '';
+      }
+    });
+  }
 
   // Tab switcher
   container.querySelectorAll('.cp-tab-btn').forEach(btn => {

@@ -59,6 +59,25 @@ class ChatController extends Controller
             return [$companyUserId, $supervisorId];
         }
 
+        if (str_starts_with($key, 'direct_company_')) {
+            $parts = explode('_', substr($key, strlen('direct_company_')));
+            if (count($parts) !== 2 || !ctype_digit($parts[0]) || !ctype_digit($parts[1])) {
+                return null;
+            }
+            $applicantUserId = (int) $parts[0];
+            $companyUserId   = (int) $parts[1];
+            if ($applicantUserId <= 0 || $companyUserId <= 0) {
+                return null;
+            }
+
+            $applicant = User::whereIn('role', ['student', 'graduate', 'jobseeker'])->find($applicantUserId);
+            $company   = User::where('role', 'company')->find($companyUserId);
+
+            if (!$applicant || !$company) return null;
+
+            return [$applicantUserId, $companyUserId];
+        }
+
         return null;
     }
 
@@ -85,9 +104,17 @@ class ChatController extends Controller
 
             $otherId = $latest->sender_id === $me->id ? $latest->receiver_id : $latest->sender_id;
             $other   = User::with(['companyProfile', 'supervisorProfile'])->select('id', 'name', 'email', 'avatar_url', 'role')->find($otherId);
-            $displayName = $other?->name;
-            if ($other?->role === 'company' && $other->companyProfile?->company_name) {
-                $displayName = $other->companyProfile->company_name;
+            $displayName   = $other?->name;
+            $displayAvatar = $other?->avatar_url;
+            $companyName   = $other?->supervisorProfile?->company_name ?? 'CHMSU';
+            if ($other?->role === 'company') {
+                if ($other->companyProfile?->company_name) {
+                    $displayName = $other->companyProfile->company_name;
+                }
+                if ($other->companyProfile?->logo_url) {
+                    $displayAvatar = $other->companyProfile->logo_url;
+                }
+                $companyName = $displayName;
             }
 
             return [
@@ -100,8 +127,8 @@ class ChatController extends Controller
                     'phone'        => $other->supervisorProfile?->phone ?? '',
                     'course'       => $other->supervisorProfile?->getAssignedCourse() ?? $other->supervisorProfile?->course ?? $other->supervisorProfile?->position ?? '',
                     'position'     => $other->supervisorProfile?->position ?? '',
-                    'company_name' => $other->supervisorProfile?->company_name ?? 'CHMSU',
-                    'avatar'       => $other->avatar_url,
+                    'company_name' => $companyName,
+                    'avatar'       => $displayAvatar,
                     'role'         => $other->role,
                 ] : null,
                 'last_message' => $latest->message,
@@ -144,23 +171,40 @@ class ChatController extends Controller
             ->update(['read_at' => Carbon::now()]);
 
         $messages = ChatMessage::where('conversation_key', $key)
-            ->with('sender:id,name,avatar_url')
+            ->with(['sender' => fn($q) => $q->select('id', 'name', 'avatar_url', 'role')->with('companyProfile:id,user_id,company_name,logo_url')])
             ->orderBy('created_at')
             ->get()
-            ->map(fn($m) => [
-                'id'         => $m->id,
-                'sender_id'  => $m->sender_id,
-                'sender'     => $m->sender ? ['name' => $m->sender->name, 'avatar' => $m->sender->avatar_url] : null,
-                'message'    => $m->message,
-                'is_mine'    => $m->sender_id === $me->id,
-                'created_at' => $m->created_at->toIso8601String(),
-            ]);
+            ->map(function ($m) use ($me) {
+                $senderName   = $m->sender?->name;
+                $senderAvatar = $m->sender?->avatar_url;
+                if ($m->sender?->role === 'company') {
+                    $senderName   = $m->sender->companyProfile?->company_name ?: $senderName;
+                    $senderAvatar = $m->sender->companyProfile?->logo_url ?: $senderAvatar;
+                }
+
+                return [
+                    'id'         => $m->id,
+                    'sender_id'  => $m->sender_id,
+                    'sender'     => $m->sender ? ['name' => $senderName, 'avatar' => $senderAvatar] : null,
+                    'message'    => $m->message,
+                    'is_mine'    => $m->sender_id === $me->id,
+                    'created_at' => $m->created_at->toIso8601String(),
+                ];
+            });
 
         $otherId = collect($participants)->first(fn($id) => $id !== $me->id);
         $other   = User::with(['companyProfile', 'supervisorProfile'])->select('id', 'name', 'email', 'avatar_url', 'role')->find($otherId);
-        $displayName = $other?->name;
-        if ($other?->role === 'company' && $other->companyProfile?->company_name) {
-            $displayName = $other->companyProfile->company_name;
+        $displayName   = $other?->name;
+        $displayAvatar = $other?->avatar_url;
+        $companyName   = $other?->supervisorProfile?->company_name ?? 'CHMSU';
+        if ($other?->role === 'company') {
+            if ($other->companyProfile?->company_name) {
+                $displayName = $other->companyProfile->company_name;
+            }
+            if ($other->companyProfile?->logo_url) {
+                $displayAvatar = $other->companyProfile->logo_url;
+            }
+            $companyName = $displayName;
         }
 
         return response()->json([
@@ -172,8 +216,8 @@ class ChatController extends Controller
                 'phone'        => $other->supervisorProfile?->phone ?? '',
                 'course'       => $other->supervisorProfile?->getAssignedCourse() ?? $other->supervisorProfile?->course ?? $other->supervisorProfile?->position ?? '',
                 'position'     => $other->supervisorProfile?->position ?? '',
-                'company_name' => $other->supervisorProfile?->company_name ?? 'CHMSU',
-                'avatar'       => $other->avatar_url,
+                'company_name' => $companyName,
+                'avatar'       => $displayAvatar,
                 'role'         => $other->role,
             ] : null,
             'label' => $this->keyLabel($key, $me),
@@ -284,11 +328,37 @@ class ChatController extends Controller
                         'id'     => $company->id,
                         'name'   => $company->companyProfile?->company_name ?? $company->name,
                         'email'  => $company->email,
-                        'avatar' => $company->avatar_url,
+                        'avatar' => $company->companyProfile?->logo_url ?: $company->avatar_url,
                         'role'   => $company->role,
                     ],
                 ]);
             }
+
+            if (in_array($me->role, ['student', 'graduate', 'jobseeker'], true)) {
+                $company = User::where('role', 'company')
+                    ->with('companyProfile')
+                    ->find($id);
+
+                if (!$company || !$company->companyProfile || $company->companyProfile->status !== 'Active') {
+                    return response()->json(['message' => 'Partner company not found or unavailable.'], 404);
+                }
+
+                $companyName = $company->companyProfile->company_name ?: $company->name;
+
+                return response()->json([
+                    'key'        => "direct_company_{$me->id}_{$company->id}",
+                    'other_user' => [
+                        'id'           => $company->id,
+                        'name'         => $companyName,
+                        'email'        => $company->companyProfile->contact_email ?: $company->email,
+                        'avatar'       => $company->companyProfile->logo_url ?: $company->avatar_url,
+                        'role'         => $company->role,
+                        'company_name' => $companyName,
+                    ],
+                ]);
+            }
+
+            return response()->json(['message' => 'Unauthorized.'], 403);
         }
 
         if ($type === 'coordinator' || $type === 'student') {
@@ -499,6 +569,25 @@ class ChatController extends Controller
                 }
             }
             return 'OJT Coordinator';
+        }
+
+        if (str_starts_with($key, 'direct_company_')) {
+            $parts = explode('_', substr($key, strlen('direct_company_')));
+            if (count($parts) === 2) {
+                $applicantUserId = (int) $parts[0];
+                $companyUserId   = (int) $parts[1];
+                if ($viewer && $viewer->id === $companyUserId) {
+                    $applicant = User::select('id', 'name', 'role')->find($applicantUserId);
+                    return match ($applicant?->role) {
+                        'student'   => 'Direct Inquiry · Student',
+                        'graduate'  => 'Direct Inquiry · Graduate',
+                        'jobseeker' => 'Direct Inquiry · Job Seeker',
+                        default     => 'Direct Inquiry',
+                    };
+                }
+                return 'Direct Message';
+            }
+            return 'Direct Message';
         }
 
         if (str_starts_with($key, 'ojt_interest_')) {

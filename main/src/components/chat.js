@@ -148,6 +148,7 @@ export function initChat(navEl) {
   });
 
   document.addEventListener('click', (e) => {
+    if (e.target.closest?.('[data-chat-trigger]')) return;
     if (panelOpen && !panel.contains(e.target) && !chatBtn.contains(e.target)) {
       closeChat();
     }
@@ -214,8 +215,13 @@ export function initChat(navEl) {
   // ── Load messages in active thread ───────────────────────────────────────
   async function loadMessages() {
     if (!activeKey) return;
-    const data = await apiGet(`/chat/${encodeURIComponent(activeKey)}/messages`, { bypassCache: true, forceRefresh: true }).catch(() => null);
-    if (!data) return;
+    const expectedKey = activeKey;
+    const data = await apiGet(`/chat/${encodeURIComponent(expectedKey)}/messages`, { bypassCache: true, forceRefresh: true }).catch(() => null);
+    if (!data || activeKey !== expectedKey) return;
+    if (!Array.isArray(data.data)) {
+      messagesEl.innerHTML = `<div class="chat-empty-state chat-empty-state--sm">${icon('alertCircle', 22)}<p>${esc(data.message || 'Unable to load conversation.')}</p></div>`;
+      return;
+    }
 
     // Update thread header
     if (data.other) {
@@ -227,7 +233,7 @@ export function initChat(navEl) {
         </div>`;
     }
 
-    const msgs = data.data || [];
+    const msgs = data.data;
     if (!msgs.length) {
       messagesEl.innerHTML = `<div class="chat-empty-state chat-empty-state--sm">${icon('messageCircle', 22)}<p>Start the conversation!</p></div>`;
       return;
@@ -306,12 +312,28 @@ export function initChat(navEl) {
   pollUnreadCount();
   setInterval(pollUnreadCount, 30_000);
 
+  // Instant badge & inbox sync when a chat notification arrives
+  window.addEventListener('hireme:chat-received', () => {
+    pollUnreadCount();
+    if (panelOpen && !activeKey) {
+      loadConversations();
+    }
+  });
+
   // ── Public API: open a specific conversation by key directly ─────────────
   // Usage: window.openChat('ojt_interest_42')
   window.openChat = (key) => {
     panelOpen = true;
     panel.classList.add('chat-panel--open');
-    openThread(key);
+    if (key) {
+      openThread(key);
+    } else {
+      stopPolling();
+      activeKey = null;
+      viewThread.style.display = 'none';
+      viewList.style.display   = 'flex';
+      loadConversations();
+    }
   };
 
   // Usage: window.openCoordinatorChat()
@@ -323,6 +345,52 @@ export function initChat(navEl) {
       }
     } catch (err) {
       console.error('Failed to open coordinator chat:', err);
+    }
+  };
+
+  // Usage: window.openCompanyChat(companyUserId)
+  window.openCompanyChat = async (companyUserId) => {
+    const id = Number(companyUserId);
+    if (!id) {
+      window.openChat();
+      return;
+    }
+
+    stopPolling();
+    activeKey = null;
+    panelOpen = true;
+    panel.classList.add('chat-panel--open');
+    viewList.style.display   = 'none';
+    viewThread.style.display = 'flex';
+    threadTitle.innerHTML    = `<div class="chat-thread-name">Connecting…</div>`;
+    messagesEl.innerHTML     = `<div class="chat-loading">${icon('loader', 20)} Connecting to company…</div>`;
+
+    try {
+      const res = await apiGet(`/chat/init/company/${encodeURIComponent(id)}`, { bypassCache: true, forceRefresh: true });
+      if (res?.key) {
+        if (res.other_user) {
+          threadTitle.innerHTML = `
+            ${avatarHtml(res.other_user.name, res.other_user.avatar, 30)}
+            <div>
+              <div class="chat-thread-name">${esc(res.other_user.name)}</div>
+              <div class="chat-thread-label">Direct Message</div>
+            </div>`;
+        }
+        await openThread(res.key);
+      } else {
+        messagesEl.innerHTML = `
+          <div class="chat-empty-state chat-empty-state--sm">
+            ${icon('alertCircle', 22)}
+            <p>${esc(res?.message || 'Unable to start conversation with this company.')}</p>
+          </div>`;
+      }
+    } catch (err) {
+      console.error('Failed to open company chat:', err);
+      messagesEl.innerHTML = `
+        <div class="chat-empty-state chat-empty-state--sm">
+          ${icon('alertCircle', 22)}
+          <p>Unable to connect to company chat. Please try again.</p>
+        </div>`;
     }
   };
 }

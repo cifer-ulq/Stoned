@@ -196,10 +196,26 @@ export function initChat(navEl) {
 
     convListEl.innerHTML = convs.map(c => {
       const isCoord = c.key && c.key.startsWith('coord_company_');
+      const isDirect = c.key && c.key.startsWith('direct_company_');
+      const isJobApp = c.key && c.key.startsWith('job_app_');
+      const otherRole = c.other_user?.role || '';
       const coordCourse = isCoord && c.other_user?.course ? shortCourseCode(c.other_user.course) : '';
-      const roleBadge = isCoord
-        ? `<span style="font-size:10px;font-weight:700;color:var(--color-primary, #005930);background:rgba(0,89,48,0.1);padding:1px 6px;border-radius:4px;flex-shrink:0;">Coordinator${coordCourse ? ` · ${esc(coordCourse)}` : ''}</span>`
-        : `<span style="font-size:10px;font-weight:600;color:var(--text-secondary);background:var(--bg-muted, #f1f5f9);padding:1px 5px;border-radius:4px;flex-shrink:0;">Trainee</span>`;
+      let roleBadge = '';
+      if (isCoord) {
+        roleBadge = `<span style="font-size:10px;font-weight:700;color:var(--color-primary, #005930);background:rgba(0,89,48,0.1);padding:1px 6px;border-radius:4px;flex-shrink:0;">Coordinator${coordCourse ? ` · ${esc(coordCourse)}` : ''}</span>`;
+      } else if (isDirect) {
+        if (otherRole === 'graduate') {
+          roleBadge = `<span style="font-size:10px;font-weight:700;color:#4f46e5;background:rgba(79,70,229,0.1);padding:1px 6px;border-radius:4px;flex-shrink:0;">Graduate</span>`;
+        } else if (otherRole === 'jobseeker') {
+          roleBadge = `<span style="font-size:10px;font-weight:700;color:#0284c7;background:rgba(2,132,199,0.1);padding:1px 6px;border-radius:4px;flex-shrink:0;">Job Seeker</span>`;
+        } else {
+          roleBadge = `<span style="font-size:10px;font-weight:700;color:#0369a1;background:rgba(3,105,161,0.1);padding:1px 6px;border-radius:4px;flex-shrink:0;">Student</span>`;
+        }
+      } else if (isJobApp) {
+        roleBadge = `<span style="font-size:10px;font-weight:600;color:#4f46e5;background:rgba(79,70,229,0.08);padding:1px 6px;border-radius:4px;flex-shrink:0;">Applicant</span>`;
+      } else {
+        roleBadge = `<span style="font-size:10px;font-weight:600;color:var(--text-secondary);background:var(--bg-muted, #f1f5f9);padding:1px 5px;border-radius:4px;flex-shrink:0;">Trainee</span>`;
+      }
 
       const subLabel = isCoord && c.other_user?.email
         ? `${c.label} · ${c.other_user.email}`
@@ -255,10 +271,15 @@ export function initChat(navEl) {
 
   async function loadMessages() {
     if (!activeKey) return;
-    const data = await apiGet(`/chat/${encodeURIComponent(activeKey)}/messages`, { bypassCache: true, forceRefresh: true }).catch(() => null);
-    if (!data) return;
+    const expectedKey = activeKey;
+    const data = await apiGet(`/chat/${encodeURIComponent(expectedKey)}/messages`, { bypassCache: true, forceRefresh: true }).catch(() => null);
+    if (!data || activeKey !== expectedKey) return;
+    if (!Array.isArray(data.data)) {
+      messagesEl.innerHTML = `<div class="chat-empty-state chat-empty-state--sm">${icon('alertCircle', 22)}<p>${esc(data.message || 'Unable to load conversation.')}</p></div>`;
+      return;
+    }
 
-    const isCoordThread = activeKey.startsWith('coord_company_');
+    const isCoordThread = expectedKey.startsWith('coord_company_');
 
     if (data.other) {
       threadTitle.innerHTML = `
@@ -387,6 +408,13 @@ export function initChat(navEl) {
   pollUnreadCount();
   setInterval(pollUnreadCount, 30_000);
 
+  window.addEventListener('hireme:chat-received', () => {
+    pollUnreadCount();
+    if (panelOpen && !activeKey) {
+      loadConversations();
+    }
+  });
+
   // Clicking "Coordinators" in the chat header opens the Coordinator Directory & Contact Selector
   panel.querySelector('#chat-quick-coord-btn')?.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -397,7 +425,19 @@ export function initChat(navEl) {
   window.openChat = (key) => {
     panelOpen = true;
     panel.classList.add('chat-panel--open');
-    openThread(key);
+    if (key) {
+      openThread(key);
+    } else {
+      stopPolling();
+      activeKey = null;
+      if (threadCoordInfo) {
+        threadCoordInfo.style.display = 'none';
+        threadCoordInfo.innerHTML = '';
+      }
+      viewThread.style.display = 'none';
+      viewList.style.display   = 'flex';
+      loadConversations();
+    }
   };
 
   // Public API: window.openCoordinatorChat(supervisorId = 0, options = {})
