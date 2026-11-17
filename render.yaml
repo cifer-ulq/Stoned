@@ -9,6 +9,8 @@ services:
     envVars:
       - key: APP_NAME
         value: "CHMSU HireMe"
+      - key: APP_URL
+        value: "https://stoned.onrender.com"
       - key: APP_ENV
         value: production
       - key: APP_DEBUG

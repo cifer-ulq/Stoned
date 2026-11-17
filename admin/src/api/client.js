@@ -29,10 +29,13 @@ export function storageUrl(path) {
   if (!path) return null;
   if (typeof path !== 'string') return null;
   if (path.startsWith('data:') || path.startsWith('blob:')) return path;
-  if (path.startsWith('https://') || path.startsWith('http://')) {
-    return path.replace(/^https?:\/\/(localhost|127\.0\.0\.1):8000/, '');
+  let clean = path.replace(/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i, '')
+                  .replace(/^https?:\/\/stoned\.onrender\.com/i, '');
+  if (clean.startsWith('http://') || clean.startsWith('https://')) {
+    return clean;
   }
-  return path.startsWith('/') ? path : `/${path}`;
+  const relative = clean.replace(/^\//, '');
+  return relative.startsWith('storage/') ? `/${relative}` : `/storage/${relative}`;
 }
 
 function delay(ms) {

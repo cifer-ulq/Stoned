@@ -30,10 +30,12 @@ export function resolveStorageUrl(path) {
   if (!path) return '';
   if (typeof path !== 'string') return '';
   if (path.startsWith('data:') || path.startsWith('blob:')) return path;
-  if (path.startsWith('https://') || path.startsWith('http://')) {
-    return path.replace(/^https?:\/\/(localhost|127\.0\.0\.1):8000/, '');
+  let clean = path.replace(/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i, '')
+                  .replace(/^https?:\/\/stoned\.onrender\.com/i, '');
+  if (clean.startsWith('http://') || clean.startsWith('https://')) {
+    return clean;
   }
-  const clean = path.replace(/^\//, '');
+  clean = clean.replace(/^\//, '');
   return clean.startsWith('storage/') ? `/${clean}` : `/storage/${clean}`;
 }
 
@@ -41,11 +43,18 @@ export function directStorageUrl(path) {
   if (!path) return '';
   if (typeof path !== 'string') return '';
   if (path.startsWith('data:') || path.startsWith('blob:')) return path;
-  if (path.startsWith('http://') || path.startsWith('https://')) return path;
-  const clean = path.replace(/^\//, '');
-  const storagePath = clean.startsWith('storage/') ? clean : `storage/${clean}`;
-  const host = typeof window !== 'undefined' && window.location.hostname === '127.0.0.1' ? '127.0.0.1:8000' : 'localhost:8000';
-  return `http://${host}/${storagePath}`;
+  const resolved = resolveStorageUrl(path);
+  if (resolved.startsWith('http://') || resolved.startsWith('https://')) {
+    return resolved;
+  }
+  const clean = resolved.replace(/^\//, '');
+  const isLocal = typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  if (isLocal) {
+    const host = window.location.hostname === '127.0.0.1' ? '127.0.0.1:8000' : 'localhost:8000';
+    return `http://${host}/${clean}`;
+  }
+  return `/${clean}`;
 }
 
 export const storageUrl = resolveStorageUrl;

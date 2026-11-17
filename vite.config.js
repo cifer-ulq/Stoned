@@ -41,7 +41,7 @@ export default defineConfig({
       init.credentials = 'include';
     }
     if (typeof input === 'string') {
-      input = input.replace(/^https?:\\/\\/(localhost|127\\.0\\.0\\.1):8000/, '');
+      input = input.replace(/^https?:\\/\\/(localhost|127\\.0\\.0\\.1)(:\\d+)?/, '');
     }
     const res = await origFetch.call(this, input, init);
     const origJson = res.json.bind(res);
@@ -49,7 +49,9 @@ export default defineConfig({
       const data = await origJson();
       try {
         const text = JSON.stringify(data)
-          .replace(/https?:\\/\\/(localhost|127\\.0\\.0\\.1):8000\\//g, '/');
+          .replace(/https?:\\/\\/(localhost|127\\.0\\.0\\.1):8000\\//g, '/')
+          .replace(/https?:\\/\\/(localhost|127\\.0\\.0\\.1)(:8000)?\\/storage\\//g, '/storage/')
+          .replace(/https?:\\/\\/stoned\\.onrender\\.com\\/storage\\//g, '/storage/');
         return JSON.parse(text);
       } catch {
         return data;
