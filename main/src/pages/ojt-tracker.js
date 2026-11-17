@@ -2110,74 +2110,6 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
     });
   }
 
-  // ── Helper to format date with weekday and Today tag ──────────────────────
-  function formatLogRowDate(log) {
-    let formattedDate = log.date || log.dayLabel || '—';
-    let weekday = '';
-    let isToday = false;
-
-    try {
-      const raw = log.rawDate || log.date;
-      if (raw) {
-        const d = new Date(raw);
-        if (!isNaN(d.getTime())) {
-          formattedDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-          weekday = d.toLocaleDateString('en-US', { weekday: 'long' });
-          const now = new Date();
-          if (d.toDateString() === now.toDateString()) {
-            isToday = true;
-          }
-        }
-      }
-    } catch (_) {}
-
-    if (!weekday && log.dayLabel) {
-      const parts = String(log.dayLabel).trim().split(/\s+/);
-      if (parts.length >= 2) {
-        const daysMap = { Mon: 'Monday', Tue: 'Tuesday', Wed: 'Wednesday', Thu: 'Thursday', Fri: 'Friday', Sat: 'Saturday', Sun: 'Sunday' };
-        weekday = daysMap[parts[0]] || parts[0];
-        if (formattedDate === '—') formattedDate = parts.slice(1).join(' ');
-      } else {
-        weekday = log.dayLabel;
-      }
-    }
-
-    return { formattedDate, weekday, isToday };
-  }
-
-  // ── CSV Export Helper ─────────────────────────────────────────────────────
-  function exportLogsToCSV(dataRows) {
-    const headers = ['Date', 'Day', 'Morning In', 'Morning Out', 'Afternoon In', 'Afternoon Out', 'Hours Rendered', 'Status', 'Location Validity', 'Distance (m)', 'Coordinates'];
-    const csvRows = [
-      headers.join(','),
-      ...dataRows.map(l => {
-        const coords = (l.inLat != null && l.inLon != null) ? `${l.inLat}, ${l.inLon}` : '';
-        return [
-          `"${(l.date || '').replace(/"/g, '""')}"`,
-          `"${(l.dayLabel || '').replace(/"/g, '""')}"`,
-          `"${(l.morningIn || l.timeIn || '—').replace(/"/g, '""')}"`,
-          `"${(l.morningOut || '—').replace(/"/g, '""')}${l.autoMorningTimeout ? ' (Auto)' : ''}"`,
-          `"${(l.afternoonIn || '—').replace(/"/g, '""')}"`,
-          `"${(l.afternoonOut || l.timeOut || '—').replace(/"/g, '""')}${l.autoAfternoonTimeout ? ' (Auto)' : ''}"`,
-          Number(l.hours || 0).toFixed(2),
-          `"${(l.status || '').replace(/"/g, '""')}"`,
-          `"${(l.locationValidity || 'No GPS').replace(/"/g, '""')}"`,
-          l.distanceMeters != null ? l.distanceMeters : '',
-          `"${coords.replace(/"/g, '""')}"`
-        ].join(',');
-      })
-    ];
-    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `OJT_DTR_Attendance_${new Date().toISOString().slice(0, 10)}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }
-
   // ── Time Logs Pagination, Filtering, Search & Interactive Row Clicks ──────
   let activeFilter = 'all';
   let searchQuery = '';
@@ -2329,6 +2261,75 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
   // ── Initialize Leaflet map ──────────────────────────────────────────────
   initLeafletMap(container, ojt, logs);
 }
+
+// ── Helper to format date with weekday and Today tag ──────────────────────
+function formatLogRowDate(log) {
+  let formattedDate = log.date || log.dayLabel || '—';
+  let weekday = '';
+  let isToday = false;
+
+  try {
+    const raw = log.rawDate || log.date;
+    if (raw) {
+      const d = new Date(raw);
+      if (!isNaN(d.getTime())) {
+        formattedDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        weekday = d.toLocaleDateString('en-US', { weekday: 'long' });
+        const now = new Date();
+        if (d.toDateString() === now.toDateString()) {
+          isToday = true;
+        }
+      }
+    }
+  } catch (_) {}
+
+  if (!weekday && log.dayLabel) {
+    const parts = String(log.dayLabel).trim().split(/\s+/);
+    if (parts.length >= 2) {
+      const daysMap = { Mon: 'Monday', Tue: 'Tuesday', Wed: 'Wednesday', Thu: 'Thursday', Fri: 'Friday', Sat: 'Saturday', Sun: 'Sunday' };
+      weekday = daysMap[parts[0]] || parts[0];
+      if (formattedDate === '—') formattedDate = parts.slice(1).join(' ');
+    } else {
+      weekday = log.dayLabel;
+    }
+  }
+
+  return { formattedDate, weekday, isToday };
+}
+
+// ── CSV Export Helper ─────────────────────────────────────────────────────
+function exportLogsToCSV(dataRows) {
+  const headers = ['Date', 'Day', 'Morning In', 'Morning Out', 'Afternoon In', 'Afternoon Out', 'Hours Rendered', 'Status', 'Location Validity', 'Distance (m)', 'Coordinates'];
+  const csvRows = [
+    headers.join(','),
+    ...dataRows.map(l => {
+      const coords = (l.inLat != null && l.inLon != null) ? `${l.inLat}, ${l.inLon}` : '';
+      return [
+        `"${(l.date || '').replace(/"/g, '""')}"`,
+        `"${(l.dayLabel || '').replace(/"/g, '""')}"`,
+        `"${(l.morningIn || l.timeIn || '—').replace(/"/g, '""')}"`,
+        `"${(l.morningOut || '—').replace(/"/g, '""')}${l.autoMorningTimeout ? ' (Auto)' : ''}"`,
+        `"${(l.afternoonIn || '—').replace(/"/g, '""')}"`,
+        `"${(l.afternoonOut || l.timeOut || '—').replace(/"/g, '""')}${l.autoAfternoonTimeout ? ' (Auto)' : ''}"`,
+        Number(l.hours || 0).toFixed(2),
+        `"${(l.status || '').replace(/"/g, '""')}"`,
+        `"${(l.locationValidity || 'No GPS').replace(/"/g, '""')}"`,
+        l.distanceMeters != null ? l.distanceMeters : '',
+        `"${coords.replace(/"/g, '""')}"`
+      ].join(',');
+    })
+  ];
+  const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `OJT_DTR_Attendance_${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 
 // ── Helper to render a single table row for a log entry ───────────────────────
 function renderTrackerLogRow(log) {
