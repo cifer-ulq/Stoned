@@ -818,71 +818,202 @@ function renderPullOutBannerHtml(ojt) {
   return '';
 }
 
+function setupModalDropzone(dropzoneEl, fileInput, previewEl, nameEl, sizeEl, removeBtn) {
+  if (!dropzoneEl || !fileInput || !previewEl) return;
+
+  const updatePreview = (file) => {
+    if (!file) {
+      previewEl.style.display = 'none';
+      dropzoneEl.style.display = 'flex';
+      return;
+    }
+    if (nameEl) nameEl.textContent = file.name;
+    if (sizeEl) {
+      const kb = file.size / 1024;
+      sizeEl.textContent = kb > 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${Math.round(kb)} KB`;
+    }
+    dropzoneEl.style.display = 'none';
+    previewEl.style.display = 'flex';
+  };
+
+  dropzoneEl.addEventListener('click', () => fileInput.click());
+
+  dropzoneEl.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dropzoneEl.classList.add('is-dragover');
+  });
+
+  ['dragleave', 'dragend'].forEach(ev => {
+    dropzoneEl.addEventListener(ev, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropzoneEl.classList.remove('is-dragover');
+    });
+  });
+
+  dropzoneEl.addEventListener('drop', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dropzoneEl.classList.remove('is-dragover');
+    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      fileInput.files = e.dataTransfer.files;
+      updatePreview(fileInput.files[0]);
+    }
+  });
+
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files && fileInput.files.length > 0) {
+      updatePreview(fileInput.files[0]);
+    } else {
+      updatePreview(null);
+    }
+  });
+
+  if (removeBtn) {
+    removeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      fileInput.value = '';
+      updatePreview(null);
+    });
+  }
+}
+
+function setupCharCounter(textarea, counterEl, minLength) {
+  if (!textarea || !counterEl) return;
+  const update = () => {
+    const len = textarea.value.length;
+    counterEl.textContent = `${len} / ${minLength} min`;
+    if (len >= minLength) {
+      counterEl.classList.add('ojt-req-char-count--valid');
+    } else {
+      counterEl.classList.remove('ojt-req-char-count--valid');
+    }
+  };
+  textarea.addEventListener('input', update);
+  update();
+}
+
 function openPullOutModal(ojt, onSubmitted) {
   const existing = document.getElementById('pull-out-modal-overlay');
   if (existing) existing.remove();
 
   const bd = document.createElement('div');
   bd.id = 'pull-out-modal-overlay';
-  bd.className = 'modal-backdrop modal-backdrop--visible modal-backdrop--open';
-  bd.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,0.65);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:99999;padding:16px;opacity:1 !important;visibility:visible !important;';
+  bd.className = 'ojt-req-overlay';
+
+  const hoursPct = ojt.totalHours > 0 ? Math.round(((ojt.hoursRendered || 0) / ojt.totalHours) * 100) : 0;
 
   bd.innerHTML = `
-    <div class="modal modal--visible ojt-tracker-modal ojt-pull-out-modal" style="max-width:580px;width:100%;max-height:92vh;overflow-y:auto;border-radius:14px;background:var(--bg-card,#fff);box-shadow:0 20px 45px rgba(0,0,0,0.25);">
-      <div style="padding:18px 22px;border-bottom:1px solid var(--border-light,#e2e8f0);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg, rgba(185,28,28,0.06) 0%, rgba(217,119,6,0.06) 100%);">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <div style="width:38px;height:38px;border-radius:10px;background:rgba(185,28,28,0.12);color:#b91c1c;display:flex;align-items:center;justify-content:center;">
-            ${icon('fileText', 20)}
+    <div class="ojt-req-modal" role="dialog" aria-modal="true" aria-labelledby="po-modal-title">
+      <!-- Modal Header -->
+      <div class="ojt-req-header ojt-req-header--pullout">
+        <div class="ojt-req-title-wrap">
+          <div class="ojt-req-header-icon ojt-req-header-icon--danger">
+            ${icon('fileText', 22)}
           </div>
           <div>
-            <h3 style="margin:0;font-size:1.1rem;font-weight:700;color:var(--text-primary);">Request Official OJT Pull-Out</h3>
-            <p style="margin:2px 0 0;font-size:0.78rem;color:var(--text-secondary);">${esc(ojt.company || 'Host Company')} &middot; ${ojt.hoursRendered || 0} of ${ojt.totalHours || 600} hrs rendered</p>
+            <h3 id="po-modal-title" class="ojt-req-title">Request Official OJT Pull-Out</h3>
+            <div class="ojt-req-meta-pills">
+              <span class="ojt-req-meta-pill">${icon('building', 12)} ${esc(ojt.company || 'Host Enterprise')}</span>
+              <span class="ojt-req-meta-pill">${icon('clock', 12)} ${ojt.hoursRendered || 0} / ${ojt.totalHours || 600} hrs (${hoursPct}%)</span>
+            </div>
           </div>
         </div>
-        <button type="button" id="po-close-btn" style="background:none;border:none;cursor:pointer;color:var(--text-secondary);padding:4px;">
+        <button type="button" class="ojt-req-close-btn" id="po-close-btn" aria-label="Close dialog">
           ${icon('x', 18)}
         </button>
       </div>
 
-      <form id="pull-out-form" style="padding:20px 22px;display:flex;flex-direction:column;gap:16px;">
-        <div id="po-error-box" style="display:none;background:#FEF2F2;border:1px solid #FCA5A5;color:#991B1B;padding:10px 14px;border-radius:8px;font-size:0.83rem;"></div>
+      <form id="pull-out-form" style="display:flex;flex-direction:column;flex:1;overflow:hidden;margin:0;">
+        <div class="ojt-req-body">
+          <div id="po-error-box" style="display:none;background:#FEF2F2;border:1.5px solid #FCA5A5;color:#991B1B;padding:12px 14px;border-radius:10px;font-size:0.83rem;line-height:1.45;"></div>
 
-        <!-- Pull-Out Category -->
-        <div>
-          <label style="display:block;font-size:0.82rem;font-weight:700;margin-bottom:6px;color:var(--text-primary);">Grounds / Category for Pull-Out <span style="color:#ef4444;">*</span></label>
-          <select name="reason_category" class="input" style="width:100%;height:38px;" required>
-            <option value="breach_of_moa">Breach of MOA / Working Hours &amp; Allowance Violation</option>
-            <option value="safety_hostile">Workplace Safety Hazard / Harassment / Hostile Environment</option>
-            <option value="task_mismatch">Task Mismatch / Assigned Tasks Not Aligned with Curriculum</option>
-            <option value="medical_personal">Severe Medical Condition / Personal Hardship</option>
-            <option value="relocation">Unforeseen Geographical Relocation / Distance</option>
-            <option value="other">Other Valid Grounds</option>
-          </select>
+          <!-- Pull-Out Category -->
+          <div class="ojt-req-form-group">
+            <div class="ojt-req-label-row">
+              <label for="po-reason-category" class="ojt-req-label">
+                Grounds / Category for Pull-Out <span class="ojt-req-required-star">*</span>
+              </label>
+            </div>
+            <select id="po-reason-category" name="reason_category" class="ojt-req-select" required>
+              <option value="breach_of_moa">Breach of MOA / Working Hours &amp; Allowance Violation</option>
+              <option value="safety_hostile">Workplace Safety Hazard / Harassment / Hostile Environment</option>
+              <option value="task_mismatch">Task Mismatch / Assigned Tasks Not Aligned with Curriculum</option>
+              <option value="medical_personal">Severe Medical Condition / Personal Hardship</option>
+              <option value="relocation">Unforeseen Geographical Relocation / Distance</option>
+              <option value="other">Other Valid Grounds</option>
+            </select>
+          </div>
+
+          <!-- Detailed Statement -->
+          <div class="ojt-req-form-group">
+            <div class="ojt-req-label-row">
+              <label for="po-reason" class="ojt-req-label">
+                Detailed Statement &amp; Justification <span class="ojt-req-required-star">*</span>
+              </label>
+            </div>
+            <textarea id="po-reason" name="reason" class="ojt-req-textarea" rows="4" placeholder="Explain clearly the specific events, non-compliances, or reasons requiring your withdrawal from this host establishment..." required minlength="20"></textarea>
+            <div class="ojt-req-helper-row">
+              <span>Be specific and truthful. Official academic record.</span>
+              <span id="po-char-count" class="ojt-req-char-count">0 / 20 min</span>
+            </div>
+          </div>
+
+          <!-- Official Letter Upload -->
+          <div class="ojt-req-form-group">
+            <div class="ojt-req-label-row">
+              <label class="ojt-req-label">
+                Upload Formal Pull-Out Request Letter <span class="ojt-req-required-star">*</span>
+              </label>
+            </div>
+            <input type="file" id="po-letter" name="letter" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" style="display:none;" required>
+            <div id="po-dropzone" class="ojt-dropzone">
+              <div class="ojt-dropzone-icon-box">
+                ${icon('uploadCloud', 24)}
+              </div>
+              <div class="ojt-dropzone-text">
+                <strong>Click to browse</strong> or drag &amp; drop letter here
+              </div>
+              <div class="ojt-dropzone-hint">
+                Signed formal letter &middot; PDF, DOCX, JPG, PNG &middot; Max 10MB
+              </div>
+            </div>
+
+            <div id="po-file-preview" style="display:none;" class="ojt-file-preview-card">
+              <div class="ojt-file-preview-left">
+                <div class="ojt-file-preview-icon">
+                  ${icon('fileText', 20)}
+                </div>
+                <div class="ojt-file-preview-details">
+                  <div class="ojt-file-preview-name" id="po-file-name">letter.pdf</div>
+                  <div class="ojt-file-preview-meta">
+                    <span id="po-file-size">0 KB</span> &middot; Ready to submit
+                  </div>
+                </div>
+              </div>
+              <button type="button" class="ojt-file-remove-btn" id="po-remove-file-btn">
+                ${icon('trash', 14)} Remove
+              </button>
+            </div>
+          </div>
+
+          <!-- Institutional Governance Protocol Notice -->
+          <div class="ojt-protocol-card">
+            <div class="ojt-protocol-header">
+              ${icon('shieldCheck', 16)}
+              <span>Institutional Governance Protocol</span>
+            </div>
+            <p class="ojt-protocol-body">
+              Your request letter will be submitted to your <strong>Academic OJT Coordinator</strong> for evaluation. Once recommended, the <strong>Program Chair (Admin)</strong> will generate an official endorsement memorandum to the <strong>College Dean</strong> for printing or email routing.
+            </p>
+          </div>
         </div>
 
-        <!-- Narrative Reason -->
-        <div>
-          <label style="display:block;font-size:0.82rem;font-weight:700;margin-bottom:6px;color:var(--text-primary);">Detailed Statement &amp; Justification <span style="color:#ef4444;">*</span></label>
-          <textarea name="reason" class="input" rows="4" style="width:100%;resize:vertical;font-family:inherit;" placeholder="Explain clearly the specific events, non-compliances, or reasons requiring your withdrawal from this host establishment..." required minlength="20"></textarea>
-          <span style="font-size:0.72rem;color:var(--text-tertiary);margin-top:3px;display:block;">Be specific and truthful. Minimum 20 characters.</span>
-        </div>
-
-        <!-- Official Letter Upload -->
-        <div>
-          <label style="display:block;font-size:0.82rem;font-weight:700;margin-bottom:6px;color:var(--text-primary);">Upload Formal Pull-Out Request Letter <span style="color:#ef4444;">*</span></label>
-          <input type="file" name="letter" class="input" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" style="width:100%;padding:6px;" required>
-          <span style="font-size:0.72rem;color:var(--text-tertiary);margin-top:3px;display:block;">Attach your signed formal letter stating your valid reason (PDF, DOCX, JPG, PNG &middot; Max 10MB).</span>
-        </div>
-
-        <!-- Institutional Protocol Notice -->
-        <div style="background:rgba(0,89,48,0.06);border-left:3px solid var(--color-primary);padding:10px 14px;border-radius:6px;font-size:0.78rem;color:var(--color-primary);line-height:1.45;">
-          <strong>Institutional Governance Protocol:</strong> Your request letter will be submitted to your <strong>Academic OJT Coordinator</strong> for evaluation. Once recommended, the <strong>Program Chair (Admin)</strong> will generate an official endorsement memorandum to the <strong>College Dean</strong> for printing or email routing.
-        </div>
-
-        <!-- Actions -->
-        <div style="display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:6px;flex-wrap:wrap;">
+        <!-- Footer Actions -->
+        <div class="ojt-req-footer">
           <button type="button" class="btn btn--outline" id="po-cancel-btn">Cancel</button>
-          <button type="submit" class="btn btn--primary" id="po-submit-btn" style="background:#b91c1c;border-color:#b91c1c;gap:6px;">
+          <button type="submit" class="btn btn--primary" id="po-submit-btn" style="background:#b91c1c;border-color:#b91c1c;gap:6px;box-shadow:0 4px 12px rgba(185,28,28,0.25);">
             ${icon('send', 14)} Submit Pull-Out Request
           </button>
         </div>
@@ -896,6 +1027,18 @@ function openPullOutModal(ojt, onSubmitted) {
   bd.querySelector('#po-close-btn').addEventListener('click', close);
   bd.querySelector('#po-cancel-btn').addEventListener('click', close);
   bd.addEventListener('click', e => { if (e.target === bd) close(); });
+
+  const letterInput = bd.querySelector('#po-letter');
+  const dropzone = bd.querySelector('#po-dropzone');
+  const preview = bd.querySelector('#po-file-preview');
+  const nameEl = bd.querySelector('#po-file-name');
+  const sizeEl = bd.querySelector('#po-file-size');
+  const removeBtn = bd.querySelector('#po-remove-file-btn');
+  setupModalDropzone(dropzone, letterInput, preview, nameEl, sizeEl, removeBtn);
+
+  const reasonEl = bd.querySelector('#po-reason');
+  const charCounter = bd.querySelector('#po-char-count');
+  setupCharCounter(reasonEl, charCounter, 20);
 
   const form = bd.querySelector('#pull-out-form');
   const errorBox = bd.querySelector('#po-error-box');
@@ -935,98 +1078,166 @@ function openEmergencyModal(ojt, onSubmitted) {
 
   const bd = document.createElement('div');
   bd.id = 'emergency-modal-overlay';
-  bd.className = 'modal-backdrop modal-backdrop--visible modal-backdrop--open';
-  bd.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,0.65);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:99999;padding:16px;opacity:1 !important;visibility:visible !important;';
+  bd.className = 'ojt-req-overlay';
 
   const todayIso = new Date().toISOString().split('T')[0];
+  const hoursPct = ojt.totalHours > 0 ? Math.round(((ojt.hoursRendered || 0) / ojt.totalHours) * 100) : 0;
 
   bd.innerHTML = `
-    <div class="modal modal--visible ojt-tracker-modal ojt-emergency-modal" style="max-width:560px;width:100%;max-height:90vh;overflow-y:auto;border-radius:14px;background:var(--bg-card,#fff);box-shadow:0 20px 45px rgba(0,0,0,0.25);">
-      <div style="padding:18px 22px;border-bottom:1px solid var(--border-light,#e2e8f0);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg, rgba(239,68,68,0.06) 0%, rgba(245,158,11,0.06) 100%);">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <div style="width:38px;height:38px;border-radius:10px;background:rgba(239,68,68,0.12);color:#dc2626;display:flex;align-items:center;justify-content:center;">
-            ${icon('alertTriangle', 20)}
+    <div class="ojt-req-modal" role="dialog" aria-modal="true" aria-labelledby="emer-modal-title">
+      <!-- Modal Header -->
+      <div class="ojt-req-header ojt-req-header--emergency">
+        <div class="ojt-req-title-wrap">
+          <div class="ojt-req-header-icon ojt-req-header-icon--danger">
+            ${icon('alertTriangle', 22)}
           </div>
           <div>
-            <h3 style="margin:0;font-size:1.1rem;font-weight:700;color:var(--text-primary);">Report Emergency / Leave Notice</h3>
-            <p style="margin:2px 0 0;font-size:0.78rem;color:var(--text-secondary);">${esc(ojt.company || 'Host Company')} &middot; ${ojt.hoursRendered || 0} of ${ojt.totalHours || 600} hrs rendered</p>
+            <h3 id="emer-modal-title" class="ojt-req-title">Report Emergency / Leave Notice</h3>
+            <div class="ojt-req-meta-pills">
+              <span class="ojt-req-meta-pill">${icon('building', 12)} ${esc(ojt.company || 'Host Enterprise')}</span>
+              <span class="ojt-req-meta-pill">${icon('clock', 12)} ${ojt.hoursRendered || 0} / ${ojt.totalHours || 600} hrs (${hoursPct}%)</span>
+            </div>
           </div>
         </div>
-        <button type="button" id="emer-close-btn" style="background:none;border:none;cursor:pointer;color:var(--text-secondary);padding:4px;">
+        <button type="button" class="ojt-req-close-btn" id="emer-close-btn" aria-label="Close dialog">
           ${icon('x', 18)}
         </button>
       </div>
 
-      <form id="emergency-form" style="padding:20px 22px;display:flex;flex-direction:column;gap:16px;">
-        <div id="emer-error-box" style="display:none;background:#FEF2F2;border:1px solid #FCA5A5;color:#991B1B;padding:10px 14px;border-radius:8px;font-size:0.83rem;"></div>
+      <form id="emergency-form" style="display:flex;flex-direction:column;flex:1;overflow:hidden;margin:0;">
+        <div class="ojt-req-body">
+          <div id="emer-error-box" style="display:none;background:#FEF2F2;border:1.5px solid #FCA5A5;color:#991B1B;padding:12px 14px;border-radius:10px;font-size:0.83rem;line-height:1.45;"></div>
 
-        <!-- Request Type -->
-        <div>
-          <label style="display:block;font-size:0.82rem;font-weight:700;margin-bottom:8px;color:var(--text-primary);">Request Type <span style="color:#ef4444;">*</span></label>
-          <div class="ojt-emer-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-            <label style="border:1.5px solid var(--border-light);border-radius:10px;padding:12px;cursor:pointer;display:flex;flex-direction:column;gap:4px;transition:all .15s;" id="type-opt-leave" class="emer-type-card">
-              <div style="display:flex;align-items:center;gap:8px;">
-                <input type="radio" name="type" value="temporary_leave" checked style="accent-color:var(--color-primary);">
-                <strong style="font-size:0.86rem;color:var(--text-primary);">Temporary Leave</strong>
+          <!-- Request Type Selectable Cards -->
+          <div class="ojt-req-form-group">
+            <div class="ojt-req-label-row">
+              <label class="ojt-req-label">
+                Request Type <span class="ojt-req-required-star">*</span>
+              </label>
+            </div>
+            <div class="ojt-req-type-grid">
+              <label id="type-opt-leave" class="ojt-req-card-option ojt-req-card-option--leave is-selected">
+                <input type="radio" name="type" value="temporary_leave" checked>
+                <div class="opt-title">
+                  <span>Temporary Leave</span>
+                </div>
+                <div class="opt-desc">Temporary absence with intent to resume. Hours stay safe.</div>
+              </label>
+              <label id="type-opt-withdraw" class="ojt-req-card-option ojt-req-card-option--stoppage">
+                <input type="radio" name="type" value="permanent_withdrawal">
+                <div class="opt-title">
+                  <span>Formal Stoppage</span>
+                </div>
+                <div class="opt-desc">Discontinue training for this semester. Hours credited by coordinator.</div>
+              </label>
+            </div>
+          </div>
+
+          <!-- Emergency Category -->
+          <div class="ojt-req-form-group">
+            <div class="ojt-req-label-row">
+              <label for="emer-category" class="ojt-req-label">
+                Emergency Category <span class="ojt-req-required-star">*</span>
+              </label>
+            </div>
+            <select id="emer-category" name="category" class="ojt-req-select" required>
+              <option value="medical">Medical Emergency / Severe Illness / Hospitalization</option>
+              <option value="accident">Accident / Physical Injury</option>
+              <option value="family_emergency">Family Emergency / Bereavement</option>
+              <option value="financial_personal">Severe Personal / Financial Hardship</option>
+              <option value="other">Other Urgent Matter</option>
+            </select>
+          </div>
+
+          <!-- Dates -->
+          <div class="ojt-emer-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="ojt-req-form-group">
+              <div class="ojt-req-label-row">
+                <label for="emer-start-date" class="ojt-req-label">
+                  Effective Start Date <span class="ojt-req-required-star">*</span>
+                </label>
               </div>
-              <span style="font-size:0.74rem;color:var(--text-secondary);padding-left:22px;">Temporary leave with intent to resume. Hours stay safe.</span>
-            </label>
-            <label style="border:1.5px solid var(--border-light);border-radius:10px;padding:12px;cursor:pointer;display:flex;flex-direction:column;gap:4px;transition:all .15s;" id="type-opt-withdraw" class="emer-type-card">
-              <div style="display:flex;align-items:center;gap:8px;">
-                <input type="radio" name="type" value="permanent_withdrawal" style="accent-color:#ef4444;">
-                <strong style="font-size:0.86rem;color:#b91c1c;">Formal Stoppage</strong>
+              <input type="date" id="emer-start-date" name="start_date" class="ojt-req-input" value="${todayIso}" required>
+            </div>
+            <div id="expected-return-group" class="ojt-req-form-group">
+              <div class="ojt-req-label-row">
+                <label for="emer-return-date" class="ojt-req-label">
+                  Expected Return Date <span class="ojt-req-required-star">*</span>
+                </label>
               </div>
-              <span style="font-size:0.74rem;color:var(--text-secondary);padding-left:22px;">Discontinue training for this semester. Hours credited by coordinator.</span>
-            </label>
+              <input type="date" id="emer-return-date" name="expected_return_date" class="ojt-req-input" min="${todayIso}" required>
+            </div>
+          </div>
+
+          <!-- Reason & Circumstances -->
+          <div class="ojt-req-form-group">
+            <div class="ojt-req-label-row">
+              <label for="emer-reason" class="ojt-req-label">
+                Reason &amp; Circumstances <span class="ojt-req-required-star">*</span>
+              </label>
+            </div>
+            <textarea id="emer-reason" name="reason" class="ojt-req-textarea" rows="3" placeholder="Describe your medical condition, hospitalization, doctor's advice, or emergency circumstances..." required minlength="15"></textarea>
+            <div class="ojt-req-helper-row">
+              <span>Required for coordinator validation.</span>
+              <span id="emer-char-count" class="ojt-req-char-count">0 / 15 min</span>
+            </div>
+          </div>
+
+          <!-- Supporting Document Upload -->
+          <div class="ojt-req-form-group">
+            <div class="ojt-req-label-row">
+              <label class="ojt-req-label">
+                Supporting Document (Medical Certificate / Doctor Note / Excuse Letter)
+              </label>
+              <span class="ojt-req-optional-tag">Optional</span>
+            </div>
+            <input type="file" id="emer-doc" name="document" accept=".pdf,.jpg,.jpeg,.png" style="display:none;">
+            <div id="emer-dropzone" class="ojt-dropzone">
+              <div class="ojt-dropzone-icon-box">
+                ${icon('uploadCloud', 24)}
+              </div>
+              <div class="ojt-dropzone-text">
+                <strong>Click to browse</strong> or drag &amp; drop document here
+              </div>
+              <div class="ojt-dropzone-hint">
+                PDF, JPG, PNG &middot; Max 5MB &middot; Strongly recommended for prompt approval
+              </div>
+            </div>
+
+            <div id="emer-file-preview" style="display:none;" class="ojt-file-preview-card">
+              <div class="ojt-file-preview-left">
+                <div class="ojt-file-preview-icon">
+                  ${icon('fileText', 20)}
+                </div>
+                <div class="ojt-file-preview-details">
+                  <div class="ojt-file-preview-name" id="emer-file-name">document.pdf</div>
+                  <div class="ojt-file-preview-meta">
+                    <span id="emer-file-size">0 KB</span> &middot; Ready to submit
+                  </div>
+                </div>
+              </div>
+              <button type="button" class="ojt-file-remove-btn" id="emer-remove-file-btn">
+                ${icon('trash', 14)} Remove
+              </button>
+            </div>
+          </div>
+
+          <!-- Notice Banner -->
+          <div class="ojt-protocol-card">
+            <div class="ojt-protocol-header">
+              ${icon('shieldCheck', 16)}
+              <span>Official Protocol Notice</span>
+            </div>
+            <p class="ojt-protocol-body">
+              Filing this notice immediately alerts both your <strong>Academic OJT Coordinator</strong> and <strong>Host Company</strong>. Daily time-in will be frozen so you are not marked absent.
+            </p>
           </div>
         </div>
 
-        <!-- Category -->
-        <div>
-          <label style="display:block;font-size:0.82rem;font-weight:700;margin-bottom:6px;color:var(--text-primary);">Emergency Category <span style="color:#ef4444;">*</span></label>
-          <select name="category" class="input" style="width:100%;height:38px;" required>
-            <option value="medical">Medical Emergency / Severe Illness / Hospitalization</option>
-            <option value="accident">Accident / Physical Injury</option>
-            <option value="family_emergency">Family Emergency / Bereavement</option>
-            <option value="financial_personal">Severe Personal / Financial Hardship</option>
-            <option value="other">Other Urgent Matter</option>
-          </select>
-        </div>
-
-        <!-- Dates -->
-        <div class="ojt-emer-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-          <div>
-            <label style="display:block;font-size:0.82rem;font-weight:700;margin-bottom:6px;color:var(--text-primary);">Effective Start Date <span style="color:#ef4444;">*</span></label>
-            <input type="date" name="start_date" class="input" style="width:100%;height:38px;" value="${todayIso}" required>
-          </div>
-          <div id="expected-return-group">
-            <label style="display:block;font-size:0.82rem;font-weight:700;margin-bottom:6px;color:var(--text-primary);">Expected Return Date <span style="color:#ef4444;">*</span></label>
-            <input type="date" name="expected_return_date" class="input" style="width:100%;height:38px;" min="${todayIso}" required>
-          </div>
-        </div>
-
-        <!-- Reason -->
-        <div>
-          <label style="display:block;font-size:0.82rem;font-weight:700;margin-bottom:6px;color:var(--text-primary);">Reason &amp; Circumstances <span style="color:#ef4444;">*</span></label>
-          <textarea name="reason" class="input" rows="3" style="width:100%;resize:vertical;font-family:inherit;" placeholder="Describe your medical condition, hospitalization, doctor's advice, or emergency circumstances..." required minlength="15"></textarea>
-        </div>
-
-        <!-- Supporting Document Upload -->
-        <div>
-          <label style="display:block;font-size:0.82rem;font-weight:700;margin-bottom:6px;color:var(--text-primary);">Supporting Document (Medical Certificate / Doctor Note / Excuse Letter)</label>
-          <input type="file" name="document" class="input" accept=".pdf,.jpg,.jpeg,.png" style="width:100%;padding:6px;">
-          <span style="font-size:0.72rem;color:var(--text-tertiary);margin-top:3px;display:block;">Optional at submission, but strongly recommended for prompt coordinator approval (PDF, JPG, PNG &middot; Max 5MB).</span>
-        </div>
-
-        <!-- Notice Banner -->
-        <div style="background:rgba(0,89,48,0.06);border-left:3px solid var(--color-primary);padding:10px 14px;border-radius:6px;font-size:0.78rem;color:var(--color-primary);line-height:1.45;">
-          <strong>Official Protocol:</strong> Filing this notice immediately alerts both your <strong>Academic OJT Coordinator</strong> and <strong>Host Company</strong>. Daily time-in will be frozen so you are not marked absent.
-        </div>
-
-        <!-- Actions -->
-        <div style="display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:6px;flex-wrap:wrap;">
+        <!-- Footer Actions -->
+        <div class="ojt-req-footer">
           <button type="button" class="btn btn--outline" id="emer-cancel-btn">Cancel</button>
-          <button type="submit" class="btn btn--primary" id="emer-submit-btn" style="background:#dc2626;border-color:#dc2626;gap:6px;">
+          <button type="submit" class="btn btn--primary" id="emer-submit-btn" style="background:#dc2626;border-color:#dc2626;gap:6px;box-shadow:0 4px 12px rgba(220,38,38,0.25);">
             ${icon('send', 14)} Submit Notice
           </button>
         </div>
@@ -1039,13 +1250,19 @@ function openEmergencyModal(ojt, onSubmitted) {
   const typeRadios = bd.querySelectorAll('input[name="type"]');
   const returnGroup = bd.querySelector('#expected-return-group');
   const returnInput = bd.querySelector('input[name="expected_return_date"]');
+  const leaveCard = bd.querySelector('#type-opt-leave');
+  const withdrawCard = bd.querySelector('#type-opt-withdraw');
 
   typeRadios.forEach(r => {
     r.addEventListener('change', () => {
       if (r.value === 'permanent_withdrawal') {
+        leaveCard.classList.remove('is-selected');
+        withdrawCard.classList.add('is-selected');
         returnGroup.style.display = 'none';
         returnInput.removeAttribute('required');
       } else {
+        withdrawCard.classList.remove('is-selected');
+        leaveCard.classList.add('is-selected');
         returnGroup.style.display = 'block';
         returnInput.setAttribute('required', 'required');
       }
@@ -1056,6 +1273,18 @@ function openEmergencyModal(ojt, onSubmitted) {
   bd.querySelector('#emer-close-btn').addEventListener('click', close);
   bd.querySelector('#emer-cancel-btn').addEventListener('click', close);
   bd.addEventListener('click', e => { if (e.target === bd) close(); });
+
+  const docInput = bd.querySelector('#emer-doc');
+  const dropzone = bd.querySelector('#emer-dropzone');
+  const preview = bd.querySelector('#emer-file-preview');
+  const nameEl = bd.querySelector('#emer-file-name');
+  const sizeEl = bd.querySelector('#emer-file-size');
+  const removeBtn = bd.querySelector('#emer-remove-file-btn');
+  setupModalDropzone(dropzone, docInput, preview, nameEl, sizeEl, removeBtn);
+
+  const reasonEl = bd.querySelector('#emer-reason');
+  const charCounter = bd.querySelector('#emer-char-count');
+  setupCharCounter(reasonEl, charCounter, 15);
 
   const form = bd.querySelector('#emergency-form');
   const errorBox = bd.querySelector('#emer-error-box');
@@ -1095,42 +1324,77 @@ function openFitToWorkModal(emergency, onSubmitted) {
 
   const bd = document.createElement('div');
   bd.id = 'fit-to-work-modal-overlay';
-  bd.className = 'modal-backdrop modal-backdrop--visible modal-backdrop--open';
-  bd.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,0.65);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:99999;padding:16px;opacity:1 !important;visibility:visible !important;';
+  bd.className = 'ojt-req-overlay';
 
   bd.innerHTML = `
-    <div class="modal modal--visible ojt-tracker-modal ojt-ftw-modal" style="max-width:480px;width:100%;border-radius:14px;background:var(--bg-card,#fff);box-shadow:0 20px 45px rgba(0,0,0,0.25);">
-      <div style="padding:18px 22px;border-bottom:1px solid var(--border-light,#e2e8f0);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg, rgba(2,132,199,0.06) 0%, rgba(16,185,129,0.06) 100%);">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <div style="width:38px;height:38px;border-radius:10px;background:rgba(2,132,199,0.12);color:#0284c7;display:flex;align-items:center;justify-content:center;">
-            ${icon('shieldCheck', 20)}
+    <div class="ojt-req-modal" style="max-width:500px;" role="dialog" aria-modal="true" aria-labelledby="ftw-modal-title">
+      <!-- Modal Header -->
+      <div class="ojt-req-header ojt-req-header--ftw">
+        <div class="ojt-req-title-wrap">
+          <div class="ojt-req-header-icon ojt-req-header-icon--info">
+            ${icon('shieldCheck', 22)}
           </div>
           <div>
-            <h3 style="margin:0;font-size:1.05rem;font-weight:700;color:var(--text-primary);">Resume OJT Training</h3>
-            <p style="margin:2px 0 0;font-size:0.78rem;color:var(--text-secondary);">Submit Medical Fit-to-Work Clearance</p>
+            <h3 id="ftw-modal-title" class="ojt-req-title">Resume OJT Training</h3>
+            <div class="ojt-req-meta-pills">
+              <span class="ojt-req-meta-pill">${icon('shield', 12)} Medical Fit-to-Work Clearance</span>
+            </div>
           </div>
         </div>
-        <button type="button" id="ftw-close-btn" style="background:none;border:none;cursor:pointer;color:var(--text-secondary);padding:4px;">
+        <button type="button" class="ojt-req-close-btn" id="ftw-close-btn" aria-label="Close dialog">
           ${icon('x', 18)}
         </button>
       </div>
 
-      <form id="ftw-form" style="padding:20px 22px;display:flex;flex-direction:column;gap:14px;">
-        <div id="ftw-error-box" style="display:none;background:#FEF2F2;border:1px solid #FCA5A5;color:#991B1B;padding:10px 14px;border-radius:8px;font-size:0.83rem;"></div>
+      <form id="ftw-form" style="display:flex;flex-direction:column;flex:1;overflow:hidden;margin:0;">
+        <div class="ojt-req-body">
+          <div id="ftw-error-box" style="display:none;background:#FEF2F2;border:1.5px solid #FCA5A5;color:#991B1B;padding:12px 14px;border-radius:10px;font-size:0.83rem;line-height:1.45;"></div>
 
-        <p style="margin:0;font-size:0.83rem;color:var(--text-secondary);line-height:1.45;">
-          Please attach your official medical certificate / clearance issued by a licensed physician stating that you are medically fit to resume your internship duties.
-        </p>
+          <p style="margin:0;font-size:0.84rem;color:var(--text-secondary);line-height:1.5;">
+            Please attach your official medical certificate or clearance issued by a licensed physician stating that you are medically fit to resume your internship duties.
+          </p>
 
-        <div>
-          <label style="display:block;font-size:0.82rem;font-weight:700;margin-bottom:6px;color:var(--text-primary);">Medical Certificate / Fit-to-Work Clearance <span style="color:#ef4444;">*</span></label>
-          <input type="file" name="document" class="input" accept=".pdf,.jpg,.jpeg,.png" style="width:100%;padding:6px;" required>
-          <span style="font-size:0.72rem;color:var(--text-tertiary);margin-top:3px;display:block;">Supported formats: PDF, JPG, PNG &middot; Max 5MB</span>
+          <div class="ojt-req-form-group">
+            <div class="ojt-req-label-row">
+              <label class="ojt-req-label">
+                Medical Clearance Document <span class="ojt-req-required-star">*</span>
+              </label>
+            </div>
+            <input type="file" id="ftw-doc" name="document" accept=".pdf,.jpg,.jpeg,.png" style="display:none;" required>
+            <div id="ftw-dropzone" class="ojt-dropzone">
+              <div class="ojt-dropzone-icon-box">
+                ${icon('uploadCloud', 24)}
+              </div>
+              <div class="ojt-dropzone-text">
+                <strong>Click to browse</strong> or drag &amp; drop clearance here
+              </div>
+              <div class="ojt-dropzone-hint">
+                PDF, JPG, PNG &middot; Max 5MB
+              </div>
+            </div>
+
+            <div id="ftw-file-preview" style="display:none;" class="ojt-file-preview-card">
+              <div class="ojt-file-preview-left">
+                <div class="ojt-file-preview-icon">
+                  ${icon('fileText', 20)}
+                </div>
+                <div class="ojt-file-preview-details">
+                  <div class="ojt-file-preview-name" id="ftw-file-name">clearance.pdf</div>
+                  <div class="ojt-file-preview-meta">
+                    <span id="ftw-file-size">0 KB</span> &middot; Ready to submit
+                  </div>
+                </div>
+              </div>
+              <button type="button" class="ojt-file-remove-btn" id="ftw-remove-file-btn">
+                ${icon('trash', 14)} Remove
+              </button>
+            </div>
+          </div>
         </div>
 
-        <div style="display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:6px;">
+        <div class="ojt-req-footer">
           <button type="button" class="btn btn--outline" id="ftw-cancel-btn">Cancel</button>
-          <button type="submit" class="btn btn--primary" id="ftw-submit-btn" style="gap:6px;background:#0284c7;border-color:#0284c7;">
+          <button type="submit" class="btn btn--primary" id="ftw-submit-btn" style="gap:6px;background:#0284c7;border-color:#0284c7;box-shadow:0 4px 12px rgba(2,132,199,0.25);">
             ${icon('upload', 14)} Submit Clearance
           </button>
         </div>
@@ -1144,6 +1408,14 @@ function openFitToWorkModal(emergency, onSubmitted) {
   bd.querySelector('#ftw-close-btn').addEventListener('click', close);
   bd.querySelector('#ftw-cancel-btn').addEventListener('click', close);
   bd.addEventListener('click', e => { if (e.target === bd) close(); });
+
+  const docInput = bd.querySelector('#ftw-doc');
+  const dropzone = bd.querySelector('#ftw-dropzone');
+  const preview = bd.querySelector('#ftw-file-preview');
+  const nameEl = bd.querySelector('#ftw-file-name');
+  const sizeEl = bd.querySelector('#ftw-file-size');
+  const removeBtn = bd.querySelector('#ftw-remove-file-btn');
+  setupModalDropzone(dropzone, docInput, preview, nameEl, sizeEl, removeBtn);
 
   const form = bd.querySelector('#ftw-form');
   const errorBox = bd.querySelector('#ftw-error-box');
@@ -1176,6 +1448,7 @@ function openFitToWorkModal(emergency, onSubmitted) {
     }
   });
 }
+
 
 // ── Dual-Term Evaluation Presentation ─────────────────────────────────────────
 function renderEvaluationBannerHtml(evaluation) {
