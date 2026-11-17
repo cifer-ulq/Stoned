@@ -245,7 +245,7 @@ async function initApp() {
     }
 
     if (u.name) {
-      const initials = u.name.split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'MM';
+      const initials = u.name.split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'ML';
       import('./store.js').then(({ setState }) => {
         setState('user.name', u.name);
         setState('user.initials', initials);

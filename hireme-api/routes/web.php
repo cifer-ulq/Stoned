@@ -50,7 +50,7 @@ Route::get('/reset-to-admin-only', function () {
             \App\Models\User::updateOrCreate(
                 ['email' => 'admin@chmsu.edu.ph'],
                 [
-                    'name'                 => 'Marites Manganti',
+                    'name'                 => 'Mariene Labrador',
                     'password'             => \Illuminate\Support\Facades\Hash::make('Admin@CHMSU2026!'),
                     'role'                 => 'admin',
                     'onboarding_completed' => true,
