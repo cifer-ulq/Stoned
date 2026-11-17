@@ -3306,47 +3306,68 @@ function setupOffSiteEvidence(panelEl, onEvidenceChange) {
   let compressedPhotoBase64 = null;
 
   panelEl.innerHTML = `
-    <div style="margin-top:10px;padding:12px;background:var(--bg-secondary);border:1.5px dashed #d97706;border-radius:var(--radius-md);">
-      <div style="display:flex;align-items:center;gap:6px;font-size:0.8rem;font-weight:700;color:#d97706;margin-bottom:6px;">
-        ${icon('camera', 15)} Camera Verification & Explanation Required
-      </div>
-      <p style="font-size:0.72rem;color:var(--text-secondary);line-height:1.45;margin-bottom:10px;">
-        You are outside the host site perimeter. To submit for company review, please state your assignment/reason and capture a live photo.
-      </p>
-
-      <div style="margin-bottom:10px;">
-        <label style="display:block;font-size:0.72rem;font-weight:700;color:var(--text-primary);margin-bottom:4px;">
-          Written Explanation / Assignment *
-        </label>
-        <textarea id="evidence-reason" class="form-input" rows="2" placeholder="e.g., Assigned to off-site client installation or official fieldwork..." style="font-size:0.75rem;resize:vertical;"></textarea>
+    <div class="ojt-evidence-card">
+      <div class="ojt-evidence-header">
+        <div class="ojt-evidence-header-icon">
+          ${icon('camera', 18)}
+        </div>
+        <div>
+          <h4 class="ojt-evidence-header-title">Camera Verification &amp; Assignment Proof</h4>
+          <p class="ojt-evidence-header-desc">
+            You are outside the host site perimeter. Entries are recorded in escrow and require supervisor review. Please state your fieldwork assignment and capture a verified live photo.
+          </p>
+        </div>
       </div>
 
-      <div style="display:flex;flex-direction:column;gap:8px;">
-        <label style="display:block;font-size:0.72rem;font-weight:700;color:var(--text-primary);">
-          Live Photo Proof *
-        </label>
-        <div style="position:relative;width:100%;background:#0f172a;border-radius:8px;overflow:hidden;min-height:150px;display:flex;align-items:center;justify-content:center;">
-          <video id="evidence-video" autoplay playsinline style="width:100%;max-height:180px;object-fit:cover;display:none;"></video>
-          <img id="evidence-preview" style="width:100%;max-height:180px;object-fit:cover;display:none;" />
-          <div id="evidence-placeholder" style="text-align:center;padding:20px 12px;color:#94a3b8;font-size:0.75rem;">
-            ${icon('camera', 28)}
-            <div style="margin-top:6px;">Camera not started</div>
+      <div class="ojt-req-form-group">
+        <div class="ojt-req-label-row">
+          <label for="evidence-reason" class="ojt-req-label">
+            Written Explanation / Assignment <span class="ojt-req-required-star">*</span>
+          </label>
+        </div>
+        <textarea id="evidence-reason" class="ojt-req-textarea" rows="2" placeholder="e.g., Assigned to off-site client installation, field inspection, or official errands..."></textarea>
+        <div class="ojt-req-helper-row">
+          <span>Required for supervisor validation.</span>
+          <span id="evidence-char-count" class="ojt-req-char-count">0 / 3 min</span>
+        </div>
+      </div>
+
+      <div class="ojt-req-form-group">
+        <div class="ojt-req-label-row">
+          <label class="ojt-req-label">
+            Live Photo Proof <span class="ojt-req-required-star">*</span>
+          </label>
+          <span id="evidence-photo-status" class="ojt-req-optional-tag" style="display:none;background:#dcfce7;color:#166534;font-weight:700;">Photo Ready</span>
+        </div>
+
+        <div class="ojt-camera-viewport">
+          <video id="evidence-video" autoplay playsinline style="width:100%;max-height:220px;object-fit:cover;display:none;"></video>
+          <img id="evidence-preview" style="width:100%;max-height:220px;object-fit:cover;display:none;" />
+          <div id="evidence-placeholder" class="ojt-camera-placeholder">
+            <div class="ojt-camera-placeholder-icon">
+              ${icon('camera', 24)}
+            </div>
+            <div class="ojt-camera-placeholder-title">Live Camera Verification Required</div>
+            <div class="ojt-camera-placeholder-desc">Capture a live snapshot or upload a photo showing your off-site work assignment.</div>
           </div>
           <canvas id="evidence-canvas" style="display:none;"></canvas>
         </div>
 
-        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px;">
-          <button type="button" class="btn btn--sm btn--primary" id="btn-start-camera" style="font-size:0.73rem;padding:5px 12px;display:inline-flex;align-items:center;gap:5px;">
-            ${icon('camera', 13)} Open Camera
-          </button>
-          <button type="button" class="btn btn--sm btn--primary" id="btn-snap-photo" style="display:none;font-size:0.73rem;padding:5px 12px;background:#059669;border-color:#059669;align-items:center;gap:5px;">
-            ${icon('check', 13)} Take Snapshot
-          </button>
-          <button type="button" class="btn btn--sm btn--outline" id="btn-retake-photo" style="display:none;font-size:0.73rem;padding:5px 12px;align-items:center;gap:5px;">
-            ${icon('refreshCcw', 13)} Retake
-          </button>
-          <label class="btn btn--sm btn--ghost" style="font-size:0.72rem;padding:5px 10px;cursor:pointer;margin-left:auto;color:var(--text-tertiary);display:inline-flex;align-items:center;gap:4px;">
-            ${icon('upload', 12)} Upload <input type="file" id="evidence-file-input" accept="image/*" capture="user" style="display:none;" />
+        <div class="ojt-camera-actions-bar">
+          <div class="ojt-camera-actions-left">
+            <button type="button" class="btn btn--sm btn--primary" id="btn-start-camera" style="font-size:0.75rem;padding:6px 14px;display:inline-flex;align-items:center;gap:6px;background:#005930;border-color:#005930;">
+              ${icon('camera', 14)} Open Camera
+            </button>
+            <button type="button" class="btn btn--sm btn--primary" id="btn-snap-photo" style="display:none;font-size:0.75rem;padding:6px 14px;background:#059669;border-color:#059669;align-items:center;gap:6px;">
+              ${icon('check', 14)} Take Snapshot
+            </button>
+            <button type="button" class="btn btn--sm btn--outline" id="btn-retake-photo" style="display:none;font-size:0.75rem;padding:6px 14px;align-items:center;gap:6px;">
+              ${icon('refreshCcw', 14)} Retake Photo
+            </button>
+          </div>
+          <label class="btn btn--sm btn--outline" style="font-size:0.75rem;padding:6px 12px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;margin:0;">
+            ${icon('upload', 13)} Upload Photo
+            <input type="file" id="evidence-file-input" accept="image/*" capture="user" style="display:none;" />
           </label>
         </div>
       </div>
@@ -3362,10 +3383,25 @@ function setupOffSiteEvidence(panelEl, onEvidenceChange) {
   const retakeBtn = panelEl.querySelector('#btn-retake-photo');
   const fileInput = panelEl.querySelector('#evidence-file-input');
   const reasonEl = panelEl.querySelector('#evidence-reason');
+  const charCounter = panelEl.querySelector('#evidence-char-count');
+  const photoStatus = panelEl.querySelector('#evidence-photo-status');
 
   function notify() {
     const reason = reasonEl.value.trim();
-    const isReady = !!(compressedPhotoBase64 && reason.length >= 3);
+    const len = reason.length;
+    if (charCounter) {
+      charCounter.textContent = `${len} / 3 min`;
+      if (len >= 3) {
+        charCounter.classList.add('ojt-req-char-count--valid');
+      } else {
+        charCounter.classList.remove('ojt-req-char-count--valid');
+      }
+    }
+    if (photoStatus) {
+      photoStatus.style.display = compressedPhotoBase64 ? 'inline-block' : 'none';
+    }
+
+    const isReady = !!(compressedPhotoBase64 && len >= 3);
     onEvidenceChange({
       isReady,
       reason,
@@ -3518,48 +3554,113 @@ function showLogInModal(sessionLabelOrSuccess, ojtContextOrSuccess, onSuccessMay
   const defaultTime = isAfternoon && nowHM < '13:00' ? '13:00' : nowHM;
 
   const bd = document.createElement('div');
-  bd.className = 'modal-backdrop modal-backdrop--visible';
+  bd.className = 'ojt-req-overlay';
   bd.innerHTML = `
-    <div class="modal modal--visible ojt-tracker-modal ojt-login-modal" style="max-width:440px;">
-      <div class="modal__header">
-        <h3 class="modal__title" style="display:flex;align-items:center;gap:8px;">${icon('logIn', 20)} ${esc(sessionLabel)}</h3>
-        <button class="modal__close" id="li-close">${icon('x', 20)}</button>
+    <div class="ojt-req-modal" style="max-width:480px;" role="dialog" aria-modal="true" aria-labelledby="li-modal-title">
+      <!-- Modal Header -->
+      <div class="ojt-req-header" style="background:linear-gradient(135deg, rgba(0,89,48,0.08) 0%, rgba(217,119,6,0.06) 100%);">
+        <div class="ojt-req-title-wrap">
+          <div class="ojt-req-header-icon" style="background:#e0f2fe;color:#0284c7;border:1px solid #bae6fd;">
+            ${icon('logIn', 22)}
+          </div>
+          <div>
+            <h3 id="li-modal-title" class="ojt-req-title">Time In (${esc(sessionLabel)})</h3>
+            <div class="ojt-req-meta-pills">
+              <span class="ojt-req-meta-pill">${icon('building', 12)} ${esc(ojtContext?.company || 'Host Training Site')}</span>
+              <span class="ojt-req-meta-pill">${icon('clock', 12)} ${isAfternoon ? 'Afternoon Shift' : 'Morning Shift'}</span>
+            </div>
+          </div>
+        </div>
+        <button type="button" class="ojt-req-close-btn" id="li-close" aria-label="Close dialog">
+          ${icon('x', 18)}
+        </button>
       </div>
-      <div class="modal__body">
-        <div class="form-group">
-          <label class="form-label">Time In *</label>
-          <input type="time" class="form-input" id="li-time" value="${defaultTime}" ${isAfternoon ? 'min="13:00"' : ''} required />
-          ${isAfternoon ? `<p class="text-xs" style="margin-top:5px;color:#d97706;font-weight:600;display:flex;align-items:center;gap:4px;">${icon('clock', 12)} Afternoon session begins at 1:00 PM (Lunch break ends at 1:00 PM)</p>` : ''}
+
+      <div class="ojt-req-body" style="padding:18px 20px;">
+        <div class="ojt-req-form-group">
+          <div class="ojt-req-label-row">
+            <label for="li-time" class="ojt-req-label">
+              Time In <span class="ojt-req-required-star">*</span>
+            </label>
+          </div>
+          <input type="time" class="ojt-req-input" id="li-time" value="${defaultTime}" ${isAfternoon ? 'min="13:00"' : ''} required />
+          ${isAfternoon ? `<p class="text-xs" style="margin-top:4px;color:#d97706;font-weight:600;display:flex;align-items:center;gap:4px;">${icon('clock', 12)} Afternoon session begins at 1:00 PM (Lunch break ends at 1:00 PM)</p>` : ''}
         </div>
-        <div id="li-geo-status" style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--bg-secondary);border:1px solid transparent;border-radius:var(--radius-md);margin-top:4px;">
-          ${icon('mapPin', 14)}
-          <span class="text-xs" id="li-geo-label">Detecting your location…</span>
+
+        <!-- Location Geofence Status Banner -->
+        <div id="li-geo-status" class="ojt-geo-status-banner ojt-geo-status-banner--detecting">
+          <div class="ojt-geo-status-content">
+            <div class="ojt-geo-status-icon">
+              ${icon('mapPin', 16)}
+            </div>
+            <div class="ojt-geo-status-texts">
+              <div class="ojt-geo-status-title" id="li-geo-title">Detecting GPS Location…</div>
+              <div class="ojt-geo-status-desc" id="li-geo-desc">Verifying your coordinates against host site</div>
+            </div>
+          </div>
+          <span id="li-geo-badge" style="display:none;" class="ojt-geo-status-badge"></span>
         </div>
-        <!-- Alert panel for GPS errors or out-of-bounds geofence -->
-        <div id="li-geo-fail-panel" style="display:none;margin-top:10px;padding:12px;background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.3);border-radius:var(--radius-md);">
-          <p id="li-fail-title" style="font-size:0.78rem;font-weight:600;color:#ef4444;margin-bottom:6px;display:flex;align-items:center;gap:6px;">${icon('alertTriangle',13)} GPS Location Required</p>
-          <p id="li-fail-desc" style="font-size:0.72rem;color:var(--text-secondary);line-height:1.55;margin-bottom:10px;">GPS location is mandatory to record attendance. Please enable location permissions in your browser or device settings, then click <strong>Retry Location</strong>.</p>
-          <button class="btn btn--outline" id="li-retry" type="button" style="font-size:0.76rem;padding:5px 14px;display:inline-flex;align-items:center;gap:6px;">${icon('refreshCcw',13)} Retry Location</button>
+
+        <!-- Alert panel for GPS errors -->
+        <div id="li-geo-fail-panel" style="display:none;margin-top:10px;padding:12px;background:#fef2f2;border:1.5px solid #fecaca;border-radius:12px;">
+          <p id="li-fail-title" style="font-size:0.8rem;font-weight:700;color:#dc2626;margin:0 0 4px;display:flex;align-items:center;gap:6px;">
+            ${icon('alertTriangle', 14)} GPS Location Required
+          </p>
+          <p id="li-fail-desc" style="font-size:0.74rem;color:#475569;line-height:1.45;margin:0 0 10px;">
+            GPS location is mandatory to record attendance. Please enable location permissions in your browser or device settings, then click <strong>Retry Location</strong>.
+          </p>
+          <button class="btn btn--outline btn--sm" id="li-retry" type="button" style="font-size:0.75rem;padding:5px 12px;display:inline-flex;align-items:center;gap:5px;">
+            ${icon('refreshCcw', 13)} Retry Location
+          </button>
         </div>
+
         <div id="li-evidence-container"></div>
-        <p class="text-xs text-secondary" style="display:flex;align-items:flex-start;gap:6px;margin-top:10px;padding:10px 12px;background:var(--color-info-bg);border:1px solid var(--color-info);border-radius:var(--radius-md);line-height:1.5;">
-          ${icon('mapPin', 13)} GPS location is verified against host site perimeter (100m). Out-of-range entries require photo proof & supervisor review.
-        </p>
+
+        <!-- Institutional Protocol Notice -->
+        <div class="ojt-protocol-card" style="margin-top:4px;">
+          <div class="ojt-protocol-header">
+            ${icon('shieldCheck', 15)}
+            <span>Geofence &amp; Escrow Governance</span>
+          </div>
+          <p class="ojt-protocol-body">
+            Attendance within the 100m site perimeter is auto-verified. Out-of-range entries require photo proof and are held in escrow for host company approval.
+          </p>
+        </div>
       </div>
-      <div class="modal__footer" style="flex-wrap:wrap;gap:8px;">
-        <button class="btn btn--outline" id="li-cancel">Cancel</button>
-        <button class="btn btn--primary" id="li-submit" disabled>${icon('checkCircle', 16)} Confirm ${esc(sessionLabel)}</button>
+
+      <div class="ojt-req-footer">
+        <button type="button" class="btn btn--outline" id="li-cancel">Cancel</button>
+        <button type="button" class="btn btn--primary" id="li-submit" disabled style="gap:6px;">
+          ${icon('checkCircle', 16)} Confirm ${esc(sessionLabel)}
+        </button>
       </div>
     </div>
   `;
   document.body.appendChild(bd);
 
   const geoBox    = bd.querySelector('#li-geo-status');
-  const geoLabel  = bd.querySelector('#li-geo-label');
+  const geoTitle  = bd.querySelector('#li-geo-title');
+  const geoDesc   = bd.querySelector('#li-geo-desc');
+  const geoBadge  = bd.querySelector('#li-geo-badge');
   const submitBtn = bd.querySelector('#li-submit');
   const failPanel = bd.querySelector('#li-geo-fail-panel');
   const retryBtn  = bd.querySelector('#li-retry');
   const evidenceContainer = bd.querySelector('#li-evidence-container');
+
+  function updateGeoStatus(state, title, desc, badgeText, badgeType) {
+    geoBox.className = `ojt-geo-status-banner ojt-geo-status-banner--${state}`;
+    if (geoTitle) geoTitle.textContent = title;
+    if (geoDesc) geoDesc.textContent = desc;
+    if (geoBadge) {
+      if (badgeText) {
+        geoBadge.textContent = badgeText;
+        geoBadge.className = `ojt-geo-status-badge ojt-geo-status-badge--${badgeType || 'valid'}`;
+        geoBadge.style.display = 'inline-block';
+      } else {
+        geoBadge.style.display = 'none';
+      }
+    }
+  }
 
   function attemptGeo() {
     geoResult = null;
@@ -3572,11 +3673,10 @@ function showLogInModal(sessionLabelOrSuccess, ojtContextOrSuccess, onSuccessMay
     evidenceContainer.innerHTML = '';
     submitBtn.disabled = true;
     failPanel.style.display = 'none';
-    geoBox.style.background = 'var(--bg-secondary)';
-    geoBox.style.border = '1px solid transparent';
-    geoLabel.innerHTML = 'Detecting your location…';
+    updateGeoStatus('detecting', 'Detecting GPS Location…', 'Verifying your coordinates against host site', null);
 
-    requestGeo(geoBox, geoLabel).then(result => {
+    const tempLabel = { textContent: '' };
+    requestGeo(geoBox, tempLabel).then(result => {
       geoResult = result;
       if (result && result.lat != null && result.lon != null) {
         const compLat = ojtContext?.companyLat != null ? Number(ojtContext.companyLat) : null;
@@ -3588,9 +3688,13 @@ function showLogInModal(sessionLabelOrSuccess, ojtContextOrSuccess, onSuccessMay
           computedDistance = Math.round(haversineMeters(result.lat, result.lon, compLat, compLon));
           if (computedDistance <= maxRadius) {
             // Inside verified geofence perimeter
-            geoBox.style.background = 'var(--color-success-bg, rgba(16,185,129,0.1))';
-            geoBox.style.border = '1px solid var(--color-success, #10b981)';
-            geoLabel.innerHTML = `<span style="color:var(--color-success,#10b981);font-weight:700;">Within OJT site radius</span> <span style="color:var(--text-secondary);font-size:0.75rem;">(${computedDistance}m from ${esc(compName)})</span>`;
+            updateGeoStatus(
+              'inside',
+              'Within OJT Site Radius',
+              `${computedDistance}m from ${compName} (limit: ${maxRadius}m)`,
+              'Verified Location',
+              'valid'
+            );
             failPanel.style.display = 'none';
             submitBtn.disabled = false;
             submitBtn.style.background = '';
@@ -3599,9 +3703,17 @@ function showLogInModal(sessionLabelOrSuccess, ojtContextOrSuccess, onSuccessMay
             submitBtn.title = '';
           } else {
             // Outside geofence boundary - Show Out-of-Range Evidence Form
-            geoBox.style.background = 'rgba(217,119,6,0.08)';
-            geoBox.style.border = '1px solid rgba(217,119,6,0.4)';
-            geoLabel.innerHTML = `<span style="color:#d97706;font-weight:700;">Outside OJT Site Radius</span> <span style="color:#d97706;font-size:0.75rem;">(${computedDistance}m away · limit: ${maxRadius}m)</span>`;
+            const distLabel = computedDistance >= 1000
+              ? `${(computedDistance / 1000).toFixed(1)} km`
+              : `${computedDistance} m`;
+
+            updateGeoStatus(
+              'outside',
+              'Outside OJT Site Radius',
+              `${distLabel} away from host premises (limit: ${maxRadius}m)`,
+              'Escrow Review Required',
+              'escrow'
+            );
             failPanel.style.display = 'none';
 
             submitBtn.disabled = true;
@@ -3624,21 +3736,11 @@ function showLogInModal(sessionLabelOrSuccess, ojtContextOrSuccess, onSuccessMay
           }
         } else {
           // No coordinates configured on host posting
+          updateGeoStatus('inside', 'Coordinates Optional', 'Host has no geofence boundary configured', 'Active', 'valid');
           failPanel.style.display = 'none';
           submitBtn.disabled = false;
         }
       } else {
-        failPanel.innerHTML = `
-          <p style="font-size:0.78rem;font-weight:600;color:#ef4444;margin-bottom:6px;display:flex;align-items:center;gap:6px;">
-            ${icon('alertTriangle', 13)} GPS Location Required
-          </p>
-          <p style="font-size:0.72rem;color:var(--text-secondary);line-height:1.55;margin-bottom:10px;">
-            GPS location is mandatory to verify your attendance against the host site perimeter. Please enable location permissions in your browser or device settings, then click <strong>Retry Location</strong>.
-          </p>
-          <button class="btn btn--outline" id="li-retry" type="button" style="font-size:0.76rem;padding:5px 14px;display:inline-flex;align-items:center;gap:6px;">
-            ${icon('refreshCcw', 13)} Retry Location
-          </button>
-        `;
         failPanel.style.display = 'block';
         failPanel.querySelector('#li-retry')?.addEventListener('click', attemptGeo);
         submitBtn.disabled = true;
@@ -3740,53 +3842,120 @@ function showLogOutModal(todayLog, sessionLabelOrOjt, ojtContextOrSuccess, onSuc
     : `Afternoon session started at <strong>${loggedInAt}</strong>. Ending shift for today?`;
 
   const bd = document.createElement('div');
-  bd.className = 'modal-backdrop modal-backdrop--visible';
+  bd.className = 'ojt-req-overlay';
   bd.innerHTML = `
-    <div class="modal modal--visible ojt-tracker-modal ojt-logout-modal" style="max-width:440px;">
-      <div class="modal__header">
-        <h3 class="modal__title" style="display:flex;align-items:center;gap:8px;color:#d97706;">${icon('logOut', 20)} ${esc(sessionLabel)}</h3>
-        <button class="modal__close" id="lo-close">${icon('x', 20)}</button>
+    <div class="ojt-req-modal" style="max-width:480px;" role="dialog" aria-modal="true" aria-labelledby="lo-modal-title">
+      <!-- Modal Header -->
+      <div class="ojt-req-header" style="background:linear-gradient(135deg, rgba(217,119,6,0.08) 0%, rgba(239,68,68,0.06) 100%);">
+        <div class="ojt-req-title-wrap">
+          <div class="ojt-req-header-icon" style="background:#fef3c7;color:#d97706;border:1px solid #fde68a;">
+            ${icon('logOut', 22)}
+          </div>
+          <div>
+            <h3 id="lo-modal-title" class="ojt-req-title">Time Out (${esc(sessionLabel)})</h3>
+            <div class="ojt-req-meta-pills">
+              <span class="ojt-req-meta-pill">${icon('building', 12)} ${esc(ojtContext?.company || 'Host Training Site')}</span>
+              <span class="ojt-req-meta-pill">${icon('clock', 12)} ${isMorning ? 'Lunch Break' : 'End of Day'}</span>
+            </div>
+          </div>
+        </div>
+        <button type="button" class="ojt-req-close-btn" id="lo-close" aria-label="Close dialog">
+          ${icon('x', 18)}
+        </button>
       </div>
-      <div class="modal__body">
-        <div style="padding:10px 14px;background:rgba(217,119,6,0.08);border-radius:var(--radius-md);margin-bottom:12px;font-size:0.83rem;color:#d97706;font-weight:600;">
-          ${icon('clock', 14)} ${infoText}
+
+      <div class="ojt-req-body" style="padding:18px 20px;">
+        <div style="padding:10px 14px;background:rgba(217,119,6,0.08);border:1px solid rgba(217,119,6,0.25);border-radius:10px;font-size:0.82rem;color:#b45309;line-height:1.45;display:flex;align-items:center;gap:8px;">
+          ${icon('clock', 16)}
+          <span>${infoText}</span>
         </div>
-        <div class="form-group">
-          <label class="form-label">Time Out *</label>
-          <input type="time" class="form-input" id="lo-time" value="${defaultTimeOut}" ${loggedIn24 ? `min="${loggedIn24}"` : ''} required />
-          <p id="lo-time-warning" class="text-xs" style="margin-top:5px;display:none;color:#ef4444;font-weight:600;"></p>
+
+        <div class="ojt-req-form-group">
+          <div class="ojt-req-label-row">
+            <label for="lo-time" class="ojt-req-label">
+              Time Out <span class="ojt-req-required-star">*</span>
+            </label>
+          </div>
+          <input type="time" class="ojt-req-input" id="lo-time" value="${defaultTimeOut}" ${loggedIn24 ? `min="${loggedIn24}"` : ''} required />
+          <p id="lo-time-warning" class="text-xs" style="margin-top:4px;display:none;color:#ef4444;font-weight:600;"></p>
         </div>
-        <div id="lo-geo-status" style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--bg-secondary);border:1px solid transparent;border-radius:var(--radius-md);margin-top:4px;">
-          ${icon('mapPin', 14)}
-          <span class="text-xs" id="lo-geo-label">Detecting your location…</span>
+
+        <!-- Location Geofence Status Banner -->
+        <div id="lo-geo-status" class="ojt-geo-status-banner ojt-geo-status-banner--detecting">
+          <div class="ojt-geo-status-content">
+            <div class="ojt-geo-status-icon">
+              ${icon('mapPin', 16)}
+            </div>
+            <div class="ojt-geo-status-texts">
+              <div class="ojt-geo-status-title" id="lo-geo-title">Detecting GPS Location…</div>
+              <div class="ojt-geo-status-desc" id="lo-geo-desc">Verifying your coordinates against host site</div>
+            </div>
+          </div>
+          <span id="lo-geo-badge" style="display:none;" class="ojt-geo-status-badge"></span>
         </div>
+
         <!-- Alert panel for GPS errors -->
-        <div id="lo-geo-fail-panel" style="display:none;margin-top:10px;padding:12px;background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.3);border-radius:var(--radius-md);">
-          <p style="font-size:0.78rem;font-weight:600;color:#ef4444;margin-bottom:6px;display:flex;align-items:center;gap:6px;">${icon('alertTriangle',13)} GPS Location Required</p>
-          <p style="font-size:0.72rem;color:var(--text-secondary);line-height:1.55;margin-bottom:10px;">GPS location is mandatory to record attendance. Please allow location permissions in your browser or device settings, then click <strong>Retry Location</strong>.</p>
-          <button class="btn btn--outline" id="lo-retry" type="button" style="font-size:0.76rem;padding:5px 14px;display:inline-flex;align-items:center;gap:6px;">${icon('refreshCcw',13)} Retry Location</button>
+        <div id="lo-geo-fail-panel" style="display:none;margin-top:10px;padding:12px;background:#fef2f2;border:1.5px solid #fecaca;border-radius:12px;">
+          <p style="font-size:0.8rem;font-weight:700;color:#dc2626;margin:0 0 4px;display:flex;align-items:center;gap:6px;">
+            ${icon('alertTriangle', 14)} GPS Location Required
+          </p>
+          <p style="font-size:0.74rem;color:#475569;line-height:1.45;margin:0 0 10px;">
+            GPS location is mandatory to record attendance. Please allow location permissions in your browser or device settings, then click <strong>Retry Location</strong>.
+          </p>
+          <button class="btn btn--outline btn--sm" id="lo-retry" type="button" style="font-size:0.75rem;padding:5px 12px;display:inline-flex;align-items:center;gap:5px;">
+            ${icon('refreshCcw', 13)} Retry Location
+          </button>
         </div>
+
         <div id="lo-evidence-container"></div>
-        <p class="text-xs text-secondary" style="display:flex;align-items:flex-start;gap:6px;margin-top:10px;padding:10px 12px;background:var(--color-info-bg);border:1px solid var(--color-info);border-radius:var(--radius-md);line-height:1.5;">
-          ${icon('mapPin', 13)} GPS location is verified against host site perimeter (100m). Out-of-range entries require photo proof & supervisor review.
-        </p>
+
+        <!-- Institutional Protocol Notice -->
+        <div class="ojt-protocol-card" style="margin-top:4px;">
+          <div class="ojt-protocol-header">
+            ${icon('shieldCheck', 15)}
+            <span>Geofence &amp; Escrow Governance</span>
+          </div>
+          <p class="ojt-protocol-body">
+            Attendance within the 100m site perimeter is auto-verified. Out-of-range entries require photo proof and are held in escrow for host company approval.
+          </p>
+        </div>
       </div>
-      <div class="modal__footer" style="flex-wrap:wrap;gap:8px;">
-        <button class="btn btn--outline" id="lo-cancel">Cancel</button>
-        <button class="btn btn--primary" id="lo-submit" disabled style="background:#d97706;border-color:#d97706;">${icon('checkCircle', 16)} Confirm ${esc(sessionLabel)}</button>
+
+      <div class="ojt-req-footer">
+        <button type="button" class="btn btn--outline" id="lo-cancel">Cancel</button>
+        <button type="button" class="btn btn--primary" id="lo-submit" disabled style="background:#d97706;border-color:#d97706;gap:6px;">
+          ${icon('checkCircle', 16)} Confirm ${esc(sessionLabel)}
+        </button>
       </div>
     </div>
   `;
   document.body.appendChild(bd);
 
   const geoBox    = bd.querySelector('#lo-geo-status');
-  const geoLabel  = bd.querySelector('#lo-geo-label');
+  const geoTitle  = bd.querySelector('#lo-geo-title');
+  const geoDesc   = bd.querySelector('#lo-geo-desc');
+  const geoBadge  = bd.querySelector('#lo-geo-badge');
   const submitBtn = bd.querySelector('#lo-submit');
   const failPanel = bd.querySelector('#lo-geo-fail-panel');
   const retryBtn  = bd.querySelector('#lo-retry');
   const timeInput = bd.querySelector('#lo-time');
   const warningEl = bd.querySelector('#lo-time-warning');
   const evidenceContainer = bd.querySelector('#lo-evidence-container');
+
+  function updateGeoStatus(state, title, desc, badgeText, badgeType) {
+    geoBox.className = `ojt-geo-status-banner ojt-geo-status-banner--${state}`;
+    if (geoTitle) geoTitle.textContent = title;
+    if (geoDesc) geoDesc.textContent = desc;
+    if (geoBadge) {
+      if (badgeText) {
+        geoBadge.textContent = badgeText;
+        geoBadge.className = `ojt-geo-status-badge ojt-geo-status-badge--${badgeType || 'valid'}`;
+        geoBadge.style.display = 'inline-block';
+      } else {
+        geoBadge.style.display = 'none';
+      }
+    }
+  }
 
   function normalizeOutTime(rawVal) {
     if (!rawVal) return rawVal;
@@ -3841,11 +4010,10 @@ function showLogOutModal(todayLog, sessionLabelOrOjt, ojtContextOrSuccess, onSuc
     if (evidenceContainer) evidenceContainer.innerHTML = '';
     submitBtn.disabled = true;
     failPanel.style.display = 'none';
-    geoBox.style.background = 'var(--bg-secondary)';
-    geoBox.style.border = '1px solid transparent';
-    geoLabel.innerHTML = 'Detecting your location…';
+    updateGeoStatus('detecting', 'Detecting GPS Location…', 'Verifying your coordinates against host site', null);
 
-    requestGeo(geoBox, geoLabel).then(result => {
+    const tempLabel = { textContent: '' };
+    requestGeo(geoBox, tempLabel).then(result => {
       geoResult = result;
       if (result && result.lat != null && result.lon != null) {
         const compLat = ojtContext?.companyLat != null ? Number(ojtContext.companyLat) : null;
@@ -3857,9 +4025,13 @@ function showLogOutModal(todayLog, sessionLabelOrOjt, ojtContextOrSuccess, onSuc
           computedDistance = Math.round(haversineMeters(result.lat, result.lon, compLat, compLon));
           if (computedDistance <= maxRadius) {
             isWithinGeofence = true;
-            geoBox.style.background = 'var(--color-success-bg, rgba(16,185,129,0.1))';
-            geoBox.style.border = '1px solid var(--color-success, #10b981)';
-            geoLabel.innerHTML = `<span style="color:var(--color-success,#10b981);font-weight:700;">Within OJT site radius</span> <span style="color:var(--text-secondary);font-size:0.75rem;">(${computedDistance}m from ${esc(compName)})</span>`;
+            updateGeoStatus(
+              'inside',
+              'Within OJT Site Radius',
+              `${computedDistance}m from ${compName} (limit: ${maxRadius}m)`,
+              'Verified Location',
+              'valid'
+            );
             failPanel.style.display = 'none';
             submitBtn.style.background = '#d97706';
             submitBtn.style.borderColor = '#d97706';
@@ -3868,9 +4040,17 @@ function showLogOutModal(todayLog, sessionLabelOrOjt, ojtContextOrSuccess, onSuc
             checkTimeValidity(true);
           } else {
             isWithinGeofence = false;
-            geoBox.style.background = 'rgba(217,119,6,0.08)';
-            geoBox.style.border = '1px solid rgba(217,119,6,0.4)';
-            geoLabel.innerHTML = `<span style="color:#d97706;font-weight:700;">Outside OJT Site Radius</span> <span style="color:#d97706;font-size:0.75rem;">(${computedDistance}m away · limit: ${maxRadius}m)</span>`;
+            const distLabel = computedDistance >= 1000
+              ? `${(computedDistance / 1000).toFixed(1)} km`
+              : `${computedDistance} m`;
+
+            updateGeoStatus(
+              'outside',
+              'Outside OJT Site Radius',
+              `${distLabel} away from host premises (limit: ${maxRadius}m)`,
+              'Escrow Review Required',
+              'escrow'
+            );
             failPanel.style.display = 'none';
 
             submitBtn.disabled = true;
@@ -3895,22 +4075,12 @@ function showLogOutModal(todayLog, sessionLabelOrOjt, ojtContextOrSuccess, onSuc
           }
         } else {
           isWithinGeofence = true;
+          updateGeoStatus('inside', 'Coordinates Optional', 'Host has no geofence boundary configured', 'Active', 'valid');
           failPanel.style.display = 'none';
           checkTimeValidity(true);
         }
       } else {
         isWithinGeofence = false;
-        failPanel.innerHTML = `
-          <p style="font-size:0.78rem;font-weight:600;color:#ef4444;margin-bottom:6px;display:flex;align-items:center;gap:6px;">
-            ${icon('alertTriangle', 13)} GPS Location Required
-          </p>
-          <p style="font-size:0.72rem;color:var(--text-secondary);line-height:1.55;margin-bottom:10px;">
-            GPS location is mandatory to verify your attendance against the host site perimeter. Please allow location permissions in your browser or device settings, then click <strong>Retry Location</strong>.
-          </p>
-          <button class="btn btn--outline" id="lo-retry" type="button" style="font-size:0.76rem;padding:5px 14px;display:inline-flex;align-items:center;gap:6px;">
-            ${icon('refreshCcw', 13)} Retry Location
-          </button>
-        `;
         failPanel.style.display = 'block';
         failPanel.querySelector('#lo-retry')?.addEventListener('click', attemptGeo);
         submitBtn.disabled = true;
@@ -3949,7 +4119,6 @@ function showLogOutModal(todayLog, sessionLabelOrOjt, ojtContextOrSuccess, onSuc
     onSuccess(timeVal, geoResult.lat, geoResult.lon, evidenceData);
   });
 }
-
 
 
 // ── Log Detail Modal (calendar day click) ─────────────────────────────────────
