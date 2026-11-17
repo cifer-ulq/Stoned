@@ -235,3 +235,15 @@ export function storageUrl(path) {
   const clean = path.replace(/^\//, '');
   return clean.startsWith('storage/') ? `/${clean}` : `/storage/${clean}`;
 }
+
+export function directStorageUrl(path) {
+  if (!path) return '';
+  if (typeof path !== 'string') return '';
+  if (path.startsWith('data:') || path.startsWith('blob:')) return path;
+  if (path.startsWith('http://') || path.startsWith('https://')) return path;
+  const clean = path.replace(/^\//, '');
+  const storagePath = clean.startsWith('storage/') ? clean : `storage/${clean}`;
+  return `http://localhost:8000/${storagePath}`;
+}
+
+export const resolveStorageUrl = storageUrl;

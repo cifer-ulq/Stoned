@@ -5,7 +5,7 @@
  */
 
 import { icon } from '../components/icons.js';
-import { apiGet, apiPost, apiCache, storageUrl } from '../api/client.js';
+import { apiGet, apiPost, apiCache, storageUrl, directStorageUrl } from '../api/client.js';
 
 export async function renderOjtTrainees(container) {
   // State
@@ -2595,6 +2595,7 @@ function openAttendanceReviewModal(log, studentInfo, onComplete) {
   const dist = log.distanceMeters != null ? `${log.distanceMeters} meters away from host training site` : 'Outside geofence zone';
 
   const imgUrl = log.proofImage ? storageUrl(log.proofImage) : null;
+  const directUrl = log.proofImage ? directStorageUrl(log.proofImage) : null;
 
   bd.innerHTML = `
     <div class="modal modal--visible" style="max-width:540px;width:100%;border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);">
@@ -2669,11 +2670,15 @@ function openAttendanceReviewModal(log, studentInfo, onComplete) {
         <div style="margin-bottom:14px;">
           <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:6px;">Live Camera Photo Proof</div>
           ${imgUrl ? `
-            <div style="text-align:center;background:#0F172A;border-radius:8px;padding:8px;overflow:hidden;">
-              <a href="${escapeHtml(imgUrl)}" target="_blank" title="Click to view full size">
-                <img src="${escapeHtml(imgUrl)}" alt="Live Proof" style="max-width:100%;max-height:280px;border-radius:6px;object-fit:contain;display:block;margin:0 auto;" />
+            <div class="js-proof-box" style="text-align:center;background:#0F172A;border-radius:8px;padding:8px;overflow:hidden;min-height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+              <a href="${escapeHtml(imgUrl)}" target="_blank" title="Click to view full size" class="js-proof-link" style="display:block;width:100%;">
+                <img src="${escapeHtml(imgUrl)}" alt="Live Proof" class="js-proof-img" data-direct="${escapeHtml(directUrl || '')}" style="max-width:100%;max-height:280px;border-radius:6px;object-fit:contain;display:block;margin:0 auto;" />
               </a>
-              <div style="font-size:0.68rem;color:#94A3B8;margin-top:6px;">Click photo to open full resolution</div>
+              <div class="js-proof-fallback" style="display:none;padding:14px;color:#CBD5E1;font-size:0.75rem;flex-direction:column;align-items:center;gap:8px;">
+                <span style="color:#FCA5A5;font-weight:600;">Image proof preview unavailable</span>
+                ${directUrl ? `<a href="${escapeHtml(directUrl)}" target="_blank" style="color:#60A5FA;text-decoration:underline;font-size:0.72rem;">Open full image directly ↗</a>` : ''}
+              </div>
+              <div class="js-proof-caption" style="font-size:0.68rem;color:#94A3B8;margin-top:6px;">Click photo to open full resolution</div>
             </div>
           ` : `
             <div style="padding:20px;text-align:center;background:#F8FAFC;border:1px dashed #CBD5E1;border-radius:8px;color:var(--text-tertiary);font-size:0.78rem;">
@@ -2713,6 +2718,28 @@ function openAttendanceReviewModal(log, studentInfo, onComplete) {
   `;
 
   document.body.appendChild(bd);
+
+  const proofImg = bd.querySelector('.js-proof-img');
+  if (proofImg) {
+    proofImg.addEventListener('error', function() {
+      const direct = this.dataset.direct;
+      if (direct && !this.dataset.retried && this.src !== direct) {
+        this.dataset.retried = '1';
+        this.src = direct;
+        const link = this.closest('.js-proof-box')?.querySelector('.js-proof-link');
+        if (link) link.href = direct;
+      } else {
+        this.style.display = 'none';
+        const box = this.closest('.js-proof-box');
+        if (box) {
+          const fb = box.querySelector('.js-proof-fallback');
+          if (fb) fb.style.display = 'flex';
+          const caption = box.querySelector('.js-proof-caption');
+          if (caption) caption.style.display = 'none';
+        }
+      }
+    });
+  }
 
   const closeReviewModal = () => bd.remove();
   bd.querySelector('#arm-close-btn')?.addEventListener('click', closeReviewModal);

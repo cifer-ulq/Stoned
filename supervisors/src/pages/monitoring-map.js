@@ -4,7 +4,7 @@
    =========================== */
 
 import { icon } from '../components/icons.js';
-import { apiFetch, apiGet, storageUrl } from '../api/client.js';
+import { apiFetch, apiGet, storageUrl, directStorageUrl } from '../api/client.js';
 
 /* ── Module state ── */
 let mapInstance   = null;
@@ -1044,6 +1044,7 @@ function openSupervisorProofModal(log) {
     : `<span style="background:#FEF2F2;color:#B91C1C;border:1px solid #FECACA;font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;">Rejected</span>`;
 
   const imgUrl = log.proofImage ? storageUrl(log.proofImage) : null;
+  const directUrl = log.proofImage ? directStorageUrl(log.proofImage) : null;
 
   bd.innerHTML = `
     <div class="modal modal--visible" style="max-width:480px;width:100%;border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);">
@@ -1083,11 +1084,15 @@ function openSupervisorProofModal(log) {
         <div>
           <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:6px;">Live Camera Photo Proof</div>
           ${imgUrl ? `
-            <div style="text-align:center;background:#0F172A;border-radius:8px;padding:8px;">
-              <a href="${escapeHtml(imgUrl)}" target="_blank" title="Click to view full image">
-                <img src="${escapeHtml(imgUrl)}" alt="Live Proof" style="max-width:100%;max-height:260px;border-radius:6px;object-fit:contain;display:block;margin:0 auto;" />
+            <div class="js-sup-proof-box" style="text-align:center;background:#0F172A;border-radius:8px;padding:8px;min-height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;">
+              <a href="${escapeHtml(imgUrl)}" target="_blank" title="Click to view full image" class="js-sup-proof-link" style="display:block;width:100%;">
+                <img src="${escapeHtml(imgUrl)}" alt="Live Proof" class="js-sup-proof-img" data-direct="${escapeHtml(directUrl || '')}" style="max-width:100%;max-height:260px;border-radius:6px;object-fit:contain;display:block;margin:0 auto;" />
               </a>
-              <div style="font-size:10px;color:#94A3B8;margin-top:6px;">Click photo to open full resolution in new tab</div>
+              <div class="js-sup-proof-fallback" style="display:none;padding:14px;color:#CBD5E1;font-size:11px;flex-direction:column;align-items:center;gap:6px;">
+                <span style="color:#FCA5A5;font-weight:600;">Image proof preview unavailable</span>
+                ${directUrl ? `<a href="${escapeHtml(directUrl)}" target="_blank" style="color:#60A5FA;text-decoration:underline;font-size:11px;">Open full image directly ↗</a>` : ''}
+              </div>
+              <div class="js-sup-proof-caption" style="font-size:10px;color:#94A3B8;margin-top:6px;">Click photo to open full resolution in new tab</div>
             </div>
           ` : `
             <div style="padding:20px;text-align:center;background:#F8FAFC;border:1px dashed #CBD5E1;border-radius:8px;color:var(--text-tertiary);font-size:12px;">
@@ -1103,6 +1108,28 @@ function openSupervisorProofModal(log) {
   `;
 
   document.body.appendChild(bd);
+
+  const proofImg = bd.querySelector('.js-sup-proof-img');
+  if (proofImg) {
+    proofImg.addEventListener('error', function() {
+      const direct = this.dataset.direct;
+      if (direct && !this.dataset.retried && this.src !== direct) {
+        this.dataset.retried = '1';
+        this.src = direct;
+        const link = this.closest('.js-sup-proof-box')?.querySelector('.js-sup-proof-link');
+        if (link) link.href = direct;
+      } else {
+        this.style.display = 'none';
+        const box = this.closest('.js-sup-proof-box');
+        if (box) {
+          const fb = box.querySelector('.js-sup-proof-fallback');
+          if (fb) fb.style.display = 'flex';
+          const caption = box.querySelector('.js-sup-proof-caption');
+          if (caption) caption.style.display = 'none';
+        }
+      }
+    });
+  }
   const close = () => bd.remove();
   bd.querySelector('#sup-proof-close')?.addEventListener('click', close);
   bd.querySelector('#sup-proof-done')?.addEventListener('click', close);
