@@ -2498,10 +2498,26 @@ function openCompanyEmergencyClearanceModal(emergency, trainee, onComplete) {
 /**
  * Render a compact live attendance badge for today's DTR state on a trainee row or dossier
  */
+/**
+ * Format meters distance into clean human-readable distance (m or km)
+ */
+function formatDtrDistance(meters) {
+  if (meters == null || meters === '') return '';
+  const m = Math.round(Number(meters));
+  if (isNaN(m)) return '';
+  if (m >= 1000) {
+    return `${(m / 1000).toFixed(1)} km`;
+  }
+  return `${m}m`;
+}
+
+/**
+ * Render a compact live attendance badge for today's DTR state on a trainee row or dossier
+ */
 function renderTodayDtrBadge(todayDtr) {
   if (!todayDtr || !todayDtr.logged_today) {
     return `
-      <span style="display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:99px;font-size:0.68rem;font-weight:600;background:#F1F5F9;color:#64748B;border:1px solid #E2E8F0;" title="No attendance logged yet today">
+      <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:99px;font-size:0.71rem;font-weight:600;background:#F1F5F9;color:#64748B;border:1px solid #E2E8F0;" title="No attendance logged yet today">
         <span style="width:6px;height:6px;border-radius:50%;background:#94A3B8;"></span>
         ${escapeHtml(todayDtr?.label || 'No Log Today')}
       </span>
@@ -2509,14 +2525,15 @@ function renderTodayDtrBadge(todayDtr) {
   }
 
   const state = todayDtr.session_state;
-  const distSuffix = todayDtr.distance_meters != null ? ` (${todayDtr.distance_meters}m)` : '';
+  const dist = formatDtrDistance(todayDtr.distance_meters);
+  const distSuffix = dist ? ` (${dist})` : '';
   const locPill = todayDtr.location_validity === 'In Site'
-    ? ` &bull; In Site${distSuffix}`
-    : (todayDtr.location_validity === 'Too Far' ? ` &bull; Too Far${distSuffix}` : '');
+    ? ` • In Site${distSuffix}`
+    : (todayDtr.location_validity === 'Too Far' ? ` • Too Far${distSuffix}` : '');
 
   if (state === 'absent') {
     return `
-      <span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:0.68rem;font-weight:700;background:#FEF2F2;color:#DC2626;border:1px solid #FECACA;" title="Marked as unexcused absence for today">
+      <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:99px;font-size:0.71rem;font-weight:700;background:#FEF2F2;color:#DC2626;border:1px solid #FECACA;" title="Marked as unexcused absence for today">
         ${icon('x', 11)}
         ${escapeHtml(todayDtr.label || 'Absent Today')}
       </span>
@@ -2525,7 +2542,7 @@ function renderTodayDtrBadge(todayDtr) {
 
   if (state === 'excused') {
     return `
-      <span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:0.68rem;font-weight:700;background:#F1F5F9;color:#475569;border:1px solid #CBD5E1;" title="Absence excused for today">
+      <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:99px;font-size:0.71rem;font-weight:700;background:#F1F5F9;color:#475569;border:1px solid #CBD5E1;" title="Absence excused for today">
         ${icon('shieldCheck', 11)}
         ${escapeHtml(todayDtr.label || 'Excused Today')}
       </span>
@@ -2534,7 +2551,7 @@ function renderTodayDtrBadge(todayDtr) {
 
   if (state === 'half_day') {
     return `
-      <span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:0.68rem;font-weight:700;background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE;" title="Half-day attendance recorded today">
+      <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:99px;font-size:0.71rem;font-weight:700;background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE;" title="Half-day attendance recorded today">
         ${icon('clock', 11)}
         ${escapeHtml(todayDtr.label)}${escapeHtml(locPill)}
       </span>
@@ -2543,7 +2560,7 @@ function renderTodayDtrBadge(todayDtr) {
 
   if (state === 'in_morning' || state === 'in_afternoon') {
     return `
-      <span style="display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:99px;font-size:0.68rem;font-weight:700;background:#ECFDF5;color:#047857;border:1px solid #A7F3D0;" title="Student is currently timed in today">
+      <span style="display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:99px;font-size:0.71rem;font-weight:700;background:#ECFDF5;color:#047857;border:1px solid #A7F3D0;" title="Student is currently timed in today">
         <span style="width:6px;height:6px;border-radius:50%;background:#10B981;box-shadow:0 0 0 2px rgba(16,185,129,0.25);"></span>
         ${escapeHtml(todayDtr.label)}${escapeHtml(locPill)}
       </span>
@@ -2552,7 +2569,7 @@ function renderTodayDtrBadge(todayDtr) {
 
   if (state === 'morning_done') {
     return `
-      <span style="display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:99px;font-size:0.68rem;font-weight:700;background:#FFFBEB;color:#B45309;border:1px solid #FDE68A;" title="Morning session completed; on lunch break">
+      <span style="display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:99px;font-size:0.71rem;font-weight:700;background:#FFFBEB;color:#B45309;border:1px solid #FDE68A;" title="Morning session completed; on lunch break">
         <span style="width:6px;height:6px;border-radius:50%;background:#F59E0B;"></span>
         ${escapeHtml(todayDtr.label)}${escapeHtml(locPill)}
       </span>
@@ -2560,16 +2577,13 @@ function renderTodayDtrBadge(todayDtr) {
   }
 
   return `
-    <span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:0.68rem;font-weight:700;background:#F0FDF4;color:#15803D;border:1px solid #BBF7D0;" title="Attendance completed for today">
+    <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:99px;font-size:0.71rem;font-weight:700;background:#F0FDF4;color:#15803D;border:1px solid #BBF7D0;" title="Attendance completed for today">
       ${icon('checkCircle', 11)}
       ${escapeHtml(todayDtr.label)}${escapeHtml(locPill)}
     </span>
   `;
 }
 
-/**
- * Review Attendance Proof Modal for Off-Site Geofence Exemptions
- */
 function openAttendanceReviewModal(log, studentInfo, onComplete) {
   const existing = document.getElementById('company-attendance-review-modal');
   if (existing) existing.remove();
@@ -2806,8 +2820,8 @@ function openAttendanceReviewModal(log, studentInfo, onComplete) {
 }
 
 /**
- * Company Trainee Daily Time Record (DTR) Modal — Table-only view (No Map)
- * Displays Morning In/Out, Afternoon In/Out, Hours Rendered, Status, and Location Validity/Distance
+ * Company Trainee Daily Time Record (DTR) Modal — Redesigned Professional Table View
+ * Clean Philippine Standard Form 48 / Corporate DTR format with paired Morning & Afternoon sessions
  */
 async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
   const existing = document.getElementById('company-trainee-dtr-modal-overlay');
@@ -2818,16 +2832,17 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
   backdrop.className = 'modal-backdrop modal-backdrop--visible';
   backdrop.style.cssText = `
     position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px);
+    background: rgba(15, 23, 42, 0.72); backdrop-filter: blur(5px);
     z-index: 99999; display: flex; align-items: center; justify-content: center;
-    padding: 20px; box-sizing: border-box; animation: fadeIn 0.15s ease-out;
+    padding: 16px; box-sizing: border-box; animation: fadeIn 0.15s ease-out;
   `;
 
   backdrop.innerHTML = `
-    <div class="modal modal--visible" style="max-width:1020px;width:100%;border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);">
-      <div style="padding:40px;text-align:center;">
-        <div class="skeleton" style="height:28px;width:280px;margin:0 auto 14px;"></div>
-        <div class="skeleton skeleton--card" style="height:280px;"></div>
+    <div class="modal modal--visible co-dtr-modal" style="max-width:1140px;width:95vw;border-radius:16px;overflow:hidden;background:#fff;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);">
+      <div style="padding:48px 32px;text-align:center;">
+        <div class="skeleton" style="height:32px;width:340px;margin:0 auto 16px;border-radius:8px;"></div>
+        <div class="skeleton" style="height:76px;width:100%;margin-bottom:16px;border-radius:12px;"></div>
+        <div class="skeleton skeleton--card" style="height:280px;border-radius:12px;"></div>
       </div>
     </div>
   `;
@@ -2858,13 +2873,13 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
       renderModalShell();
     } catch (err) {
       backdrop.innerHTML = `
-        <div class="modal modal--visible" style="max-width:480px;width:100%;border-radius:14px;overflow:hidden;background:#fff;padding:28px;text-align:center;">
-          <div style="width:48px;height:48px;border-radius:50%;background:#FEE2E2;color:#DC2626;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
-            ${icon('alertTriangle', 24)}
+        <div class="modal modal--visible" style="max-width:480px;width:100%;border-radius:16px;overflow:hidden;background:#fff;padding:32px 28px;text-align:center;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);">
+          <div style="width:52px;height:52px;border-radius:50%;background:#FEE2E2;color:#DC2626;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
+            ${icon('alertTriangle', 26)}
           </div>
-          <h3 style="margin:0 0 6px;font-size:1.05rem;font-weight:700;color:var(--text-primary);">Could Not Load DTR</h3>
-          <p style="margin:0 0 18px;font-size:0.84rem;color:var(--text-secondary);">${escapeHtml(err.message || 'Failed to fetch time logs.')}</p>
-          <button type="button" class="btn btn--outline" id="dtr-err-close-btn">Close</button>
+          <h3 style="margin:0 0 6px;font-size:1.1rem;font-weight:800;color:var(--text-primary);">Could Not Load DTR</h3>
+          <p style="margin:0 0 20px;font-size:0.84rem;color:var(--text-secondary);line-height:1.5;">${escapeHtml(err.message || 'Failed to fetch attendance time records.')}</p>
+          <button type="button" class="btn btn--outline" id="dtr-err-close-btn" style="min-width:110px;">Close</button>
         </div>
       `;
       backdrop.querySelector('#dtr-err-close-btn')?.addEventListener('click', close);
@@ -2877,11 +2892,11 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
       if (validityFilter === 'in_site' && log.locationValidity !== 'In Site') return false;
       if (validityFilter === 'too_far' && log.locationValidity !== 'Too Far') return false;
       if (validityFilter === 'absent' && log.status !== 'absent') return false;
-      if (validityFilter === 'no_gps' && (log.locationValidity === 'In Site' || log.locationValidity === 'Too Far')) return false;
+      if (validityFilter === 'no_gps' && (log.locationValidity === 'In Site' || log.locationValidity === 'Too Far' || log.status === 'absent')) return false;
       if (validityFilter === 'pending' && log.approvalStatus !== 'pending_company') return false;
 
       if (q) {
-        const hay = `${log.dayLabel || ''} ${log.date || ''} ${log.rawDate || ''} ${log.locationValidity || ''} ${log.siteLocation || ''} ${log.outOfRangeReason || ''}`.toLowerCase();
+        const hay = `${log.dayLabel || ''} ${log.date || ''} ${log.rawDate || ''} ${log.locationValidity || ''} ${log.siteLocation || ''} ${log.outOfRangeReason || ''} ${log.status || ''} ${log.hours || ''}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
@@ -2890,50 +2905,72 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
 
   function renderLocationCell(log) {
     if (log.status === 'absent') {
-      return `<span style="color:#94A3B8;font-size:0.75rem;">No Attendance</span>`;
+      return `<div class="co-dtr-muted-loc"><span class="co-dtr-muted-dot"></span> No Attendance</div>`;
     }
     if (log.status === 'excused') {
-      return `<span style="color:#475569;font-size:0.73rem;font-weight:600;" title="${escapeHtml(log.outOfRangeReason || 'Excused')}">${escapeHtml(log.outOfRangeReason || 'Excused')}</span>`;
+      return `<div class="co-dtr-excused-loc" title="${escapeHtml(log.outOfRangeReason || 'Absence Excused')}">${icon('shieldCheck', 12)} <span>${escapeHtml(log.outOfRangeReason || 'Absence Excused')}</span></div>`;
     }
+
     const val = log.locationValidity;
-    const dist = log.distanceMeters != null ? `${log.distanceMeters}m` : '';
+    const dist = formatDtrDistance(log.distanceMeters);
     let badgeHtml = '';
 
     if (log.hasGeofenceExemption) {
       badgeHtml = `
-        <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:99px;font-size:0.72rem;font-weight:700;background:#FFFBEB;color:#B45309;border:1px solid #FDE68A;">
-          ${icon('camera', 11)} Off-Site (${dist || 'Exemption'})
+        <span class="co-dtr-loc-pill co-dtr-loc-pill--exemption" title="Punch outside geofence perimeter with exemption proof">
+          ${icon('camera', 11)} Off-Site${dist ? ` (${dist})` : ''}
         </span>`;
     } else if (val === 'In Site') {
       badgeHtml = `
-        <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:99px;font-size:0.72rem;font-weight:700;background:#ECFDF5;color:#047857;border:1px solid #A7F3D0;">
+        <span class="co-dtr-loc-pill co-dtr-loc-pill--in-site" title="Validated within host company geofence (100m perimeter)">
           ${icon('check', 11)} In Site${dist ? ` (${dist})` : ''}
         </span>`;
     } else if (val === 'Too Far') {
       badgeHtml = `
-        <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:99px;font-size:0.72rem;font-weight:700;background:#FEF2F2;color:#B91C1C;border:1px solid #FECACA;">
+        <span class="co-dtr-loc-pill co-dtr-loc-pill--too-far" title="Student logged punch outside geofence perimeter">
           ${icon('alertTriangle', 11)} Too Far${dist ? ` (${dist})` : ''}
         </span>`;
     } else {
       badgeHtml = `
-        <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:99px;font-size:0.72rem;font-weight:600;background:#F1F5F9;color:#64748B;border:1px solid #E2E8F0;">
+        <span class="co-dtr-loc-pill co-dtr-loc-pill--no-gps" title="No GPS coordinates captured">
           No GPS
         </span>`;
     }
 
+    // Short location display (truncate cleanly, full in tooltip)
+    let locText = '';
+    if (log.siteLocation) {
+      const rawLoc = log.siteLocation.trim();
+      const parts = rawLoc.split(',').map(s => s.trim()).filter(Boolean);
+      const shortName = parts.length > 2 ? `${parts[0]}, ${parts[1]}` : rawLoc;
+      locText = `<div class="co-dtr-loc-name" title="${escapeHtml(rawLoc)}">${escapeHtml(shortName)}</div>`;
+    }
+
+    // Coordinates micro-pill
+    let coordsHtml = '';
     const inCoords = (log.inLat != null && log.inLon != null)
-      ? `In: ${Number(log.inLat).toFixed(5)}, ${Number(log.inLon).toFixed(5)}`
+      ? `In: ${Number(log.inLat).toFixed(4)}, ${Number(log.inLon).toFixed(4)}`
       : '';
     const outCoords = (log.outLat != null && log.outLon != null)
-      ? `Out: ${Number(log.outLat).toFixed(5)}, ${Number(log.outLon).toFixed(5)}`
+      ? `Out: ${Number(log.outLat).toFixed(4)}, ${Number(log.outLon).toFixed(4)}`
       : '';
-    const coordsLine = [inCoords, outCoords].filter(Boolean).join(' · ');
+    const coordsTooltip = [inCoords, outCoords].filter(Boolean).join(' · ');
+
+    if (coordsTooltip) {
+      coordsHtml = `
+        <div class="co-dtr-coords-pill" title="Punch Coordinates: ${escapeHtml(coordsTooltip)}">
+          ${icon('mapPin', 9)} <span>${escapeHtml(inCoords || outCoords)}</span>
+        </div>
+      `;
+    }
 
     return `
-      <div style="display:flex;flex-direction:column;gap:3px;align-items:flex-start;">
-        ${badgeHtml}
-        ${log.siteLocation ? `<span style="font-size:0.7rem;color:var(--text-secondary);font-weight:500;">${escapeHtml(log.siteLocation)}</span>` : ''}
-        ${coordsLine ? `<span style="font-size:0.66rem;font-family:monospace;color:var(--text-tertiary);">${escapeHtml(coordsLine)}</span>` : ''}
+      <div class="co-dtr-loc-cell">
+        <div class="co-dtr-loc-cell__top">
+          ${badgeHtml}
+          ${coordsHtml}
+        </div>
+        ${locText}
       </div>
     `;
   }
@@ -2944,77 +2981,92 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
     const isApprovedExemption = (log.approvalStatus || '') === 'approved' && log.hasGeofenceExemption;
 
     if (isPending) {
-      return `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:0.7rem;font-weight:700;background:#FFFBEB;color:#B45309;border:1px solid #FDE68A;" title="Punch outside geofence perimeter. Awaiting your approval.">
+      return `<span class="co-dtr-status-badge co-dtr-status-badge--pending" title="Punch outside geofence perimeter. Awaiting supervisor review.">
         ${icon('alertTriangle', 11)} Pending Review
       </span>`;
     }
     if (isRejected) {
-      return `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:0.7rem;font-weight:700;background:#FEF2F2;color:#B91C1C;border:1px solid #FECACA;" title="${escapeHtml(log.rejectionReason || 'Rejected by supervisor')}">
+      return `<span class="co-dtr-status-badge co-dtr-status-badge--rejected" title="${escapeHtml(log.rejectionReason || 'Rejected by supervisor')}">
         ${icon('x', 11)} Rejected
       </span>`;
     }
     if (isApprovedExemption) {
-      return `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:0.7rem;font-weight:700;background:#F0FDF4;color:#15803D;border:1px solid #BBF7D0;" title="Exemption approved by company">
+      return `<span class="co-dtr-status-badge co-dtr-status-badge--approved" title="Exemption approved by company">
         ${icon('checkCircle', 11)} Approved (Off-site)
       </span>`;
     }
 
     const st = (log.status || '').toLowerCase();
     if (st === 'absent') {
-      return `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:0.7rem;font-weight:700;background:#FEF2F2;color:#B91C1C;border:1px solid #FECACA;">
+      return `<span class="co-dtr-status-badge co-dtr-status-badge--absent">
         ${icon('x', 11)} Absent
       </span>`;
     }
     if (st === 'half_day_am') {
-      return `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:0.7rem;font-weight:700;background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE;">
+      return `<span class="co-dtr-status-badge co-dtr-status-badge--info">
         Half Day (AM)
       </span>`;
     }
     if (st === 'half_day_pm') {
-      return `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:0.7rem;font-weight:700;background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE;">
+      return `<span class="co-dtr-status-badge co-dtr-status-badge--info">
         Half Day (PM)
       </span>`;
     }
     if (st === 'excused') {
-      return `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:0.7rem;font-weight:700;background:#F1F5F9;color:#475569;border:1px solid #E2E8F0;" title="${escapeHtml(log.outOfRangeReason || 'Absence excused')}">
-        ${icon('checkCircle', 11)} Excused
+      return `<span class="co-dtr-status-badge co-dtr-status-badge--excused" title="${escapeHtml(log.outOfRangeReason || 'Absence excused')}">
+        ${icon('shieldCheck', 11)} Excused
       </span>`;
     }
 
     const isOngoing = (log.morningIn && !log.morningOut && !log.afternoonIn) || (log.afternoonIn && !log.afternoonOut) || (log.timeIn && !log.timeOut);
 
     if (isOngoing) {
-      return `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:0.7rem;font-weight:700;background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE;">In Session</span>`;
+      return `<span class="co-dtr-status-badge co-dtr-status-badge--live">
+        <span class="co-dtr-live-pulse-dot"></span> In Session
+      </span>`;
     }
     if (st === 'valid' || log.locationValidity === 'In Site') {
-      return `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:0.7rem;font-weight:700;background:#F0FDF4;color:#15803D;border:1px solid #BBF7D0;">Valid</span>`;
+      return `<span class="co-dtr-status-badge co-dtr-status-badge--valid">
+        ${icon('checkCircle', 11)} Valid
+      </span>`;
     }
     if (st === 'too far' || log.locationValidity === 'Too Far') {
-      return `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:0.7rem;font-weight:700;background:#FEF2F2;color:#B91C1C;border:1px solid #FECACA;">Out of Range</span>`;
+      return `<span class="co-dtr-status-badge co-dtr-status-badge--out-of-range">
+        ${icon('alertTriangle', 11)} Out of Range
+      </span>`;
     }
-    return `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:0.7rem;font-weight:600;background:#F8FAFC;color:#475569;border:1px solid #E2E8F0;">${escapeHtml(log.status || 'Logged')}</span>`;
+    return `<span class="co-dtr-status-badge co-dtr-status-badge--neutral">${escapeHtml(log.status || 'Logged')}</span>`;
   }
 
   function renderTableRowsHtml(rows) {
     if (!rows.length) {
+      const isFiltered = (searchFilter.trim() !== '' || validityFilter !== 'all');
       return `
         <tr>
-          <td colspan="9" style="padding:42px 20px;text-align:center;color:var(--text-secondary);">
-            <div style="width:42px;height:42px;border-radius:50%;background:rgba(0,89,48,0.06);color:var(--color-primary, #005930);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">
-              ${icon('clock', 20)}
+          <td colspan="9" class="co-dtr-empty-state">
+            <div class="co-dtr-empty-icon">
+              ${icon('calendar', 22)}
             </div>
-            <div style="font-weight:700;font-size:0.9rem;color:var(--text-primary);margin-bottom:3px;">No DTR attendance records found</div>
-            <div style="font-size:0.78rem;color:var(--text-secondary);">Time-in and time-out entries will appear here automatically as the trainee logs attendance.</div>
+            <div class="co-dtr-empty-title">${isFiltered ? 'No records match your filter criteria' : 'No DTR attendance records found'}</div>
+            <div class="co-dtr-empty-desc">${isFiltered ? 'Try clearing your search query or switching location filters.' : 'Time-in and time-out entries will appear here automatically when the trainee logs attendance.'}</div>
+            ${isFiltered ? `
+              <button type="button" class="btn btn--outline btn--xs" id="dtr-empty-reset-btn" style="gap:4px;margin-top:4px;">
+                ${icon('refreshCw', 11)} Reset Filters
+              </button>
+            ` : ''}
           </td>
         </tr>
       `;
     }
+
+    const todayStr = new Date().toISOString().slice(0, 10);
 
     return rows.map(log => {
       const isAbsent = log.status === 'absent';
       const isExcused = log.status === 'excused';
       const isHalfDayAm = log.status === 'half_day_am';
       const isHalfDayPm = log.status === 'half_day_pm';
+      const isToday = (log.rawDate === todayStr);
 
       const mIn = isAbsent || isExcused || isHalfDayPm ? null : (log.morningIn || (!log.afternoonIn && log.timeIn ? log.timeIn : null));
       const mOut = isAbsent || isExcused || isHalfDayPm ? null : (log.morningOut || null);
@@ -3022,30 +3074,30 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
       const aOut = isAbsent || isExcused || isHalfDayAm ? null : (log.afternoonOut || (!log.morningIn && !log.afternoonIn && log.timeOut ? log.timeOut : null));
 
       const mInHtml = mIn
-        ? `<span style="font-weight:600;color:#0F172A;">${escapeHtml(mIn)}</span>`
-        : `<span style="color:#94A3B8;">—</span>`;
+        ? `<span class="co-dtr-time">${escapeHtml(mIn)}</span>`
+        : `<span class="co-dtr-time-empty">&mdash;</span>`;
 
       const mOutHtml = mOut
-        ? `<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
-             <span style="font-weight:600;color:#0F172A;">${escapeHtml(mOut)}</span>
-             ${log.autoMorningTimeout ? `<span style="font-size:0.63rem;font-weight:700;padding:1px 5px;border-radius:4px;background:#FEF3C7;color:#92400E;" title="Automatically closed at lunch break">Auto 12:00</span>` : ''}
+        ? `<div class="co-dtr-time-wrap">
+             <span class="co-dtr-time">${escapeHtml(mOut)}</span>
+             ${log.autoMorningTimeout ? `<span class="co-dtr-auto-tag" title="Automatically closed at lunch break">Auto 12:00</span>` : ''}
            </div>`
         : (mIn && !aIn
-          ? `<span style="font-size:0.72rem;font-weight:700;color:#059669;background:#ECFDF5;padding:2px 7px;border-radius:99px;">Active (AM)</span>`
-          : `<span style="color:#94A3B8;">—</span>`);
+          ? `<span class="co-dtr-active-chip"><span class="co-dtr-live-pulse-dot"></span> Active (AM)</span>`
+          : `<span class="co-dtr-time-empty">&mdash;</span>`);
 
       const aInHtml = aIn
-        ? `<span style="font-weight:600;color:#0F172A;">${escapeHtml(aIn)}</span>`
-        : `<span style="color:#94A3B8;">—</span>`;
+        ? `<span class="co-dtr-time">${escapeHtml(aIn)}</span>`
+        : `<span class="co-dtr-time-empty">&mdash;</span>`;
 
       const aOutHtml = aOut
-        ? `<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
-             <span style="font-weight:600;color:#0F172A;">${escapeHtml(aOut)}</span>
-             ${log.autoAfternoonTimeout ? `<span style="font-size:0.63rem;font-weight:700;padding:1px 5px;border-radius:4px;background:#FEF3C7;color:#92400E;" title="Automatically closed at scheduled shift end (No exit GPS)">Auto ${escapeHtml(aOut)}</span>` : ''}
+        ? `<div class="co-dtr-time-wrap">
+             <span class="co-dtr-time">${escapeHtml(aOut)}</span>
+             ${log.autoAfternoonTimeout ? `<span class="co-dtr-auto-tag" title="Automatically closed at scheduled shift end">Auto ${escapeHtml(aOut)}</span>` : ''}
            </div>`
         : (aIn
-          ? `<span style="font-size:0.72rem;font-weight:700;color:#059669;background:#ECFDF5;padding:2px 7px;border-radius:99px;">Active (PM)</span>`
-          : `<span style="color:#94A3B8;">—</span>`);
+          ? `<span class="co-dtr-active-chip"><span class="co-dtr-live-pulse-dot"></span> Active (PM)</span>`
+          : `<span class="co-dtr-time-empty">&mdash;</span>`);
 
       const isPending = (log.approvalStatus || '') === 'pending_company';
       const isRejected = (log.approvalStatus || '') === 'rejected';
@@ -3053,58 +3105,87 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
       const rawHrs = Number(log.hours || 0).toFixed(2);
       let hrsHtml = '';
       if (isPending) {
-        hrsHtml = `<div style="font-weight:700;font-size:0.83rem;color:#D97706;">${rawHrs} hrs <span style="font-size:0.64rem;font-weight:600;display:block;color:#B45309;">(In Escrow)</span></div>`;
+        hrsHtml = `
+          <div class="co-dtr-hrs-box">
+            <span class="co-dtr-hrs-val co-dtr-hrs-val--pending">${rawHrs} hrs</span>
+            <span class="co-dtr-escrow-pill">In Escrow</span>
+          </div>
+        `;
       } else if (isRejected) {
-        hrsHtml = `<div style="font-weight:700;font-size:0.83rem;color:#DC2626;text-decoration:line-through;">${rawHrs} hrs <span style="font-size:0.64rem;font-weight:600;display:block;color:#DC2626;text-decoration:none;">(Rejected)</span></div>`;
+        hrsHtml = `
+          <div class="co-dtr-hrs-box">
+            <span class="co-dtr-hrs-val co-dtr-hrs-val--rejected">${rawHrs} hrs</span>
+            <span class="co-dtr-rejected-pill">Rejected</span>
+          </div>
+        `;
+      } else if (isAbsent) {
+        hrsHtml = `
+          <div class="co-dtr-hrs-box">
+            <span class="co-dtr-hrs-val co-dtr-hrs-val--zero">0.00 hrs</span>
+          </div>
+        `;
       } else {
-        hrsHtml = `<div style="font-weight:700;font-size:0.83rem;color:var(--color-primary, #005930);">${rawHrs} hrs</div>`;
+        const hasSplitHrs = (log.morningHours > 0 || log.afternoonHours > 0);
+        hrsHtml = `
+          <div class="co-dtr-hrs-box">
+            <span class="co-dtr-hrs-val co-dtr-hrs-val--valid">${rawHrs} hrs</span>
+            ${hasSplitHrs ? `
+              <span class="co-dtr-hrs-sub">AM: ${Number(log.morningHours || 0).toFixed(1)}h &bull; PM: ${Number(log.afternoonHours || 0).toFixed(1)}h</span>
+            ` : ''}
+          </div>
+        `;
       }
 
-      const hasSplitHrs = (log.morningHours > 0 || log.afternoonHours > 0);
-      const splitSub = hasSplitHrs
-        ? `<div style="font-size:0.67rem;color:var(--text-tertiary);">AM: ${Number(log.morningHours || 0).toFixed(1)}h &bull; PM: ${Number(log.afternoonHours || 0).toFixed(1)}h</div>`
-        : '';
-
-      let actionHtml = `<span style="color:#94A3B8;font-size:0.75rem;">—</span>`;
+      let actionHtml = `<span class="co-dtr-time-empty">&mdash;</span>`;
       if (isAbsent) {
         actionHtml = `
-          <button type="button" class="btn btn--xs btn--outline js-excuse-absence-btn" data-log-id="${log.id}" style="font-size:0.72rem;padding:3px 8px;display:inline-flex;align-items:center;gap:4px;color:#005930;border-color:rgba(0,89,48,0.3);white-space:nowrap;cursor:pointer;">
+          <button type="button" class="co-dtr-btn-action co-dtr-btn-action--excuse js-excuse-absence-btn" data-log-id="${log.id}" title="Excuse this absence">
             ${icon('check', 11)} Excuse
           </button>
         `;
       } else if (isExcused) {
-        actionHtml = `<span style="color:#059669;font-size:0.72rem;font-weight:600;">Excused</span>`;
+        actionHtml = `<span class="co-dtr-action-excused">${icon('shieldCheck', 11)} Excused</span>`;
       } else if (isPending) {
         actionHtml = `
-          <button type="button" class="btn btn--xs js-review-attendance-btn" data-log-id="${log.id}" style="background:#D97706;color:#fff;border:none;border-radius:6px;padding:4px 9px;font-size:0.72rem;font-weight:700;display:inline-flex;align-items:center;gap:4px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,0.06);white-space:nowrap;">
+          <button type="button" class="co-dtr-btn-action co-dtr-btn-action--review js-review-attendance-btn" data-log-id="${log.id}" title="Review proof & decide">
             ${icon('camera', 11)} Review Proof
           </button>
         `;
       } else if (log.hasGeofenceExemption) {
         actionHtml = `
-          <button type="button" class="btn btn--xs btn--outline js-review-attendance-btn" data-log-id="${log.id}" style="font-size:0.72rem;padding:3px 8px;display:inline-flex;align-items:center;gap:4px;white-space:nowrap;">
+          <button type="button" class="co-dtr-btn-action co-dtr-btn-action--view js-review-attendance-btn" data-log-id="${log.id}" title="View proof evidence">
             ${icon('eye', 11)} View Proof
           </button>
         `;
       }
 
+      const rowClass = [
+        'co-dtr-tr',
+        isAbsent ? 'co-dtr-tr--absent' : '',
+        isPending ? 'co-dtr-tr--pending' : '',
+        (mIn && !mOut) || (aIn && !aOut) ? 'co-dtr-tr--active' : '',
+        isToday ? 'co-dtr-tr--today' : '',
+      ].filter(Boolean).join(' ');
+
       return `
-        <tr style="border-bottom:1px solid #F1F5F9;">
-          <td style="padding:11px 14px;white-space:nowrap;">
-            <div style="font-weight:700;font-size:0.82rem;color:var(--text-primary);">${escapeHtml(log.dayLabel || log.date || '—')}</div>
-            <div style="font-size:0.69rem;color:var(--text-tertiary);font-family:monospace;">${escapeHtml(log.rawDate || '')}</div>
+        <tr class="${rowClass}">
+          <td class="co-dtr-td">
+            <div class="co-dtr-date-box">
+              <div class="co-dtr-date-main">
+                <span>${escapeHtml(log.dayLabel || log.date || '—')}</span>
+                ${isToday ? `<span class="co-dtr-today-tag">TODAY</span>` : ''}
+              </div>
+              <div class="co-dtr-date-sub">${escapeHtml(log.rawDate || '')}</div>
+            </div>
           </td>
-          <td style="padding:11px 12px;white-space:nowrap;font-size:0.81rem;">${mInHtml}</td>
-          <td style="padding:11px 12px;white-space:nowrap;font-size:0.81rem;">${mOutHtml}</td>
-          <td style="padding:11px 12px;white-space:nowrap;font-size:0.81rem;">${aInHtml}</td>
-          <td style="padding:11px 12px;white-space:nowrap;font-size:0.81rem;">${aOutHtml}</td>
-          <td style="padding:11px 12px;white-space:nowrap;">
-            ${hrsHtml}
-            ${splitSub}
-          </td>
-          <td style="padding:11px 12px;white-space:nowrap;">${renderStatusBadge(log)}</td>
-          <td style="padding:11px 14px;min-width:170px;">${renderLocationCell(log)}</td>
-          <td style="padding:11px 12px;white-space:nowrap;text-align:center;">${actionHtml}</td>
+          <td class="co-dtr-td co-dtr-td--center">${mInHtml}</td>
+          <td class="co-dtr-td co-dtr-td--center">${mOutHtml}</td>
+          <td class="co-dtr-td co-dtr-td--center">${aInHtml}</td>
+          <td class="co-dtr-td co-dtr-td--center">${aOutHtml}</td>
+          <td class="co-dtr-td co-dtr-td--right">${hrsHtml}</td>
+          <td class="co-dtr-td co-dtr-td--center">${renderStatusBadge(log)}</td>
+          <td class="co-dtr-td">${renderLocationCell(log)}</td>
+          <td class="co-dtr-td co-dtr-td--center">${actionHtml}</td>
         </tr>
       `;
     }).join('');
@@ -3147,133 +3228,1015 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
         }
       });
     });
+
+    backdrop.querySelector('#dtr-empty-reset-btn')?.addEventListener('click', () => {
+      searchFilter = '';
+      validityFilter = 'all';
+      const searchInput = backdrop.querySelector('#dtr-modal-search-input');
+      if (searchInput) searchInput.value = '';
+      syncPillFilterState();
+      updateTableOnly();
+    });
+  }
+
+  function syncPillFilterState() {
+    backdrop.querySelectorAll('.co-dtr-filter-pill').forEach(pill => {
+      if (pill.dataset.filter === validityFilter) {
+        pill.classList.add('is-active');
+      } else {
+        pill.classList.remove('is-active');
+      }
+    });
+    const validitySelectEl = backdrop.querySelector('#dtr-modal-validity-filter');
+    if (validitySelectEl) validitySelectEl.value = validityFilter;
   }
 
   function renderModalShell() {
     const init = (studentInfo.name || 'Student').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
     const filteredRows = getFilteredLogs();
+    const progressPct = Math.min(100, Math.round(Number(summaryInfo.progressPct ?? 0)));
+    const siteCompliancePct = ((summaryInfo.inSiteCount || 0) + (summaryInfo.tooFarCount || 0)) > 0
+      ? Math.round(((summaryInfo.inSiteCount || 0) / ((summaryInfo.inSiteCount || 0) + (summaryInfo.tooFarCount || 0))) * 100)
+      : null;
 
     backdrop.innerHTML = `
-      <div class="modal modal--visible co-dtr-modal" style="max-width:1040px;width:100%;border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);max-height:90vh;display:flex;flex-direction:column;">
+      <style id="co-dtr-custom-styles">
+        .co-dtr-modal {
+          max-width: 1140px;
+          width: 95vw;
+          border-radius: 16px;
+          overflow: hidden;
+          background: #ffffff;
+          box-shadow: 0 25px 60px -15px rgba(15, 23, 42, 0.35), 0 0 0 1px rgba(15, 23, 42, 0.06);
+          max-height: 92vh;
+          display: flex;
+          flex-direction: column;
+          box-sizing: border-box;
+        }
+        .co-dtr-header {
+          border-bottom: 1px solid #E2E8F0;
+          background: #FAFBFD;
+          padding: 16px 24px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 14px;
+          flex-shrink: 0;
+          flex-wrap: wrap;
+        }
+        .co-dtr-avatar {
+          width: 44px;
+          height: 44px;
+          border-radius: 12px;
+          background: linear-gradient(135deg, rgba(0,89,48,0.12) 0%, rgba(16,185,129,0.18) 100%);
+          color: var(--color-primary, #005930);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 800;
+          font-size: 1rem;
+          box-shadow: inset 0 0 0 1px rgba(0,89,48,0.2);
+          flex-shrink: 0;
+        }
+        .co-dtr-title {
+          margin: 0;
+          font-size: 1.1rem;
+          font-weight: 800;
+          color: #0F172A;
+          letter-spacing: -0.01em;
+        }
+        .co-dtr-meta-line {
+          margin: 4px 0 0;
+          font-size: 0.77rem;
+          color: #64748B;
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          flex-wrap: wrap;
+        }
+        .co-dtr-meta-id {
+          font-family: monospace;
+          background: #F1F5F9;
+          padding: 1px 6px;
+          border-radius: 4px;
+          color: #334155;
+          font-size: 0.74rem;
+          font-weight: 600;
+        }
+        .co-dtr-kpi-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 12px;
+          padding: 14px 24px;
+          background: #F8FAFC;
+          border-bottom: 1px solid #E2E8F0;
+          flex-shrink: 0;
+        }
+        .co-dtr-kpi-card {
+          background: #ffffff;
+          border: 1px solid #E2E8F0;
+          border-radius: 12px;
+          padding: 12px 16px;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+          transition: all 0.15s ease;
+        }
+        .co-dtr-kpi-card:hover {
+          box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+        }
+        .co-dtr-kpi-card--danger {
+          border-color: #FECACA;
+          background: #FFFDFD;
+        }
+        .co-dtr-kpi-card--warning {
+          border-color: #FDE68A;
+          background: #FFFDF5;
+        }
+        .co-dtr-kpi-card__header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 6px;
+          margin-bottom: 4px;
+        }
+        .co-dtr-kpi-card__label {
+          font-size: 0.68rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+          color: #64748B;
+        }
+        .co-dtr-kpi-badge {
+          font-size: 0.67rem;
+          font-weight: 700;
+          padding: 2px 7px;
+          border-radius: 99px;
+        }
+        .co-dtr-kpi-badge--primary {
+          background: rgba(0,89,48,0.08);
+          color: #005930;
+        }
+        .co-dtr-kpi-badge--warning {
+          background: #FEF3C7;
+          color: #92400E;
+        }
+        .co-dtr-kpi-card__val {
+          font-size: 1.15rem;
+          font-weight: 800;
+          color: #0F172A;
+          font-variant-numeric: tabular-nums;
+          line-height: 1.25;
+        }
+        .co-dtr-kpi-card__val--primary {
+          color: var(--color-primary, #005930);
+        }
+        .co-dtr-kpi-card__val--danger {
+          color: #DC2626;
+        }
+        .co-dtr-kpi-card__unit {
+          font-size: 0.77rem;
+          font-weight: 600;
+          color: #64748B;
+        }
+        .co-dtr-kpi-card__sub {
+          font-size: 0.71rem;
+          color: #64748B;
+          margin-top: 6px;
+          font-weight: 500;
+        }
+        .co-dtr-prog-track {
+          width: 100%;
+          height: 6px;
+          background: #E2E8F0;
+          border-radius: 99px;
+          overflow: hidden;
+          margin-top: 8px;
+        }
+        .co-dtr-prog-fill {
+          height: 100%;
+          background: linear-gradient(90deg, #005930 0%, #10B981 100%);
+          border-radius: 99px;
+          transition: width 0.3s ease;
+        }
+        .co-dtr-kpi-pill-group {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          flex-wrap: wrap;
+          margin-top: 2px;
+        }
+        .co-dtr-kpi-stat-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 2px 7px;
+          border-radius: 99px;
+          font-size: 0.71rem;
+          font-weight: 700;
+        }
+        .co-dtr-kpi-stat-pill--success {
+          background: #ECFDF5;
+          color: #047857;
+          border: 1px solid #A7F3D0;
+        }
+        .co-dtr-kpi-stat-pill--danger {
+          background: #FEF2F2;
+          color: #B91C1C;
+          border: 1px solid #FECACA;
+        }
+        .co-dtr-toolbar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 12px 24px;
+          border-bottom: 1px solid #E2E8F0;
+          background: #ffffff;
+          flex-shrink: 0;
+          flex-wrap: wrap;
+        }
+        .co-dtr-toolbar__left {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          flex: 1;
+          min-width: 280px;
+          flex-wrap: wrap;
+        }
+        .co-dtr-search-box {
+          position: relative;
+          min-width: 240px;
+          max-width: 320px;
+          flex: 1;
+        }
+        .co-dtr-search-icon {
+          position: absolute;
+          left: 10px;
+          top: 50%;
+          transform: translateY(-50%);
+          color: #94A3B8;
+          display: flex;
+          pointer-events: none;
+        }
+        .co-dtr-search-input {
+          width: 100%;
+          padding: 6px 28px 6px 32px;
+          font-size: 0.8rem;
+          border: 1px solid #CBD5E1;
+          border-radius: 8px;
+          height: 35px;
+          box-sizing: border-box;
+          transition: all 0.15s ease;
+        }
+        .co-dtr-search-input:focus {
+          outline: none;
+          border-color: #005930;
+          box-shadow: 0 0 0 3px rgba(0,89,48,0.1);
+        }
+        .co-dtr-search-clear {
+          position: absolute;
+          right: 8px;
+          top: 50%;
+          transform: translateY(-50%);
+          background: none;
+          border: none;
+          color: #94A3B8;
+          cursor: pointer;
+          padding: 2px;
+          border-radius: 4px;
+          display: none;
+        }
+        .co-dtr-search-clear:hover {
+          color: #0F172A;
+        }
+        .co-dtr-filter-pills {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          overflow-x: auto;
+          max-width: 100%;
+          padding-bottom: 2px;
+        }
+        .co-dtr-filter-pill {
+          padding: 5px 11px;
+          border-radius: 99px;
+          font-size: 0.73rem;
+          font-weight: 600;
+          background: #F1F5F9;
+          color: #475569;
+          border: 1px solid transparent;
+          cursor: pointer;
+          white-space: nowrap;
+          transition: all 0.15s ease;
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+        }
+        .co-dtr-filter-pill:hover {
+          background: #E2E8F0;
+          color: #0F172A;
+        }
+        .co-dtr-filter-pill.is-active {
+          background: #005930;
+          color: #ffffff;
+          border-color: #005930;
+        }
+        .co-dtr-filter-pill__count {
+          font-size: 0.67rem;
+          padding: 1px 5px;
+          border-radius: 99px;
+          background: rgba(0,0,0,0.08);
+        }
+        .co-dtr-filter-pill.is-active .co-dtr-filter-pill__count {
+          background: rgba(255,255,255,0.25);
+          color: #ffffff;
+        }
+        .co-dtr-filter-pill--alert {
+          color: #B45309;
+          background: #FFFBEB;
+          border-color: #FDE68A;
+        }
+        .co-dtr-filter-pill--alert.is-active {
+          background: #D97706;
+          color: #ffffff;
+          border-color: #D97706;
+        }
+        .co-dtr-toolbar__right {
+          font-size: 0.76rem;
+          color: #64748B;
+          white-space: nowrap;
+        }
+        .co-dtr-table-wrap {
+          overflow-x: auto;
+          overflow-y: auto;
+          flex: 1;
+          background: #ffffff;
+          min-height: 280px;
+        }
+        .co-dtr-table {
+          width: 100%;
+          min-width: 1020px;
+          border-collapse: separate;
+          border-spacing: 0;
+          text-align: left;
+        }
+        .co-dtr-thead {
+          position: sticky;
+          top: 0;
+          z-index: 3;
+        }
+        .co-dtr-th {
+          background: #F8FAFC;
+          padding: 9px 12px;
+          font-size: 0.69rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          color: #475569;
+          border-bottom: 1px solid #E2E8F0;
+          border-right: 1px solid #F1F5F9;
+          box-sizing: border-box;
+        }
+        .co-dtr-th:last-child {
+          border-right: none;
+        }
+        .co-dtr-th--group {
+          text-align: center;
+          border-bottom: 1px solid #CBD5E1;
+        }
+        .co-dtr-th--am {
+          background: rgba(0,89,48,0.05);
+          color: #005930;
+          border-left: 1px solid #E2E8F0;
+          border-right: 1px solid #E2E8F0;
+        }
+        .co-dtr-th--pm {
+          background: rgba(59,130,246,0.04);
+          color: #1D4ED8;
+          border-right: 1px solid #E2E8F0;
+        }
+        .co-dtr-subhead-row {
+          position: sticky;
+          top: 31px;
+          z-index: 2;
+        }
+        .co-dtr-subth {
+          background: #F8FAFC;
+          padding: 6px 10px;
+          font-size: 0.66rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          color: #64748B;
+          text-align: center;
+          border-bottom: 1px solid #E2E8F0;
+          border-right: 1px solid #F1F5F9;
+        }
+        .co-dtr-tr {
+          border-bottom: 1px solid #F1F5F9;
+          transition: background-color 0.12s ease;
+        }
+        .co-dtr-tr:hover {
+          background: #F8FAFC;
+        }
+        .co-dtr-tr--absent {
+          background: #FCFCFD;
+        }
+        .co-dtr-tr--absent:hover {
+          background: #F8FAFC;
+        }
+        .co-dtr-tr--pending {
+          background: #FFFDF8;
+        }
+        .co-dtr-tr--pending:hover {
+          background: #FFFBEB;
+        }
+        .co-dtr-tr--today {
+          box-shadow: inset 3px 0 0 #005930;
+        }
+        .co-dtr-td {
+          padding: 9px 12px;
+          vertical-align: middle;
+          font-size: 0.81rem;
+          border-bottom: 1px solid #F1F5F9;
+          box-sizing: border-box;
+        }
+        .co-dtr-td--center {
+          text-align: center;
+        }
+        .co-dtr-td--right {
+          text-align: right;
+        }
+        .co-dtr-date-box {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          white-space: nowrap;
+        }
+        .co-dtr-date-main {
+          font-weight: 700;
+          font-size: 0.82rem;
+          color: #0F172A;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .co-dtr-today-tag {
+          font-size: 0.61rem;
+          font-weight: 800;
+          padding: 1px 5px;
+          border-radius: 4px;
+          background: #005930;
+          color: #ffffff;
+          letter-spacing: 0.04em;
+        }
+        .co-dtr-date-sub {
+          font-size: 0.68rem;
+          color: #94A3B8;
+          font-family: monospace;
+        }
+        .co-dtr-time {
+          font-weight: 600;
+          color: #0F172A;
+          font-variant-numeric: tabular-nums;
+          white-space: nowrap;
+        }
+        .co-dtr-time-empty {
+          color: #94A3B8;
+          font-weight: 500;
+        }
+        .co-dtr-time-wrap {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 4px;
+          flex-wrap: wrap;
+        }
+        .co-dtr-auto-tag {
+          font-size: 0.62rem;
+          font-weight: 700;
+          padding: 1px 5px;
+          border-radius: 4px;
+          background: #FEF3C7;
+          color: #92400E;
+          white-space: nowrap;
+        }
+        .co-dtr-active-chip {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          font-size: 0.72rem;
+          font-weight: 700;
+          color: #047857;
+          background: #ECFDF5;
+          border: 1px solid #A7F3D0;
+          padding: 2px 7px;
+          border-radius: 99px;
+          white-space: nowrap;
+        }
+        .co-dtr-live-pulse-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: #10B981;
+          box-shadow: 0 0 0 2px rgba(16,185,129,0.25);
+          animation: coDtrPulse 1.8s infinite;
+        }
+        @keyframes coDtrPulse {
+          0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16,185,129,0.6); }
+          70% { transform: scale(1); box-shadow: 0 0 0 5px rgba(16,185,129,0); }
+          100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16,185,129,0); }
+        }
+        .co-dtr-hrs-box {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          gap: 2px;
+          white-space: nowrap;
+        }
+        .co-dtr-hrs-val {
+          font-weight: 700;
+          font-size: 0.83rem;
+          font-variant-numeric: tabular-nums;
+        }
+        .co-dtr-hrs-val--valid {
+          color: var(--color-primary, #005930);
+        }
+        .co-dtr-hrs-val--pending {
+          color: #D97706;
+        }
+        .co-dtr-hrs-val--rejected {
+          color: #DC2626;
+          text-decoration: line-through;
+        }
+        .co-dtr-hrs-val--zero {
+          color: #94A3B8;
+          font-weight: 600;
+        }
+        .co-dtr-hrs-sub {
+          font-size: 0.66rem;
+          color: #94A3B8;
+          font-weight: 500;
+          font-variant-numeric: tabular-nums;
+        }
+        .co-dtr-escrow-pill {
+          font-size: 0.63rem;
+          font-weight: 700;
+          color: #B45309;
+          background: #FFFBEB;
+          border: 1px solid #FDE68A;
+          padding: 1px 5px;
+          border-radius: 4px;
+        }
+        .co-dtr-rejected-pill {
+          font-size: 0.63rem;
+          font-weight: 700;
+          color: #DC2626;
+          background: #FEF2F2;
+          border: 1px solid #FECACA;
+          padding: 1px 5px;
+          border-radius: 4px;
+        }
+        .co-dtr-status-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 2.5px 8px;
+          border-radius: 99px;
+          font-size: 0.71rem;
+          font-weight: 700;
+          white-space: nowrap;
+        }
+        .co-dtr-status-badge--valid {
+          background: #ECFDF5;
+          color: #047857;
+          border: 1px solid #A7F3D0;
+        }
+        .co-dtr-status-badge--pending {
+          background: #FFFBEB;
+          color: #B45309;
+          border: 1px solid #FDE68A;
+        }
+        .co-dtr-status-badge--approved {
+          background: #F0FDF4;
+          color: #15803D;
+          border: 1px solid #BBF7D0;
+        }
+        .co-dtr-status-badge--rejected {
+          background: #FEF2F2;
+          color: #B91C1C;
+          border: 1px solid #FECACA;
+        }
+        .co-dtr-status-badge--absent {
+          background: #FEF2F2;
+          color: #B91C1C;
+          border: 1px solid #FECACA;
+        }
+        .co-dtr-status-badge--excused {
+          background: #F1F5F9;
+          color: #475569;
+          border: 1px solid #CBD5E1;
+        }
+        .co-dtr-status-badge--live {
+          background: #EFF6FF;
+          color: #1D4ED8;
+          border: 1px solid #BFDBFE;
+        }
+        .co-dtr-status-badge--out-of-range {
+          background: #FEF2F2;
+          color: #B91C1C;
+          border: 1px solid #FECACA;
+        }
+        .co-dtr-status-badge--info {
+          background: #EFF6FF;
+          color: #1D4ED8;
+          border: 1px solid #BFDBFE;
+        }
+        .co-dtr-status-badge--neutral {
+          background: #F8FAFC;
+          color: #475569;
+          border: 1px solid #E2E8F0;
+        }
+        .co-dtr-loc-cell {
+          display: flex;
+          flex-direction: column;
+          gap: 3px;
+          align-items: flex-start;
+          min-width: 170px;
+        }
+        .co-dtr-loc-cell__top {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          flex-wrap: wrap;
+        }
+        .co-dtr-loc-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 2.5px 8px;
+          border-radius: 99px;
+          font-size: 0.71rem;
+          font-weight: 700;
+          white-space: nowrap;
+        }
+        .co-dtr-loc-pill--in-site {
+          background: #ECFDF5;
+          color: #047857;
+          border: 1px solid #A7F3D0;
+        }
+        .co-dtr-loc-pill--too-far {
+          background: #FEF2F2;
+          color: #B91C1C;
+          border: 1px solid #FECACA;
+        }
+        .co-dtr-loc-pill--exemption {
+          background: #FFFBEB;
+          color: #B45309;
+          border: 1px solid #FDE68A;
+        }
+        .co-dtr-loc-pill--no-gps {
+          background: #F1F5F9;
+          color: #64748B;
+          border: 1px solid #E2E8F0;
+          font-weight: 600;
+        }
+        .co-dtr-loc-name {
+          font-size: 0.71rem;
+          color: #475569;
+          font-weight: 500;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          max-width: 210px;
+        }
+        .co-dtr-coords-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 3px;
+          font-size: 0.65rem;
+          font-family: monospace;
+          color: #64748B;
+          background: #F1F5F9;
+          padding: 1px 5px;
+          border-radius: 4px;
+          border: 1px solid #E2E8F0;
+          white-space: nowrap;
+        }
+        .co-dtr-muted-loc {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          color: #94A3B8;
+          font-size: 0.75rem;
+          font-weight: 500;
+        }
+        .co-dtr-muted-dot {
+          width: 5px;
+          height: 5px;
+          border-radius: 50%;
+          background: #CBD5E1;
+        }
+        .co-dtr-excused-loc {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          color: #475569;
+          font-size: 0.73rem;
+          font-weight: 600;
+        }
+        .co-dtr-btn-action {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 4px;
+          padding: 4px 10px;
+          font-size: 0.73rem;
+          font-weight: 700;
+          border-radius: 6px;
+          cursor: pointer;
+          white-space: nowrap;
+          transition: all 0.15s ease;
+          border: 1px solid transparent;
+        }
+        .co-dtr-btn-action--review {
+          background: #D97706;
+          color: #ffffff;
+          border-color: #B45309;
+          box-shadow: 0 1px 2px rgba(217,119,6,0.25);
+        }
+        .co-dtr-btn-action--review:hover {
+          background: #B45309;
+        }
+        .co-dtr-btn-action--excuse {
+          background: #ffffff;
+          color: #005930;
+          border-color: rgba(0,89,48,0.3);
+        }
+        .co-dtr-btn-action--excuse:hover {
+          background: rgba(0,89,48,0.06);
+          border-color: #005930;
+        }
+        .co-dtr-btn-action--view {
+          background: #ffffff;
+          color: #475569;
+          border-color: #CBD5E1;
+        }
+        .co-dtr-btn-action--view:hover {
+          background: #F1F5F9;
+          color: #0F172A;
+        }
+        .co-dtr-action-excused {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          color: #059669;
+          font-size: 0.73rem;
+          font-weight: 700;
+        }
+        .co-dtr-footer {
+          border-top: 1px solid #E2E8F0;
+          background: #FAFBFD;
+          padding: 12px 24px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          flex-shrink: 0;
+          flex-wrap: wrap;
+        }
+        .co-dtr-sync-indicator {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 0.75rem;
+          color: #64748B;
+        }
+        .co-dtr-sync-dot {
+          width: 7px;
+          height: 7px;
+          border-radius: 50%;
+          background: #10B981;
+          box-shadow: 0 0 0 2px rgba(16,185,129,0.25);
+        }
+        .co-dtr-empty-state {
+          padding: 48px 20px;
+          text-align: center;
+          color: #64748B;
+        }
+        .co-dtr-empty-icon {
+          width: 48px;
+          height: 48px;
+          border-radius: 50%;
+          background: rgba(0,89,48,0.06);
+          color: var(--color-primary, #005930);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin: 0 auto 12px;
+        }
+        .co-dtr-empty-title {
+          font-weight: 700;
+          font-size: 0.92rem;
+          color: #0F172A;
+          margin-bottom: 4px;
+        }
+        .co-dtr-empty-desc {
+          font-size: 0.79rem;
+          color: #64748B;
+          max-width: 380px;
+          margin: 0 auto 12px;
+        }
+      </style>
+
+      <div class="modal modal--visible co-dtr-modal">
         <!-- Modal Header -->
-        <div class="modal__header" style="border-bottom:1px solid #E2E8F0;background:#FAFBFD;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0;flex-wrap:wrap;">
-          <div style="display:flex;align-items:center;gap:12px;">
-            <div style="width:42px;height:42px;border-radius:10px;background:rgba(0,89,48,0.1);color:var(--color-primary, #005930);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.95rem;flex-shrink:0;">
+        <div class="co-dtr-header">
+          <div style="display:flex;align-items:center;gap:12px;min-width:0;">
+            <div class="co-dtr-avatar">
               ${init}
             </div>
-            <div>
+            <div style="min-width:0;">
               <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                <h3 style="margin:0;font-size:1.08rem;font-weight:800;color:var(--text-primary);">${escapeHtml(studentInfo.name || 'Trainee')} &mdash; Daily Time Record (DTR)</h3>
+                <h3 class="co-dtr-title">${escapeHtml(studentInfo.name || 'Trainee')} &mdash; Daily Time Record (DTR)</h3>
                 ${renderTodayDtrBadge(summaryInfo.todayDtr)}
               </div>
-              <p style="margin:3px 0 0;font-size:0.78rem;color:var(--text-secondary);">
-                ${escapeHtml(studentInfo.program || '—')}
-                ${studentInfo.student_id ? ` &bull; ID: <span style="font-family:monospace;">${escapeHtml(studentInfo.student_id)}</span>` : ''}
-                &bull; Listing: <strong>${escapeHtml(studentInfo.posting_title || 'OJT Placement')}</strong>
-                ${studentInfo.site_location ? ` &bull; Site: ${escapeHtml(studentInfo.site_location)}` : ''}
-              </p>
+              <div class="co-dtr-meta-line">
+                <span>${escapeHtml(studentInfo.program || 'OJT')}</span>
+                ${studentInfo.student_id ? `<span class="co-dtr-meta-id">ID: ${escapeHtml(studentInfo.student_id)}</span>` : ''}
+                &bull; Listing: <strong style="color:#0F172A;">${escapeHtml(studentInfo.posting_title || 'OJT Placement')}</strong>
+                ${studentInfo.site_location ? `&bull; <span title="${escapeHtml(studentInfo.site_location)}">${icon('mapPin', 12)} ${escapeHtml(studentInfo.site_location.split(',')[0])}</span>` : ''}
+              </div>
             </div>
           </div>
 
           <div style="display:flex;align-items:center;gap:8px;">
-            <button type="button" class="btn btn--outline btn--sm" id="dtr-modal-export-csv" style="gap:5px;font-size:0.76rem;">
+            <button type="button" class="btn btn--outline btn--sm" id="dtr-modal-export-csv" style="gap:5px;font-size:0.76rem;font-weight:600;">
               ${icon('download', 13)} Export CSV
             </button>
             <button type="button" class="btn btn--ghost btn--sm" id="dtr-modal-refresh" title="Refresh DTR Logs" style="gap:5px;font-size:0.76rem;">
               ${icon('refreshCw', 13)} Refresh
             </button>
-            <button type="button" id="dtr-modal-close" style="background:none;border:none;cursor:pointer;color:var(--text-secondary);padding:6px;border-radius:8px;">
+            <button type="button" id="dtr-modal-close" style="background:none;border:none;cursor:pointer;color:var(--text-secondary);padding:6px;border-radius:8px;display:flex;align-items:center;justify-content:center;">
               ${icon('x', 18)}
             </button>
           </div>
         </div>
 
         <!-- Summary KPI Strip -->
-        <div class="co-dtr-kpi-grid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(190px, 1fr));gap:12px;padding:14px 24px;background:#F8FAFC;border-bottom:1px solid #E2E8F0;flex-shrink:0;">
-          <div style="background:#fff;border:1px solid #E2E8F0;border-radius:10px;padding:10px 14px;">
-            <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;color:var(--text-tertiary);">Total Hours Rendered</div>
-            <div style="font-size:1.1rem;font-weight:800;color:var(--color-primary, #005930);margin-top:2px;">
-              ${summaryInfo.completedHours ?? 0} <span style="font-size:0.8rem;font-weight:600;color:var(--text-secondary);">/ ${summaryInfo.requiredHours ?? 600} hrs (${summaryInfo.progressPct ?? 0}%)</span>
+        <div class="co-dtr-kpi-grid">
+          <!-- Card 1: Hours Rendered -->
+          <div class="co-dtr-kpi-card">
+            <div class="co-dtr-kpi-card__header">
+              <span class="co-dtr-kpi-card__label">Total Hours Rendered</span>
+              <span class="co-dtr-kpi-badge co-dtr-kpi-badge--primary">${progressPct}%</span>
+            </div>
+            <div class="co-dtr-kpi-card__val co-dtr-kpi-card__val--primary">
+              ${summaryInfo.completedHours ?? 0} <span class="co-dtr-kpi-card__unit">/ ${summaryInfo.requiredHours ?? 600} hrs</span>
+            </div>
+            <div class="co-dtr-prog-track">
+              <div class="co-dtr-prog-fill" style="width:${progressPct}%;"></div>
             </div>
           </div>
-          <div style="background:#fff;border:1px solid #E2E8F0;border-radius:10px;padding:10px 14px;">
-            <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;color:var(--text-tertiary);">Total Days Logged</div>
-            <div style="font-size:1.1rem;font-weight:800;color:var(--text-primary);margin-top:2px;">
-              ${summaryInfo.totalLogs ?? 0} <span style="font-size:0.8rem;font-weight:600;color:var(--text-secondary);">Attendance Days</span>
+
+          <!-- Card 2: Attendance Days -->
+          <div class="co-dtr-kpi-card">
+            <div class="co-dtr-kpi-card__header">
+              <span class="co-dtr-kpi-card__label">Total Days Logged</span>
+              <span style="color:#64748B;">${icon('calendar', 13)}</span>
+            </div>
+            <div class="co-dtr-kpi-card__val">
+              ${summaryInfo.totalLogs ?? 0} <span class="co-dtr-kpi-card__unit">Attendance Days</span>
+            </div>
+            <div class="co-dtr-kpi-card__sub">
+              Shift: ${escapeHtml(studentInfo.shift_start || '08:00')} &ndash; ${escapeHtml(studentInfo.shift_end || '17:00')}
             </div>
           </div>
-          <div style="background:#fff;border:1px solid #E2E8F0;border-radius:10px;padding:10px 14px;">
-            <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;color:var(--text-tertiary);">Location Compliance (100m)</div>
-            <div style="display:flex;align-items:center;gap:10px;margin-top:3px;font-size:0.82rem;font-weight:700;">
-              <span style="color:#047857;display:inline-flex;align-items:center;gap:4px;">${icon('check', 12)} ${summaryInfo.inSiteCount ?? 0} In Site</span>
-              <span style="color:#B91C1C;display:inline-flex;align-items:center;gap:4px;">${icon('alertTriangle', 12)} ${summaryInfo.tooFarCount ?? 0} Too Far</span>
+
+          <!-- Card 3: Location Compliance -->
+          <div class="co-dtr-kpi-card">
+            <div class="co-dtr-kpi-card__header">
+              <span class="co-dtr-kpi-card__label">Location Compliance (100m)</span>
+              <span style="color:#64748B;">${icon('mapPin', 13)}</span>
+            </div>
+            <div class="co-dtr-kpi-pill-group">
+              <span class="co-dtr-kpi-stat-pill co-dtr-kpi-stat-pill--success" title="Punched within verified geofence boundary">
+                ${icon('check', 12)} ${summaryInfo.inSiteCount ?? 0} In Site
+              </span>
+              <span class="co-dtr-kpi-stat-pill co-dtr-kpi-stat-pill--danger" title="Punched outside geofence boundary">
+                ${icon('alertTriangle', 12)} ${summaryInfo.tooFarCount ?? 0} Too Far
+              </span>
+            </div>
+            <div class="co-dtr-kpi-card__sub">
+              ${siteCompliancePct != null ? `${siteCompliancePct}% on-site compliance rate` : 'Active geofence monitoring'}
             </div>
           </div>
-          <div style="background:${(summaryInfo.unexcusedAbsenceCount > 0 ? '#FEF2F2' : '#fff')};border:1px solid ${(summaryInfo.unexcusedAbsenceCount > 0 ? '#FECACA' : '#E2E8F0')};border-radius:10px;padding:10px 14px;">
-            <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;color:${(summaryInfo.unexcusedAbsenceCount > 0 ? '#B91C1C' : 'var(--text-tertiary)')};">Unexcused Absences</div>
-            <div style="font-size:1.1rem;font-weight:800;color:${(summaryInfo.unexcusedAbsenceCount > 0 ? '#DC2626' : 'var(--text-primary)')};margin-top:2px;">
-              ${summaryInfo.unexcusedAbsenceCount ?? 0} <span style="font-size:0.8rem;font-weight:600;color:var(--text-secondary);">Days</span>
+
+          <!-- Card 4: Absences -->
+          <div class="co-dtr-kpi-card ${(summaryInfo.unexcusedAbsenceCount > 0 ? 'co-dtr-kpi-card--danger' : '')}">
+            <div class="co-dtr-kpi-card__header">
+              <span class="co-dtr-kpi-card__label" style="${summaryInfo.unexcusedAbsenceCount > 0 ? 'color:#B91C1C;' : ''}">Unexcused Absences</span>
+              <span style="color:${summaryInfo.unexcusedAbsenceCount > 0 ? '#DC2626' : '#10B981'};">
+                ${summaryInfo.unexcusedAbsenceCount > 0 ? icon('alertCircle', 13) : icon('checkCircle', 13)}
+              </span>
+            </div>
+            <div class="co-dtr-kpi-card__val ${(summaryInfo.unexcusedAbsenceCount > 0 ? 'co-dtr-kpi-card__val--danger' : '')}">
+              ${summaryInfo.unexcusedAbsenceCount ?? 0} <span class="co-dtr-kpi-card__unit">Days</span>
+            </div>
+            <div class="co-dtr-kpi-card__sub" style="${summaryInfo.unexcusedAbsenceCount > 0 ? 'color:#B91C1C;font-weight:600;' : ''}">
+              ${summaryInfo.unexcusedAbsenceCount > 0 ? 'Requires supervisor justification' : 'Zero unexcused absences'}
             </div>
           </div>
+
+          <!-- Card 5 (Conditional): Pending Approvals -->
           ${(summaryInfo.pendingApprovalCount > 0) ? `
-            <div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;padding:10px 14px;">
-              <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;color:#B45309;">Off-Site Pending Review</div>
-              <div style="font-size:1.1rem;font-weight:800;color:#D97706;margin-top:2px;display:flex;align-items:center;gap:6px;">
-                ${icon('alertTriangle', 16)} ${summaryInfo.pendingApprovalCount} <span style="font-size:0.76rem;font-weight:700;color:#B45309;">Needs Decision</span>
+            <div class="co-dtr-kpi-card co-dtr-kpi-card--warning js-kpi-filter-pending" style="cursor:pointer;" title="Click to filter pending reviews">
+              <div class="co-dtr-kpi-card__header">
+                <span class="co-dtr-kpi-card__label" style="color:#B45309;">Off-Site Pending Review</span>
+                <span class="co-dtr-kpi-badge co-dtr-kpi-badge--warning">Action Needed</span>
+              </div>
+              <div class="co-dtr-kpi-card__val" style="color:#D97706;">
+                ${summaryInfo.pendingApprovalCount} <span class="co-dtr-kpi-card__unit" style="color:#B45309;">Needs Decision</span>
+              </div>
+              <div class="co-dtr-kpi-card__sub" style="color:#92400E;display:flex;align-items:center;gap:4px;font-weight:600;">
+                ${icon('arrowRight', 11)} Click to view pending punches
               </div>
             </div>
-          ` : `
-            <div style="background:#fff;border:1px solid #E2E8F0;border-radius:10px;padding:10px 14px;">
-              <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;color:var(--text-tertiary);">Assigned Shift Schedule</div>
-              <div style="font-size:0.9rem;font-weight:700;color:var(--text-primary);margin-top:3px;">
-                ${escapeHtml(studentInfo.shift_start || '08:00')} &ndash; ${escapeHtml(studentInfo.shift_end || '17:00')}
-              </div>
-            </div>
-          `}
+          ` : ''}
         </div>
 
         <!-- Filter & Search Bar -->
-        <div class="co-dtr-filter-bar" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 24px;border-bottom:1px solid #E2E8F0;background:#fff;flex-shrink:0;flex-wrap:wrap;">
-          <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:240px;">
-            <div style="position:relative;flex:1;max-width:320px;">
-              <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-tertiary);display:flex;">${icon('search', 14)}</span>
+        <div class="co-dtr-toolbar">
+          <div class="co-dtr-toolbar__left">
+            <div class="co-dtr-search-box">
+              <span class="co-dtr-search-icon">${icon('search', 14)}</span>
               <input
                 type="text"
                 id="dtr-modal-search-input"
-                class="input"
+                class="co-dtr-search-input"
                 value="${escapeHtml(searchFilter)}"
                 placeholder="Search by date, day, or location..."
-                style="width:100%;padding:6px 10px 6px 32px;font-size:0.8rem;height:34px;"
               />
+              <button type="button" class="co-dtr-search-clear" id="dtr-modal-search-clear" title="Clear search">
+                ${icon('x', 14)}
+              </button>
             </div>
-            <select id="dtr-modal-validity-filter" class="input" style="width:auto;min-width:160px;height:34px;padding:4px 10px;font-size:0.8rem;">
-              <option value="all" ${validityFilter === 'all' ? 'selected' : ''}>All Locations (${logsData.length})</option>
-              <option value="in_site" ${validityFilter === 'in_site' ? 'selected' : ''}>In Site Only (${summaryInfo.inSiteCount ?? 0})</option>
-              <option value="too_far" ${validityFilter === 'too_far' ? 'selected' : ''}>Too Far Only (${summaryInfo.tooFarCount ?? 0})</option>
-              <option value="absent" ${validityFilter === 'absent' ? 'selected' : ''}>Absences Only (${summaryInfo.unexcusedAbsenceCount ?? 0})</option>
-              <option value="no_gps" ${validityFilter === 'no_gps' ? 'selected' : ''}>No GPS (${summaryInfo.noGpsCount ?? 0})</option>
+
+            <div class="co-dtr-filter-pills" id="dtr-modal-filter-pills">
+              <button type="button" class="co-dtr-filter-pill ${validityFilter === 'all' ? 'is-active' : ''}" data-filter="all">
+                All Logs <span class="co-dtr-filter-pill__count">${logsData.length}</span>
+              </button>
+              <button type="button" class="co-dtr-filter-pill ${validityFilter === 'in_site' ? 'is-active' : ''}" data-filter="in_site">
+                In Site <span class="co-dtr-filter-pill__count">${summaryInfo.inSiteCount ?? 0}</span>
+              </button>
+              <button type="button" class="co-dtr-filter-pill ${validityFilter === 'too_far' ? 'is-active' : ''}" data-filter="too_far">
+                Too Far <span class="co-dtr-filter-pill__count">${summaryInfo.tooFarCount ?? 0}</span>
+              </button>
+              ${(summaryInfo.pendingApprovalCount > 0) ? `
+                <button type="button" class="co-dtr-filter-pill co-dtr-filter-pill--alert ${validityFilter === 'pending' ? 'is-active' : ''}" data-filter="pending">
+                  ${icon('alertTriangle', 11)} Pending Review <span class="co-dtr-filter-pill__count">${summaryInfo.pendingApprovalCount}</span>
+                </button>
+              ` : ''}
+              <button type="button" class="co-dtr-filter-pill ${validityFilter === 'absent' ? 'is-active' : ''}" data-filter="absent">
+                Absences <span class="co-dtr-filter-pill__count">${summaryInfo.unexcusedAbsenceCount ?? 0}</span>
+              </button>
+            </div>
+
+            <!-- Fallback select for small screens -->
+            <select id="dtr-modal-validity-filter" class="input" style="display:none;width:auto;height:34px;padding:4px 8px;font-size:0.78rem;">
+              <option value="all" ${validityFilter === 'all' ? 'selected' : ''}>All Logs (${logsData.length})</option>
+              <option value="in_site" ${validityFilter === 'in_site' ? 'selected' : ''}>In Site (${summaryInfo.inSiteCount ?? 0})</option>
+              <option value="too_far" ${validityFilter === 'too_far' ? 'selected' : ''}>Too Far (${summaryInfo.tooFarCount ?? 0})</option>
+              <option value="absent" ${validityFilter === 'absent' ? 'selected' : ''}>Absences (${summaryInfo.unexcusedAbsenceCount ?? 0})</option>
+              <option value="no_gps" ${validityFilter === 'no_gps' ? 'selected' : ''}>No GPS</option>
               ${(summaryInfo.pendingApprovalCount > 0) ? `<option value="pending" ${validityFilter === 'pending' ? 'selected' : ''}>Pending Review (${summaryInfo.pendingApprovalCount})</option>` : ''}
             </select>
           </div>
-          <div style="font-size:0.75rem;color:var(--text-secondary);" id="dtr-modal-count-label">
+
+          <div class="co-dtr-toolbar__right" id="dtr-modal-count-label">
             Showing <strong>${filteredRows.length}</strong> of <strong>${logsData.length}</strong> daily records
           </div>
         </div>
 
-        <!-- DTR Table Body (Scrollable, No Map) -->
-        <div style="overflow-y:auto;flex:1;padding:0;">
-          <table style="width:100%;border-collapse:collapse;text-align:left;">
-            <thead style="position:sticky;top:0;background:#F8FAFC;border-bottom:1px solid #E2E8F0;z-index:2;">
+        <!-- DTR Table Body with Two-Tier Grouped Headers -->
+        <div class="co-dtr-table-wrap">
+          <table class="co-dtr-table">
+            <thead class="co-dtr-thead">
               <tr>
-                <th style="padding:10px 14px;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:#475569;">Date</th>
-                <th style="padding:10px 12px;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:#475569;">Time In (Morning)</th>
-                <th style="padding:10px 12px;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:#475569;">Time Out (Morning)</th>
-                <th style="padding:10px 12px;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:#475569;">Time In (Afternoon)</th>
-                <th style="padding:10px 12px;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:#475569;">Time Out (Afternoon)</th>
-                <th style="padding:10px 12px;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:#475569;">Hrs Rendered</th>
-                <th style="padding:10px 12px;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:#475569;">Status</th>
-                <th style="padding:10px 14px;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:#475569;">Location &amp; Geofence</th>
-                <th style="padding:10px 12px;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:#475569;text-align:center;">Action</th>
+                <th rowspan="2" class="co-dtr-th" style="width:145px;min-width:135px;">Date &amp; Day</th>
+                <th colspan="2" class="co-dtr-th co-dtr-th--group co-dtr-th--am">Morning Shift (AM)</th>
+                <th colspan="2" class="co-dtr-th co-dtr-th--group co-dtr-th--pm">Afternoon Shift (PM)</th>
+                <th rowspan="2" class="co-dtr-th" style="width:115px;min-width:105px;text-align:right;">Hrs Rendered</th>
+                <th rowspan="2" class="co-dtr-th" style="width:125px;min-width:120px;text-align:center;">Status</th>
+                <th rowspan="2" class="co-dtr-th" style="min-width:200px;">Location &amp; Geofence</th>
+                <th rowspan="2" class="co-dtr-th" style="width:125px;min-width:125px;text-align:center;">Action</th>
+              </tr>
+              <tr class="co-dtr-subhead-row">
+                <th class="co-dtr-subth" style="width:95px;">Time In</th>
+                <th class="co-dtr-subth" style="width:105px;">Time Out</th>
+                <th class="co-dtr-subth" style="width:95px;">Time In</th>
+                <th class="co-dtr-subth" style="width:105px;">Time Out</th>
               </tr>
             </thead>
             <tbody id="dtr-modal-tbody">
@@ -3283,11 +4246,12 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
         </div>
 
         <!-- Modal Footer -->
-        <div style="border-top:1px solid #E2E8F0;background:#FAFBFD;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
-          <span style="font-size:0.74rem;color:var(--text-secondary);">
-            <span style="display:inline-flex;align-items:center;gap:5px;">${icon('lightbulb', 13)} Real-time sync active &mdash; this table updates automatically when the trainee logs Time-In or Time-Out.</span>
+        <div class="co-dtr-footer">
+          <span class="co-dtr-sync-indicator">
+            <span class="co-dtr-sync-dot"></span>
+            Real-time sync active &mdash; updates automatically as trainee logs attendance.
           </span>
-          <button type="button" class="btn btn--outline btn--sm" id="dtr-modal-footer-close">Close</button>
+          <button type="button" class="btn btn--outline btn--sm" id="dtr-modal-footer-close" style="font-weight:600;min-width:90px;">Close</button>
         </div>
       </div>
     `;
@@ -3297,9 +4261,17 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
     backdrop.querySelector('#dtr-modal-refresh')?.addEventListener('click', () => fetchAndRenderDtr());
 
     const searchInputEl = backdrop.querySelector('#dtr-modal-search-input');
+    const searchClearEl = backdrop.querySelector('#dtr-modal-search-clear');
     const validitySelectEl = backdrop.querySelector('#dtr-modal-validity-filter');
     const tbodyEl = backdrop.querySelector('#dtr-modal-tbody');
     const countLabelEl = backdrop.querySelector('#dtr-modal-count-label');
+
+    function updateClearButtonVisibility() {
+      if (searchClearEl) {
+        searchClearEl.style.display = searchFilter ? 'flex' : 'none';
+      }
+    }
+    updateClearButtonVisibility();
 
     function updateTableOnly() {
       const rows = getFilteredLogs();
@@ -3314,11 +4286,35 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
 
     searchInputEl?.addEventListener('input', (e) => {
       searchFilter = e.target.value;
+      updateClearButtonVisibility();
+      updateTableOnly();
+    });
+
+    searchClearEl?.addEventListener('click', () => {
+      searchFilter = '';
+      if (searchInputEl) searchInputEl.value = '';
+      updateClearButtonVisibility();
+      updateTableOnly();
+      searchInputEl?.focus();
+    });
+
+    backdrop.querySelectorAll('.co-dtr-filter-pill').forEach(pill => {
+      pill.addEventListener('click', () => {
+        validityFilter = pill.dataset.filter;
+        syncPillFilterState();
+        updateTableOnly();
+      });
+    });
+
+    backdrop.querySelector('.js-kpi-filter-pending')?.addEventListener('click', () => {
+      validityFilter = 'pending';
+      syncPillFilterState();
       updateTableOnly();
     });
 
     validitySelectEl?.addEventListener('change', (e) => {
       validityFilter = e.target.value;
+      syncPillFilterState();
       updateTableOnly();
     });
 
@@ -3326,11 +4322,12 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
 
     backdrop.querySelector('#dtr-modal-export-csv')?.addEventListener('click', () => {
       const rows = getFilteredLogs();
-      const headers = ['Date', 'Morning In', 'Morning Out', 'Afternoon In', 'Afternoon Out', 'Hours Rendered', 'Status', 'Location Validity', 'Distance (m)', 'Site Location'];
+      const headers = ['Date', 'Raw Date', 'Morning In', 'Morning Out', 'Afternoon In', 'Afternoon Out', 'Hours Rendered', 'Status', 'Location Validity', 'Distance (m)', 'Site Location'];
       const csvLines = [
         headers.join(','),
         ...rows.map(r => [
-          `"${(r.rawDate || r.date || '').replace(/"/g, '""')}"`,
+          `"${(r.dayLabel || r.date || '').replace(/"/g, '""')}"`,
+          `"${(r.rawDate || '').replace(/"/g, '""')}"`,
           `"${(r.morningIn || r.timeIn || '—').replace(/"/g, '""')}"`,
           `"${(r.morningOut || '—').replace(/"/g, '""')}${r.autoMorningTimeout ? ' (Auto)' : ''}"`,
           `"${(r.afternoonIn || '—').replace(/"/g, '""')}"`,
