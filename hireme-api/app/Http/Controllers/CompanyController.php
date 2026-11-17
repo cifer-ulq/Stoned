@@ -6,6 +6,7 @@ use App\Models\CompanyProfile;
 use App\Models\User;
 use App\Models\OjtPosting;
 use App\Models\OjtRecord;
+use App\Models\TimeLog;
 use App\Models\StudentOjtInterest;
 use App\Models\JobListing;
 use App\Models\JobApplication;
@@ -3677,29 +3678,36 @@ class CompanyController extends Controller
             $ojtRecord->increment('completed_hours', $hoursToCredit);
         }
 
-        // Notify student
-        $dateFormatted = $log->log_date ? $log->log_date->format('M j, Y') : 'your recent shift';
-        AppNotification::send(
-            $log->user_id,
-            'attendance_approved',
-            'Attendance Approved',
-            "Your out-of-range attendance for {$dateFormatted} ({$hoursToCredit} hrs) has been verified and approved by your host company supervisor.",
-            ['log_id' => $log->id, 'hours' => $hoursToCredit, 'date' => $log->log_date?->toDateString()]
-        );
+        // Dispatch notifications safely
+        try {
+            $logDate = $log->log_date instanceof Carbon ? $log->log_date : ($log->log_date ? Carbon::parse($log->log_date) : null);
+            $dateFormatted = $logDate ? $logDate->format('M j, Y') : 'your recent shift';
 
-        // Notify academic coordinator
-        $studentUser = $log->user;
-        if ($studentUser) {
-            $compName = $request->user()->name;
-            foreach ($this->getSupervisorIdsForStudent($studentUser) as $svId) {
-                AppNotification::send(
-                    $svId,
-                    'attendance_approved',
-                    'Trainee Attendance Verified',
-                    "{$compName} verified and approved {$studentUser->name}'s off-site attendance for {$dateFormatted} ({$hoursToCredit} hrs).",
-                    ['student_id' => $studentUser->id, 'log_id' => $log->id]
-                );
+            // Notify student
+            AppNotification::send(
+                (int) $log->user_id,
+                'attendance_approved',
+                'Attendance Approved',
+                "Your out-of-range attendance for {$dateFormatted} ({$hoursToCredit} hrs) has been verified and approved by your host company supervisor.",
+                ['log_id' => $log->id, 'hours' => $hoursToCredit, 'date' => $logDate?->toDateString()]
+            );
+
+            // Notify academic coordinator
+            $studentUser = $log->user;
+            if ($studentUser) {
+                $compName = $request->user()->name ?? 'Host Company';
+                foreach ($this->getSupervisorIdsForStudent($studentUser) as $svId) {
+                    AppNotification::send(
+                        (int) $svId,
+                        'attendance_approved',
+                        'Trainee Attendance Verified',
+                        "{$compName} verified and approved {$studentUser->name}'s off-site attendance for {$dateFormatted} ({$hoursToCredit} hrs).",
+                        ['student_id' => $studentUser->id, 'log_id' => $log->id]
+                    );
+                }
             }
+        } catch (\Throwable $e) {
+            \Log::warning('[CompanyController::approveAttendance] Notification dispatch warning: ' . $e->getMessage());
         }
 
         return response()->json([
@@ -3752,14 +3760,19 @@ class CompanyController extends Controller
             'rejection_reason'    => $reason,
         ]);
 
-        $dateFormatted = $log->log_date ? $log->log_date->format('M j, Y') : 'your recent shift';
-        AppNotification::send(
-            $log->user_id,
-            'attendance_rejected',
-            'Attendance Rejected',
-            "Your out-of-range attendance for {$dateFormatted} was rejected by your host company: \"{$reason}\". 0 hours credited.",
-            ['log_id' => $log->id, 'reason' => $reason]
-        );
+        try {
+            $logDate = $log->log_date instanceof Carbon ? $log->log_date : ($log->log_date ? Carbon::parse($log->log_date) : null);
+            $dateFormatted = $logDate ? $logDate->format('M j, Y') : 'your recent shift';
+            AppNotification::send(
+                (int) $log->user_id,
+                'attendance_rejected',
+                'Attendance Rejected',
+                "Your out-of-range attendance for {$dateFormatted} was rejected by your host company: \"{$reason}\". 0 hours credited.",
+                ['log_id' => $log->id, 'reason' => $reason]
+            );
+        } catch (\Throwable $e) {
+            \Log::warning('[CompanyController::rejectAttendance] Notification dispatch warning: ' . $e->getMessage());
+        }
 
         return response()->json([
             'success' => true,
@@ -3804,30 +3817,35 @@ class CompanyController extends Controller
             'approved_at'         => now(),
         ]);
 
-        $dateFormatted = $log->log_date ? $log->log_date->format('M j, Y') : 'the scheduled shift';
+        try {
+            $logDate = $log->log_date instanceof Carbon ? $log->log_date : ($log->log_date ? Carbon::parse($log->log_date) : null);
+            $dateFormatted = $logDate ? $logDate->format('M j, Y') : 'the scheduled shift';
 
-        // Notify trainee
-        AppNotification::send(
-            $log->user_id,
-            'attendance_excused',
-            'Absence Excused',
-            "Your absence for {$dateFormatted} has been excused by your host company: \"{$reason}\".",
-            ['log_id' => $log->id, 'reason' => $reason, 'date' => $log->log_date?->toDateString()]
-        );
+            // Notify trainee
+            AppNotification::send(
+                (int) $log->user_id,
+                'attendance_excused',
+                'Absence Excused',
+                "Your absence for {$dateFormatted} has been excused by your host company: \"{$reason}\".",
+                ['log_id' => $log->id, 'reason' => $reason, 'date' => $logDate?->toDateString()]
+            );
 
-        // Notify academic coordinator(s)
-        $studentUser = $log->user;
-        if ($studentUser) {
-            $compName = $request->user()->name;
-            foreach ($this->getSupervisorIdsForStudent($studentUser) as $svId) {
-                AppNotification::send(
-                    $svId,
-                    'attendance_excused',
-                    'Trainee Absence Excused',
-                    "{$compName} marked {$studentUser->name}'s absence for {$dateFormatted} as excused: \"{$reason}\".",
-                    ['student_id' => $studentUser->id, 'log_id' => $log->id]
-                );
+            // Notify academic coordinator(s)
+            $studentUser = $log->user;
+            if ($studentUser) {
+                $compName = $request->user()->name ?? 'Host Company';
+                foreach ($this->getSupervisorIdsForStudent($studentUser) as $svId) {
+                    AppNotification::send(
+                        (int) $svId,
+                        'attendance_excused',
+                        'Trainee Absence Excused',
+                        "{$compName} marked {$studentUser->name}'s absence for {$dateFormatted} as excused: \"{$reason}\".",
+                        ['student_id' => $studentUser->id, 'log_id' => $log->id]
+                    );
+                }
             }
+        } catch (\Throwable $e) {
+            \Log::warning('[CompanyController::excuseAttendance] Notification dispatch warning: ' . $e->getMessage());
         }
 
         return response()->json([
@@ -3900,23 +3918,27 @@ class CompanyController extends Controller
                 $affectedCount++;
             }
 
-            $formattedDate = Carbon::parse($closeDate)->format('M d, Y');
-            AppNotification::send(
-                $student->id,
-                'attendance_excused',
-                'Company Closed / Non-Working Day',
-                "{$compName} declared {$formattedDate} as a non-working day: \"{$reason}\". You are excused from attendance.",
-                ['date' => $closeDate, 'reason' => $reason]
-            );
-
-            foreach ($this->getSupervisorIdsForStudent($student) as $svId) {
+            try {
+                $formattedDate = Carbon::parse($closeDate)->format('M d, Y');
                 AppNotification::send(
-                    $svId,
+                    (int) $student->id,
                     'attendance_excused',
-                    'Company Closed / Excused Day',
-                    "{$compName} declared {$formattedDate} as a non-working day for trainee {$student->name}: \"{$reason}\".",
-                    ['student_id' => $student->id, 'date' => $closeDate]
+                    'Company Closed / Non-Working Day',
+                    "{$compName} declared {$formattedDate} as a non-working day: \"{$reason}\". You are excused from attendance.",
+                    ['date' => $closeDate, 'reason' => $reason]
                 );
+
+                foreach ($this->getSupervisorIdsForStudent($student) as $svId) {
+                    AppNotification::send(
+                        (int) $svId,
+                        'attendance_excused',
+                        'Company Closed / Excused Day',
+                        "{$compName} declared {$formattedDate} as a non-working day for trainee {$student->name}: \"{$reason}\".",
+                        ['student_id' => $student->id, 'date' => $closeDate]
+                    );
+                }
+            } catch (\Throwable $e) {
+                \Log::warning('[CompanyController::markCompanyClosed] Notification warning: ' . $e->getMessage());
             }
         }
 
