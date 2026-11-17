@@ -29,12 +29,13 @@ function esc(str) {
 
 // ── Avatar helper ────────────────────────────────────────────────────────────
 function avatarHtml(name, avatarUrl, size = 36) {
-  const initials = (name || '?').trim().split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 2);
+  const initials = esc((name || '?').trim().split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 2) || '?');
+  const fallbackStyle = `width:${size}px;height:${size}px;border-radius:50%;background:var(--color-primary-bg-strong);color:var(--color-primary);display:flex;align-items:center;justify-content:center;font-size:${Math.floor(size * 0.38)}px;font-weight:700;flex-shrink:0;`;
   if (avatarUrl) {
-    const src = storageUrl(avatarUrl);
-    return `<img src="${src}" alt="${esc(name)}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;" onerror="this.onerror=null;this.parentElement.innerHTML='<div style=\\'width:${size}px;height:${size}px;border-radius:50%;background:var(--color-primary-bg-strong);color:var(--color-primary);display:flex;align-items:center;justify-content:center;font-size:${Math.floor(size * 0.38)}px;font-weight:700;flex-shrink:0;\\'>${initials}</div>';">`;
+    const src = esc(storageUrl(avatarUrl));
+    return `<span style="position:relative;display:inline-flex;width:${size}px;height:${size}px;flex-shrink:0;"><img src="${src}" alt="${esc(name)}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;flex-shrink:0;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><div style="${fallbackStyle}display:none;">${initials}</div></span>`;
   }
-  return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:var(--color-primary-bg-strong);color:var(--color-primary);display:flex;align-items:center;justify-content:center;font-size:${Math.floor(size * 0.38)}px;font-weight:700;flex-shrink:0;">${initials}</div>`;
+  return `<div style="${fallbackStyle}">${initials}</div>`;
 }
 
 export function initChat(navEl) {
