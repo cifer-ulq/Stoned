@@ -1744,46 +1744,130 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
       </div>
     </section>
 
-    <!-- ── Time Log Records ── -->
+    <!-- ── Time Log Records (Daily Time Record) ── -->
     <section class="page-section animate-fade-in-up" style="animation-delay:120ms;">
-      <div class="jp-card">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
-          <div>
-            <h3 style="font-size:0.95rem;font-weight:700;display:flex;align-items:center;gap:8px;margin:0;">${icon('fileText', 18)} Time Log Records</h3>
-            <p style="margin:2px 0 0;font-size:0.75rem;color:var(--text-tertiary);">Click any log row to inspect its check-in and check-out locations on the map above.</p>
+      <div class="ojt-dtr-card">
+        <!-- Header Bar -->
+        <div class="ojt-dtr-header-bar">
+          <div class="ojt-dtr-title-group">
+            <h3 class="ojt-dtr-title">${icon('fileText', 20)} Time Log Records (DTR)</h3>
+            <p class="ojt-dtr-subtitle">Click any attendance row to inspect check-in and check-out geofence locations on the map above.</p>
           </div>
-          <span class="text-xs text-tertiary" id="time-logs-counter">${logs.length} entries</span>
+          
+          <div class="ojt-dtr-summary-strip">
+            <span class="ojt-dtr-stat-pill ojt-dtr-stat-pill--primary">
+              ${icon('clock', 13)} <strong>${logs.reduce((sum, l) => {
+                const isApproved = (l.approvalStatus ?? 'approved') === 'approved';
+                return sum + (isApproved && l.status !== 'absent' ? (parseFloat(l.hoursCredited ?? l.hours) || 0) : 0);
+              }, 0).toFixed(1)} hrs</strong> rendered
+            </span>
+            <span class="ojt-dtr-stat-pill">
+              ${icon('check', 13)} <strong>${logs.filter(l => {
+                const st = (l.status || '').toLowerCase();
+                const lv = l.locationValidity;
+                return (st === 'valid' || lv === 'In Site') && st !== 'absent';
+              }).length}</strong> present
+            </span>
+            ${logs.filter(l => (l.status || '').toLowerCase() === 'absent').length > 0 ? `
+              <span class="ojt-dtr-stat-pill" style="color:#dc2626;background:#fef2f2;border-color:#fecaca;">
+                ${icon('x', 13)} <strong>${logs.filter(l => (l.status || '').toLowerCase() === 'absent').length}</strong> absences
+              </span>
+            ` : ''}
+            <button type="button" class="btn btn--outline btn--sm" id="time-logs-export-csv" style="height:30px;padding:0 10px;font-size:0.75rem;display:inline-flex;align-items:center;gap:5px;border-radius:6px;cursor:pointer;">
+              ${icon('download', 13)} Export CSV
+            </button>
+          </div>
         </div>
 
         ${logs.length === 0
-          ? `<div style="text-align:center;padding:36px 0;color:var(--text-tertiary);">
-               ${icon('clock', 32)}
-               <p style="margin-top:12px;font-weight:600;">No logs yet</p>
-               <p class="text-sm">Log today's attendance to get started.</p>
-              </div>`
-           : `<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
-                <table style="width:100%;border-collapse:collapse;">
-                  <thead>
-                    <tr style="border-bottom:2px solid var(--border-light);">
-                      <th style="text-align:left;padding:8px 10px;font-size:0.67rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-tertiary);white-space:nowrap;">Date</th>
-                      <th style="text-align:center;padding:8px 10px;font-size:0.67rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-tertiary);white-space:nowrap;">Time In (Morning)</th>
-                      <th style="text-align:center;padding:8px 10px;font-size:0.67rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-tertiary);white-space:nowrap;">Time Out (Morning)</th>
-                      <th style="text-align:center;padding:8px 10px;font-size:0.67rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-tertiary);white-space:nowrap;">Time In (Afternoon)</th>
-                      <th style="text-align:center;padding:8px 10px;font-size:0.67rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-tertiary);white-space:nowrap;">Time Out (Afternoon)</th>
-                      <th style="text-align:center;padding:8px 10px;font-size:0.67rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-tertiary);white-space:nowrap;">Hrs</th>
-                      <th style="text-align:center;padding:8px 10px;font-size:0.67rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-tertiary);white-space:nowrap;">Status</th>
-                      <th style="text-align:center;padding:8px 10px;font-size:0.67rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-tertiary);white-space:nowrap;">Location Validity</th>
-                    </tr>
-                  </thead>
-                  <tbody id="time-logs-tbody">
-                    <!-- Populated by pagination script -->
-                  </tbody>
-                </table>
+          ? `<div style="text-align:center;padding:56px 20px;color:var(--text-tertiary);">
+               <div style="width:48px;height:48px;border-radius:50%;background:rgba(0,89,48,0.06);color:var(--color-primary, #005930);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
+                 ${icon('clock', 24)}
+               </div>
+               <h4 style="margin:0 0 4px;font-size:0.96rem;font-weight:700;color:var(--text-primary);">No attendance logs recorded yet</h4>
+               <p style="margin:0;font-size:0.8rem;color:var(--text-secondary);">Your daily check-in and check-out entries will be tracked and displayed here in real time.</p>
+             </div>`
+          : `
+            <!-- Filter Toolbar -->
+            <div class="ojt-dtr-toolbar">
+              <div class="ojt-dtr-search-box">
+                <span class="ojt-dtr-search-icon">${icon('search', 14)}</span>
+                <input
+                  type="text"
+                  id="time-logs-search-input"
+                  class="ojt-dtr-search-input"
+                  placeholder="Search date, day, or location..."
+                />
               </div>
-              <div id="time-logs-pagination" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-top:14px;padding-top:12px;border-top:1px solid var(--border-light);">
-                <div class="text-xs text-secondary" id="pagination-info">Showing entries</div>
-                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;" id="pagination-controls"></div>
-              </div>`
+
+              <div class="ojt-dtr-filters-list">
+                <button type="button" class="ojt-dtr-filter-btn is-active" data-filter="all">
+                  All <span class="ojt-dtr-filter-count">${logs.length}</span>
+                </button>
+                <button type="button" class="ojt-dtr-filter-btn" data-filter="valid">
+                  Valid / In Site <span class="ojt-dtr-filter-count">${logs.filter(l => {
+                    const st = (l.status || '').toLowerCase();
+                    const lv = l.locationValidity;
+                    return (st === 'valid' || lv === 'In Site') && st !== 'absent';
+                  }).length}</span>
+                </button>
+                <button type="button" class="ojt-dtr-filter-btn" data-filter="absent">
+                  Absences <span class="ojt-dtr-filter-count">${logs.filter(l => (l.status || '').toLowerCase() === 'absent').length}</span>
+                </button>
+                ${logs.filter(l => {
+                  const st = (l.status || '').toLowerCase();
+                  return st !== 'absent' && (Boolean(l.hasGeofenceExemption) || l.locationValidity === 'Too Far' || (l.distanceMeters != null && l.distanceMeters > 100));
+                }).length > 0 ? `
+                  <button type="button" class="ojt-dtr-filter-btn" data-filter="offsite">
+                    Off-Site / Too Far <span class="ojt-dtr-filter-count">${logs.filter(l => {
+                      const st = (l.status || '').toLowerCase();
+                      return st !== 'absent' && (Boolean(l.hasGeofenceExemption) || l.locationValidity === 'Too Far' || (l.distanceMeters != null && l.distanceMeters > 100));
+                    }).length}</span>
+                  </button>
+                ` : ''}
+                ${logs.filter(l => (l.approvalStatus || '') === 'pending_company').length > 0 ? `
+                  <button type="button" class="ojt-dtr-filter-btn" data-filter="pending" style="color:#b45309;">
+                    Pending Review <span class="ojt-dtr-filter-count" style="background:rgba(217,119,6,0.18);">${logs.filter(l => (l.approvalStatus || '') === 'pending_company').length}</span>
+                  </button>
+                ` : ''}
+              </div>
+            </div>
+
+            <!-- Table Body -->
+            <div class="ojt-dtr-table-wrap">
+              <table class="ojt-dtr-table">
+                <thead>
+                  <tr>
+                    <th rowspan="2" class="ojt-dtr-th" style="width:160px;">Date</th>
+                    <th colspan="2" class="ojt-dtr-th ojt-dtr-th-group ojt-dtr-th-group--morning">
+                      <span class="ojt-dtr-group-tag">${icon('sun', 12)} Morning Session</span>
+                    </th>
+                    <th colspan="2" class="ojt-dtr-th ojt-dtr-th-group ojt-dtr-th-group--afternoon">
+                      <span class="ojt-dtr-group-tag">${icon('clock', 12)} Afternoon Session</span>
+                    </th>
+                    <th rowspan="2" class="ojt-dtr-th ojt-dtr-th--center" style="width:110px;">Hours</th>
+                    <th rowspan="2" class="ojt-dtr-th ojt-dtr-th--center" style="width:130px;">Status</th>
+                    <th rowspan="2" class="ojt-dtr-th ojt-dtr-th--center" style="min-width:180px;">Location &amp; Geofence</th>
+                  </tr>
+                  <tr>
+                    <th class="ojt-dtr-th ojt-dtr-th-sub ojt-dtr-th-sub--morning" style="width:115px;">Time In</th>
+                    <th class="ojt-dtr-th ojt-dtr-th-sub ojt-dtr-th-sub--morning" style="width:115px;">Time Out</th>
+                    <th class="ojt-dtr-th ojt-dtr-th-sub ojt-dtr-th-sub--afternoon" style="width:115px;">Time In</th>
+                    <th class="ojt-dtr-th ojt-dtr-th-sub ojt-dtr-th-sub--afternoon" style="width:115px;">Time Out</th>
+                  </tr>
+                </thead>
+                <tbody id="time-logs-tbody">
+                  <!-- Populated by pagination & filter script -->
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Pagination Bar -->
+            <div class="ojt-dtr-pagination" id="time-logs-pagination">
+              <div class="ojt-dtr-pagination-info" id="pagination-info">Showing entries</div>
+              <div class="ojt-dtr-pagination-controls" id="pagination-controls"></div>
+            </div>
+          `
         }
       </div>
     </section>
@@ -2026,55 +2110,165 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
     });
   }
 
-  // ── Time Logs Pagination & Interactive Row Clicks ────────────────────────
+  // ── Helper to format date with weekday and Today tag ──────────────────────
+  function formatLogRowDate(log) {
+    let formattedDate = log.date || log.dayLabel || '—';
+    let weekday = '';
+    let isToday = false;
+
+    try {
+      const raw = log.rawDate || log.date;
+      if (raw) {
+        const d = new Date(raw);
+        if (!isNaN(d.getTime())) {
+          formattedDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+          weekday = d.toLocaleDateString('en-US', { weekday: 'long' });
+          const now = new Date();
+          if (d.toDateString() === now.toDateString()) {
+            isToday = true;
+          }
+        }
+      }
+    } catch (_) {}
+
+    if (!weekday && log.dayLabel) {
+      const parts = String(log.dayLabel).trim().split(/\s+/);
+      if (parts.length >= 2) {
+        const daysMap = { Mon: 'Monday', Tue: 'Tuesday', Wed: 'Wednesday', Thu: 'Thursday', Fri: 'Friday', Sat: 'Saturday', Sun: 'Sunday' };
+        weekday = daysMap[parts[0]] || parts[0];
+        if (formattedDate === '—') formattedDate = parts.slice(1).join(' ');
+      } else {
+        weekday = log.dayLabel;
+      }
+    }
+
+    return { formattedDate, weekday, isToday };
+  }
+
+  // ── CSV Export Helper ─────────────────────────────────────────────────────
+  function exportLogsToCSV(dataRows) {
+    const headers = ['Date', 'Day', 'Morning In', 'Morning Out', 'Afternoon In', 'Afternoon Out', 'Hours Rendered', 'Status', 'Location Validity', 'Distance (m)', 'Coordinates'];
+    const csvRows = [
+      headers.join(','),
+      ...dataRows.map(l => {
+        const coords = (l.inLat != null && l.inLon != null) ? `${l.inLat}, ${l.inLon}` : '';
+        return [
+          `"${(l.date || '').replace(/"/g, '""')}"`,
+          `"${(l.dayLabel || '').replace(/"/g, '""')}"`,
+          `"${(l.morningIn || l.timeIn || '—').replace(/"/g, '""')}"`,
+          `"${(l.morningOut || '—').replace(/"/g, '""')}${l.autoMorningTimeout ? ' (Auto)' : ''}"`,
+          `"${(l.afternoonIn || '—').replace(/"/g, '""')}"`,
+          `"${(l.afternoonOut || l.timeOut || '—').replace(/"/g, '""')}${l.autoAfternoonTimeout ? ' (Auto)' : ''}"`,
+          Number(l.hours || 0).toFixed(2),
+          `"${(l.status || '').replace(/"/g, '""')}"`,
+          `"${(l.locationValidity || 'No GPS').replace(/"/g, '""')}"`,
+          l.distanceMeters != null ? l.distanceMeters : '',
+          `"${coords.replace(/"/g, '""')}"`
+        ].join(',');
+      })
+    ];
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `OJT_DTR_Attendance_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  // ── Time Logs Pagination, Filtering, Search & Interactive Row Clicks ──────
+  let activeFilter = 'all';
+  let searchQuery = '';
   let currentLogsPage = 1;
   const logsPageSize = 10;
-  const totalLogsPages = Math.ceil(logs.length / logsPageSize) || 1;
 
-  function updateLogsPage(page) {
-    currentLogsPage = Math.max(1, Math.min(page, totalLogsPages));
+  function getFilteredLogs() {
+    const q = searchQuery.toLowerCase().trim();
+    return logs.filter(log => {
+      const st = (log.status || '').toLowerCase();
+      const lv = log.locationValidity;
+      const isAbsent = st === 'absent';
+      const isPending = (log.approvalStatus || '') === 'pending_company';
+      const isOffsite = Boolean(log.hasGeofenceExemption) || lv === 'Too Far' || (log.distanceMeters != null && log.distanceMeters > 100);
+      const isValid = (st === 'valid' || lv === 'In Site') && !isAbsent;
+
+      if (activeFilter === 'valid' && !isValid) return false;
+      if (activeFilter === 'absent' && !isAbsent) return false;
+      if (activeFilter === 'offsite' && !isOffsite) return false;
+      if (activeFilter === 'pending' && !isPending) return false;
+
+      if (q) {
+        const textToSearch = `${log.date || ''} ${log.dayLabel || ''} ${log.status || ''} ${log.locationValidity || ''} ${log.outOfRangeReason || ''} ${log.siteLocation || ''}`.toLowerCase();
+        if (!textToSearch.includes(q)) return false;
+      }
+      return true;
+    });
+  }
+
+  function updateLogsPage(page = 1) {
+    const filtered = getFilteredLogs();
+    const totalFilteredPages = Math.ceil(filtered.length / logsPageSize) || 1;
+    currentLogsPage = Math.max(1, Math.min(page, totalFilteredPages));
+
     const tbody = container.querySelector('#time-logs-tbody');
     const infoEl = container.querySelector('#pagination-info');
     const ctrlEl = container.querySelector('#pagination-controls');
     if (!tbody) return;
 
+    if (filtered.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="8" style="padding:48px 20px;text-align:center;color:var(--text-secondary);">
+            <div style="width:44px;height:44px;border-radius:50%;background:rgba(0,89,48,0.06);color:var(--color-primary, #005930);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
+              ${icon('search', 22)}
+            </div>
+            <div style="font-weight:700;font-size:0.92rem;color:var(--text-primary);margin-bottom:4px;">No matching attendance records</div>
+            <div style="font-size:0.78rem;color:var(--text-secondary);">Try adjusting your search keywords or switching filter tabs.</div>
+          </td>
+        </tr>
+      `;
+      if (infoEl) infoEl.textContent = 'Showing 0 entries';
+      if (ctrlEl) ctrlEl.innerHTML = '';
+      return;
+    }
+
     const start = (currentLogsPage - 1) * logsPageSize;
-    const end = Math.min(start + logsPageSize, logs.length);
-    const slice = logs.slice(start, end);
+    const end = Math.min(start + logsPageSize, filtered.length);
+    const slice = filtered.slice(start, end);
 
     tbody.innerHTML = slice.map(l => renderTrackerLogRow(l)).join('');
 
     if (infoEl) {
-      infoEl.textContent = logs.length > 0
-        ? `Showing ${start + 1}–${end} of ${logs.length} entries`
-        : '0 entries';
+      infoEl.innerHTML = `Showing <strong>${start + 1}–${end}</strong> of <strong>${filtered.length}</strong> records${filtered.length !== logs.length ? ` (filtered from ${logs.length})` : ''}`;
     }
 
     if (ctrlEl) {
-      if (totalLogsPages <= 1) {
+      if (totalFilteredPages <= 1) {
         ctrlEl.innerHTML = '';
       } else {
         let btns = '';
         btns += `
-          <button class="btn btn--outline btn--sm" id="logs-prev-btn" style="height:26px;padding:0 8px;font-size:0.72rem;display:flex;align-items:center;gap:3px;" ${currentLogsPage === 1 ? 'disabled' : ''}>
-            ${icon('chevronLeft', 11)} Prev
+          <button class="ojt-dtr-page-btn" id="logs-prev-btn" ${currentLogsPage === 1 ? 'disabled' : ''}>
+            ${icon('chevronLeft', 12)} Prev
           </button>
         `;
 
         const getPageNumbers = () => {
-          if (totalLogsPages <= 7) return Array.from({ length: totalLogsPages }, (_, i) => i + 1);
-          if (currentLogsPage <= 4) return [1, 2, 3, 4, 5, '...', totalLogsPages];
-          if (currentLogsPage >= totalLogsPages - 3) return [1, '...', totalLogsPages - 4, totalLogsPages - 3, totalLogsPages - 2, totalLogsPages - 1, totalLogsPages];
-          return [1, '...', currentLogsPage - 1, currentLogsPage, currentLogsPage + 1, '...', totalLogsPages];
+          if (totalFilteredPages <= 7) return Array.from({ length: totalFilteredPages }, (_, i) => i + 1);
+          if (currentLogsPage <= 4) return [1, 2, 3, 4, 5, '...', totalFilteredPages];
+          if (currentLogsPage >= totalFilteredPages - 3) return [1, '...', totalFilteredPages - 4, totalFilteredPages - 3, totalFilteredPages - 2, totalFilteredPages - 1, totalFilteredPages];
+          return [1, '...', currentLogsPage - 1, currentLogsPage, currentLogsPage + 1, '...', totalFilteredPages];
         };
 
         getPageNumbers().forEach(p => {
           if (p === '...') {
-            btns += `<span style="padding:0 3px;font-size:0.75rem;color:var(--text-tertiary);">&hellip;</span>`;
+            btns += `<span style="padding:0 4px;font-size:0.75rem;color:var(--text-tertiary);">&hellip;</span>`;
           } else {
             const isAct = p === currentLogsPage;
             btns += `
-              <button class="btn ${isAct ? 'btn--primary' : 'btn--outline'} btn--sm logs-page-num" data-page="${p}" style="height:26px;width:26px;padding:0;font-size:0.72rem;font-weight:${isAct ? '700' : '500'};">
+              <button class="ojt-dtr-page-btn ${isAct ? 'is-active' : ''} logs-page-num" data-page="${p}">
                 ${p}
               </button>
             `;
@@ -2082,8 +2276,8 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
         });
 
         btns += `
-          <button class="btn btn--outline btn--sm" id="logs-next-btn" style="height:26px;padding:0 8px;font-size:0.72rem;display:flex;align-items:center;gap:3px;" ${currentLogsPage === totalLogsPages ? 'disabled' : ''}>
-            Next ${icon('chevronRight', 11)}
+          <button class="ojt-dtr-page-btn" id="logs-next-btn" ${currentLogsPage === totalFilteredPages ? 'disabled' : ''}>
+            Next ${icon('chevronRight', 12)}
           </button>
         `;
 
@@ -2098,15 +2292,37 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
     }
 
     // Interactive row clicks: highlight and locate on map
-    tbody.querySelectorAll('.log-table-row').forEach(row => {
+    tbody.querySelectorAll('.ojt-dtr-row, .log-table-row').forEach(row => {
       row.addEventListener('click', () => {
-        tbody.querySelectorAll('.log-table-row').forEach(r => r.style.background = '');
-        row.style.background = 'rgba(0, 89, 48, 0.08)';
+        tbody.querySelectorAll('.ojt-dtr-row, .log-table-row').forEach(r => r.classList.remove('is-selected'));
+        row.classList.add('is-selected');
         const logId = parseInt(row.dataset.logId);
         window.focusMapLog?.(logId);
       });
     });
   }
+
+  // Filter toolbar bindings
+  container.querySelectorAll('.ojt-dtr-filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      container.querySelectorAll('.ojt-dtr-filter-btn').forEach(b => b.classList.remove('is-active'));
+      btn.classList.add('is-active');
+      activeFilter = btn.dataset.filter || 'all';
+      updateLogsPage(1);
+    });
+  });
+
+  const searchInput = container.querySelector('#time-logs-search-input');
+  searchInput?.addEventListener('input', (e) => {
+    searchQuery = e.target.value;
+    updateLogsPage(1);
+  });
+
+  const exportBtn = container.querySelector('#time-logs-export-csv');
+  exportBtn?.addEventListener('click', () => {
+    const dataToExport = getFilteredLogs();
+    exportLogsToCSV(dataToExport.length ? dataToExport : logs);
+  });
 
   updateLogsPage(1);
 
@@ -2116,57 +2332,127 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
 
 // ── Helper to render a single table row for a log entry ───────────────────────
 function renderTrackerLogRow(log) {
-  const isPendingApproval = log.approvalStatus === 'pending_company';
-  const isRejected = log.approvalStatus === 'rejected';
+  const isPendingApproval = (log.approvalStatus || '') === 'pending_company';
+  const isRejected = (log.approvalStatus || '') === 'rejected';
 
-  const st = log.status;
+  const st = (log.status || '').toLowerCase();
   const isAbsent = st === 'absent';
   const isHalfDayAm = st === 'half_day_am';
   const isHalfDayPm = st === 'half_day_pm';
   const isExcused = st === 'excused';
 
-  const sc = st === 'valid'
-    ? { label: 'Valid',     color: 'var(--color-success)',                           bg: 'var(--color-success-bg)' }
-    : st === 'not_valid'
-    ? { label: 'Not Valid', color: 'var(--color-error,#ef4444)',                     bg: 'var(--color-error-bg,rgba(239,68,68,0.1))' }
-    : st === 'no_gps'
-    ? { label: 'No GPS',    color: 'var(--text-tertiary)',                            bg: 'var(--bg-tertiary)' }
-    : st === 'gps_only'
-    ? { label: 'GPS Saved', color: 'var(--color-warning)',                            bg: 'var(--color-warning-bg)' }
-    : { label: 'Pending',   color: 'var(--color-warning)',                            bg: 'var(--color-warning-bg)' };
+  // 1. Date column
+  const dateInfo = formatLogRowDate(log);
 
-  let statusBadgeHtml = '';
-  if (isAbsent) {
-    statusBadgeHtml = `<span style="background:var(--color-error-bg,rgba(239,68,68,0.1));color:var(--color-error,#ef4444);font-size:0.63rem;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap;display:inline-flex;align-items:center;gap:3px;">${icon('x', 10)} Absent</span>`;
-  } else if (isHalfDayAm) {
-    statusBadgeHtml = `<span style="background:rgba(37,99,235,0.1);color:#2563eb;font-size:0.63rem;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap;display:inline-flex;align-items:center;gap:3px;">Half Day (AM)</span>`;
-  } else if (isHalfDayPm) {
-    statusBadgeHtml = `<span style="background:rgba(37,99,235,0.1);color:#2563eb;font-size:0.63rem;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap;display:inline-flex;align-items:center;gap:3px;">Half Day (PM)</span>`;
-  } else if (isExcused) {
-    statusBadgeHtml = `<span style="background:rgba(100,116,139,0.12);color:#475569;font-size:0.63rem;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap;display:inline-flex;align-items:center;gap:3px;" title="${esc(log.outOfRangeReason || 'Absence excused')}">${icon('checkCircle', 10)} Excused</span>`;
+  // 2. Morning Session punches
+  const mIn = isAbsent || isExcused || isHalfDayPm ? null : (log.morningIn || (!log.afternoonIn && log.timeIn ? log.timeIn : null));
+  const mOut = isAbsent || isExcused || isHalfDayPm ? null : (log.morningOut || null);
+
+  const mInHtml = mIn
+    ? `<span class="dtr-time-val">${esc(mIn)}</span>`
+    : `<span class="dtr-empty-dash">&mdash;</span>`;
+
+  const mOutHtml = mOut
+    ? `<div style="display:flex;flex-direction:column;align-items:center;">
+         <span class="dtr-time-val">${esc(mOut)}</span>
+         ${log.autoMorningTimeout ? `<span class="dtr-auto-chip" title="Automatically closed at lunch break">${icon('clock', 10)} Auto 12:00</span>` : ''}
+       </div>`
+    : (mIn && !log.afternoonIn
+      ? `<span class="dtr-active-chip"><span class="dtr-pulse-dot"></span> Active</span>`
+      : `<span class="dtr-empty-dash">&mdash;</span>`);
+
+  // 3. Afternoon Session punches
+  const aIn = isAbsent || isExcused || isHalfDayAm ? null : (log.afternoonIn || null);
+  const aOut = isAbsent || isExcused || isHalfDayAm ? null : (log.afternoonOut || (!log.morningIn && !log.afternoonIn && log.timeOut ? log.timeOut : null));
+
+  const aInHtml = aIn
+    ? `<span class="dtr-time-val">${esc(aIn)}</span>`
+    : `<span class="dtr-empty-dash">&mdash;</span>`;
+
+  const aOutHtml = aOut
+    ? `<div style="display:flex;flex-direction:column;align-items:center;">
+         <span class="dtr-time-val">${esc(aOut)}</span>
+         ${log.autoAfternoonTimeout ? `<span class="dtr-auto-chip" title="Automatically closed at scheduled shift end">${icon('clock', 10)} Auto ${esc(aOut)}</span>` : ''}
+       </div>`
+    : (aIn
+      ? `<span class="dtr-active-chip"><span class="dtr-pulse-dot"></span> Active</span>`
+      : `<span class="dtr-empty-dash">&mdash;</span>`);
+
+  // 4. Hours rendered
+  const rawHrs = Number(log.hours || 0).toFixed(1);
+  let hrsHtml = '';
+  if (isAbsent || (isExcused && !Number(log.hours))) {
+    hrsHtml = `<div class="dtr-hrs-box"><span class="dtr-hrs-val dtr-hrs-val--zero">0.0 hrs</span></div>`;
   } else if (isPendingApproval) {
-    statusBadgeHtml = `<span style="background:rgba(217,119,6,0.12);color:#d97706;font-size:0.63rem;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap;display:inline-flex;align-items:center;gap:3px;" title="Outside geofence - awaiting company supervisor approval">${icon('alertTriangle', 10)} Pending Review</span>`;
+    hrsHtml = `
+      <div class="dtr-hrs-box" title="Hours held in escrow pending supervisor review">
+        <span class="dtr-hrs-val dtr-hrs-val--escrow">${rawHrs} hrs</span>
+        <span class="dtr-hrs-sub" style="color:#b45309;font-weight:700;">(In Escrow)</span>
+      </div>`;
   } else if (isRejected) {
-    statusBadgeHtml = `<span style="background:var(--color-error-bg,rgba(239,68,68,0.1));color:var(--color-error,#ef4444);font-size:0.63rem;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap;display:inline-flex;align-items:center;gap:3px;" title="${esc(log.rejectionReason || 'Attendance rejected')}">${icon('x', 10)} Rejected</span>`;
+    hrsHtml = `
+      <div class="dtr-hrs-box" title="${esc(log.rejectionReason || 'Rejected')}">
+        <span class="dtr-hrs-val dtr-hrs-val--rejected">${rawHrs} hrs</span>
+        <span class="dtr-hrs-sub" style="color:#dc2626;font-weight:700;">(Rejected)</span>
+      </div>`;
   } else {
-    statusBadgeHtml = `<span style="background:${sc.bg};color:${sc.color};font-size:0.63rem;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap;">${sc.label}</span>`;
+    const hasSplit = (log.morningHours > 0 || log.afternoonHours > 0);
+    const splitText = hasSplit ? `${Number(log.morningHours || 0).toFixed(1)}h AM · ${Number(log.afternoonHours || 0).toFixed(1)}h PM` : '';
+    hrsHtml = `
+      <div class="dtr-hrs-box">
+        <span class="dtr-hrs-val">${rawHrs} hrs</span>
+        ${splitText ? `<span class="dtr-hrs-sub">${splitText}</span>` : ''}
+      </div>`;
   }
 
-  const lv = log.locationValidity;
+  // 5. Status Badge
+  let statusBadgeHtml = '';
+  if (isPendingApproval) {
+    statusBadgeHtml = `<span class="dtr-status-pill dtr-status-pill--pending" title="Outside geofence - awaiting company supervisor approval">${icon('alertTriangle', 11)} Pending Review</span>`;
+  } else if (isRejected) {
+    statusBadgeHtml = `<span class="dtr-status-pill dtr-status-pill--rejected" title="${esc(log.rejectionReason || 'Attendance rejected')}">${icon('x', 11)} Rejected</span>`;
+  } else if (isAbsent) {
+    statusBadgeHtml = `<span class="dtr-status-pill dtr-status-pill--absent">${icon('x', 11)} Absent</span>`;
+  } else if (isHalfDayAm) {
+    statusBadgeHtml = `<span class="dtr-status-pill dtr-status-pill--half">${icon('clock', 11)} Half Day (AM)</span>`;
+  } else if (isHalfDayPm) {
+    statusBadgeHtml = `<span class="dtr-status-pill dtr-status-pill--half">${icon('clock', 11)} Half Day (PM)</span>`;
+  } else if (isExcused) {
+    statusBadgeHtml = `<span class="dtr-status-pill dtr-status-pill--excused" title="${esc(log.outOfRangeReason || 'Absence excused')}">${icon('shieldCheck', 11)} Excused</span>`;
+  } else if (st === 'valid' || log.locationValidity === 'In Site') {
+    statusBadgeHtml = `<span class="dtr-status-pill dtr-status-pill--valid">${icon('check', 11)} Valid</span>`;
+  } else {
+    statusBadgeHtml = `<span class="dtr-status-pill dtr-status-pill--half">${esc(log.status || 'Logged')}</span>`;
+  }
+
+  // 6. Location & Geofence
   const dist = log.distanceMeters != null ? Number(log.distanceMeters) : null;
   const inLat = log.inLat ?? log.latitude;
   const inLon = log.inLon ?? log.longitude;
   const hasCoords = inLat != null && inLon != null;
-  const coordsHint = hasCoords ? `<div style="font-size:0.6rem;color:var(--text-tertiary);margin-top:3px;">${Number(inLat).toFixed(5)}, ${Number(inLon).toFixed(5)}</div>` : '';
+  const coordsChip = hasCoords ? `
+    <div class="dtr-coords-chip" title="GPS check-in coordinates">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
+        <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>
+      </svg>
+      <span>${Number(inLat).toFixed(5)}, ${Number(inLon).toFixed(5)}</span>
+    </div>
+  ` : '';
 
   let lvHtml = '';
   if (isAbsent) {
-    lvHtml = `<span style="color:var(--text-tertiary);font-size:0.65rem;">No Attendance</span>`;
+    lvHtml = `<span class="dtr-loc-badge--absent">No Attendance</span>`;
   } else if (isExcused) {
-    lvHtml = `<span style="color:#475569;font-size:0.65rem;font-weight:600;" title="${esc(log.outOfRangeReason || 'Excused')}">${esc(log.outOfRangeReason ? (log.outOfRangeReason.length > 22 ? log.outOfRangeReason.slice(0, 20) + '…' : log.outOfRangeReason) : 'Excused')}</span>`;
+    lvHtml = `<span class="dtr-loc-badge dtr-loc-badge--nogps" title="${esc(log.outOfRangeReason || 'Excused')}">${icon('shieldCheck', 11)} Excused</span>`;
   } else if (log.hasGeofenceExemption) {
-    const distHint = dist !== null ? ` (${dist}m)` : '';
-    lvHtml = `<div><span style="background:rgba(217,119,6,0.12);color:#d97706;font-size:0.63rem;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap;display:inline-flex;align-items:center;gap:3px;" title="${esc(log.outOfRangeReason || 'Off-site punch with photo proof')}">${icon('camera', 10)} Off-Site Proof${distHint}</span>${coordsHint}</div>`;
+    const distHint = dist !== null ? `(${dist}m)` : '';
+    lvHtml = `
+      <div class="dtr-loc-box">
+        <span class="dtr-loc-badge dtr-loc-badge--offsite" title="${esc(log.outOfRangeReason || 'Off-site punch with photo proof')}">
+          ${icon('camera', 11)} Off-Site Proof ${distHint}
+        </span>
+        ${coordsChip}
+      </div>`;
   } else {
     let isInSite = false;
     let isTooFar = false;
@@ -2174,55 +2460,61 @@ function renderTrackerLogRow(log) {
     if (dist !== null) {
       isInSite = dist <= 100;
       isTooFar = dist > 100;
-    } else if (lv === 'In Site' || lv === 'valid' || log.status === 'valid') {
+    } else if (log.locationValidity === 'In Site' || log.locationValidity === 'valid' || log.status === 'valid') {
       isInSite = true;
-    } else if (lv === 'Too Far' || log.status === 'not_valid') {
+    } else if (log.locationValidity === 'Too Far' || log.status === 'not_valid') {
       isTooFar = true;
     }
 
     if (isInSite) {
-      const distHint = dist !== null ? ` (${dist}m)` : '';
-      lvHtml = `<div><span style="background:var(--color-success-bg);color:var(--color-success);font-size:0.63rem;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap;">${icon('checkCircle', 10)} In Site${distHint}</span>${coordsHint}</div>`;
+      const distHint = dist !== null ? `(${dist}m)` : '';
+      lvHtml = `
+        <div class="dtr-loc-box">
+          <span class="dtr-loc-badge dtr-loc-badge--insite">
+            ${icon('check', 11)} In Site ${distHint}
+          </span>
+          ${coordsChip}
+        </div>`;
     } else if (isTooFar) {
-      const distHint = dist !== null ? ` (${dist}m)` : '';
-      lvHtml = `<div><span style="background:var(--color-error-bg,rgba(239,68,68,0.1));color:var(--color-error,#ef4444);font-size:0.63rem;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap;">${icon('alertTriangle', 10)} Too Far${distHint}</span>${coordsHint}</div>`;
+      const distHint = dist !== null ? `(${dist}m)` : '';
+      lvHtml = `
+        <div class="dtr-loc-box">
+          <span class="dtr-loc-badge dtr-loc-badge--toofar" title="Check-in registered outside geofence boundary">
+            ${icon('alertTriangle', 11)} Too Far ${distHint}
+          </span>
+          ${coordsChip}
+        </div>`;
     } else if (hasCoords) {
-      lvHtml = `<div><span style="background:rgba(255,149,0,.1);color:#FF9500;font-size:0.63rem;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap;">${icon('mapPin', 10)} GPS saved</span>${coordsHint}</div>`;
+      lvHtml = `
+        <div class="dtr-loc-box">
+          <span class="dtr-loc-badge dtr-loc-badge--gps">
+            ${icon('mapPin', 11)} GPS Saved
+          </span>
+          ${coordsChip}
+        </div>`;
     } else {
-      lvHtml = `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(107,114,148,0.1);color:var(--text-tertiary);font-size:0.63rem;font-weight:600;padding:2px 8px;border-radius:99px;white-space:nowrap;">${icon('mapPin', 10)} No location</span>`;
+      lvHtml = `<span class="dtr-loc-badge dtr-loc-badge--nogps">No GPS</span>`;
     }
   }
 
-  const mIn = isAbsent || isExcused || isHalfDayPm ? '—' : (log.morningIn || log.timeIn || '—');
-  const mOut = isAbsent || isExcused || isHalfDayPm ? '—' : (log.morningOut
-    ? `${log.morningOut}${log.autoMorningTimeout ? '<div style="font-size:0.6rem;color:#d97706;font-weight:600;">Auto 12:00</div>' : ''}`
-    : (log.afternoonIn ? '<span style="color:#d97706;font-size:0.68rem;font-weight:600;">Auto 12:00</span>' : '—'));
-  const aIn = isAbsent || isExcused || isHalfDayAm ? '—' : (log.afternoonIn || '—');
-  const aOut = isAbsent || isExcused || isHalfDayAm ? '—' : (log.afternoonOut
-    ? `${log.afternoonOut}${log.autoAfternoonTimeout ? '<div style="font-size:0.6rem;color:#d97706;font-weight:600;">Auto ' + log.afternoonOut + '</div>' : ''}`
-    : (log.afternoonIn ? '<span style="color:var(--color-warning);font-size:0.7rem;font-weight:600;">In Progress</span>' : (log.timeOut && !log.morningOut ? log.timeOut : '—')));
-
-  let hoursDisplay = '—';
-  if (isAbsent || isExcused) {
-    hoursDisplay = '<span style="color:var(--text-tertiary);font-size:0.78rem;font-weight:600;">0h</span>';
-  } else if (isPendingApproval) {
-    hoursDisplay = `<span style="color:#d97706;font-size:0.78rem;font-weight:700;" title="Hours held in escrow pending supervisor review">${log.hours || 0}h <div style="font-size:0.6rem;font-weight:600;color:#d97706;">(Escrow)</div></span>`;
-  } else if (isRejected) {
-    hoursDisplay = `<span style="color:#ef4444;font-size:0.78rem;font-weight:700;text-decoration:line-through;" title="${esc(log.rejectionReason || 'Rejected')}">${log.hours || 0}h <div style="font-size:0.6rem;font-weight:600;color:#ef4444;">(Rejected)</div></span>`;
-  } else if (log.hours > 0 || log.timeOut || log.afternoonOut) {
-    hoursDisplay = `${log.hoursCredited ?? log.hours}h`;
-  }
-
   return `
-    <tr class="log-table-row" data-log-id="${log.id}" style="border-bottom:1px solid var(--border-light);cursor:pointer;transition:background 0.15s ease;">
-      <td style="padding:9px 10px;font-size:0.78rem;font-weight:500;white-space:nowrap;">${log.dayLabel || log.date}</td>
-      <td style="padding:9px 10px;font-size:0.78rem;text-align:center;color:#000;font-weight:600;">${mIn}</td>
-      <td style="padding:9px 10px;font-size:0.78rem;text-align:center;color:#000;font-weight:600;">${mOut}</td>
-      <td style="padding:9px 10px;font-size:0.78rem;text-align:center;color:#000;font-weight:600;">${aIn}</td>
-      <td style="padding:9px 10px;font-size:0.78rem;text-align:center;color:#000;font-weight:600;">${aOut}</td>
-      <td style="padding:9px 10px;font-size:0.83rem;font-weight:700;text-align:center;">${hoursDisplay}</td>
-      <td style="padding:9px 10px;text-align:center;">${statusBadgeHtml}</td>
-      <td style="padding:9px 10px;text-align:center;">${lvHtml}</td>
+    <tr class="ojt-dtr-row log-table-row ${isAbsent ? 'ojt-dtr-row--absent' : ''}" data-log-id="${log.id}">
+      <td class="ojt-dtr-td">
+        <div class="dtr-date-box">
+          <div class="dtr-date-main">
+            <span>${esc(dateInfo.formattedDate)}</span>
+            ${dateInfo.isToday ? '<span class="dtr-today-tag">Today</span>' : ''}
+          </div>
+          ${dateInfo.weekday ? `<span class="dtr-date-sub">${esc(dateInfo.weekday)}</span>` : ''}
+        </div>
+      </td>
+      <td class="ojt-dtr-td ojt-dtr-td--center">${mInHtml}</td>
+      <td class="ojt-dtr-td ojt-dtr-td--center">${mOutHtml}</td>
+      <td class="ojt-dtr-td ojt-dtr-td--center">${aInHtml}</td>
+      <td class="ojt-dtr-td ojt-dtr-td--center">${aOutHtml}</td>
+      <td class="ojt-dtr-td ojt-dtr-td--center">${hrsHtml}</td>
+      <td class="ojt-dtr-td ojt-dtr-td--center">${statusBadgeHtml}</td>
+      <td class="ojt-dtr-td ojt-dtr-td--center">${lvHtml}</td>
     </tr>`;
 }
 
