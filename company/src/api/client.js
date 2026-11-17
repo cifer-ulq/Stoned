@@ -44,7 +44,8 @@ export function directStorageUrl(path) {
   if (path.startsWith('http://') || path.startsWith('https://')) return path;
   const clean = path.replace(/^\//, '');
   const storagePath = clean.startsWith('storage/') ? clean : `storage/${clean}`;
-  return `http://localhost:8000/${storagePath}`;
+  const host = typeof window !== 'undefined' && window.location.hostname === '127.0.0.1' ? '127.0.0.1:8000' : 'localhost:8000';
+  return `http://${host}/${storagePath}`;
 }
 
 export const storageUrl = resolveStorageUrl;
