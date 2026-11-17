@@ -3304,6 +3304,8 @@ const showLocationWarning = showOutsideGeofenceModal;
 function setupOffSiteEvidence(panelEl, onEvidenceChange) {
   let mediaStream = null;
   let compressedPhotoBase64 = null;
+  let currentFacing = 'user';
+  let isStarting = false;
 
   panelEl.innerHTML = `
     <div class="ojt-evidence-card">
@@ -3341,7 +3343,7 @@ function setupOffSiteEvidence(panelEl, onEvidenceChange) {
         </div>
 
         <div class="ojt-camera-viewport">
-          <video id="evidence-video" autoplay playsinline style="width:100%;max-height:220px;object-fit:cover;display:none;"></video>
+          <video id="evidence-video" autoplay playsinline muted style="width:100%;max-height:220px;object-fit:cover;display:none;"></video>
           <img id="evidence-preview" style="width:100%;max-height:220px;object-fit:cover;display:none;" />
           <div id="evidence-placeholder" class="ojt-camera-placeholder">
             <div class="ojt-camera-placeholder-icon">
@@ -3361,13 +3363,16 @@ function setupOffSiteEvidence(panelEl, onEvidenceChange) {
             <button type="button" class="btn btn--sm btn--primary" id="btn-snap-photo" style="display:none;font-size:0.75rem;padding:6px 14px;background:#059669;border-color:#059669;align-items:center;gap:6px;">
               ${icon('check', 14)} Take Snapshot
             </button>
+            <button type="button" class="btn btn--sm btn--outline" id="btn-flip-camera" style="display:none;font-size:0.75rem;padding:6px 12px;align-items:center;gap:5px;">
+              ${icon('refreshCw', 13)} Switch Camera
+            </button>
             <button type="button" class="btn btn--sm btn--outline" id="btn-retake-photo" style="display:none;font-size:0.75rem;padding:6px 14px;align-items:center;gap:6px;">
               ${icon('refreshCcw', 14)} Retake Photo
             </button>
           </div>
           <label class="btn btn--sm btn--outline" style="font-size:0.75rem;padding:6px 12px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;margin:0;">
             ${icon('upload', 13)} Upload Photo
-            <input type="file" id="evidence-file-input" accept="image/*" capture="user" style="display:none;" />
+            <input type="file" id="evidence-file-input" accept="image/*" style="display:none;" />
           </label>
         </div>
       </div>
@@ -3380,6 +3385,7 @@ function setupOffSiteEvidence(panelEl, onEvidenceChange) {
   const canvasEl = panelEl.querySelector('#evidence-canvas');
   const startBtn = panelEl.querySelector('#btn-start-camera');
   const snapBtn = panelEl.querySelector('#btn-snap-photo');
+  const flipBtn = panelEl.querySelector('#btn-flip-camera');
   const retakeBtn = panelEl.querySelector('#btn-retake-photo');
   const fileInput = panelEl.querySelector('#evidence-file-input');
   const reasonEl = panelEl.querySelector('#evidence-reason');
@@ -3411,32 +3417,147 @@ function setupOffSiteEvidence(panelEl, onEvidenceChange) {
 
   reasonEl.addEventListener('input', notify);
 
-  async function startCamera() {
+  async function acquireStream(facing) {
+    const facingConstraints = facing === 'environment'
+      ? [{ ideal: 'environment' }, { ideal: 'user' }]
+      : [{ ideal: 'user' }, { ideal: 'environment' }];
+
+    const tries = [
+      { video: { facingMode: facingConstraints[0], width: { ideal: 1280 }, height: { ideal: 720 } } },
+      { video: { facingMode: facingConstraints[0] } },
+      { video: { facingMode: facingConstraints[1] } },
+      { video: { width: { ideal: 1280 }, height: { ideal: 720 } } },
+      { video: true }
+    ];
+
+    let lastErr = null;
+    for (const constraint of tries) {
+      try {
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+          return await navigator.mediaDevices.getUserMedia(constraint);
+        }
+        const legacyGUM = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
+        if (legacyGUM) {
+          return await new Promise((res, rej) => legacyGUM.call(navigator, constraint, res, rej));
+        }
+        throw new Error('Camera streaming is not supported in this browser environment.');
+      } catch (err) {
+        lastErr = err;
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError' ||
+            err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+          throw err;
+        }
+      }
+    }
+    throw lastErr || new Error('Could not access camera.');
+  }
+
+  function handleCameraError(err) {
+    let title = 'Could Not Access Camera';
+    let desc = 'Capture a live snapshot or upload a photo showing your off-site work assignment.';
+    let toastMsg = 'Could not open camera. Please use the Upload button or grant permissions.';
+    let iconSvg = icon('camera', 24);
+
+    if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+      title = 'Camera Access Blocked';
+      desc = 'Camera permission was denied. Please allow camera access in your browser address bar (look for the lock 🔒 or camera 📷 icon) and try again, or use "Upload Photo".';
+      toastMsg = 'Camera permission blocked. Click the lock/camera icon in your address bar to allow.';
+      iconSvg = icon('lock', 24);
+    } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+      title = 'No Camera Detected';
+      desc = 'No camera hardware was found on this device. You can connect a webcam or use "Upload Photo" below.';
+      toastMsg = 'No camera found. Please use the Upload Photo button.';
+      iconSvg = icon('alertCircle', 24);
+    } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+      title = 'Camera In Use';
+      desc = 'Your camera is currently in use by another app (e.g., Zoom, Teams, Meet). Please close that app and retry, or use "Upload Photo".';
+      toastMsg = 'Camera in use by another program. Close it and retry or use Upload Photo.';
+      iconSvg = icon('alertTriangle', 24);
+    } else if (!navigator.mediaDevices && !navigator.getUserMedia) {
+      title = 'Camera Not Supported';
+      desc = 'Your browser or environment does not support direct camera streaming. Please use "Upload Photo" below.';
+      toastMsg = 'Camera streaming not supported in this browser. Please use Upload Photo.';
+      iconSvg = icon('alertCircle', 24);
+    }
+
+    placeholderEl.innerHTML = `
+      <div class="ojt-camera-placeholder-icon" style="background:rgba(239,68,68,0.15);color:#f87171;">
+        ${iconSvg}
+      </div>
+      <div class="ojt-camera-placeholder-title" style="color:#fca5a5;">${title}</div>
+      <div class="ojt-camera-placeholder-desc" style="max-width:320px;line-height:1.4;">${desc}</div>
+    `;
+    placeholderEl.style.display = 'flex';
+    videoEl.style.display = 'none';
+    previewEl.style.display = 'none';
+    startBtn.style.display = 'inline-flex';
+    startBtn.innerHTML = `${icon('refreshCw', 14)} Retry Camera`;
+    snapBtn.style.display = 'none';
+    if (flipBtn) flipBtn.style.display = 'none';
+    retakeBtn.style.display = 'none';
+
+    showToast(toastMsg, 'warning');
+  }
+
+  async function startCamera(facing = currentFacing) {
+    if (isStarting) return;
+    isStarting = true;
+
+    startBtn.disabled = true;
+    startBtn.innerHTML = `<span style="display:inline-block;animation:spin 1s linear infinite;">${icon('loader', 14)}</span> Opening camera…`;
+
     try {
       if (mediaStream) {
         mediaStream.getTracks().forEach(t => t.stop());
+        mediaStream = null;
       }
-      mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }
-      });
+
+      mediaStream = await acquireStream(facing);
+      currentFacing = facing;
+
+      videoEl.muted = true;
+      videoEl.defaultMuted = true;
+      videoEl.playsInline = true;
+      videoEl.setAttribute('playsinline', '');
+      videoEl.setAttribute('muted', '');
       videoEl.srcObject = mediaStream;
+
+      await new Promise((resolve) => {
+        videoEl.onloadedmetadata = () => {
+          videoEl.play().catch(e => console.warn('video.play error:', e)).finally(resolve);
+        };
+        setTimeout(resolve, 800);
+      });
+
       videoEl.style.display = 'block';
       previewEl.style.display = 'none';
       placeholderEl.style.display = 'none';
       startBtn.style.display = 'none';
       snapBtn.style.display = 'inline-flex';
+      if (flipBtn) flipBtn.style.display = 'inline-flex';
       retakeBtn.style.display = 'none';
     } catch (err) {
       console.warn('Camera access error:', err);
-      showToast('Could not open camera directly. Please use the Upload button.', 'warning');
+      handleCameraError(err);
+    } finally {
+      isStarting = false;
+      startBtn.disabled = false;
+      if (startBtn.innerHTML.includes('Opening camera…')) {
+        startBtn.innerHTML = `${icon('camera', 14)} Open Camera`;
+      }
     }
   }
 
   function snapPhoto() {
-    if (!videoEl.videoWidth || !videoEl.videoHeight) return;
+    const vw = videoEl.videoWidth;
+    const vh = videoEl.videoHeight;
+    if (!vw || !vh) {
+      showToast('Camera feed is still initializing. Please wait a moment and try again.', 'warning');
+      return;
+    }
     const maxDim = 800;
-    let w = videoEl.videoWidth;
-    let h = videoEl.videoHeight;
+    let w = vw;
+    let h = vh;
     if (w > maxDim || h > maxDim) {
       if (w > h) {
         h = Math.round((h * maxDim) / w);
@@ -3450,17 +3571,19 @@ function setupOffSiteEvidence(panelEl, onEvidenceChange) {
     canvasEl.height = h;
     const ctx = canvasEl.getContext('2d');
     ctx.drawImage(videoEl, 0, 0, w, h);
-    compressedPhotoBase64 = canvasEl.toDataURL('image/jpeg', 0.75);
+    compressedPhotoBase64 = canvasEl.toDataURL('image/jpeg', 0.8);
 
     if (mediaStream) {
       mediaStream.getTracks().forEach(t => t.stop());
       mediaStream = null;
     }
+    videoEl.srcObject = null;
 
     previewEl.src = compressedPhotoBase64;
     previewEl.style.display = 'block';
     videoEl.style.display = 'none';
     snapBtn.style.display = 'none';
+    if (flipBtn) flipBtn.style.display = 'none';
     retakeBtn.style.display = 'inline-flex';
     notify();
   }
@@ -3487,12 +3610,13 @@ function setupOffSiteEvidence(panelEl, onEvidenceChange) {
         canvasEl.height = h;
         const ctx = canvasEl.getContext('2d');
         ctx.drawImage(img, 0, 0, w, h);
-        compressedPhotoBase64 = canvasEl.toDataURL('image/jpeg', 0.75);
+        compressedPhotoBase64 = canvasEl.toDataURL('image/jpeg', 0.8);
 
         if (mediaStream) {
           mediaStream.getTracks().forEach(t => t.stop());
           mediaStream = null;
         }
+        videoEl.srcObject = null;
 
         previewEl.src = compressedPhotoBase64;
         previewEl.style.display = 'block';
@@ -3500,6 +3624,7 @@ function setupOffSiteEvidence(panelEl, onEvidenceChange) {
         placeholderEl.style.display = 'none';
         startBtn.style.display = 'none';
         snapBtn.style.display = 'none';
+        if (flipBtn) flipBtn.style.display = 'none';
         retakeBtn.style.display = 'inline-flex';
         notify();
       };
@@ -3508,12 +3633,20 @@ function setupOffSiteEvidence(panelEl, onEvidenceChange) {
     reader.readAsDataURL(file);
   }
 
-  startBtn.addEventListener('click', startCamera);
+  startBtn.addEventListener('click', () => startCamera());
   snapBtn.addEventListener('click', snapPhoto);
+  if (flipBtn) {
+    flipBtn.addEventListener('click', () => {
+      const nextFacing = currentFacing === 'user' ? 'environment' : 'user';
+      startCamera(nextFacing);
+    });
+  }
   retakeBtn.addEventListener('click', () => {
     compressedPhotoBase64 = null;
+    previewEl.src = '';
+    previewEl.style.display = 'none';
     notify();
-    startCamera();
+    startCamera(currentFacing);
   });
   fileInput.addEventListener('change', e => {
     if (e.target.files && e.target.files[0]) {
@@ -3526,6 +3659,9 @@ function setupOffSiteEvidence(panelEl, onEvidenceChange) {
       if (mediaStream) {
         mediaStream.getTracks().forEach(t => t.stop());
         mediaStream = null;
+      }
+      if (videoEl) {
+        videoEl.srcObject = null;
       }
     }
   };
