@@ -779,7 +779,9 @@ async function handleStep1Submit(e) {
 
     authToken = data.token;
     authUser  = data.user;
-    localStorage.removeItem('hireme_token');
+    if (data.token) {
+      localStorage.setItem('hireme_token', data.token);
+    }
     localStorage.setItem('hireme_user', JSON.stringify(authUser));
 
     // Transition straight to Step 2 (Company Profile) without MOA prompt

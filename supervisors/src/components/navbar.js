@@ -207,9 +207,13 @@ export function createNavbar() {
     if (!item) return;
     const action = item.getAttribute('data-action');
     if (action === 'logout') {
+      const token = localStorage.getItem('hireme_token');
       fetch('/api/auth/logout', {
         method: 'POST',
-        headers: { 'Accept': 'application/json' },
+        headers: {
+          'Accept': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
         credentials: 'include',
       }).catch(() => {});
       clearAuth();

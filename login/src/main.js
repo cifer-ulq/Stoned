@@ -1151,8 +1151,10 @@ async function handleCompanySubmit(e) {
       return;
     }
 
-    // Save user (session token is stored in HttpOnly cookie)
-    localStorage.removeItem('hireme_token');
+    // Save user & token
+    if (data.token) {
+      localStorage.setItem('hireme_token', data.token);
+    }
     localStorage.setItem('hireme_user', JSON.stringify(data.user));
 
     // Store info for success page
@@ -1307,7 +1309,9 @@ async function handleSubmit(e) {
       return;
     }
 
-    localStorage.removeItem('hireme_token');
+    if (data.token) {
+      localStorage.setItem('hireme_token', data.token);
+    }
     localStorage.setItem('hireme_user', JSON.stringify(data.user));
 
     if (data.user?.must_change_password) {
@@ -1500,7 +1504,7 @@ async function checkOAuthCallback() {
   }
 
   if (oauthToken) {
-    localStorage.removeItem('hireme_token');
+    localStorage.setItem('hireme_token', oauthToken);
     history.replaceState(null, '', window.location.pathname);
 
     try {
@@ -1518,7 +1522,7 @@ async function checkOAuthCallback() {
       if (user) {
         localStorage.setItem('hireme_user', JSON.stringify(user));
         if (user.role === 'student' && (!user.onboarding_completed || urlParams.get('new_account') === '1')) {
-          window.location.href = './onboarding.html';
+          window.location.href = `./onboarding.html?oauth_token=${encodeURIComponent(oauthToken)}`;
           return;
         }
         const destinations = {

@@ -168,7 +168,9 @@ async function handleSubmit(e) {
       return;
     }
 
-    localStorage.removeItem('hireme_token');
+    if (data.token) {
+      localStorage.setItem('hireme_token', data.token);
+    }
     localStorage.setItem('hireme_user', JSON.stringify(data.user));
     window.location.href = '/admin/';
   } catch {

@@ -567,6 +567,9 @@ function attachTemporaryPasswordEvents(cachedUser) {
         ...(data.user || {}),
         must_change_password: false,
       };
+      if (data.token) {
+        localStorage.setItem('hireme_token', data.token);
+      }
       localStorage.setItem('hireme_user', JSON.stringify(updatedUser));
 
       try {
@@ -619,7 +622,7 @@ function render(animate = true) {
   const urlParams = new URLSearchParams(window.location.search);
   const oauthToken = urlParams.get('oauth_token');
   if (oauthToken) {
-    localStorage.removeItem('hireme_token');
+    localStorage.setItem('hireme_token', oauthToken);
   }
 
   const cachedUserStr = localStorage.getItem('hireme_user');
@@ -653,6 +656,7 @@ function render(animate = true) {
   }
 
   if (oauthToken && !cachedUser) {
+    localStorage.setItem('hireme_token', oauthToken);
     fetch('http://localhost:8000/api/auth/me', {
       headers: { 'Authorization': `Bearer ${oauthToken}`, 'Accept': 'application/json' },
     }).then(r => r.json()).then(data => {
@@ -1308,7 +1312,11 @@ async function handleNext() {
     }
 
     try {
-      const token = localStorage.getItem('hireme_token');
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = localStorage.getItem('hireme_token') || urlParams.get('oauth_token');
+      if (token && !localStorage.getItem('hireme_token')) {
+        localStorage.setItem('hireme_token', token);
+      }
       const res = await fetch('http://localhost:8000/api/auth/set-backup-password', {
         method: 'POST',
         credentials: 'include',
@@ -1423,7 +1431,9 @@ async function completeRegistration(credentials) {
     }
 
     const token = regData.token;
-    localStorage.removeItem('hireme_token');
+    if (token) {
+      localStorage.setItem('hireme_token', token);
+    }
     localStorage.setItem('hireme_user', JSON.stringify(regData.user));
     sessionStorage.removeItem('hireme-signup');
 
@@ -1473,7 +1483,11 @@ async function completeOAuthOnboarding() {
   const nextBtn = document.getElementById('next-btn');
   if (nextBtn) { nextBtn.disabled = true; nextBtn.querySelector('span').textContent = 'Saving profile…'; }
 
-  const token = localStorage.getItem('hireme_token');
+  const urlParams = new URLSearchParams(window.location.search);
+  const token = localStorage.getItem('hireme_token') || urlParams.get('oauth_token');
+  if (token && !localStorage.getItem('hireme_token')) {
+    localStorage.setItem('hireme_token', token);
+  }
   const cachedUserStr = localStorage.getItem('hireme_user');
   let cachedUser = null;
   try {
@@ -1514,6 +1528,9 @@ async function completeOAuthOnboarding() {
       return;
     }
 
+    if (onbData.token) {
+      localStorage.setItem('hireme_token', onbData.token);
+    }
     if (onbData.user) {
       localStorage.setItem('hireme_user', JSON.stringify(onbData.user));
     }

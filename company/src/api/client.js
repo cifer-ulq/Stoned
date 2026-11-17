@@ -13,7 +13,7 @@ const API_BASE = 'http://localhost:8000/api';
 
 /* ── Auth helpers ── */
 export function getToken() {
-  return null; // Session token is handled securely via HttpOnly cookie
+  return localStorage.getItem('hireme_token');
 }
 
 export function clearAuth() {
@@ -21,6 +21,7 @@ export function clearAuth() {
   try {
     window.dispatchEvent(new CustomEvent('hireme:clear-views'));
   } catch { /* ignore */ }
+  localStorage.removeItem('hireme_token');
   localStorage.removeItem('hireme_company_user');
   localStorage.removeItem('hireme_user');
 }

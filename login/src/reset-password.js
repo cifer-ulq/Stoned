@@ -475,7 +475,7 @@ async function handleResetSubmit(e) {
     }
 
     if (data.token || data.user) {
-      localStorage.removeItem('hireme_token');
+      if (data.token) localStorage.setItem('hireme_token', data.token);
       if (data.user) localStorage.setItem('hireme_user', JSON.stringify(data.user));
 
       const destinations = {

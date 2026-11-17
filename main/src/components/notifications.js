@@ -9,7 +9,7 @@ import { apiCache } from '../api/client.js';
 const API_BASE = 'http://localhost:8000/api';
 
 function getToken() {
-  return null;
+  return localStorage.getItem('hireme_token');
 }
 
 async function apiNotif(method, path, body = null) {

@@ -110,12 +110,17 @@ export function initSidebarLeft() {
       navigateTo(item.dataset.nav);
     }
     if (e.target.closest('#sidebar-logout')) {
+      const token = localStorage.getItem('hireme_token');
       fetch('http://localhost:8000/api/auth/logout', {
         method: 'POST',
-        headers: { 'Accept': 'application/json' },
+        headers: {
+          'Accept': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
         credentials: 'include',
       }).catch(() => {});
       clearCache();
+      localStorage.removeItem('hireme_token');
       localStorage.removeItem('hireme_user');
       window.location.href = '../login/';
     }

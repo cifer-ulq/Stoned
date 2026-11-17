@@ -45,7 +45,7 @@ function clone(obj) {
 
 /* ── Real API helpers ── */
 export function getToken() {
-  return null; // Session token is handled securely via HttpOnly cookie
+  return localStorage.getItem('hireme_token');
 }
 
 let _redirecting = false;
@@ -54,6 +54,7 @@ function redirectToLogin() {
   if (_redirecting) return;
   _redirecting = true;
   clearCache();
+  localStorage.removeItem('hireme_token');
   localStorage.removeItem('hireme_user');
   window.location.href = '../login/';
 }
