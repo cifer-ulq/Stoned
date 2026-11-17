@@ -3396,6 +3396,26 @@ class AdminController extends Controller
     }
 
     /**
+     * POST /api/admin/seed-bsit4b-attendance
+     * Seed validated historical attendance logs (5 x 600h = 100%, 5 x 300h = 50%)
+     * with randomized in-site 100m geofence scatter for the 10 active BSIT 4-B students.
+     */
+    public function seedBsit4bAttendance(Request $request)
+    {
+        $this->requireAdmin($request);
+
+        $seeder = new \Database\Seeders\SeedBsit4bAttendanceLogsSeeder();
+        $results = $seeder->run();
+
+        return response()->json([
+            'success'  => true,
+            'message'  => 'BSIT 4-B attendance logs seeded successfully (5 @ 600h, 5 @ 300h).',
+            'count'    => count($results),
+            'students' => $results,
+        ]);
+    }
+
+    /**
      * GET /api/admin/alumni/pending
      * Retrieve all self-registered graduates awaiting administrative verification.
      */
