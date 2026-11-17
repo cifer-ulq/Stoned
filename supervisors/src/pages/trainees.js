@@ -1111,7 +1111,7 @@ export default function traineesPage(container) {
           <td>
             <div class="tr2-trainee-cell">
               ${t.avatar_url
-                ? `<img src="${storageUrl(t.avatar_url)}" alt="${escapeHtml(t.name)}" class="tr2-trainee-avatar" onerror="this.onerror=null;this.parentElement.innerHTML='<div class=\\'tr2-trainee-avatar--fallback\\'>${init}</div>';" />`
+                ? `<img src="${storageUrl(t.avatar_url)}" alt="${escapeHtml(t.name)}" class="tr2-trainee-avatar" onerror="this.onerror=null;this.outerHTML='<div class=\\'tr2-trainee-avatar--fallback\\'>${init}</div>';" />`
                 : `<div class="tr2-trainee-avatar--fallback">${init}</div>`}
               <div class="tr2-trainee-info">
                 <div class="tr2-trainee-name" title="${escapeHtml(t.name)}">${escapeHtml(t.name)}</div>
@@ -1506,7 +1506,7 @@ export default function traineesPage(container) {
             <!-- Identity Header -->
             <div class="tr2-modal-id">
               ${t.avatar_url
-                ? `<img src="${storageUrl(t.avatar_url)}" alt="${escapeHtml(t.name)}" class="tr2-modal-avatar" style="object-fit:cover;border:2px solid var(--border-default);" onerror="this.onerror=null;this.parentElement.innerHTML='<div class=\\'tr2-modal-avatar\\' style=\\'background:var(--color-primary-bg);color:var(--color-primary);border:1px solid rgba(0,89,48,0.2);\\'>${init}</div>';" />`
+                ? `<img src="${storageUrl(t.avatar_url)}" alt="${escapeHtml(t.name)}" class="tr2-modal-avatar" style="object-fit:cover;border:2px solid var(--border-default);" onerror="this.onerror=null;this.outerHTML='<div class=\\'tr2-modal-avatar\\' style=\\'background:var(--color-primary-bg);color:var(--color-primary);border:1px solid rgba(0,89,48,0.2);\\'>${init}</div>';" />`
                 : `<div class="tr2-modal-avatar" style="background:var(--color-primary-bg);color:var(--color-primary);border:1px solid rgba(0,89,48,0.2);">${init}</div>`}
               <div class="tr2-modal-id__info">
                 <h3>${escapeHtml(t.name)}</h3>

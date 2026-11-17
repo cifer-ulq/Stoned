@@ -104,7 +104,7 @@ function openStudentApprovalModal({ student, onApproved, apiEndpoint = `/admin/s
         <!-- Student Info Card -->
         <div class="sp-student-card">
           ${student.avatar_url
-            ? `<img src="${storageUrl(student.avatar_url)}" alt="${escapeHtml(student.name)}" class="sp-student-card__avatar" style="object-fit:cover;" />`
+            ? `<img src="${storageUrl(student.avatar_url)}" alt="${escapeHtml(student.name)}" class="sp-student-card__avatar" style="object-fit:cover;" onerror="this.onerror=null;this.outerHTML='<div class=\\'sp-student-card__avatar\\'>${init}</div>';" />`
             : `<div class="sp-student-card__avatar">${init}</div>`}
           <div class="sp-student-card__info">
             <h4 class="sp-student-card__name">${escapeHtml(student.name)}</h4>
@@ -360,7 +360,7 @@ function openStudentDeleteModal({ student, onDeleted, apiEndpoint = `/admin/stud
         <!-- Student Info Card -->
         <div class="sp-student-card" style="border:1px solid #FECDD3;background:#FFF1F2;">
           ${student.avatar_url
-            ? `<img src="${storageUrl(student.avatar_url)}" alt="${escapeHtml(student.name)}" class="sp-student-card__avatar" style="object-fit:cover;" />`
+            ? `<img src="${storageUrl(student.avatar_url)}" alt="${escapeHtml(student.name)}" class="sp-student-card__avatar" style="object-fit:cover;" onerror="this.onerror=null;this.outerHTML='<div class=\\'sp-student-card__avatar\\' style=\\'background:#FCA5A5;color:#991B1B;\\'>${init}</div>';" />`
             : `<div class="sp-student-card__avatar" style="background:#FCA5A5;color:#991B1B;">${init}</div>`}
           <div class="sp-student-card__info">
             <h4 class="sp-student-card__name">${escapeHtml(student.name)}</h4>
@@ -634,7 +634,7 @@ function showModal(s, container, onRefresh) {
         <div class="spm-hero__inner">
           <div class="spm-hero__avatar">
             ${s.avatar_url
-              ? `<img src="${storageUrl(s.avatar_url)}" alt="${escapeHtml(s.name)}" />`
+              ? `<img src="${storageUrl(s.avatar_url)}" alt="${escapeHtml(s.name)}" onerror="this.onerror=null;this.parentElement.textContent='${initials(s.name)}';" />`
               : initials(s.name)}
           </div>
           <div class="spm-hero__info">
@@ -1101,7 +1101,7 @@ function renderTable(tbody, list, container, selectedStudents, updateSelectionUI
         <td class="st-student-cell">
           <div class="st-student-profile">
             ${s.avatar_url
-              ? `<img src="${storageUrl(s.avatar_url)}" alt="${escapeHtml(s.name)}" class="st-student-avatar" />`
+              ? `<img src="${storageUrl(s.avatar_url)}" alt="${escapeHtml(s.name)}" class="st-student-avatar" onerror="this.onerror=null;this.outerHTML='<div class=\\'st-student-avatar--initials\\'>${initials(s.name)}</div>';" />`
               : `<div class="st-student-avatar--initials">${initials(s.name)}</div>`}
             <div class="st-student-meta">
               <div class="st-student-name" title="${escapeHtml(s.name)}">${escapeHtml(s.name)}</div>
@@ -1236,7 +1236,7 @@ function renderTable(tbody, list, container, selectedStudents, updateSelectionUI
                 ? `<input type="checkbox" class="student-select-cb st-checkbox" data-id="${s.id}" ${isChecked ? 'checked' : ''} style="margin-right:2px;" />`
                 : ''}
               ${s.avatar_url
-                ? `<img src="${storageUrl(s.avatar_url)}" alt="${escapeHtml(s.name)}" class="st-student-avatar" />`
+                ? `<img src="${storageUrl(s.avatar_url)}" alt="${escapeHtml(s.name)}" class="st-student-avatar" onerror="this.onerror=null;this.outerHTML='<div class=\\'st-student-avatar--initials\\'>${initials(s.name)}</div>';" />`
                 : `<div class="st-student-avatar--initials">${initials(s.name)}</div>`}
               <div style="min-width:0;flex:1;">
                 <div class="st-student-name">${escapeHtml(s.name)}</div>
