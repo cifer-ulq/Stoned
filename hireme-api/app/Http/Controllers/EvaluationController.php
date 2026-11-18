@@ -621,14 +621,17 @@ class EvaluationController extends Controller
 
                 // Midterm evaluation structure
                 'midterm' => [
+                    'id'              => $midterm?->id,
+                    'evaluationId'    => $midterm?->id,
                     'status'          => $midtermStatus,
                     'is_waived'       => (bool) ($midterm?->is_waived ?? false),
                     'waiver_reason'   => $midterm?->waiver_reason,
-                    'evaluationId'    => $midterm?->id,
-                    'score'           => $midterm?->overall_score ? (float) $midterm->overall_score : null,
+                    'overall_score'   => $midterm?->overall_score !== null ? (float) $midterm->overall_score : null,
+                    'score'           => $midterm?->overall_score !== null ? (float) $midterm->overall_score : null,
                     'company_name'    => $midterm?->company?->companyProfile?->company_name ?? $midterm?->company?->name,
                     'company_user_id' => $midterm?->company_user_id,
                     'sent_at'         => $midterm?->sent_at?->format('M d, Y'),
+                    'submitted_at'    => $midterm?->submitted_at?->format('M d, Y'),
                     'done_at'         => $midterm?->submitted_at?->format('M d, Y'),
                     'evaluator_name'  => $midterm?->evaluator_name,
                     'recommendation'  => $midterm?->recommendation,
@@ -636,14 +639,17 @@ class EvaluationController extends Controller
 
                 // Endterm evaluation structure
                 'endterm' => [
+                    'id'              => $endterm?->id,
+                    'evaluationId'    => $endterm?->id,
                     'status'          => $endtermStatus,
                     'is_waived'       => (bool) ($endterm?->is_waived ?? false),
                     'waiver_reason'   => $endterm?->waiver_reason,
-                    'evaluationId'    => $endterm?->id,
-                    'score'           => $endterm?->overall_score ? (float) $endterm->overall_score : null,
+                    'overall_score'   => $endterm?->overall_score !== null ? (float) $endterm->overall_score : null,
+                    'score'           => $endterm?->overall_score !== null ? (float) $endterm->overall_score : null,
                     'company_name'    => $endterm?->company?->companyProfile?->company_name ?? $endterm?->company?->name,
                     'company_user_id' => $endterm?->company_user_id,
                     'sent_at'         => $endterm?->sent_at?->format('M d, Y'),
+                    'submitted_at'    => $endterm?->submitted_at?->format('M d, Y'),
                     'done_at'         => $endterm?->submitted_at?->format('M d, Y'),
                     'evaluator_name'  => $endterm?->evaluator_name,
                     'recommendation'  => $endterm?->recommendation,
@@ -1148,8 +1154,9 @@ class EvaluationController extends Controller
             'success' => true,
             'data'    => [
                 'id'                 => $evaluation->id,
+                'term'               => $evaluation->term ?? 'endterm',
                 'status'             => $evaluation->status,
-                'overall_score'      => $evaluation->overall_score ? (float) $evaluation->overall_score : null,
+                'overall_score'      => $evaluation->overall_score !== null ? (float) $evaluation->overall_score : null,
                 'general_feedback'   => $evaluation->general_feedback,
                 'recommendation'     => $evaluation->recommendation,
                 'evaluator_name'     => $evaluation->evaluator_name,
