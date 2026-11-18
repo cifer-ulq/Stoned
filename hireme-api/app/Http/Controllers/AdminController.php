@@ -1031,7 +1031,9 @@ class AdminController extends Controller
                 ? trim($validated['batch'])
                 : ($sp?->batch ?: $currentSchoolYear);
 
-            \Illuminate\Support\Facades\DB::transaction(function () use ($user, $sp, $ojt, $submittedEval, $compositeScore, $batchYear, $totalCurriculumRendered, $validated, &$promoted) {
+            $adminId = $request->user()?->id;
+
+            \Illuminate\Support\Facades\DB::transaction(function () use ($user, $sp, $ojt, $submittedEval, $compositeScore, $batchYear, $totalCurriculumRendered, $validated, $adminId, &$promoted) {
                 // 1. Promote User role to graduate
                 $user->update(['role' => 'graduate']);
 
@@ -1059,16 +1061,19 @@ class AdminController extends Controller
                     ->update(['status' => 'completed']);
 
                 // 5. Create or update Graduate Profile record for alumni tracking
-                \Illuminate\Support\Facades\DB::table('graduate_profiles')->updateOrInsert(
+                GraduateProfile::updateOrCreate(
                     ['user_id' => $user->id],
                     [
-                        'year_graduated'    => $batchYear,
-                        'campus'            => $sp?->campus ?? 'Alijis Campus',
-                        'course'            => $sp?->program ?? 'Bachelor of Science in Information Technology',
-                        'section'           => $sp?->section ?? '—',
-                        'employment_status' => $validated['employment_status'] ?? 'looking',
-                        'created_at'        => now(),
-                        'updated_at'        => now(),
+                        'student_id'          => $sp?->student_id,
+                        'year_graduated'      => $batchYear,
+                        'campus'              => $sp?->campus ?? 'Alijis Campus',
+                        'course'              => $sp?->program ?? 'Bachelor of Science in Information Technology',
+                        'section'             => $sp?->section ?? '—',
+                        'employment_status'   => $validated['employment_status'] ?? 'looking',
+                        'registration_source' => 'admin',
+                        'approval_status'     => 'approved',
+                        'approved_by'         => $adminId,
+                        'approved_at'         => now(),
                     ]
                 );
 
@@ -1157,7 +1162,7 @@ class AdminController extends Controller
                 $promoted[] = [
                     'id'              => $user->id,
                     'name'            => $user->name,
-                    'completed_hours' => $completedHours,
+                    'completed_hours' => $totalCurriculumRendered,
                 ];
             });
         }
@@ -1173,6 +1178,17 @@ class AdminController extends Controller
             return response()->json([
                 'success'        => false,
                 'message'        => $errMsg,
+                'promoted_count' => 0,
+                'promoted'       => [],
+                'ineligible'     => $ineligible,
+                'already_alumni' => $alreadyAlumni,
+            ], 422);
+        }
+
+        if ($totalPromoted === 0 && count($alreadyAlumni) > 0) {
+            return response()->json([
+                'success'        => false,
+                'message'        => 'Selected student(s) are already graduated / alumni.',
                 'promoted_count' => 0,
                 'promoted'       => [],
                 'ineligible'     => $ineligible,
