@@ -7,6 +7,7 @@
 import { icon } from '../components/icons.js';
 import { apiGet, apiPost, apiPut, apiDelete, apiCache } from '../api/client.js';
 import { getState } from '../store.js';
+import { getSuggestedCriteria, RESPONSE_TYPE_LABELS } from '../utils/evaluation-question-bank.js';
 
 export default function evaluationsPage(container) {
   const user = getState('user');
@@ -754,6 +755,199 @@ export default function evaluationsPage(container) {
         width: 24px;
         font-size: 0.8rem;
         color: var(--text-tertiary);
+      }
+
+      /* ── Dynamic Add Criterion Suggestion Picker ── */
+      .eval-crit-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+        margin-bottom: 14px;
+      }
+      @media (max-width: 560px) {
+        .eval-crit-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .eval-suggest-panel {
+        margin-bottom: 16px;
+      }
+      .eval-suggest-prompt {
+        background: #F8FAFC;
+        border: 1px dashed var(--border-strong);
+        border-radius: 10px;
+        padding: 13px 15px;
+        display: flex;
+        flex-direction: column;
+        gap: 9px;
+      }
+      .eval-suggest-prompt__top {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+      }
+      .eval-suggest-steps {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .eval-suggest-step {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 0.73rem;
+        font-weight: 600;
+        padding: 3px 9px;
+        border-radius: 99px;
+        background: #ffffff;
+        border: 1px solid var(--border-default);
+        color: var(--text-tertiary);
+        transition: all 0.15s ease;
+      }
+      .eval-suggest-step--done {
+        background: rgba(0, 89, 48, 0.08);
+        border-color: rgba(0, 89, 48, 0.28);
+        color: var(--color-primary);
+      }
+      .eval-suggest-box {
+        background: #F6FAF8;
+        border: 1px solid rgba(0, 89, 48, 0.2);
+        border-radius: 10px;
+        overflow: hidden;
+        animation: evalSuggestIn 0.18s ease-out;
+      }
+      @keyframes evalSuggestIn {
+        from { opacity: 0; transform: translateY(-4px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+      .eval-suggest-box__header {
+        padding: 10px 14px;
+        background: rgba(0, 89, 48, 0.06);
+        border-bottom: 1px solid rgba(0, 89, 48, 0.12);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .eval-suggest-box__title {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: var(--color-primary);
+      }
+      .eval-suggest-box__meta {
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        background: #ffffff;
+        border: 1px solid rgba(0, 89, 48, 0.16);
+        padding: 2px 8px;
+        border-radius: 99px;
+      }
+      .eval-suggest-list {
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+        max-height: 235px;
+        overflow-y: auto;
+      }
+      .eval-suggest-card {
+        width: 100%;
+        text-align: left;
+        background: #ffffff;
+        border: 1px solid var(--border-default);
+        border-radius: 8px;
+        padding: 9px 11px;
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        cursor: pointer;
+        transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease, transform 0.12s ease;
+        font-family: inherit;
+      }
+      .eval-suggest-card:hover {
+        border-color: var(--color-primary);
+        background: #FAFDFB;
+        box-shadow: 0 2px 6px rgba(0, 89, 48, 0.08);
+      }
+      .eval-suggest-card--selected {
+        border-color: var(--color-primary);
+        background: rgba(0, 89, 48, 0.06);
+        box-shadow: 0 0 0 2px rgba(0, 89, 48, 0.14);
+      }
+      .eval-suggest-card--exists {
+        opacity: 0.78;
+      }
+      .eval-suggest-card__num {
+        width: 22px;
+        height: 22px;
+        border-radius: 6px;
+        background: #F1F4F8;
+        color: var(--text-secondary);
+        font-size: 0.7rem;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        margin-top: 1px;
+        transition: all 0.15s ease;
+      }
+      .eval-suggest-card--selected .eval-suggest-card__num {
+        background: var(--color-primary);
+        color: #ffffff;
+      }
+      .eval-suggest-card__body {
+        flex: 1;
+        min-width: 0;
+      }
+      .eval-suggest-card__text {
+        font-size: 0.81rem;
+        font-weight: 500;
+        color: var(--text-primary);
+        line-height: 1.4;
+      }
+      .eval-suggest-card__opts {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin-top: 5px;
+      }
+      .eval-suggest-opt-pill {
+        font-size: 0.67rem;
+        background: #F1F4F8;
+        color: var(--text-secondary);
+        padding: 1px 6px;
+        border-radius: 4px;
+        line-height: 1.4;
+      }
+      .eval-suggest-card__action {
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: var(--color-primary);
+        background: rgba(0, 89, 48, 0.08);
+        padding: 3px 8px;
+        border-radius: 6px;
+        flex-shrink: 0;
+        white-space: nowrap;
+        margin-top: 1px;
+      }
+      .eval-suggest-card--selected .eval-suggest-card__action {
+        background: var(--color-primary);
+        color: #ffffff;
+      }
+      .eval-textarea-flash {
+        border-color: var(--color-primary) !important;
+        box-shadow: 0 0 0 3px rgba(0, 89, 48, 0.15) !important;
+        transition: box-shadow 0.25s ease, border-color 0.25s ease;
       }
 
       /* ── Print Styles for Official Appraisal Certification ── */
@@ -2904,6 +3098,15 @@ export default function evaluationsPage(container) {
     }
   }
 
+  function escapeHtml(str) {
+    return String(str ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   function getAvailableCategories(template = currentTemplate) {
     const defaults = [
       'Technical Competence',
@@ -2928,63 +3131,88 @@ export default function evaluationsPage(container) {
   // Add Question Modal
   function openAddQuestionModal() {
     const categories = getAvailableCategories(currentTemplate);
-    const defaultCategory = categories[0] || 'Technical Competence';
+    const initialCategory =
+      activeCategoryFilter && activeCategoryFilter !== 'all' && categories.includes(activeCategoryFilter)
+        ? activeCategoryFilter
+        : '';
+
+    const existingQuestionsNorm = new Set(
+      (currentTemplate?.questions || [])
+        .map(q => String(q.question_text || '').trim().toLowerCase())
+        .filter(Boolean)
+    );
 
     const html = `
-      <div class="modal" style="width:95vw;max-width:560px;max-height:88vh;display:flex;flex-direction:column;border-radius:14px;overflow:hidden;background:#ffffff;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);">
+      <div class="modal" style="width:95vw;max-width:650px;max-height:90vh;display:flex;flex-direction:column;border-radius:14px;overflow:hidden;background:#ffffff;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);">
         <div class="modal__header" style="border-bottom:1px solid var(--border-default);background:#FAFBFD;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
           <div>
-            <span class="badge badge--info" style="font-size:0.68rem;margin-bottom:4px;padding:2px 8px;">Adding to: ${currentTemplate?.title || 'Active Form'}</span>
+            <span class="badge badge--info" style="font-size:0.68rem;margin-bottom:4px;padding:2px 8px;">Adding to: ${escapeHtml(currentTemplate?.title || 'Active Form')}</span>
             <h3 class="modal__title" style="margin:0;font-size:1.05rem;font-weight:700;">Add Evaluation Criterion</h3>
           </div>
           <button class="modal__close" data-dismiss="modal" title="Close">${icon('x', 18)}</button>
         </div>
-        <div class="modal__body" style="padding:22px 24px;flex:1;min-height:0;overflow-y:auto;">
+        <div class="modal__body" style="padding:20px 24px;flex:1;min-height:0;overflow-y:auto;">
+          <!-- Step 1 & 2: Category & Response Type -->
+          <div class="eval-crit-grid">
+            <div class="form-group" style="margin-bottom:0;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:6px;">
+                <label class="form-label" for="q-category-select" style="font-weight:700;font-size:0.83rem;margin:0;">1. Category / Competency</label>
+                <button type="button" id="btn-toggle-custom-cat" class="btn btn--ghost btn--sm" style="font-size:0.72rem;padding:2px 6px;color:var(--color-primary);gap:3px;">
+                  ${icon('plus', 11)} Custom
+                </button>
+              </div>
+              <select class="form-select" id="q-category-select" style="width:100%;padding:9px 12px;border:1px solid var(--border-default);border-radius:8px;font-size:0.84rem;font-weight:600;background:#ffffff;cursor:pointer;">
+                <option value="" ${!initialCategory ? 'selected' : ''}>Select a category...</option>
+                <optgroup label="Preset & Form Categories">
+                  ${categories.map(c => `<option value="${escapeHtml(c)}" ${c === initialCategory ? 'selected' : ''}>${escapeHtml(c)}</option>`).join('')}
+                </optgroup>
+                <optgroup label="Custom Category">
+                  <option value="__custom__">+ Create New Custom Category...</option>
+                </optgroup>
+              </select>
+            </div>
+
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label" for="q-type" style="font-weight:700;font-size:0.83rem;margin-bottom:6px;display:block;">2. Response Type</label>
+              <select class="form-select" id="q-type" style="width:100%;padding:9px 12px;border:1px solid var(--border-default);border-radius:8px;font-size:0.84rem;font-weight:600;background:#ffffff;cursor:pointer;">
+                <option value="" selected>Select response type...</option>
+                <option value="rating">1 to 5 Rating Scale</option>
+                <option value="multiple_choice">Multiple Choice (Select One)</option>
+                <option value="text">Open-ended Text Feedback</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="q-custom-cat-wrap" style="display:none;margin-bottom:14px;">
+            <div style="display:flex;gap:6px;align-items:center;">
+              <input type="text" class="form-input" id="q-custom-cat-input" placeholder="Type new custom category name (e.g. Leadership & Initiative)..." style="flex:1;padding:8px 12px;border:1px solid var(--color-primary);border-radius:8px;font-size:0.84rem;background:#F0F7F4;" />
+              <button type="button" class="btn btn--outline btn--sm" id="btn-cancel-custom-cat" style="padding:8px 10px;font-size:0.75rem;">Cancel</button>
+            </div>
+          </div>
+
+          <!-- Dynamic Suggested Default Questions -->
+          <div id="q-suggestions-panel" class="eval-suggest-panel"></div>
+
+          <!-- Step 3: Question Statement -->
           <div class="form-group" style="margin-bottom:16px;">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-              <label class="form-label" style="font-weight:700;font-size:0.85rem;margin:0;">Category / Competency Group</label>
-              <button type="button" id="btn-toggle-custom-cat" class="btn btn--ghost btn--sm" style="font-size:0.75rem;padding:2px 8px;color:var(--color-primary);gap:4px;">
-                ${icon('plus', 12)} New Custom Category
+              <label class="form-label" for="q-text" style="font-weight:700;font-size:0.84rem;margin:0;">3. Question Statement / Criteria</label>
+              <button type="button" id="btn-clear-q-text" class="btn btn--ghost btn--sm" style="display:none;font-size:0.72rem;padding:2px 7px;color:var(--text-secondary);">
+                Clear
               </button>
             </div>
-
-            <select class="form-select" id="q-category-select" style="width:100%;padding:9px 12px;border:1px solid var(--border-default);border-radius:8px;font-size:0.86rem;font-weight:600;background:#ffffff;cursor:pointer;">
-              <optgroup label="Preset & Form Categories">
-                ${categories.map(c => `<option value="${c}" ${c === defaultCategory ? 'selected' : ''}>${c}</option>`).join('')}
-              </optgroup>
-              <optgroup label="Custom Category">
-                <option value="__custom__">+ Create New Custom Category...</option>
-              </optgroup>
-            </select>
-
-            <div id="q-custom-cat-wrap" style="display:none;margin-top:8px;">
-              <div style="display:flex;gap:6px;align-items:center;">
-                <input type="text" class="form-input" id="q-custom-cat-input" placeholder="Type new custom category name (e.g. Leadership & Initiative)..." style="flex:1;padding:8px 12px;border:1px solid var(--color-primary);border-radius:8px;font-size:0.85rem;background:#F0F7F4;" />
-                <button type="button" class="btn btn--outline btn--sm" id="btn-cancel-custom-cat" style="padding:8px 10px;font-size:0.75rem;">Cancel</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="form-group" style="margin-bottom:16px;">
-            <label class="form-label" style="font-weight:700;font-size:0.85rem;margin-bottom:6px;display:block;">Question Statement / Criteria</label>
-            <textarea class="form-textarea" id="q-text" rows="3" placeholder="Enter the competency statement to be evaluated..." style="width:100%;padding:9px 12px;border:1px solid var(--border-default);border-radius:8px;resize:vertical;"></textarea>
-          </div>
-
-          <div class="form-group" style="margin-bottom:16px;">
-            <label class="form-label" style="font-weight:700;font-size:0.85rem;margin-bottom:6px;display:block;">Response Type</label>
-            <select class="form-select" id="q-type" style="width:100%;padding:9px 12px;border:1px solid var(--border-default);border-radius:8px;">
-              <option value="rating">1 to 5 Rating Scale</option>
-              <option value="multiple_choice">Multiple Choice (Select One)</option>
-              <option value="text">Open-ended Text Feedback</option>
-            </select>
+            <textarea class="form-textarea" id="q-text" rows="3" placeholder="Pick a suggested default question above or write your own competency statement..." style="width:100%;padding:9px 12px;border:1px solid var(--border-default);border-radius:8px;resize:vertical;font-size:0.86rem;"></textarea>
           </div>
 
           <div id="q-mcq-options-wrap" style="display:none;background:#FAFBFD;padding:14px;border:1px solid var(--border-default);border-radius:8px;margin-bottom:16px;">
-            <label class="form-label" style="font-weight:700;font-size:0.82rem;margin-bottom:6px;display:block;">Options (one per line):</label>
-            <textarea class="form-textarea" id="q-mcq-options" rows="4" placeholder="Exceeds Expectations&#10;Meets Expectations&#10;Needs Improvement" style="width:100%;padding:8px 10px;border:1px solid var(--border-default);border-radius:6px;"></textarea>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+              <label class="form-label" for="q-mcq-options" style="font-weight:700;font-size:0.82rem;margin:0;">Multiple Choice Options (one per line)</label>
+              <span class="text-xs text-tertiary">Auto-filled when choosing a preset</span>
+            </div>
+            <textarea class="form-textarea" id="q-mcq-options" rows="4" placeholder="Exceeds Expectations&#10;Meets Expectations&#10;Needs Improvement" style="width:100%;padding:8px 10px;border:1px solid var(--border-default);border-radius:6px;font-size:0.83rem;"></textarea>
           </div>
 
-          <div style="display:flex;align-items:center;gap:8px;margin-top:10px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
             <input type="checkbox" id="q-required" checked style="width:16px;height:16px;" />
             <label for="q-required" style="font-size:0.85rem;font-weight:600;cursor:pointer;">Mandatory question for submission</label>
           </div>
@@ -3005,18 +3233,165 @@ export default function evaluationsPage(container) {
     const customCatInput = bd.querySelector('#q-custom-cat-input');
     const toggleCustomBtn = bd.querySelector('#btn-toggle-custom-cat');
     const cancelCustomBtn = bd.querySelector('#btn-cancel-custom-cat');
+    const typeSelect = bd.querySelector('#q-type');
+    const mcqWrap = bd.querySelector('#q-mcq-options-wrap');
+    const mcqInput = bd.querySelector('#q-mcq-options');
+    const qTextInput = bd.querySelector('#q-text');
+    const clearQTextBtn = bd.querySelector('#btn-clear-q-text');
+    const suggestionsPanel = bd.querySelector('#q-suggestions-panel');
+
+    let suggestionsCollapsed = false;
+    let lastAppliedSuggestionText = null;
+    let lastAppliedSuggestionOpts = null;
+
+    function getActiveCategory() {
+      if (categorySelect.value === '__custom__') {
+        return customCatInput.value.trim();
+      }
+      return categorySelect.value.trim();
+    }
+
+    function syncClearButton() {
+      clearQTextBtn.style.display = qTextInput.value.trim() ? 'inline-flex' : 'none';
+    }
+
+    function resetUneditedSuggestionIfNeeded() {
+      if (lastAppliedSuggestionText !== null && qTextInput.value.trim() === lastAppliedSuggestionText) {
+        qTextInput.value = '';
+        lastAppliedSuggestionText = null;
+      }
+      if (lastAppliedSuggestionOpts !== null && mcqInput.value.trim() === lastAppliedSuggestionOpts) {
+        mcqInput.value = '';
+        lastAppliedSuggestionOpts = null;
+      }
+      syncClearButton();
+    }
+
+    function flashInput(el) {
+      el.classList.remove('eval-textarea-flash');
+      void el.offsetWidth;
+      el.classList.add('eval-textarea-flash');
+      setTimeout(() => el.classList.remove('eval-textarea-flash'), 700);
+    }
+
+    function renderSuggestions() {
+      const activeCat = getActiveCategory();
+      const activeType = typeSelect.value;
+      const hasCat = activeCat.length >= 2;
+      const hasType = Boolean(activeType);
+
+      if (!hasCat || !hasType) {
+        suggestionsPanel.innerHTML = `
+          <div class="eval-suggest-prompt">
+            <div class="eval-suggest-prompt__top">
+              <span style="color:var(--color-primary);display:inline-flex;">${icon('sparkles', 15)}</span>
+              <span>Select a category and response type above to view 5 suggested default questions.</span>
+            </div>
+            <div class="eval-suggest-steps">
+              <span class="eval-suggest-step ${hasCat ? 'eval-suggest-step--done' : ''}">
+                ${hasCat ? icon('check', 12) : '1.'} Category${hasCat ? `: ${escapeHtml(activeCat)}` : ''}
+              </span>
+              <span class="eval-suggest-step ${hasType ? 'eval-suggest-step--done' : ''}">
+                ${hasType ? icon('check', 12) : '2.'} Response Type${hasType ? `: ${escapeHtml(RESPONSE_TYPE_LABELS[activeType] || activeType)}` : ''}
+              </span>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      const suggestions = getSuggestedCriteria(activeCat, activeType);
+      const currentTextNorm = qTextInput.value.trim();
+      const typeLabel = RESPONSE_TYPE_LABELS[activeType] || activeType;
+
+      suggestionsPanel.innerHTML = `
+        <div class="eval-suggest-box">
+          <div class="eval-suggest-box__header">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <span class="eval-suggest-box__title">
+                ${icon('sparkles', 14)}
+                <span>Suggested Default Questions</span>
+              </span>
+              <span class="eval-suggest-box__meta">${escapeHtml(activeCat)} &bull; ${escapeHtml(typeLabel)}</span>
+            </div>
+            <button type="button" id="btn-toggle-suggestions" class="btn btn--ghost btn--sm" style="font-size:0.72rem;padding:2px 8px;color:var(--text-secondary);">
+              ${suggestionsCollapsed ? `Show (${suggestions.length})` : 'Hide'}
+            </button>
+          </div>
+          ${suggestionsCollapsed ? '' : `
+            <div class="eval-suggest-list">
+              ${suggestions.map((item, idx) => {
+                const isSelected = currentTextNorm === item.text.trim();
+                const alreadyInForm = existingQuestionsNorm.has(item.text.trim().toLowerCase());
+                const optPreview = Array.isArray(item.options) && item.options.length
+                  ? `<div class="eval-suggest-card__opts">
+                      ${item.options.slice(0, 3).map(o => `<span class="eval-suggest-opt-pill">${escapeHtml(o)}</span>`).join('')}
+                      ${item.options.length > 3 ? `<span class="eval-suggest-opt-pill">+${item.options.length - 3} more</span>` : ''}
+                    </div>`
+                  : '';
+
+                return `
+                  <button type="button" class="eval-suggest-card ${isSelected ? 'eval-suggest-card--selected' : ''} ${alreadyInForm ? 'eval-suggest-card--exists' : ''}" data-suggest-idx="${idx}">
+                    <span class="eval-suggest-card__num">${isSelected ? icon('check', 12) : String(idx + 1).padStart(2, '0')}</span>
+                    <span class="eval-suggest-card__body">
+                      <span class="eval-suggest-card__text">${escapeHtml(item.text)}</span>
+                      ${alreadyInForm ? '<div style="margin-top:3px;"><span class="badge badge--neutral" style="font-size:0.63rem;padding:1px 6px;">Already in form</span></div>' : ''}
+                      ${optPreview}
+                    </span>
+                    <span class="eval-suggest-card__action">${isSelected ? 'Selected' : 'Use'}</span>
+                  </button>
+                `;
+              }).join('')}
+            </div>
+          `}
+        </div>
+      `;
+
+      suggestionsPanel.querySelector('#btn-toggle-suggestions')?.addEventListener('click', () => {
+        suggestionsCollapsed = !suggestionsCollapsed;
+        renderSuggestions();
+      });
+
+      suggestionsPanel.querySelectorAll('.eval-suggest-card').forEach(card => {
+        card.addEventListener('click', () => {
+          const idx = Number(card.getAttribute('data-suggest-idx'));
+          const chosen = suggestions[idx];
+          if (!chosen) return;
+
+          qTextInput.value = chosen.text;
+          lastAppliedSuggestionText = chosen.text.trim();
+          flashInput(qTextInput);
+
+          if (activeType === 'multiple_choice' && Array.isArray(chosen.options) && chosen.options.length) {
+            const optsStr = chosen.options.join('\n');
+            mcqInput.value = optsStr;
+            lastAppliedSuggestionOpts = optsStr.trim();
+            mcqWrap.style.display = 'block';
+            flashInput(mcqInput);
+          }
+
+          syncClearButton();
+          renderSuggestions();
+        });
+      });
+    }
 
     function showCustomCategory() {
       categorySelect.value = '__custom__';
       customCatWrap.style.display = 'block';
       customCatInput.focus();
+      resetUneditedSuggestionIfNeeded();
+      renderSuggestions();
     }
 
     function hideCustomCategory() {
       customCatWrap.style.display = 'none';
+      customCatInput.value = '';
       if (categorySelect.value === '__custom__') {
-        categorySelect.value = defaultCategory;
+        categorySelect.value = initialCategory || '';
       }
+      resetUneditedSuggestionIfNeeded();
+      renderSuggestions();
     }
 
     categorySelect.addEventListener('change', () => {
@@ -3024,18 +3399,53 @@ export default function evaluationsPage(container) {
         showCustomCategory();
       } else {
         customCatWrap.style.display = 'none';
+        suggestionsCollapsed = false;
+        resetUneditedSuggestionIfNeeded();
+        renderSuggestions();
       }
+    });
+
+    customCatInput.addEventListener('input', () => {
+      suggestionsCollapsed = false;
+      renderSuggestions();
     });
 
     toggleCustomBtn.addEventListener('click', showCustomCategory);
     cancelCustomBtn.addEventListener('click', hideCustomCategory);
 
-    const typeSelect = bd.querySelector('#q-type');
-    const mcqWrap = bd.querySelector('#q-mcq-options-wrap');
-
     typeSelect.addEventListener('change', () => {
       mcqWrap.style.display = typeSelect.value === 'multiple_choice' ? 'block' : 'none';
+      suggestionsCollapsed = false;
+      resetUneditedSuggestionIfNeeded();
+      renderSuggestions();
     });
+
+    qTextInput.addEventListener('input', () => {
+      syncClearButton();
+      // Update selected pill indicator if user manually edits away from a suggestion
+      const currentVal = qTextInput.value.trim();
+      suggestionsPanel.querySelectorAll('.eval-suggest-card').forEach(card => {
+        const textEl = card.querySelector('.eval-suggest-card__text');
+        const actionEl = card.querySelector('.eval-suggest-card__action');
+        const numEl = card.querySelector('.eval-suggest-card__num');
+        const idx = Number(card.getAttribute('data-suggest-idx'));
+        const matches = textEl && textEl.textContent.trim() === currentVal;
+        card.classList.toggle('eval-suggest-card--selected', matches);
+        if (actionEl) actionEl.textContent = matches ? 'Selected' : 'Use';
+        if (numEl) numEl.innerHTML = matches ? icon('check', 12) : String(idx + 1).padStart(2, '0');
+      });
+    });
+
+    clearQTextBtn.addEventListener('click', () => {
+      qTextInput.value = '';
+      lastAppliedSuggestionText = null;
+      syncClearButton();
+      renderSuggestions();
+      qTextInput.focus();
+    });
+
+    // Initial render of the dynamic suggestions prompt
+    renderSuggestions();
 
     bd.querySelector('#save-q-btn').addEventListener('click', async () => {
       let category = '';
@@ -3050,21 +3460,35 @@ export default function evaluationsPage(container) {
         category = categorySelect.value.trim();
       }
 
-      const question_text = bd.querySelector('#q-text').value.trim();
+      if (!category) {
+        showToast('Please select a category first.', 'warning');
+        categorySelect.focus();
+        return;
+      }
+
       const question_type = typeSelect.value;
+      if (!question_type) {
+        showToast('Please select a response type.', 'warning');
+        typeSelect.focus();
+        return;
+      }
+
+      const question_text = qTextInput.value.trim();
       const is_required = bd.querySelector('#q-required').checked;
 
-      if (!category || !question_text) {
-        showToast('Please fill in both the category and question statement.', 'warning');
+      if (!question_text) {
+        showToast('Please select a suggested question or enter a question statement.', 'warning');
+        qTextInput.focus();
         return;
       }
 
       let options = null;
       if (question_type === 'multiple_choice') {
-        const rawOpts = bd.querySelector('#q-mcq-options').value;
+        const rawOpts = mcqInput.value;
         options = rawOpts.split('\n').map(o => o.trim()).filter(Boolean);
         if (options.length < 2) {
           showToast('Please provide at least 2 choices.', 'warning');
+          mcqInput.focus();
           return;
         }
       }
