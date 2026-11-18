@@ -1285,8 +1285,13 @@ class StudentController extends Controller
         $activeDays = array_map(fn($d) => strtolower(substr(trim($d), 0, 3)), (array)$scheduleDays);
         $isWorkDay = in_array(strtolower($currentDayShort), $activeDays);
 
+        $isHoursCompleted = ($totalHours > 0 && (float) $hoursRendered >= (float) $totalHours)
+            || ($ojtRecord?->status === 'completed');
+
         $sessionState = 'ready_morning_in';
-        if (!$isWorkDay) {
+        if ($isHoursCompleted) {
+            $sessionState = 'ojt_completed';
+        } elseif (!$isWorkDay) {
             $sessionState = 'off_day';
         } elseif ($todayLogRecord?->status === 'absent') {
             $sessionState = 'shift_ended';
@@ -1469,6 +1474,7 @@ class StudentController extends Controller
             'progress' => [
                 'hoursRendered'         => (float) $hoursRendered,
                 'totalHours'            => (float) $totalHours,
+                'isCompleted'           => (bool) $isHoursCompleted,
                 'daysCompleted'         => $daysCompleted,
                 'totalDays'             => $totalDays,
                 'curriculumTarget'      => (float) $curriculumTarget,
@@ -1758,6 +1764,20 @@ class StudentController extends Controller
                     'message' => 'Your OJT placement has been formally withdrawn due to an emergency.',
                 ], 403);
             }
+        }
+
+        // 0b. Enforce 100% OJT hours completion guard (attendance closed while waiting for evaluation)
+        $latestOjtRec = OjtRecord::where('user_id', $user->id)->latest()->first();
+        if (
+            $latestOjtRec && (
+                $latestOjtRec->status === 'completed' ||
+                ((float) $latestOjtRec->required_hours > 0 && (float) $latestOjtRec->completed_hours >= (float) $latestOjtRec->required_hours)
+            )
+        ) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You have already completed 100% of your required OJT hours. Attendance logging is now closed while waiting for your evaluation.',
+            ], 403);
         }
 
         // 1. Enforce agreed work days schedule
@@ -2233,6 +2253,20 @@ class StudentController extends Controller
             }
         }
 
+        // 0b. Enforce 100% OJT hours completion guard (attendance closed while waiting for evaluation)
+        $latestOjtRec = OjtRecord::where('user_id', $user->id)->latest()->first();
+        if (
+            $latestOjtRec && (
+                $latestOjtRec->status === 'completed' ||
+                ((float) $latestOjtRec->required_hours > 0 && (float) $latestOjtRec->completed_hours >= (float) $latestOjtRec->required_hours)
+            )
+        ) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You have already completed 100% of your required OJT hours. Attendance logging is now closed while waiting for your evaluation.',
+            ], 403);
+        }
+
         // 1. Enforce agreed work days schedule
         $dayCheck = $this->validateScheduleDay($user, $today);
         if ($dayCheck) {
@@ -2613,6 +2647,20 @@ class StudentController extends Controller
 
         if ($existing) {
             return response()->json(['message' => 'Attendance already logged for today.'], 422);
+        }
+
+        // Find active or completed OJT record if exists
+        $latestOjtRec = OjtRecord::where('user_id', $user->id)->latest()->first();
+        if (
+            $latestOjtRec && (
+                $latestOjtRec->status === 'completed' ||
+                ((float) $latestOjtRec->required_hours > 0 && (float) $latestOjtRec->completed_hours >= (float) $latestOjtRec->required_hours)
+            )
+        ) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You have already completed 100% of your required OJT hours. Attendance logging is now closed while waiting for your evaluation.',
+            ], 403);
         }
 
         // Find active OJT record if exists

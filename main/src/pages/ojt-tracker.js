@@ -1680,11 +1680,12 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
   const hoursRendered = parseFloat(ojt.hoursRendered) || 0;
   const totalHours    = parseFloat(ojt.totalHours)    || 0;
   const pctRaw        = totalHours > 0 ? (hoursRendered / totalHours) * 100 : 0;
+  const pctClamped    = Math.min(100, pctRaw);
   // Display: 1 decimal for <10%, whole number for ≥10%
-  const pctDisplay    = pctRaw === 0 ? '0' : pctRaw < 10 ? pctRaw.toFixed(1) : Math.round(pctRaw).toString();
+  const pctDisplay    = pctClamped === 0 ? '0' : pctClamped < 10 ? pctClamped.toFixed(1) : Math.round(pctClamped).toString();
   const circumference = 2 * Math.PI * 54;
-  const dashOffset    = circumference - (pctRaw / 100) * circumference;
-  const ringColor     = pctRaw >= 80 ? 'var(--color-success)' : pctRaw >= 40 ? 'var(--color-accent)' : 'var(--color-warning)';
+  const dashOffset    = circumference - (pctClamped / 100) * circumference;
+  const ringColor     = pctClamped >= 80 ? 'var(--color-success)' : pctClamped >= 40 ? 'var(--color-accent)' : 'var(--color-warning)';
 
   const prevM = month === 0  ? { y: year - 1, m: 11 } : { y: year, m: month - 1 };
   const nextM = month === 11 ? { y: year + 1, m: 0  } : { y: year, m: month + 1 };
@@ -1702,6 +1703,21 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
     !isWorkDay ? 'off_day' : (!todayLog ? 'ready_morning_in' : (todayLog.afternoonOut ? 'day_completed' : 'morning_active'))
   );
 
+  // Check if student reached 100% of required OJT hours and evaluation state
+  const isOjtHoursCompleted = (totalHours > 0 && hoursRendered >= totalHours)
+    || ojt.isCompleted === true
+    || ojt.recordStatus === 'completed'
+    || sessionState === 'ojt_completed';
+
+  const isEvaluationCompleted = Boolean(
+    evaluation && (
+      evaluation.endterm?.status === 'submitted' ||
+      evaluation.endterm?.is_waived ||
+      (!evaluation.midterm && !evaluation.endterm && evaluation.overall_score)
+    )
+  );
+  const isWaitingForEvaluation = isOjtHoursCompleted && !isEvaluationCompleted;
+
   const monthLabel = new Date(year, month, 1).toLocaleString('default', { month: 'long', year: 'numeric' });
 
   const schedDays = Array.isArray(sched.days) && sched.days.length ? sched.days.join(', ') : '';
@@ -1713,6 +1729,16 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
     punchClockHtml = `
       <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(239,68,68,0.1);color:#dc2626;border:1px solid rgba(239,68,68,0.25);padding:8px 16px;border-radius:99px;font-size:0.83rem;font-weight:600;">
         ${icon('alertCircle', 15)} OJT Withdrawn (Emergency Discontinuation)
+      </div>
+    `;
+  } else if (isOjtHoursCompleted) {
+    punchClockHtml = isWaitingForEvaluation ? `
+      <div class="ojt-waiting-eval-pill" style="display:inline-flex;align-items:center;gap:8px;background:rgba(245,158,11,0.12);color:#b45309;border:1px solid rgba(245,158,11,0.35);padding:8px 16px;border-radius:99px;font-size:0.84rem;font-weight:700;">
+        ${icon('clock', 15)} 100% Hours Completed &middot; Waiting for Evaluation
+      </div>
+    ` : `
+      <div class="ojt-completed-eval-pill" style="display:inline-flex;align-items:center;gap:8px;background:rgba(16,185,129,0.12);color:#059669;border:1px solid rgba(16,185,129,0.3);padding:8px 16px;border-radius:99px;font-size:0.84rem;font-weight:700;">
+        ${icon('checkCircle', 15)} OJT Completed &amp; Evaluated
       </div>
     `;
   } else if (ojt.is_pull_out_pending) {
@@ -1830,10 +1856,14 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
           <h1 class="ojt-tracker-title" style="font-size:var(--text-2xl); font-weight:700; display:flex; align-items:center; gap:10px;">
             ${icon('clock', 26)} OJT Time Tracker
           </h1>
-          <p class="text-secondary ojt-tracker-subtitle" style="margin-top:4px;">Log your daily attendance (Morning &amp; Afternoon sessions) and monitor your OJT hours progress.</p>
+          <p class="text-secondary ojt-tracker-subtitle" style="margin-top:4px;">${isWaitingForEvaluation
+            ? 'You have completed 100% of your required OJT hours. Attendance logging is closed while waiting for your final evaluation.'
+            : isOjtHoursCompleted
+              ? 'You have completed your required OJT hours and performance evaluation.'
+              : 'Log your daily attendance (Morning &amp; Afternoon sessions) and monitor your OJT hours progress.'}</p>
         </div>
         <div class="ojt-tracker-header-actions" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-          ${shiftText ? `
+          ${shiftText && !isOjtHoursCompleted ? `
             <div class="ojt-shift-pill" style="display:inline-flex;align-items:center;gap:6px;background:rgba(0,89,48,0.08);color:#005930;border:1px solid rgba(0,89,48,0.2);padding:6px 14px;border-radius:99px;font-size:0.78rem;font-weight:600;">
               ${icon('calendar', 13)}
               <span>${esc(schedDays || 'Mon–Fri')} &middot; ${esc(shiftText)}${lunchText ? ' · ' + esc(lunchText) : ''}</span>
@@ -1842,6 +1872,33 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
         </div>
       </div>
     </section>
+
+    <!-- ── 100% Hours Completed · Waiting for Evaluation Banner ── -->
+    ${isWaitingForEvaluation ? `
+    <section class="page-section animate-fade-in-up" style="animation-delay:30ms;margin-bottom:16px;">
+      <div class="jp-card ojt-waiting-eval-banner" style="background:linear-gradient(135deg, rgba(245,158,11,0.08) 0%, rgba(16,185,129,0.08) 100%);border:1.5px solid rgba(245,158,11,0.35);border-radius:var(--radius-lg);padding:18px 22px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;">
+        <div style="display:flex;align-items:center;gap:14px;min-width:240px;flex:1;">
+          <div style="width:44px;height:44px;border-radius:12px;background:rgba(245,158,11,0.16);color:#b45309;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            ${icon('clock', 22)}
+          </div>
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <h3 style="margin:0;font-size:1.02rem;font-weight:700;color:var(--text-primary);">OJT Hours Completed &mdash; Waiting for Evaluation</h3>
+              <span class="badge" style="background:#FEF3C7;color:#92400E;font-size:0.72rem;font-weight:700;padding:2px 10px;border-radius:99px;">Waiting for Evaluation</span>
+            </div>
+            <p class="text-sm text-secondary" style="margin:4px 0 0;line-height:1.45;">
+              ${evaluation?.endterm?.status === 'sent'
+                ? `You have completed <strong>${hoursRendered % 1 === 0 ? hoursRendered : hoursRendered.toFixed(1)} / ${totalHours} hours (100%)</strong>. Your final evaluation has been sent to <strong>${esc(ojt.company || 'your host company')}</strong> and is awaiting supervisor submission. Daily Time In / Time Out is now closed.`
+                : `Congratulations! You have completed all <strong>${hoursRendered % 1 === 0 ? hoursRendered : hoursRendered.toFixed(1)} / ${totalHours} required OJT hours (100%)</strong>. Daily Time In / Time Out is now closed while your coordinator and host company process your final evaluation.`}
+            </p>
+          </div>
+        </div>
+        <div style="display:inline-flex;align-items:center;gap:6px;background:#059669;color:#fff;padding:7px 14px;border-radius:99px;font-size:0.8rem;font-weight:700;flex-shrink:0;">
+          ${icon('checkCircle', 14)} 100% Hours Complete
+        </div>
+      </div>
+    </section>
+    ` : ''}
 
     <!-- ── Emergency / Medical Status Banner ── -->
     ${renderEmergencyBannerHtml(ojt)}
@@ -1896,6 +1953,11 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
           </svg>
           <p style="font-size:1.1rem;font-weight:700;margin-top:10px;">${hoursRendered % 1 === 0 ? hoursRendered : hoursRendered.toFixed(1)} <span class="text-tertiary" style="font-size:0.85rem;font-weight:400;">/ ${totalHours} hrs</span></p>
           <p class="text-xs text-secondary" style="margin-top:2px;">Total Hours Rendered</p>
+          ${isWaitingForEvaluation ? `
+            <span style="margin-top:8px;display:inline-flex;align-items:center;gap:5px;background:rgba(245,158,11,0.14);color:#b45309;border:1px solid rgba(245,158,11,0.3);padding:4px 10px;border-radius:99px;font-size:0.72rem;font-weight:700;">
+              ${icon('clock', 12)} Waiting for Evaluation
+            </span>
+          ` : ''}
         </div>
 
         <!-- OJT deployment details -->
