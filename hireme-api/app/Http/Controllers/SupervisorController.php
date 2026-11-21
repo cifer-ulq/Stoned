@@ -1756,9 +1756,20 @@ class SupervisorController extends Controller
             'title'         => 'required|string|max:255',
             'items'         => 'required|array|min:1',
             'instructions'  => 'nullable|string|max:2000',
-            'due_date'      => 'nullable|date',
-            'skip_verified' => 'nullable|boolean',
+            'due_date'         => 'nullable|date',
+            'skip_verified'    => 'nullable|boolean',
+            'master_drive_url' => 'nullable|string|max:1000',
         ]);
+
+        $masterDriveUrl = !empty($validated['master_drive_url']) ? trim($validated['master_drive_url']) : null;
+        if ($masterDriveUrl && !preg_match('#^https?://#i', $masterDriveUrl)) {
+            $masterDriveUrl = 'https://' . $masterDriveUrl;
+        }
+
+        // Persist supervisor default master drive if provided
+        if ($masterDriveUrl && $supervisor->supervisorProfile) {
+            $supervisor->supervisorProfile->update(['master_drive_url' => $masterDriveUrl]);
+        }
 
         $course = $this->getSupervisorCourse($request);
         $campus = $this->getSupervisorCampus($request);
@@ -1821,26 +1832,14 @@ class SupervisorController extends Controller
             $displaySupervisor,
             $targetStudentIds,
             $skipVerified,
+            $masterDriveUrl,
             &$created,
             &$newlyAssigned,
             &$updatedPending,
             &$skippedVerified
         ) {
-            // Clean items once for the batch
-            $rawItems = array_map(function ($it) {
-                if (is_array($it)) {
-                    return [
-                        'name'     => trim((string)($it['name'] ?? $it['title'] ?? '')),
-                        'required' => (bool)($it['required'] ?? true),
-                    ];
-                }
-                return [
-                    'name'     => trim((string)$it),
-                    'required' => true,
-                ];
-            }, $validated['items']);
-
-            $cleanItems = array_values(array_filter($rawItems, fn($it) => !empty($it['name'])));
+            // Clean items once for the batch using normalized item format
+            $cleanItems = StudentOjtRequirement::normalizeItemsArray($validated['items']);
             if (empty($cleanItems)) {
                 return;
             }
@@ -1873,6 +1872,7 @@ class SupervisorController extends Controller
                         'instructions'       => $validated['instructions'] ?? null,
                         'due_date'           => $validated['due_date'] ?? null,
                         'status'             => $profileDrive ? 'submitted' : 'pending',
+                        'master_drive_url'   => $masterDriveUrl ?: $existing->master_drive_url ?: $supervisor->supervisorProfile?->master_drive_url,
                         'drive_url'          => $profileDrive ?: $existing->drive_url,
                         'submitted_at'       => $profileDrive ? ($existing->submitted_at ?: now()) : null,
                     ]);
@@ -1889,6 +1889,7 @@ class SupervisorController extends Controller
                         'instructions'       => $validated['instructions'] ?? null,
                         'due_date'           => $validated['due_date'] ?? null,
                         'status'             => $profileDrive ? 'submitted' : 'pending',
+                        'master_drive_url'   => $masterDriveUrl ?: $supervisor->supervisorProfile?->master_drive_url,
                         'drive_url'          => $profileDrive,
                         'submitted_at'       => $profileDrive ? now() : null,
                     ]);
@@ -1964,6 +1965,7 @@ class SupervisorController extends Controller
             'success'                 => true,
             'requirements'            => $requirements,
             'requirements_drive_url'  => $student->studentProfile?->requirements_drive_url,
+            'master_drive_url'        => $requirements->first()?->master_drive_url ?: $request->user()->supervisorProfile?->master_drive_url,
         ]);
     }
 
@@ -1988,6 +1990,14 @@ class SupervisorController extends Controller
 
         if ($validated['status'] === 'verified') {
             $updateData['verified_at'] = now();
+            // Mark all items approved
+            $items = $reqRecord->items;
+            foreach ($items as &$it) {
+                $it['status'] = 'approved';
+                $it['remarks'] = null;
+                $it['reviewed_at'] = now()->toIso8601String();
+            }
+            $updateData['items'] = $items;
         } else {
             $updateData['verified_at'] = null;
         }
@@ -2032,6 +2042,274 @@ class SupervisorController extends Controller
             'success' => true,
             'message' => 'Requirement status updated to ' . ucfirst($validated['status']) . '.',
             'data'    => $reqRecord->fresh(['supervisor:id,name', 'posting:id,title']),
+        ]);
+    }
+
+    /**
+     * PUT /api/supervisor/requirements/{id}/item-review
+     * Granular review of a single requirement item: approve, request changes, or reset.
+     */
+    public function reviewRequirementItem(Request $request, $id)
+    {
+        $supervisor = $request->user();
+        $validated = $request->validate([
+            'item_id' => 'required|string',
+            'action'  => 'required|in:approve,request_changes,reset',
+            'remarks' => 'nullable|string|max:1000',
+        ]);
+
+        if ($validated['action'] === 'request_changes' && empty(trim($validated['remarks'] ?? ''))) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please provide specific remarks explaining what needs to be changed.',
+            ], 422);
+        }
+
+        $reqRecord = StudentOjtRequirement::with(['student'])->findOrFail($id);
+        $items = $reqRecord->items;
+        $matched = false;
+        $targetItemName = '';
+
+        foreach ($items as &$it) {
+            if ($it['id'] === $validated['item_id'] || $it['name'] === $validated['item_id']) {
+                $matched = true;
+                $targetItemName = $it['name'];
+                if ($validated['action'] === 'approve') {
+                    $it['status'] = 'approved';
+                    $it['remarks'] = null;
+                    $it['reviewed_at'] = now()->toIso8601String();
+                } elseif ($validated['action'] === 'request_changes') {
+                    $it['status'] = 'needs_revision';
+                    $it['remarks'] = trim($validated['remarks']);
+                    $it['reviewed_at'] = now()->toIso8601String();
+                } else {
+                    $it['status'] = 'pending';
+                    $it['remarks'] = null;
+                    $it['reviewed_at'] = null;
+                }
+                break;
+            }
+        }
+
+        if (!$matched) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Requirement item not found.',
+            ], 404);
+        }
+
+        $reqRecord->items = $items;
+        $newStatus = $reqRecord->recalculateStatus();
+        $reqRecord->save();
+
+        $supervisorName = $supervisor->name ?: 'OJT Coordinator';
+        $supPrefix = (stripos($supervisorName, 'prof') === 0 || stripos($supervisorName, 'dr') === 0 || stripos($supervisorName, 'engr') === 0) ? '' : 'Prof. ';
+        $displaySupervisor = $supPrefix . $supervisorName;
+
+        // Count stats
+        $approvedCount = count(array_filter($items, fn($it) => $it['status'] === 'approved'));
+        $totalCount = count($items);
+
+        // Notify student based on action
+        if ($validated['action'] === 'approve') {
+            if ($newStatus === 'verified') {
+                AppNotification::send(
+                    $reqRecord->student_user_id,
+                    'requirements_verified',
+                    'All OJT Requirements Approved! 🎉',
+                    $displaySupervisor . ' verified all your OJT requirements (' . $reqRecord->title . '). You are officially cleared for OJT company placement!',
+                    [
+                        'requirement_id' => $reqRecord->id,
+                        'supervisor_id'  => $supervisor->id,
+                        'action_url'     => '#ojt',
+                    ]
+                );
+            } else {
+                AppNotification::send(
+                    $reqRecord->student_user_id,
+                    'requirement_item_approved',
+                    'Requirement Approved: ' . $targetItemName,
+                    $displaySupervisor . ' approved "' . $targetItemName . '" (' . $approvedCount . '/' . $totalCount . ' documents verified).',
+                    [
+                        'requirement_id' => $reqRecord->id,
+                        'item_id'        => $validated['item_id'],
+                        'action_url'     => '#portfolio',
+                    ]
+                );
+            }
+        } elseif ($validated['action'] === 'request_changes') {
+            AppNotification::send(
+                $reqRecord->student_user_id,
+                'requirement_item_revision',
+                'Changes Requested: ' . $targetItemName,
+                $displaySupervisor . ' requested revisions on "' . $targetItemName . '": "' . trim($validated['remarks']) . '". Please update your file in your Google Drive subfolder.',
+                [
+                    'requirement_id' => $reqRecord->id,
+                    'item_id'        => $validated['item_id'],
+                    'remarks'        => trim($validated['remarks']),
+                    'action_url'     => '#portfolio',
+                ]
+            );
+        }
+
+        return response()->json([
+            'success'     => true,
+            'message'     => 'Requirement item updated successfully.',
+            'status'      => $newStatus,
+            'data'        => $reqRecord->fresh(['supervisor:id,name', 'posting:id,title']),
+        ]);
+    }
+
+    /**
+     * PUT /api/supervisor/requirements/{id}/batch-approve
+     * Batch approve all requirement items for a student at once.
+     */
+    public function batchApproveRequirements(Request $request, $id)
+    {
+        $supervisor = $request->user();
+        $reqRecord = StudentOjtRequirement::with(['student'])->findOrFail($id);
+
+        $items = $reqRecord->items;
+        foreach ($items as &$it) {
+            $it['status'] = 'approved';
+            $it['remarks'] = null;
+            $it['reviewed_at'] = now()->toIso8601String();
+        }
+
+        $reqRecord->items = $items;
+        $reqRecord->status = 'verified';
+        $reqRecord->verified_at = now();
+        $reqRecord->supervisor_remarks = 'All requirements approved in batch verification.';
+        $reqRecord->save();
+
+        $supervisorName = $supervisor->name ?: 'OJT Coordinator';
+        $supPrefix = (stripos($supervisorName, 'prof') === 0 || stripos($supervisorName, 'dr') === 0 || stripos($supervisorName, 'engr') === 0) ? '' : 'Prof. ';
+        $displaySupervisor = $supPrefix . $supervisorName;
+
+        AppNotification::send(
+            $reqRecord->student_user_id,
+            'requirements_verified',
+            'All OJT Requirements Approved! 🎉',
+            $displaySupervisor . ' approved all documents in your OJT requirements folder (' . $reqRecord->title . '). You are now cleared to apply for company placements!',
+            [
+                'requirement_id' => $reqRecord->id,
+                'supervisor_id'  => $supervisor->id,
+                'supervisor_name'=> $supervisorName,
+                'action_url'     => '#ojt',
+            ]
+        );
+
+        return response()->json([
+            'success'     => true,
+            'message'     => 'All requirements approved and student verified successfully.',
+            'data'        => $reqRecord->fresh(['supervisor:id,name', 'posting:id,title']),
+        ]);
+    }
+
+    /**
+     * POST /api/supervisor/requirements/{id}/items
+     * Dynamically add a requirement item to a student's packet.
+     */
+    public function addRequirementItem(Request $request, $id)
+    {
+        $supervisor = $request->user();
+        $validated = $request->validate([
+            'name'     => 'required|string|max:255',
+            'required' => 'nullable|boolean',
+        ]);
+
+        $reqRecord = StudentOjtRequirement::with(['student'])->findOrFail($id);
+        $items = $reqRecord->items;
+
+        $newItem = [
+            'id'          => 'req_' . substr(md5(uniqid(mt_rand(), true)), 0, 10),
+            'name'        => trim($validated['name']),
+            'required'    => isset($validated['required']) ? (bool)$validated['required'] : true,
+            'status'      => 'pending',
+            'remarks'     => null,
+            'reviewed_at' => null,
+        ];
+
+        $items[] = $newItem;
+        $reqRecord->items = $items;
+        $reqRecord->recalculateStatus();
+        $reqRecord->save();
+
+        $supervisorName = $supervisor->name ?: 'OJT Coordinator';
+        $supPrefix = (stripos($supervisorName, 'prof') === 0 || stripos($supervisorName, 'dr') === 0 || stripos($supervisorName, 'engr') === 0) ? '' : 'Prof. ';
+        $displaySupervisor = $supPrefix . $supervisorName;
+
+        AppNotification::send(
+            $reqRecord->student_user_id,
+            'requirements_updated',
+            'Requirement Added: ' . $newItem['name'],
+            $displaySupervisor . ' added "' . $newItem['name'] . '" to your OJT requirements checklist.',
+            [
+                'requirement_id' => $reqRecord->id,
+                'item_id'        => $newItem['id'],
+                'action_url'     => '#portfolio',
+            ]
+        );
+
+        return response()->json([
+            'success'     => true,
+            'message'     => 'Requirement item added successfully.',
+            'item'        => $newItem,
+            'data'        => $reqRecord->fresh(['supervisor:id,name', 'posting:id,title']),
+        ]);
+    }
+
+    /**
+     * DELETE /api/supervisor/requirements/{id}/items/{itemId}
+     * Remove a requirement item from a student's packet.
+     */
+    public function deleteRequirementItem(Request $request, $id, $itemId)
+    {
+        $supervisor = $request->user();
+        $reqRecord = StudentOjtRequirement::with(['student'])->findOrFail($id);
+
+        $items = $reqRecord->items;
+        $filtered = [];
+        $removedName = '';
+
+        foreach ($items as $it) {
+            if ($it['id'] === $itemId || $it['name'] === $itemId) {
+                $removedName = $it['name'];
+            } else {
+                $filtered[] = $it;
+            }
+        }
+
+        if (empty($removedName)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Requirement item not found.',
+            ], 404);
+        }
+
+        $reqRecord->items = array_values($filtered);
+        $reqRecord->recalculateStatus();
+        $reqRecord->save();
+
+        $supervisorName = $supervisor->name ?: 'OJT Coordinator';
+        $supPrefix = (stripos($supervisorName, 'prof') === 0 || stripos($supervisorName, 'dr') === 0 || stripos($supervisorName, 'engr') === 0) ? '' : 'Prof. ';
+        $displaySupervisor = $supPrefix . $supervisorName;
+
+        AppNotification::send(
+            $reqRecord->student_user_id,
+            'requirements_updated',
+            'Requirement Removed: ' . $removedName,
+            $displaySupervisor . ' removed "' . $removedName . '" from your OJT requirements checklist.',
+            [
+                'requirement_id' => $reqRecord->id,
+                'action_url'     => '#portfolio',
+            ]
+        );
+
+        return response()->json([
+            'success'     => true,
+            'message'     => 'Requirement item removed successfully.',
+            'data'        => $reqRecord->fresh(['supervisor:id,name', 'posting:id,title']),
         ]);
     }
 

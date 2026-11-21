@@ -646,11 +646,18 @@ class StudentController extends Controller
         $requirements = $this->resolveStudentRequirements($student);
 
         $profile = $student->studentProfile;
+        $firstReq = $requirements->first();
+        $masterDrive = $firstReq?->master_drive_url;
+        if (!$masterDrive && $firstReq?->supervisor_user_id) {
+            $sup = User::with('supervisorProfile')->find($firstReq->supervisor_user_id);
+            $masterDrive = $sup?->supervisorProfile?->master_drive_url;
+        }
 
         return response()->json([
             'success'                => true,
             'requirements'           => $requirements,
             'requirements_drive_url' => $profile?->requirements_drive_url,
+            'master_drive_url'       => $masterDrive,
         ]);
     }
 
@@ -689,11 +696,22 @@ class StudentController extends Controller
         $reqRecord = $query->latest()->first();
 
         if ($reqRecord) {
-            $reqRecord->update([
-                'drive_url'     => $driveUrl,
-                'status'        => 'submitted',
-                'submitted_at'  => now(),
-            ]);
+            $items = $reqRecord->items;
+            $itemsUpdated = false;
+            foreach ($items as &$it) {
+                if ($it['status'] === 'needs_revision') {
+                    $it['status'] = 'pending';
+                    $itemsUpdated = true;
+                }
+            }
+            if ($itemsUpdated) {
+                $reqRecord->items = $items;
+            }
+
+            $reqRecord->drive_url = $driveUrl;
+            $reqRecord->status = 'submitted';
+            $reqRecord->submitted_at = now();
+            $reqRecord->save();
 
             // Notify supervisor
             if ($reqRecord->supervisor_user_id) {
@@ -701,7 +719,7 @@ class StudentController extends Controller
                     $reqRecord->supervisor_user_id,
                     'requirements_submitted',
                     'OJT Requirements Submitted: ' . $user->name,
-                    $user->name . ' has submitted their Google Drive folder for OJT requirements review (' . $reqRecord->title . ').',
+                    $user->name . ' has submitted their Google Drive subfolder for OJT requirements review (' . $reqRecord->title . ').',
                     [
                         'requirement_id' => $reqRecord->id,
                         'student_id'     => $user->id,
@@ -2971,13 +2989,16 @@ class StudentController extends Controller
         $latestReq = $reqs->first();
 
         $ojtRequirements = [
-            'has_requirement' => (bool) $latestReq,
-            'status'          => $latestReq?->status ?? 'unassigned',
-            'is_verified'     => $latestReq?->status === 'verified',
-            'title'           => $latestReq?->title,
-            'supervisor_name' => $latestReq?->supervisor?->name,
-            'remarks'         => $latestReq?->supervisor_remarks,
-            'due_date'        => $latestReq?->due_date ? (is_string($latestReq->due_date) ? $latestReq->due_date : $latestReq->due_date->format('Y-m-d')) : null,
+            'has_requirement'  => (bool) $latestReq,
+            'status'           => $latestReq?->status ?? 'unassigned',
+            'is_verified'      => $latestReq?->status === 'verified',
+            'title'            => $latestReq?->title,
+            'supervisor_name'  => $latestReq?->supervisor?->name,
+            'remarks'          => $latestReq?->supervisor_remarks,
+            'due_date'         => $latestReq?->due_date ? (is_string($latestReq->due_date) ? $latestReq->due_date : $latestReq->due_date->format('Y-m-d')) : null,
+            'master_drive_url' => $latestReq?->master_drive_url,
+            'drive_url'        => $latestReq?->drive_url,
+            'items'            => $latestReq?->items ?? [],
         ];
 
         return response()->json([

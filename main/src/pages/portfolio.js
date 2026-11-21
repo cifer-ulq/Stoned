@@ -305,17 +305,22 @@ function renderAbout() {
               </p>
             </div>
           </div>
-          <div class="portfolio-reqs-actions">
+          <div class="portfolio-reqs-actions" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            ${activeReq?.master_drive_url ? `
+              <a href="${activeReq.master_drive_url}" target="_blank" rel="noopener" class="btn btn--outline btn--sm" style="font-size:0.78rem;padding:5px 10px;display:inline-flex;align-items:center;gap:5px;color:#0284c7;border-color:rgba(2,132,199,0.4);">
+                ${icon('folder', 13)} <span>Class Drive</span>
+              </a>
+            ` : ''}
             ${P.requirements_drive_url ? `
               <a href="${P.requirements_drive_url}" target="_blank" rel="noopener" class="btn btn--secondary btn--sm" style="font-size:0.8rem;padding:5px 12px;display:inline-flex;align-items:center;gap:6px;">
-                ${icon('externalLink', 13)} <span>Open Folder</span>
+                ${icon('externalLink', 13)} <span>My Subfolder</span>
               </a>
               <button class="btn btn--secondary btn--sm" id="edit-drive-btn" style="font-size:0.8rem;padding:5px 12px;display:inline-flex;align-items:center;gap:6px;">
-                ${icon('edit', 13)} <span>Update Drive Link</span>
+                ${icon('edit', 13)} <span>Update Subfolder Link</span>
               </button>
             ` : `
               <button class="btn btn--primary btn--sm" id="edit-drive-btn" style="font-size:0.82rem;padding:6px 14px;display:inline-flex;align-items:center;gap:6px;font-weight:600;">
-                ${icon('uploadCloud', 14)} <span>Submit Requirements Drive</span>
+                ${icon('uploadCloud', 14)} <span>Submit Subfolder Link</span>
               </button>
             `}
           </div>
@@ -335,36 +340,51 @@ function renderAbout() {
         ` : ''}
 
         <!-- Required Documents Checklist -->
-        ${Array.isArray(activeReq?.items) && activeReq.items.length ? `
+        ${Array.isArray(activeReq?.items) && activeReq.items.length ? (() => {
+          const approvedItemsCount = activeReq.items.filter(it => it.status === 'approved').length;
+          const totalItemsCount = activeReq.items.length;
+          return `
           <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border-subtle);">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px;">
               <span style="font-size:0.75rem;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.04em;">
-                Required Documents Checklist (${activeReq.items.length} Documents)
+                Required Documents Checklist (${approvedItemsCount} / ${totalItemsCount} Verified)
               </span>
               <span style="font-size:0.74rem;color:${reqStatus === 'verified' ? '#10b981' : '#0284c7'};font-weight:600;display:inline-flex;align-items:center;gap:4px;">
-                ${reqStatus === 'verified' ? `${icon('check', 13)} All Documents Approved` : 'Upload to designated Google Drive folder'}
+                ${reqStatus === 'verified' ? `${icon('check', 13)} All Documents Approved` : 'Upload inside your Master Drive subfolder'}
               </span>
             </div>
 
-            <div class="portfolio-reqs-checklist" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(min(100%, 240px), 1fr));gap:8px;">
+            <div class="portfolio-reqs-checklist" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(min(100%, 250px), 1fr));gap:8px;">
               ${activeReq.items.map((item) => {
                 const itemName = getReqItemName(item);
                 if (!itemName) return '';
+                const isApproved = item.status === 'approved';
+                const isRevision = item.status === 'needs_revision';
                 return `
-                  <div style="display:flex;align-items:center;gap:9px;padding:8px 12px;border-radius:8px;background:var(--bg-surface);border:1px solid var(--border-subtle);font-size:0.8rem;transition:border-color 0.15s ease;">
-                    <span style="width:20px;height:20px;border-radius:6px;background:${reqStatus === 'verified' ? 'rgba(16,185,129,0.12)' : 'rgba(2,132,199,0.1)'};color:${reqStatus === 'verified' ? '#10b981' : '#0284c7'};display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">
-                      ${icon(reqStatus === 'verified' ? 'checkCircle' : 'fileText', 12)}
-                    </span>
-                    <span style="font-weight:500;color:var(--text-primary);flex:1;line-height:1.3;">${itemName}</span>
-                    <span style="font-size:0.68rem;padding:2px 6px;border-radius:4px;background:${reqStatus === 'verified' ? 'rgba(16,185,129,0.1)' : 'rgba(0,89,48,0.08)'};color:${reqStatus === 'verified' ? '#10b981' : '#005930'};font-weight:700;flex-shrink:0;">
-                      ${reqStatus === 'verified' ? 'Approved' : 'Required'}
-                    </span>
+                  <div style="display:flex;flex-direction:column;gap:4px;padding:8px 12px;border-radius:8px;background:var(--bg-surface);border:1px solid ${isApproved ? 'rgba(16,185,129,0.35)' : isRevision ? 'rgba(239,68,68,0.35)' : 'var(--border-subtle)'};font-size:0.8rem;transition:border-color 0.15s ease;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                      <div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1;">
+                        <span style="width:20px;height:20px;border-radius:6px;background:${isApproved ? 'rgba(16,185,129,0.12)' : isRevision ? 'rgba(239,68,68,0.12)' : 'rgba(2,132,199,0.1)'};color:${isApproved ? '#10b981' : isRevision ? '#dc2626' : '#0284c7'};display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">
+                          ${icon(isApproved ? 'checkCircle' : isRevision ? 'alertTriangle' : 'fileText', 12)}
+                        </span>
+                        <span style="font-weight:500;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(itemName)}">${escapeHtml(itemName)}</span>
+                      </div>
+                      <span style="font-size:0.68rem;padding:2px 6px;border-radius:4px;background:${isApproved ? 'rgba(16,185,129,0.1)' : isRevision ? '#fee2e2' : 'rgba(0,89,48,0.08)'};color:${isApproved ? '#10b981' : isRevision ? '#b91c1c' : '#005930'};font-weight:700;flex-shrink:0;">
+                        ${isApproved ? 'Approved ✓' : isRevision ? 'Revision ⚠' : 'Required'}
+                      </span>
+                    </div>
+                    ${(isRevision && item.remarks) ? `
+                      <div style="margin-top:2px;padding:4px 8px;background:#fef2f2;border-radius:4px;border-left:2.5px solid #dc2626;font-size:0.72rem;color:#991b1b;line-height:1.35;">
+                        <strong>Feedback:</strong> "${escapeHtml(item.remarks)}"
+                      </div>
+                    ` : ''}
                   </div>
                 `;
               }).join('')}
             </div>
           </div>
-        ` : ''}
+          `;
+        })() : ''}
 
         ${P.requirements_drive_url ? `
           <div style="margin-top:12px;padding:8px 12px;background:var(--bg-surface);border:1px solid rgba(2,132,199,0.2);border-radius:8px;display:flex;align-items:center;gap:8px;font-size:0.8rem;">
@@ -998,7 +1018,7 @@ function openEditAboutModal() {
   });
 }
 
-/* ── Requirements Drive Modal (Redesigned) ── */
+/* ── Requirements Drive Modal (Unified Master Drive + Trainee Subfolder Submission) ── */
 function openRequirementsDriveModal() {
   const existing = document.getElementById('portfolio-modal-overlay');
   if (existing) existing.remove();
@@ -1012,13 +1032,19 @@ function openRequirementsDriveModal() {
     pending:        { label: 'Action Required',      bg: 'rgba(0,89,48,0.10)',    color: '#005930', border: 'rgba(0,89,48,0.25)',   icon: 'folder' },
   };
   const currentStMeta = statusLabels[reqStatus] || statusLabels.pending;
-  const itemsCount = (activeReq && Array.isArray(activeReq.items)) ? activeReq.items.length : 0;
+  const items = (activeReq && Array.isArray(activeReq.items)) ? activeReq.items : [];
+  const itemsCount = items.length;
+  const approvedCount = items.filter(it => (typeof it === 'object' && it?.status === 'approved')).length;
+  const revisionCount = items.filter(it => (typeof it === 'object' && it?.status === 'needs_revision')).length;
+
+  const user = getState('user') || storeUser || {};
+  const studentFolderExample = `${user.student_id ? user.student_id : '202X-XXXX'} - ${user.last_name && user.first_name ? `${user.last_name}, ${user.first_name}` : (user.name || 'Your Name')}`;
 
   const overlay = document.createElement('div');
   overlay.id = 'portfolio-modal-overlay';
   overlay.className = 'modal-overlay';
   overlay.innerHTML = `
-    <div class="modal-box pfm-box req-modal-box" role="dialog" aria-modal="true" style="max-width:580px;border-radius:18px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,0.24);">
+    <div class="modal-box pfm-box req-modal-box" role="dialog" aria-modal="true" style="max-width:620px;border-radius:18px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,0.24);">
       
       <!-- Top Brand Color Accent Bar -->
       <div style="height:4px;background:linear-gradient(90deg, #005930 0%, #10B981 50%, #34D399 100%);width:100%;"></div>
@@ -1046,63 +1072,130 @@ function openRequirementsDriveModal() {
         <button type="button" class="pfm-close-btn" aria-label="Close" style="width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:none;background:var(--bg-secondary);color:var(--text-secondary);cursor:pointer;transition:all .18s ease;">${icon('x', 18)}</button>
       </div>
 
-      <form id="pfm-drive-form" class="pfm-form-body" novalidate style="background:var(--bg-primary, #F8FAFC);padding:0;">
+      <form id="pfm-drive-form" class="pfm-form-body" novalidate style="background:var(--bg-primary, #F8FAFC);padding:0;max-height:calc(85vh - 120px);overflow-y:auto;">
         
-        <!-- Coordinator Feedback Alert (if needs revision) -->
+        <!-- Coordinator Overall Feedback Alert (if needs revision) -->
         ${(reqStatus === 'needs_revision' && activeReq?.supervisor_remarks) ? `
           <div style="margin:16px 22px 0;padding:12px 14px;background:#FEF2F2;border:1px solid #FECACA;border-left:4px solid #EF4444;border-radius:10px;display:flex;align-items:flex-start;gap:10px;font-size:0.82rem;color:#991B1B;line-height:1.5;">
             <span style="color:#DC2626;flex-shrink:0;margin-top:1px;">${icon('alertTriangle', 16)}</span>
             <div>
-              <strong style="color:#7F1D1D;display:block;margin-bottom:2px;">Coordinator Revision Notes:</strong>
+              <strong style="color:#7F1D1D;display:block;margin-bottom:2px;">Coordinator Overall Revision Notes:</strong>
               ${escapeHtml(activeReq.supervisor_remarks)}
             </div>
           </div>
         ` : ''}
 
-        <!-- Required Documents Checklist -->
+        <!-- 3-Step Workflow Guidance -->
+        <div style="margin:16px 22px 10px;background:var(--bg-elevated, #ffffff);border:1px solid var(--border-default);border-radius:14px;padding:14px 16px;box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+          <div style="font-size:0.75rem;font-weight:700;color:#005930;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;">
+            <span style="display:inline-flex;align-items:center;gap:6px;">${icon('folderOpen', 14)} Submission Instructions</span>
+            <span style="font-size:0.72rem;font-weight:600;color:var(--text-tertiary);text-transform:none;">3 Easy Steps</span>
+          </div>
+
+          <!-- Step 1 Card: Unified Master Drive Link -->
+          <div style="background:rgba(0,89,48,0.04);border:1.5px solid rgba(0,89,48,0.18);border-radius:10px;padding:12px 14px;margin-bottom:10px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:6px;">
+              <div style="display:flex;align-items:center;gap:7px;">
+                <span style="width:22px;height:22px;border-radius:50%;background:#005930;color:#ffffff;font-size:0.75rem;font-weight:700;display:inline-flex;align-items:center;justify-content:center;">1</span>
+                <strong style="font-size:0.82rem;color:#005930;">Open Class Master Drive</strong>
+              </div>
+              ${activeReq?.master_drive_url ? `
+                <a href="${activeReq.master_drive_url}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;background:#005930;color:#ffffff;border-radius:8px;font-size:0.78rem;font-weight:700;text-decoration:none;box-shadow:0 2px 6px rgba(0,89,48,0.25);transition:all .15s ease;">
+                  ${icon('externalLink', 12)} Open Section Drive
+                </a>
+              ` : `
+                <span style="font-size:0.72rem;color:var(--text-tertiary);font-style:italic;">Drive link pending coordinator setup</span>
+              `}
+            </div>
+            <p style="font-size:0.75rem;color:var(--text-secondary);margin:0;line-height:1.45;">
+              Create your trainee subfolder inside the Master Drive named:<br/>
+              <code style="display:inline-block;margin-top:4px;padding:3px 8px;background:#ffffff;border:1px solid rgba(0,89,48,0.22);border-radius:6px;color:#005930;font-weight:700;font-size:0.77rem;">
+                ${escapeHtml(studentFolderExample)}
+              </code>
+            </p>
+          </div>
+
+          <!-- Step 2: Upload Files -->
+          <div style="background:var(--bg-secondary);border:1px solid var(--border-subtle);border-radius:10px;padding:10px 14px;margin-bottom:10px;display:flex;align-items:center;gap:10px;">
+            <span style="width:22px;height:22px;border-radius:50%;background:rgba(0,89,48,0.12);color:#005930;font-size:0.75rem;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">2</span>
+            <div style="font-size:0.76rem;color:var(--text-secondary);line-height:1.4;">
+              <strong style="color:var(--text-primary);display:block;">Upload Required Documents</strong>
+              Upload completed, signed, and stamped PDFs into your trainee subfolder.
+            </div>
+          </div>
+
+          <!-- Step 3: Paste & Submit -->
+          <div style="background:var(--bg-secondary);border:1px solid var(--border-subtle);border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:10px;">
+            <span style="width:22px;height:22px;border-radius:50%;background:rgba(0,89,48,0.12);color:#005930;font-size:0.75rem;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">3</span>
+            <div style="font-size:0.76rem;color:var(--text-secondary);line-height:1.4;">
+              <strong style="color:var(--text-primary);display:block;">Paste Subfolder Link Below & Submit</strong>
+              Set subfolder link sharing to <em>"Anyone with link can view"</em> and submit.
+            </div>
+          </div>
+        </div>
+
+        <!-- Required Documents Checklist & Review Status -->
         ${itemsCount > 0 ? `
-          <div class="pfm-section" style="padding:16px 22px 10px;">
+          <div class="pfm-section" style="padding:10px 22px 10px;">
             <div class="pfm-section-label" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
               <span style="display:inline-flex;align-items:center;gap:6px;font-size:0.74rem;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.06em;">
-                ${icon('clipboardCheck', 14)} Required Documents in Packet
+                ${icon('clipboardCheck', 14)} Document Checklist & Review Status
               </span>
-              <span style="font-size:0.72rem;font-weight:700;background:rgba(0,89,48,0.08);color:#005930;padding:2px 10px;border-radius:99px;border:1px solid rgba(0,89,48,0.18);">
-                ${itemsCount} Required
+              <span style="font-size:0.72rem;font-weight:700;background:${approvedCount === itemsCount ? 'rgba(16,185,129,0.1)' : 'rgba(0,89,48,0.08)'};color:${approvedCount === itemsCount ? '#059669' : '#005930'};padding:2px 10px;border-radius:99px;border:1px solid ${approvedCount === itemsCount ? 'rgba(16,185,129,0.25)' : 'rgba(0,89,48,0.18)'};">
+                ${approvedCount} of ${itemsCount} Approved
               </span>
             </div>
 
-            <div style="background:var(--bg-elevated, #ffffff);border:1px solid var(--border-default);border-radius:12px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;max-height:185px;overflow-y:auto;box-shadow:inset 0 1px 2px rgba(0,0,0,0.02);">
-              ${activeReq.items.map((it, idx) => {
+            <div style="background:var(--bg-elevated, #ffffff);border:1px solid var(--border-default);border-radius:12px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto;box-shadow:inset 0 1px 2px rgba(0,0,0,0.02);">
+              ${items.map((it, idx) => {
                 const itName = getReqItemName(it);
+                const st = (typeof it === 'object' && it?.status) ? it.status : 'pending';
+                const remarks = (typeof it === 'object' && it?.remarks) ? it.remarks : null;
+                const isApproved = st === 'approved';
+                const isRevision = st === 'needs_revision';
                 return `
-                  <div style="display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;background:var(--bg-secondary);border:1px solid transparent;transition:all .15s ease;">
-                    <span style="width:22px;height:22px;border-radius:6px;background:rgba(0,89,48,0.1);color:#005930;display:inline-flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:700;flex-shrink:0;">
-                      ${idx + 1}
-                    </span>
-                    <span style="font-size:0.81rem;font-weight:500;color:var(--text-primary);flex:1;line-height:1.35;">
-                      ${escapeHtml(itName)}
-                    </span>
-                    <span style="font-size:0.67rem;padding:2px 8px;border-radius:6px;background:rgba(0,89,48,0.08);color:#005930;font-weight:700;flex-shrink:0;border:1px solid rgba(0,89,48,0.14);">
-                      Required
-                    </span>
+                  <div style="display:flex;flex-direction:column;gap:4px;padding:8px 10px;border-radius:8px;background:${isRevision ? '#FEF2F2' : (isApproved ? 'rgba(16,185,129,0.04)' : 'var(--bg-secondary)')};border:1px solid ${isRevision ? '#FECACA' : (isApproved ? 'rgba(16,185,129,0.2)' : 'transparent')};transition:all .15s ease;">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                      <span style="width:22px;height:22px;border-radius:6px;background:${isApproved ? 'rgba(16,185,129,0.15)' : (isRevision ? '#FEE2E2' : 'rgba(0,89,48,0.1)')};color:${isApproved ? '#059669' : (isRevision ? '#DC2626' : '#005930')};display:inline-flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:700;flex-shrink:0;">
+                        ${isApproved ? icon('check', 12) : (isRevision ? icon('alertTriangle', 12) : (idx + 1))}
+                      </span>
+                      <span style="font-size:0.81rem;font-weight:600;color:var(--text-primary);flex:1;line-height:1.35;">
+                        ${escapeHtml(itName)}
+                      </span>
+                      ${isApproved ? `
+                        <span style="font-size:0.67rem;padding:2px 8px;border-radius:6px;background:rgba(16,185,129,0.12);color:#059669;font-weight:700;flex-shrink:0;border:1px solid rgba(16,185,129,0.25);display:inline-flex;align-items:center;gap:3px;">
+                          ${icon('checkCircle', 10)} Approved
+                        </span>
+                      ` : (isRevision ? `
+                        <span style="font-size:0.67rem;padding:2px 8px;border-radius:6px;background:#FEE2E2;color:#DC2626;font-weight:700;flex-shrink:0;border:1px solid #FECACA;display:inline-flex;align-items:center;gap:3px;">
+                          ${icon('alertTriangle', 10)} Needs Revision
+                        </span>
+                      ` : `
+                        <span style="font-size:0.67rem;padding:2px 8px;border-radius:6px;background:var(--bg-elevated);color:var(--text-tertiary);font-weight:600;flex-shrink:0;border:1px solid var(--border-subtle);display:inline-flex;align-items:center;gap:3px;">
+                          ${icon('clock', 10)} Pending
+                        </span>
+                      `)}
+                    </div>
+                    ${remarks ? `
+                      <div style="margin-left:32px;font-size:0.74rem;color:#991B1B;background:rgba(239,68,68,0.06);border-left:3px solid #EF4444;padding:4px 8px;border-radius:4px;line-height:1.4;">
+                        <strong>Coordinator Note:</strong> ${escapeHtml(remarks)}
+                      </div>
+                    ` : ''}
                   </div>
                 `;
               }).join('')}
             </div>
-            <p style="font-size:0.72rem;color:var(--text-tertiary);margin:6px 2px 0;line-height:1.4;display:flex;align-items:center;gap:5px;">
-              ${icon('info', 12)} Upload completed, signed & stamped copies into your cloud folder.
-            </p>
           </div>
         ` : `
-          <div class="pfm-section" style="padding:16px 22px 10px;">
+          <div class="pfm-section" style="padding:10px 22px 10px;">
             <div style="background:var(--bg-elevated, #ffffff);border:1.5px dashed var(--border-default);border-radius:12px;padding:12px 14px;font-size:0.8rem;color:var(--text-secondary);line-height:1.5;display:flex;align-items:center;gap:10px;">
               <span style="color:#005930;flex-shrink:0;">${icon('info', 18)}</span>
-              <span>No requirement packet has been assigned yet by your coordinator. You can still save or update your Google Drive or OneDrive folder link below in advance.</span>
+              <span>No requirement packet has been assigned yet by your coordinator. You can still save your Google Drive folder link below in advance.</span>
             </div>
           </div>
         `}
 
-        <!-- Coordinator Instructions Card -->
+        <!-- Coordinator Instructions Card (if any) -->
         ${activeReq?.instructions ? `
           <div style="margin:0 22px 12px;padding:10px 14px;background:rgba(0,89,48,0.05);border-left:3.5px solid #005930;border-radius:8px;font-size:0.78rem;color:var(--text-secondary);line-height:1.5;">
             <div style="font-weight:700;color:#005930;margin-bottom:3px;display:flex;align-items:center;gap:6px;">
@@ -1112,34 +1205,12 @@ function openRequirementsDriveModal() {
           </div>
         ` : ''}
 
-        <!-- Cloud Drive Link Section -->
+        <!-- Student Subfolder Drive Link Input Section -->
         <div class="pfm-section" style="padding:4px 22px 18px;">
-          
-          <!-- 3-Step Upload Guidance Bar -->
-          <div style="background:var(--bg-elevated, #ffffff);border:1px solid var(--border-default);border-radius:12px;padding:12px 14px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,0.03);">
-            <div style="font-size:0.72rem;font-weight:700;color:#005930;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
-              ${icon('folderOpen', 13)} Submission Steps
-            </div>
-            <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:8px;">
-              <div style="display:flex;flex-direction:column;gap:3px;padding:8px;background:var(--bg-secondary);border-radius:8px;font-size:0.73rem;line-height:1.35;">
-                <span style="font-weight:700;color:#005930;">1. Put PDFs in folder</span>
-                <span style="color:var(--text-tertiary);">Save all signed docs</span>
-              </div>
-              <div style="display:flex;flex-direction:column;gap:3px;padding:8px;background:var(--bg-secondary);border-radius:8px;font-size:0.73rem;line-height:1.35;">
-                <span style="font-weight:700;color:#005930;">2. Set Link Access</span>
-                <span style="color:var(--text-tertiary);">"Anyone with link"</span>
-              </div>
-              <div style="display:flex;flex-direction:column;gap:3px;padding:8px;background:var(--bg-secondary);border-radius:8px;font-size:0.73rem;line-height:1.35;">
-                <span style="font-weight:700;color:#005930;">3. Paste & Submit</span>
-                <span style="color:var(--text-tertiary);">Send for review</span>
-              </div>
-            </div>
-          </div>
-
           <div class="pfm-fields">
             <div class="form-group" style="margin-bottom:0;">
               <label class="pfm-label" style="font-size:0.83rem;font-weight:700;color:var(--text-primary);margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;">
-                <span>Requirements Folder URL</span>
+                <span>Your Trainee Subfolder URL</span>
                 <span id="link-valid-tag" style="font-size:0.72rem;font-weight:600;display:none;"></span>
               </label>
 
@@ -1151,23 +1222,23 @@ function openRequirementsDriveModal() {
                   name="requirements_drive_url" 
                   type="url" 
                   placeholder="https://drive.google.com/drive/folders/..." 
-                  value="${P.requirements_drive_url || ''}"
+                  value="${P.requirements_drive_url || activeReq?.drive_url || ''}"
                   style="padding-left:38px;padding-right:14px;height:44px;font-size:0.88rem;border:1.5px solid var(--border-default);border-radius:10px;background:var(--bg-elevated,#ffffff);transition:all .2s ease;"
                   required
                 />
               </div>
 
               <!-- Currently Submitted Link Preview -->
-              ${P.requirements_drive_url ? `
+              ${(P.requirements_drive_url || activeReq?.drive_url) ? `
                 <div style="margin-top:10px;padding:10px 14px;background:rgba(0,89,48,0.06);border:1px solid rgba(0,89,48,0.22);border-radius:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
                   <div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1;">
                     <span style="color:#005930;flex-shrink:0;">${icon('checkCircle', 15)}</span>
-                    <span style="font-size:0.78rem;font-weight:600;color:#005930;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${P.requirements_drive_url}">
-                      ${P.requirements_drive_url}
+                    <span style="font-size:0.78rem;font-weight:600;color:#005930;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${P.requirements_drive_url || activeReq?.drive_url}">
+                      ${P.requirements_drive_url || activeReq?.drive_url}
                     </span>
                   </div>
-                  <a href="${P.requirements_drive_url}" target="_blank" rel="noopener" style="font-size:0.75rem;font-weight:700;color:#005930;text-decoration:none;display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:#ffffff;border:1px solid rgba(0,89,48,0.25);border-radius:6px;box-shadow:0 1px 2px rgba(0,0,0,0.04);transition:all .15s ease;">
-                    Open ${icon('externalLink', 12)}
+                  <a href="${P.requirements_drive_url || activeReq?.drive_url}" target="_blank" rel="noopener" style="font-size:0.75rem;font-weight:700;color:#005930;text-decoration:none;display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:#ffffff;border:1px solid rgba(0,89,48,0.25);border-radius:6px;box-shadow:0 1px 2px rgba(0,0,0,0.04);transition:all .15s ease;">
+                    Open Subfolder ${icon('externalLink', 12)}
                   </a>
                 </div>
               ` : ''}
@@ -1182,7 +1253,7 @@ function openRequirementsDriveModal() {
           <div class="pfm-footer-actions" style="display:flex;align-items:center;gap:10px;">
             <button type="button" class="btn btn--ghost pfm-cancel" style="padding:10px 18px;border-radius:10px;font-size:0.88rem;font-weight:600;border:1.5px solid var(--border-default);background:var(--bg-secondary);color:var(--text-secondary);cursor:pointer;transition:all .18s ease;">Cancel</button>
             <button type="submit" class="btn btn--primary pfm-save-btn" style="padding:10px 22px;border-radius:10px;font-size:0.88rem;font-weight:700;background:linear-gradient(135deg, #005930 0%, #1A7A4A 100%);color:#ffffff;border:none;box-shadow:0 4px 14px rgba(0,89,48,0.3);cursor:pointer;display:inline-flex;align-items:center;gap:8px;transition:all .2s ease;">
-              ${SAVE_ICON} <span>${activeReq ? 'Submit for Review' : 'Save Drive Link'}</span>
+              ${SAVE_ICON} <span>${reqStatus === 'needs_revision' ? 'Resubmit for Review' : (reqStatus === 'verified' ? 'Update Subfolder Link' : (activeReq ? 'Submit for Review' : 'Save Drive Link'))}</span>
             </button>
           </div>
         </div>
@@ -1215,7 +1286,7 @@ function openRequirementsDriveModal() {
     if (validTag) {
       validTag.style.display = 'inline-flex';
       if (isDrive) {
-        validTag.innerHTML = `<span style="color:#059669;display:inline-flex;align-items:center;gap:3px;">${icon('checkCircle', 12)} Cloud Folder Link</span>`;
+        validTag.innerHTML = `<span style="color:#059669;display:inline-flex;align-items:center;gap:3px;">${icon('checkCircle', 12)} Trainee Drive Link</span>`;
       } else if (isValidHttp) {
         validTag.innerHTML = `<span style="color:#0284c7;display:inline-flex;align-items:center;gap:3px;">${icon('check', 12)} Valid Link Format</span>`;
       } else {
@@ -1263,7 +1334,7 @@ function openRequirementsDriveModal() {
       renderAbout();
     } catch (err) {
       saveBtn.disabled  = false;
-      saveBtn.innerHTML = `${SAVE_ICON} <span>${activeReq ? 'Submit for Review' : 'Save Drive Link'}</span>`;
+      saveBtn.innerHTML = `${SAVE_ICON} <span>${reqStatus === 'needs_revision' ? 'Resubmit for Review' : (reqStatus === 'verified' ? 'Update Subfolder Link' : (activeReq ? 'Submit for Review' : 'Save Drive Link'))}</span>`;
       if (errEl) errEl.textContent = err.message || 'Save failed. Please check your network and try again.';
     }
   });

@@ -35,6 +35,14 @@ function renderRequirementsIndicator(t) {
   const req = t.requirements;
   const rStatus = t.requirements_status || (req ? req.status : 'not_assigned');
 
+  // Count approved items if items exist
+  let approvedFraction = '';
+  if (req && Array.isArray(req.items) && req.items.length > 0) {
+    const total = req.items.length;
+    const approved = req.items.filter(it => it.status === 'approved').length;
+    approvedFraction = ` (${approved}/${total})`;
+  }
+
   // 1. Not Assigned (No packet created for this student yet)
   if (!req || rStatus === 'not_assigned') {
     return `
@@ -50,7 +58,7 @@ function renderRequirementsIndicator(t) {
     return `
       <div style="margin-top:4px;">
         <span class="badge-req-indicator badge-req-indicator--verified" title="All pre-deployment requirements verified and approved">
-          ${icon('checkCircle', 11)} Reqs: Verified
+          ${icon('checkCircle', 11)} Reqs: Verified${approvedFraction}
         </span>
       </div>`;
   }
@@ -60,7 +68,7 @@ function renderRequirementsIndicator(t) {
     return `
       <div style="margin-top:4px;">
         <span class="badge-req-indicator badge-req-indicator--revision" title="Revision requested: ${escapeHtml(req.supervisor_remarks || 'Update required documents')}">
-          ${icon('alertTriangle', 11)} Reqs: Revision Needed
+          ${icon('alertTriangle', 11)} Reqs: Revision Needed${approvedFraction}
         </span>
       </div>`;
   }
@@ -70,7 +78,7 @@ function renderRequirementsIndicator(t) {
     return `
       <div style="margin-top:4px;">
         <span class="badge-req-indicator badge-req-indicator--submitted" title="Student submitted Google Drive folder — click to review and verify">
-          ${icon('folder', 11)} Reqs: Ready for Review
+          ${icon('folder', 11)} Reqs: Ready for Review${approvedFraction}
         </span>
       </div>`;
   }
@@ -81,7 +89,7 @@ function renderRequirementsIndicator(t) {
     return `
       <div style="margin-top:4px;">
         <span class="badge-req-indicator badge-req-indicator--pending" title="Document packet assigned but student has not submitted files yet${isOverdue ? ' (Past Due Date)' : ''}">
-          ${icon('clock', 11)} Reqs: Not Submitted ${isOverdue ? '<strong style="color:#DC2626;font-size:0.68rem;margin-left:2px;">(Overdue)</strong>' : ''}
+          ${icon('clock', 11)} Reqs: Not Submitted${approvedFraction} ${isOverdue ? '<strong style="color:#DC2626;font-size:0.68rem;margin-left:2px;">(Overdue)</strong>' : ''}
         </span>
       </div>`;
   }
@@ -1852,6 +1860,7 @@ export default function traineesPage(container) {
           requirement: t.requirements,
           studentName: t.name,
           requirementsDriveUrl: t.requirements.drive_url || t.requirements_drive_url || '',
+          masterDriveUrl: t.requirements.master_drive_url || '',
           onReviewed: () => {
             loadTrainees();
           },
@@ -1860,6 +1869,7 @@ export default function traineesPage(container) {
               studentId: t.id,
               studentName: t.name,
               program: t.course || '',
+              masterDriveUrl: t.requirements.master_drive_url || '',
               onAssigned: () => {
                 loadTrainees();
               }

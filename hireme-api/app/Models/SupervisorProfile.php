@@ -16,6 +16,7 @@ class SupervisorProfile extends Model
         'course',
         'campus',
         'phone',
+        'master_drive_url',
     ];
 
     public function user()

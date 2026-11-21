@@ -260,6 +260,10 @@ Route::middleware('auth:sanctum')->prefix('supervisor')->group(function () {
     Route::post('requirements/assign',                     [SupervisorController::class, 'assignRequirements']);
     Route::get('requirements/student/{studentId}',         [SupervisorController::class, 'getStudentRequirements']);
     Route::put('requirements/{id}/review',                 [SupervisorController::class, 'reviewRequirements']);
+    Route::put('requirements/{id}/item-review',            [SupervisorController::class, 'reviewRequirementItem']);
+    Route::put('requirements/{id}/batch-approve',          [SupervisorController::class, 'batchApproveRequirements']);
+    Route::post('requirements/{id}/items',                 [SupervisorController::class, 'addRequirementItem']);
+    Route::delete('requirements/{id}/items/{itemId}',      [SupervisorController::class, 'deleteRequirementItem']);
 
     // Evaluations (Supervisor / Coordinator Side)
     Route::get('evaluations/templates',                    [EvaluationController::class, 'listTemplates']);

@@ -262,6 +262,7 @@ async function renderBrowsingState(container, empStatus = null) {
         title: latest?.title,
         supervisor_name: latest?.supervisor?.name,
         remarks: latest?.supervisor_remarks,
+        items: latest?.items || [],
       };
     } catch (_) {}
   }
@@ -1100,6 +1101,9 @@ async function renderBrowsingState(container, empStatus = null) {
     const title = reqs?.title || 'Pre-Deployment OJT Document Packet';
     const isSubmitted = st === 'submitted';
     const isRevision = st === 'needs_revision';
+    const items = Array.isArray(reqs?.items) ? reqs.items : [];
+    const approvedCount = items.filter(it => (typeof it === 'object' && it?.status === 'approved')).length;
+    const totalCount = items.length;
 
     bd.innerHTML = `
       <div class="modal modal--visible" style="max-width:480px; text-align:center; border-radius:18px; overflow:hidden; box-shadow:0 24px 60px rgba(0,0,0,0.25);">
@@ -1114,6 +1118,11 @@ async function renderBrowsingState(container, empStatus = null) {
           <h3 style="font-size:1.22rem; font-weight:800; margin-bottom:8px; color:var(--text-primary);">
             ${isSubmitted ? 'Requirements Awaiting Approval' : isRevision ? 'Requirements Need Revision' : st === 'pending' ? 'Submit Requirements First' : 'Requirements Not Yet Assigned'}
           </h3>
+          ${totalCount > 0 ? `
+            <div style="margin:0 auto 12px;max-width:280px;padding:5px 12px;background:rgba(0,89,48,0.06);border:1px solid rgba(0,89,48,0.18);border-radius:99px;font-size:0.75rem;font-weight:700;color:#005930;display:flex;align-items:center;justify-content:center;gap:6px;">
+              ${icon('clipboardCheck', 13)} ${approvedCount} of ${totalCount} Requirements Approved
+            </div>
+          ` : ''}
           <p class="text-sm text-secondary" style="line-height:1.6; margin-bottom:18px;">
             ${isSubmitted
               ? `Your submission for <strong>"${escapeHtml(title)}"</strong> has been received and is currently under review by your OJT Coordinator. Once verified, you will be able to apply for this slot.`
