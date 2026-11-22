@@ -9,7 +9,10 @@ import { apiCache, fastHash } from './cache.js';
 
 export { apiCache, fastHash };
 
-const API_BASE = 'http://localhost:8000/api';
+const isLocal = typeof window !== 'undefined' &&
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+const API_BASE = isLocal ? 'http://localhost:8000/api' : '/api';
 
 /* ── Auth helpers ── */
 export function getToken() {

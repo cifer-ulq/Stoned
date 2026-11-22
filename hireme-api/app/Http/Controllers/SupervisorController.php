@@ -1057,11 +1057,18 @@ class SupervisorController extends Controller
         $course = $this->getSupervisorCourse($request);
         $campus = $this->getSupervisorCampus($request);
 
-        // Fetch users who have completed graduation / alumni promotion
-        $graduatesQuery = User::where(function ($q) {
-                $q->where('role', 'graduate')
-                  ->orWhereHas('graduateProfile')
-                  ->orWhereHas('studentProfile', fn($sp) => $sp->where('status', 'alumni')->orWhere('year_level', 'ilike', '%graduat%'));
+        // Fetch users who have completed graduation / alumni promotion and completed their OJT practicum
+        $graduatesQuery = User::where(function ($top) {
+                $top->whereHas('ojtRecord', function ($oq) {
+                    $oq->where('status', 'completed')
+                       ->orWhere('completed_hours', '>=', 600);
+                })->orWhere(function ($q) {
+                    $q->where(function ($sub) {
+                        $sub->where('role', 'graduate')
+                            ->orWhereHas('graduateProfile')
+                            ->orWhereHas('studentProfile', fn($sp) => $sp->where('status', 'alumni')->orWhere('year_level', 'ilike', '%graduat%'));
+                    })->whereHas('ojtRecord');
+                });
             })
             ->with([
                 'studentProfile',
