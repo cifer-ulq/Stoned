@@ -12,6 +12,9 @@ class StudentEvaluation extends Model
     protected $fillable = [
         'template_id',
         'term',
+        'month_label',
+        'evaluation_sequence',
+        'coordinator_notes',
         'student_user_id',
         'company_user_id',
         'supervisor_user_id',

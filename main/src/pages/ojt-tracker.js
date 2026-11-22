@@ -1450,19 +1450,18 @@ function openFitToWorkModal(emergency, onSubmitted) {
 }
 
 
-// ── Dual-Term Evaluation Presentation ─────────────────────────────────────────
+// ── Monthly Evaluation Presentation ─────────────────────────────────────────
 function renderEvaluationBannerHtml(evaluation) {
   if (!evaluation) return '';
 
-  const midterm = evaluation.midterm;
-  const endterm = evaluation.endterm;
-  const compositeScore = evaluation.composite_score !== null && evaluation.composite_score !== undefined ? Number(evaluation.composite_score) : null;
+  const monthlyEvals = evaluation.monthly_evaluations || [];
+  const runningAverage = evaluation.running_average_score ?? evaluation.composite_score ?? null;
+  const submittedCount = evaluation.submitted_count ?? monthlyEvals.filter(e => e.status === 'submitted').length;
 
-  const hasMidterm = midterm && (midterm.status === 'submitted' || midterm.is_waived || midterm.status === 'sent');
-  const hasEndterm = endterm && (endterm.status === 'submitted' || endterm.is_waived || endterm.status === 'sent');
-  const hasLegacy  = !hasMidterm && !hasEndterm && evaluation.overall_score;
+  const hasMonthly = monthlyEvals.length > 0;
+  const hasLegacy  = !hasMonthly && evaluation.overall_score;
 
-  if (!hasMidterm && !hasEndterm && !hasLegacy) return '';
+  if (!hasMonthly && !hasLegacy) return '';
 
   // Legacy single evaluation fallback
   if (hasLegacy) {
@@ -1506,12 +1505,12 @@ function renderEvaluationBannerHtml(evaluation) {
     `;
   }
 
-  // Dual-Term Evaluation Presentation
+  // Monthly Evaluations Progression Presentation
   return `
     <section class="page-section animate-fade-in-up" style="animation-delay:40ms;margin-bottom:16px;">
       <div class="jp-card ojt-eval-banner-card" style="background:var(--bg-card,#fff);border:1.5px solid var(--border-light,#e2e8f0);border-radius:var(--radius-lg);padding:22px 24px;box-shadow:0 4px 15px rgba(0,0,0,0.03);">
         
-        <!-- Header & Composite Score Badge -->
+        <!-- Header & Running Average Score Badge -->
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;border-bottom:1px solid var(--border-light,#e2e8f0);padding-bottom:16px;margin-bottom:16px;">
           <div style="display:flex;align-items:center;gap:12px;">
             <div style="width:44px;height:44px;border-radius:10px;background:rgba(0,89,48,0.1);color:#005930;display:flex;align-items:center;justify-content:center;">
@@ -1520,154 +1519,88 @@ function renderEvaluationBannerHtml(evaluation) {
             <div>
               <div style="display:flex;align-items:center;gap:8px;">
                 <h3 style="margin:0;font-size:1.08rem;font-weight:700;color:var(--text-primary);">Academic OJT Performance Evaluations</h3>
-                <span class="badge" style="background:#e0f2fe;color:#0369a1;font-size:0.7rem;font-weight:700;padding:2px 8px;">Dual-Term System</span>
+                <span class="badge" style="background:#e0f2fe;color:#0369a1;font-size:0.7rem;font-weight:700;padding:2px 8px;">Monthly Appraisal System</span>
               </div>
               <p class="text-xs text-secondary" style="margin:3px 0 0;">
-                Official appraisal conducted across Midterm (50%) and Endterm (50%) academic milestones.
+                Periodic performance evaluations conducted by host partner supervisors throughout your practicum training.
               </p>
             </div>
           </div>
-          ${compositeScore !== null ? `
+          ${runningAverage !== null ? `
             <div style="background:linear-gradient(135deg, rgba(0,89,48,0.08) 0%, rgba(16,185,129,0.1) 100%);border:1.5px solid rgba(0,89,48,0.25);border-radius:10px;padding:8px 16px;text-align:right;">
-              <div class="text-xs text-secondary" style="font-weight:700;text-transform:uppercase;color:#005930;">Official Composite Grade</div>
+              <div class="text-xs text-secondary" style="font-weight:700;text-transform:uppercase;color:#005930;">Running Average Rating</div>
               <div style="font-size:1.6rem;font-weight:800;color:var(--color-primary);line-height:1.1;margin-top:2px;">
-                ${compositeScore.toFixed(2)} <span style="font-size:0.85rem;font-weight:600;color:var(--text-secondary);">/ 5.0</span>
+                ${Number(runningAverage).toFixed(2)} <span style="font-size:0.85rem;font-weight:600;color:var(--text-secondary);">/ 5.0</span>
               </div>
               <div style="font-size:0.7rem;color:var(--text-secondary);margin-top:2px;">
-                ${midterm?.is_waived ? '100% Weight (Midterm Waived)' : '50% Midterm + 50% Endterm'}
+                Based on ${submittedCount} submitted appraisal${submittedCount === 1 ? '' : 's'}
               </div>
             </div>
           ` : `
             <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:6px 12px;font-size:0.75rem;color:var(--text-secondary);">
-              <em>Composite grade calculated upon completion of both terms</em>
+              <em>Cumulative rating calculated as appraisals are submitted</em>
             </div>
           `}
         </div>
 
-        <!-- Two Columns: Midterm & Endterm Cards -->
+        <!-- Monthly Cards Grid -->
         <div class="ojt-eval-terms-grid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:16px;">
-          
-          <!-- Midterm Card -->
-          <div style="border:1.5px solid ${midterm?.status === 'submitted' ? 'rgba(0,89,48,0.25)' : (midterm?.is_waived ? 'rgba(245,158,11,0.3)' : 'var(--border-light,#e2e8f0)')};border-radius:10px;padding:16px;background:${midterm?.status === 'submitted' ? 'rgba(0,89,48,0.03)' : (midterm?.is_waived ? '#FFFBEB' : '#fafafa')};">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-              <span style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-secondary);">
-                Midterm Evaluation (50%)
-              </span>
-              ${(() => {
-                if (midterm?.status === 'submitted') return '<span class="badge badge--success" style="font-size:0.7rem;padding:2px 8px;">Submitted</span>';
-                if (midterm?.is_waived) return '<span class="badge" style="background:#FEF3C7;color:#92400E;font-size:0.7rem;font-weight:700;padding:2px 8px;">Waived by Coordinator</span>';
-                if (midterm?.status === 'sent') return '<span class="badge" style="background:#DBEAFE;color:#1E40AF;font-size:0.7rem;font-weight:700;padding:2px 8px;">Dispatched</span>';
-                return '<span class="badge" style="background:#F1F5F9;color:#64748B;font-size:0.7rem;font-weight:600;padding:2px 8px;">Pending (&ge;50% Hrs)</span>';
-              })()}
-            </div>
+          ${monthlyEvals.map(ev => {
+            const isSub = ev.status === 'submitted';
+            const isWai = ev.status === 'waived' || ev.is_waived;
+            const isSent = ev.status === 'sent' || ev.status === 'pending';
+            const scoreNum = Number(ev.overall_score || 0);
 
-            ${(() => {
-              if (midterm?.status === 'submitted') {
-                return `
+            return `
+              <div style="border:1.5px solid ${isSub ? 'rgba(0,89,48,0.25)' : (isWai ? 'rgba(245,158,11,0.3)' : 'var(--border-light,#e2e8f0)')};border-radius:10px;padding:16px;background:${isSub ? 'rgba(0,89,48,0.03)' : (isWai ? '#FFFBEB' : '#fafafa')};">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                  <span style="font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-primary);">
+                    ${esc(ev.month_label || 'Monthly Appraisal')}
+                  </span>
+                  ${isSub ? '<span class="badge badge--success" style="font-size:0.7rem;padding:2px 8px;">Submitted</span>'
+                    : isWai ? '<span class="badge" style="background:#FEF3C7;color:#92400E;font-size:0.7rem;font-weight:700;padding:2px 8px;">Waived</span>'
+                    : '<span class="badge" style="background:#DBEAFE;color:#1E40AF;font-size:0.7rem;font-weight:700;padding:2px 8px;">Awaiting Review</span>'}
+                </div>
+
+                ${isSub ? `
                   <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;">
                     <div style="font-size:1.5rem;font-weight:800;color:var(--color-primary);">
-                      ${Number(midterm.overall_score).toFixed(2)} <span style="font-size:0.8rem;font-weight:600;color:var(--text-secondary);">/ 5.0</span>
+                      ${scoreNum.toFixed(1)} <span style="font-size:0.8rem;font-weight:600;color:var(--text-secondary);">/ 5.0</span>
                     </div>
                     <div style="font-size:0.75rem;color:var(--text-secondary);">
-                      ${esc(midterm.submitted_at || '')}
+                      ${esc(ev.submitted_at || '')}
                     </div>
                   </div>
                   <p class="text-xs text-secondary" style="margin:0 0 6px;">
-                    <strong>${esc(midterm.company?.name || 'Host Company')}</strong> &bull; ${esc(midterm.evaluator_name || 'HR Supervisor')} (${esc(midterm.evaluator_position || 'Representative')})
+                    <strong>${esc(ev.company?.name || 'Host Company')}</strong>${ev.evaluator_name ? ` &bull; ${esc(ev.evaluator_name)} (${esc(ev.evaluator_position || 'Supervisor')})` : ''}
                   </p>
-                  ${midterm.recommendation ? `
+                  ${ev.recommendation ? `
                     <div style="margin-top:8px;padding:6px 10px;background:rgba(0,89,48,0.06);border-radius:6px;font-size:0.75rem;font-weight:600;color:#005930;">
-                      Recommendation: ${esc(midterm.recommendation)}
+                      Recommendation: ${esc(ev.recommendation)}
                     </div>
                   ` : ''}
-                  ${midterm.general_feedback ? `
+                  ${ev.general_feedback ? `
                     <p class="text-xs" style="margin:8px 0 0;font-style:italic;color:var(--text-secondary);line-height:1.4;">
-                      &ldquo;${esc(midterm.general_feedback)}&rdquo;
+                      &ldquo;${esc(ev.general_feedback)}&rdquo;
                     </p>
                   ` : ''}
-                `;
-              }
-              if (midterm?.is_waived) {
-                return `
+                ` : isWai ? `
                   <div style="font-size:0.82rem;color:#92400E;line-height:1.45;">
-                    <strong>Midterm Appraisal Waived:</strong> Weight reallocated 100% to Endterm evaluation.
+                    <strong>Appraisal Waived:</strong> Officially exempted by academic coordinator.
                   </div>
-                  ${midterm.waiver_reason ? `
+                  ${ev.waiver_reason ? `
                     <div style="margin-top:8px;padding:6px 10px;background:rgba(245,158,11,0.12);border-radius:6px;font-size:0.75rem;color:#78350F;">
-                      <strong>Reason:</strong> ${esc(midterm.waiver_reason)}
+                      <strong>Reason:</strong> ${esc(ev.waiver_reason)}
                     </div>
                   ` : ''}
-                `;
-              }
-              if (midterm?.status === 'sent') {
-                return `
+                ` : `
                   <div style="font-size:0.82rem;color:#1E40AF;line-height:1.45;">
-                    Sent to <strong>${esc(midterm.company?.name || 'Host Company')}</strong>. Awaiting supervisor appraisal.
+                    Dispatched to <strong>${esc(ev.company?.name || 'Host Company')}</strong>. Awaiting supervisor submission.
                   </div>
-                `;
-              }
-              return `
-                <div style="font-size:0.82rem;color:var(--text-secondary);line-height:1.45;">
-                  Your coordinator can dispatch this evaluation once 50% of placement hours are completed.
-                </div>
-              `;
-            })()}
-          </div>
-
-          <!-- Endterm Card -->
-          <div style="border:1.5px solid ${endterm?.status === 'submitted' ? 'rgba(0,89,48,0.25)' : 'var(--border-light,#e2e8f0)'};border-radius:10px;padding:16px;background:${endterm?.status === 'submitted' ? 'rgba(0,89,48,0.03)' : '#fafafa'};">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-              <span style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-secondary);">
-                Endterm Evaluation (${midterm?.is_waived ? '100%' : '50%'})
-              </span>
-              ${(() => {
-                if (endterm?.status === 'submitted') return '<span class="badge badge--success" style="font-size:0.7rem;padding:2px 8px;">Submitted</span>';
-                if (endterm?.status === 'sent') return '<span class="badge" style="background:#DBEAFE;color:#1E40AF;font-size:0.7rem;font-weight:700;padding:2px 8px;">Dispatched</span>';
-                return '<span class="badge" style="background:#F1F5F9;color:#64748B;font-size:0.7rem;font-weight:600;padding:2px 8px;">Pending (100% Hrs)</span>';
-              })()}
-            </div>
-
-            ${(() => {
-              if (endterm?.status === 'submitted') {
-                return `
-                  <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;">
-                    <div style="font-size:1.5rem;font-weight:800;color:var(--color-primary);">
-                      ${Number(endterm.overall_score).toFixed(2)} <span style="font-size:0.8rem;font-weight:600;color:var(--text-secondary);">/ 5.0</span>
-                    </div>
-                    <div style="font-size:0.75rem;color:var(--text-secondary);">
-                      ${esc(endterm.submitted_at || '')}
-                    </div>
-                  </div>
-                  <p class="text-xs text-secondary" style="margin:0 0 6px;">
-                    <strong>${esc(endterm.company?.name || 'Host Company')}</strong> &bull; ${esc(endterm.evaluator_name || 'HR Supervisor')} (${esc(endterm.evaluator_position || 'Representative')})
-                  </p>
-                  ${endterm.recommendation ? `
-                    <div style="margin-top:8px;padding:6px 10px;background:rgba(0,89,48,0.06);border-radius:6px;font-size:0.75rem;font-weight:600;color:#005930;">
-                      Recommendation: ${esc(endterm.recommendation)}
-                    </div>
-                  ` : ''}
-                  ${endterm.general_feedback ? `
-                    <p class="text-xs" style="margin:8px 0 0;font-style:italic;color:var(--text-secondary);line-height:1.4;">
-                      &ldquo;${esc(endterm.general_feedback)}&rdquo;
-                    </p>
-                  ` : ''}
-                `;
-              }
-              if (endterm?.status === 'sent') {
-                return `
-                  <div style="font-size:0.82rem;color:#1E40AF;line-height:1.45;">
-                    Sent to <strong>${esc(endterm.company?.name || 'Host Company')}</strong>. Awaiting final appraisal.
-                  </div>
-                `;
-              }
-              return `
-                <div style="font-size:0.82rem;color:var(--text-secondary);line-height:1.45;">
-                  Final evaluation unlocked upon 100% completion of curriculum OJT hours.
-                </div>
-              `;
-            })()}
-          </div>
-
+                `}
+              </div>
+            `;
+          }).join('')}
         </div>
       </div>
     </section>
@@ -1709,13 +1642,9 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
     || ojt.recordStatus === 'completed'
     || sessionState === 'ojt_completed';
 
-  const isEvaluationCompleted = Boolean(
-    evaluation && (
-      evaluation.endterm?.status === 'submitted' ||
-      evaluation.endterm?.is_waived ||
-      (!evaluation.midterm && !evaluation.endterm && evaluation.overall_score)
-    )
-  );
+  const hasPendingEval = Boolean(evaluation?.has_pending_evaluations || (evaluation?.pending_count && evaluation.pending_count > 0));
+  const hasSubmittedEval = Boolean((evaluation?.submitted_count && evaluation.submitted_count > 0) || evaluation?.running_average_score !== null || evaluation?.endterm?.status === 'submitted');
+  const isEvaluationCompleted = hasSubmittedEval && !hasPendingEval;
   const isWaitingForEvaluation = isOjtHoursCompleted && !isEvaluationCompleted;
 
   const monthLabel = new Date(year, month, 1).toLocaleString('default', { month: 'long', year: 'numeric' });
@@ -1887,9 +1816,9 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
               <span class="badge" style="background:#FEF3C7;color:#92400E;font-size:0.72rem;font-weight:700;padding:2px 10px;border-radius:99px;">Waiting for Evaluation</span>
             </div>
             <p class="text-sm text-secondary" style="margin:4px 0 0;line-height:1.45;">
-              ${evaluation?.endterm?.status === 'sent'
-                ? `You have completed <strong>${hoursRendered % 1 === 0 ? hoursRendered : hoursRendered.toFixed(1)} / ${totalHours} hours (100%)</strong>. Your final evaluation has been sent to <strong>${esc(ojt.company || 'your host company')}</strong> and is awaiting supervisor submission. Daily Time In / Time Out is now closed.`
-                : `Congratulations! You have completed all <strong>${hoursRendered % 1 === 0 ? hoursRendered : hoursRendered.toFixed(1)} / ${totalHours} required OJT hours (100%)</strong>. Daily Time In / Time Out is now closed while your coordinator and host company process your final evaluation.`}
+              ${hasPendingEval
+                ? `You have completed all <strong>${hoursRendered % 1 === 0 ? hoursRendered : hoursRendered.toFixed(1)} / ${totalHours} required OJT hours (100%)</strong>. A monthly performance evaluation has been dispatched to <strong>${esc(ojt.company || 'your host company')}</strong> and is awaiting employer submission. Daily Time In / Time Out is now locked.`
+                : `Congratulations! You have completed all <strong>${hoursRendered % 1 === 0 ? hoursRendered : hoursRendered.toFixed(1)} / ${totalHours} required OJT hours (100%)</strong>. Daily Time In / Time Out is now locked while your coordinator and host company finalize your practicum appraisals.`}
             </p>
           </div>
         </div>

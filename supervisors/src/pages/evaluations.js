@@ -1149,14 +1149,13 @@ export default function evaluationsPage(container) {
                     <th style="min-width:210px;">Trainee Dossier</th>
                     <th style="min-width:180px;">Host Company</th>
                     <th style="min-width:145px;">Training Hours</th>
-                    <th style="min-width:150px;">Midterm (50%)</th>
-                    <th style="min-width:150px;">Endterm (50%)</th>
-                    <th style="width:110px;">Composite</th>
-                    <th style="width:115px;text-align:right;">Actions</th>
+                    <th style="min-width:200px;">Monthly Appraisals</th>
+                    <th style="width:120px;">Running Avg</th>
+                    <th style="width:130px;text-align:right;">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="eval-trainee-tbody">
-                  ${[1, 2, 3, 4, 5].map(() => '<tr><td colspan="8"><div class="skeleton" style="height:38px;border-radius:6px;margin:4px 0;"></div></td></tr>').join('')}
+                  ${[1, 2, 3, 4, 5].map(() => '<tr><td colspan="7"><div class="skeleton" style="height:38px;border-radius:6px;margin:4px 0;"></div></td></tr>').join('')}
                 </tbody>
               </table>
             </div>
@@ -1548,11 +1547,11 @@ export default function evaluationsPage(container) {
   // =========================================================================
 
   function isTraineeSelectable(t) {
-    return t.hasPlacement !== false && t.company !== '—' && t.company_user_id && t.evaluationStatus !== 'submitted';
+    return t.hasPlacement !== false && t.company !== '—' && t.company_user_id && !t.has_pending_evaluations;
   }
 
   function isTraineeReadyToDispatch(t) {
-    return t.hasPlacement !== false && t.company !== '—' && t.isHoursCompleted && t.evaluationStatus === 'not_sent' && t.company_user_id;
+    return t.hasPlacement !== false && t.company !== '—' && !t.has_pending_evaluations && t.company_user_id;
   }
 
   function getFilteredTrainees() {
@@ -1643,7 +1642,7 @@ export default function evaluationsPage(container) {
           <h4 style="margin:0 0 4px;font-size:0.95rem;font-weight:600;color:var(--text-primary);">No matching trainees</h4>
           <p class="text-tertiary text-xs" style="margin:0;">Try adjusting your search criteria or stage filter.</p>
         </div>`;
-      traineeTbody.innerHTML = `<tr><td colspan="8">${emptyHtml}</td></tr>`;
+      traineeTbody.innerHTML = `<tr><td colspan="7">${emptyHtml}</td></tr>`;
       viewCardsWrap.innerHTML = emptyHtml;
       return;
     }
@@ -1655,7 +1654,7 @@ export default function evaluationsPage(container) {
     const endIndex = Math.min(totalItems, startIndex + PER_PAGE);
     const pageData = filtered.slice(startIndex, endIndex);
 
-    // 1. Render Table Rows (8 Clean Columns)
+    // 1. Render Table Rows (7 Clean Columns)
     traineeTbody.innerHTML = pageData.map(t => {
       const init = (t.name || '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
       const pct = t.progressPercent || 0;
@@ -1664,62 +1663,54 @@ export default function evaluationsPage(container) {
       const isChecked = selectedStudentIds.has(String(t.id));
       const isInspected = selectedTraineeForDossier?.id === t.id;
 
-      // Midterm Status Cell
-      let midtermCell = '';
-      if (t.midterm?.status === 'submitted') {
-        const sc = formatTermScore(t.midterm, 1);
-        midtermCell = `<span class="eval-status-badge eval-status-badge--submitted" title="Midterm finalized">${icon('checkCircle', 12)} ${sc} <span style="color:#F59E0B;display:inline-flex;">${icon('starFilled', 11)}</span></span>`;
-      } else if (t.midterm?.status === 'waived' || t.midterm?.is_waived) {
-        midtermCell = `<span class="eval-status-badge" style="background:#F3E8FF;color:#6B21A8;border:1px solid #D8B4FE;" title="Waived: ${t.midterm.waiver_reason || 'Officially waived'}">Waived</span>`;
-      } else if (t.midterm?.status === 'pending') {
-        const midId = getTermId(t.midterm) ?? '';
-        midtermCell = `
-          <div style="display:inline-flex;align-items:center;gap:4px;">
-            <span class="eval-status-badge eval-status-badge--pending" title="Awaiting company appraisal">${icon('clock', 12)} In Review</span>
-            <button class="btn btn--ghost btn--xs btn-row-remind" data-eval-id="${midId}" title="Send reminder to employer" style="padding:2px 4px;color:#B45309;">${icon('bell', 11)}</button>
-          </div>`;
-      } else if (t.isMidtermEligible) {
-        midtermCell = `
-          <div style="display:inline-flex;gap:4px;align-items:center;">
-            <button class="btn btn--primary btn--xs btn-send-midterm" data-student-id="${t.id}" data-name="${t.name}" data-company="${t.company}" style="padding:3px 7px;font-size:0.72rem;gap:3px;" title="Send Midterm Appraisal">
-              ${icon('send', 11)} Send
-            </button>
-            <button class="btn btn--ghost btn--xs btn-waive-midterm" data-student-id="${t.id}" data-name="${t.name}" style="padding:3px 5px;font-size:0.7rem;color:#6B21A8;border:1px solid rgba(107,33,168,0.25);" title="Waive Midterm (Early pull out)">
-              Waive
-            </button>
+      // Monthly Appraisals Status Badges Cell
+      const evals = t.monthly_evaluations || [];
+      let monthlyCell = '';
+      if (evals.length > 0) {
+        monthlyCell = `
+          <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;">
+            ${evals.map(ev => {
+              if (ev.status === 'submitted') {
+                const sc = Number(ev.overall_score || 0).toFixed(1);
+                return `<span class="eval-status-badge eval-status-badge--submitted" style="font-size:0.72rem;padding:2px 6px;" title="${ev.month_label}: Finalized (${sc}/5.0)">
+                  ${ev.month_label}: ${sc} <span style="color:#F59E0B;display:inline-flex;">${icon('starFilled', 10)}</span>
+                </span>`;
+              } else if (ev.status === 'pending') {
+                return `<span class="eval-status-badge eval-status-badge--pending" style="font-size:0.72rem;padding:2px 6px;display:inline-flex;align-items:center;gap:3px;" title="${ev.month_label}: Pending Employer">
+                  ${icon('clock', 11)} ${ev.month_label}
+                  <button class="btn btn--ghost btn--xs btn-row-remind" data-eval-id="${ev.id}" title="Send reminder to employer" style="padding:1px 3px;margin-left:2px;color:#B45309;">${icon('bell', 10)}</button>
+                </span>`;
+              } else if (ev.status === 'waived' || ev.is_waived) {
+                return `<span class="eval-status-badge" style="background:#F3E8FF;color:#6B21A8;border:1px solid #D8B4FE;font-size:0.72rem;padding:2px 6px;" title="Waived: ${ev.waiver_reason || 'Officially waived'}">
+                  ${ev.month_label} (Waived)
+                </span>`;
+              }
+              return `<span class="eval-status-badge" style="font-size:0.72rem;padding:2px 6px;">${ev.month_label}</span>`;
+            }).join('')}
+            ${!t.has_pending_evaluations ? `
+              <button class="btn btn--ghost btn--xs btn-send-monthly" data-student-id="${t.id}" data-name="${t.name}" data-company="${t.company}" style="padding:2px 5px;font-size:0.7rem;color:var(--color-primary);border:1px dashed rgba(0,89,48,0.3);" title="Dispatch another monthly appraisal">
+                ${icon('plus', 10)} Add
+              </button>
+            ` : ''}
           </div>`;
       } else {
-        midtermCell = `<span class="text-xs text-tertiary" style="font-size:0.72rem;">In Training (&lt;50%)</span>`;
-      }
-
-      // Endterm Status Cell
-      let endtermCell = '';
-      if (t.endterm?.status === 'submitted') {
-        const sc = formatTermScore(t.endterm, 1);
-        endtermCell = `<span class="eval-status-badge eval-status-badge--submitted" title="Endterm finalized">${icon('checkCircle', 12)} ${sc} <span style="color:#F59E0B;display:inline-flex;">${icon('starFilled', 11)}</span></span>`;
-      } else if (t.endterm?.status === 'pending') {
-        const endId = getTermId(t.endterm) ?? '';
-        endtermCell = `
-          <div style="display:inline-flex;align-items:center;gap:4px;">
-            <span class="eval-status-badge eval-status-badge--pending" title="Awaiting company appraisal">${icon('clock', 12)} In Review</span>
-            <button class="btn btn--ghost btn--xs btn-row-remind" data-eval-id="${endId}" title="Send reminder to employer" style="padding:2px 4px;color:#B45309;">${icon('bell', 11)}</button>
+        monthlyCell = `
+          <div style="display:inline-flex;align-items:center;gap:6px;">
+            <span class="text-xs text-tertiary" style="font-size:0.72rem;">No appraisals</span>
+            <button class="btn btn--primary btn--xs btn-send-monthly" data-student-id="${t.id}" data-name="${t.name}" data-company="${t.company}" style="padding:2px 6px;font-size:0.7rem;gap:2px;" title="Dispatch Monthly Appraisal">
+              ${icon('send', 10)} Send
+            </button>
           </div>`;
-      } else if (t.isHoursCompleted) {
-        endtermCell = `
-          <button class="btn btn--primary btn--xs btn-send-endterm" data-student-id="${t.id}" data-name="${t.name}" data-company="${t.company}" style="padding:3px 8px;font-size:0.72rem;gap:3px;" title="Send Final Appraisal">
-            ${icon('send', 11)} Send Final
-          </button>`;
-      } else {
-        endtermCell = `<span class="text-xs text-tertiary" style="font-size:0.72rem;">In Training (&lt;100%)</span>`;
       }
 
-      // Composite Rating display
+      // Running Average Rating display
       let scoreDisplay = '<span style="color:var(--text-tertiary);font-size:0.8rem;">—</span>';
-      if (t.compositeScore) {
-        const sc = Number(t.compositeScore).toFixed(2);
-        const chipClass = t.compositeScore >= 4.5 ? 'eval-score-chip--high' : 'eval-score-chip--mid';
+      const avgScore = t.running_average ?? t.compositeScore;
+      if (avgScore !== null && avgScore !== undefined) {
+        const sc = Number(avgScore).toFixed(2);
+        const chipClass = avgScore >= 4.5 ? 'eval-score-chip--high' : 'eval-score-chip--mid';
         scoreDisplay = `
-          <div class="eval-score-chip ${chipClass}" title="50% Midterm + 50% Endterm Academic Rating">
+          <div class="eval-score-chip ${chipClass}" title="Simple Running Average (${t.submitted_count || 0} finalized appraisal${t.submitted_count === 1 ? '' : 's'})">
             <span style="color:#F59E0B;display:inline-flex;align-items:center;">${icon('starFilled', 13)}</span> ${sc}
           </div>`;
       }
@@ -1742,7 +1733,7 @@ export default function evaluationsPage(container) {
       return `
         <tr data-student-id="${t.id}" class="${isChecked ? 'is-selected' : ''} ${isInspected ? 'is-active-inspected' : ''}">
           <td style="text-align:center;" onclick="event.stopPropagation();">
-            <input type="checkbox" class="eval-row-checkbox" data-student-id="${t.id}" ${selectable ? '' : 'disabled title="All terms finalized"'} ${isChecked ? 'checked' : ''} style="cursor:pointer;" />
+            <input type="checkbox" class="eval-row-checkbox" data-student-id="${t.id}" ${selectable ? '' : 'disabled title="Evaluation currently pending or not placed"'} ${isChecked ? 'checked' : ''} style="cursor:pointer;" />
           </td>
           <td class="eval-td-inspect-trigger">
             <div style="display:flex;align-items:center;gap:10px;">
@@ -1767,13 +1758,19 @@ export default function evaluationsPage(container) {
               </div>
             </div>
           </td>
-          <td>${midtermCell}</td>
-          <td>${endtermCell}</td>
+          <td>${monthlyCell}</td>
           <td>${scoreDisplay}</td>
           <td style="text-align:right;" onclick="event.stopPropagation();">
-            <button class="btn btn--outline btn--sm btn-row-inspect" data-student-id="${t.id}" style="padding:4px 9px;font-size:0.75rem;gap:4px;">
-              ${icon('eye', 13)} Dossier
-            </button>
+            <div style="display:inline-flex;align-items:center;gap:4px;">
+              ${!t.has_pending_evaluations ? `
+                <button class="btn btn--primary btn--xs btn-send-monthly" data-student-id="${t.id}" data-name="${t.name}" data-company="${t.company}" style="padding:4px 7px;font-size:0.72rem;gap:3px;" title="Dispatch Monthly Appraisal">
+                  ${icon('send', 11)} Send
+                </button>
+              ` : ''}
+              <button class="btn btn--outline btn--sm btn-row-inspect" data-student-id="${t.id}" style="padding:4px 9px;font-size:0.75rem;gap:4px;">
+                ${icon('eye', 13)} Dossier
+              </button>
+            </div>
           </td>
         </tr>
       `;
@@ -1787,12 +1784,12 @@ export default function evaluationsPage(container) {
       const isInspected = selectedTraineeForDossier?.id === t.id;
 
       let scoreBadge = '';
-      const endtermScoreNum = getTermScore(t.endterm);
-      if (t.compositeScore) {
-        scoreBadge = `<div class="eval-score-chip eval-score-chip--high"><span style="color:#F59E0B;display:inline-flex;align-items:center;">${icon('starFilled', 12)}</span> ${Number(t.compositeScore).toFixed(2)}</div>`;
-      } else if (endtermScoreNum !== null) {
-        scoreBadge = `<div class="eval-score-chip eval-score-chip--mid"><span style="color:#F59E0B;display:inline-flex;align-items:center;">${icon('starFilled', 12)}</span> ${endtermScoreNum.toFixed(1)}</div>`;
+      const avgScore = t.running_average ?? t.compositeScore;
+      if (avgScore !== null && avgScore !== undefined) {
+        scoreBadge = `<div class="eval-score-chip eval-score-chip--high" title="Running Average"><span style="color:#F59E0B;display:inline-flex;align-items:center;">${icon('starFilled', 12)}</span> ${Number(avgScore).toFixed(2)}</div>`;
       }
+
+      const evals = t.monthly_evaluations || [];
 
       return `
         <div class="eval-trainee-card ${isInspected ? 'is-active-inspected' : ''}" data-student-id="${t.id}">
@@ -1825,18 +1822,21 @@ export default function evaluationsPage(container) {
             </div>
           </div>
 
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px;font-size:0.72rem;">
-            <div style="padding:6px;background:#FAFBFD;border-radius:6px;border:1px solid #E2E8F0;text-align:center;">
-              <div style="color:var(--text-secondary);font-weight:600;">Midterm (50%)</div>
-              <div style="font-weight:700;margin-top:2px;">
-                ${t.midterm?.status === 'submitted' ? `<span style="display:inline-flex;align-items:center;gap:3px;">${formatTermScore(t.midterm, 1)} <span style="color:#F59E0B;display:inline-flex;">${icon('starFilled', 11)}</span></span>` : t.midterm?.is_waived ? 'Waived' : t.midterm?.status === 'pending' ? 'Pending' : 'Not sent'}
-              </div>
+          <div style="margin-top:6px;padding:8px;background:#FAFBFD;border-radius:6px;border:1px solid #E2E8F0;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;font-size:0.72rem;">
+              <span style="color:var(--text-secondary);font-weight:700;text-transform:uppercase;">Monthly Appraisals (${evals.length})</span>
+              ${avgScore ? `<span style="font-weight:700;color:var(--color-primary);">${Number(avgScore).toFixed(2)} Avg</span>` : ''}
             </div>
-            <div style="padding:6px;background:#FAFBFD;border-radius:6px;border:1px solid #E2E8F0;text-align:center;">
-              <div style="color:var(--text-secondary);font-weight:600;">Endterm (50%)</div>
-              <div style="font-weight:700;margin-top:2px;">
-                ${t.endterm?.status === 'submitted' ? `<span style="display:inline-flex;align-items:center;gap:3px;">${formatTermScore(t.endterm, 1)} <span style="color:#F59E0B;display:inline-flex;">${icon('starFilled', 11)}</span></span>` : t.endterm?.status === 'pending' ? 'Pending' : 'Not sent'}
-              </div>
+            <div style="display:flex;flex-wrap:wrap;gap:4px;">
+              ${evals.length > 0 ? evals.map(ev => {
+                if (ev.status === 'submitted') {
+                  return `<span class="badge badge--success" style="font-size:0.68rem;padding:2px 6px;">${ev.month_label}: ${Number(ev.overall_score || 0).toFixed(1)} ★</span>`;
+                } else if (ev.status === 'pending') {
+                  return `<span class="badge badge--warning" style="font-size:0.68rem;padding:2px 6px;">${ev.month_label}: In Review</span>`;
+                } else {
+                  return `<span class="badge badge--neutral" style="font-size:0.68rem;padding:2px 6px;">${ev.month_label}</span>`;
+                }
+              }).join('') : '<span style="font-size:0.72rem;color:var(--text-tertiary);">No appraisals dispatched yet</span>'}
             </div>
           </div>
         </div>
@@ -1882,29 +1882,13 @@ export default function evaluationsPage(container) {
       });
     });
 
-    traineeTbody.querySelectorAll('.btn-send-midterm').forEach(btn => {
-      btn.addEventListener('click', () => {
+    traineeTbody.querySelectorAll('.btn-send-monthly').forEach(btn => {
+      btn.addEventListener('click', (evt) => {
+        evt.stopPropagation();
         const sId   = btn.getAttribute('data-student-id');
         const name  = btn.getAttribute('data-name');
         const comp  = btn.getAttribute('data-company');
-        openSendConfirmModal(sId, name, comp, 'midterm');
-      });
-    });
-
-    traineeTbody.querySelectorAll('.btn-waive-midterm').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const sId   = btn.getAttribute('data-student-id');
-        const name  = btn.getAttribute('data-name');
-        openWaiveModal(sId, name, 'midterm');
-      });
-    });
-
-    traineeTbody.querySelectorAll('.btn-send-endterm').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const sId   = btn.getAttribute('data-student-id');
-        const name  = btn.getAttribute('data-name');
-        const comp  = btn.getAttribute('data-company');
-        openSendConfirmModal(sId, name, comp, 'endterm');
+        openSendConfirmModal(sId, name, comp);
       });
     });
 
@@ -2009,135 +1993,83 @@ export default function evaluationsPage(container) {
     const pct = t.progressPercent || 0;
     const barColor = pct >= 100 ? 'var(--color-primary)' : pct >= 50 ? '#10B981' : '#F59E0B';
 
-    // Composite Final Grade Highlight
+    // Cumulative Practicum Rating (Running Average)
     let compositeHighlightHtml = '';
-    if (t.compositeScore) {
+    const avgScore = t.running_average ?? t.compositeScore;
+    if (avgScore !== null && avgScore !== undefined) {
+      const count = t.submitted_count || 0;
       compositeHighlightHtml = `
         <div class="eval-dossier__score-highlight">
-          <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;color:var(--color-primary);letter-spacing:0.04em;">Composite Practicum Rating</div>
+          <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;color:var(--color-primary);letter-spacing:0.04em;">Cumulative Practicum Rating</div>
           <div style="display:flex;align-items:baseline;justify-content:center;gap:6px;margin:4px 0;">
-            <span style="font-size:2rem;font-weight:800;color:var(--color-primary);">${Number(t.compositeScore).toFixed(2)}</span>
+            <span style="font-size:2rem;font-weight:800;color:var(--color-primary);">${Number(avgScore).toFixed(2)}</span>
             <span style="font-size:1rem;color:var(--text-secondary);font-weight:600;">/ 5.00</span>
           </div>
           <div style="font-size:0.72rem;color:var(--text-secondary);line-height:1.4;">
-            ${t.midterm?.status === 'submitted'
-              ? `Weighted: Midterm (${formatTermScore(t.midterm, 1)} &times; 50%) + Endterm (${formatTermScore(t.endterm, 1)} &times; 50%)`
-              : `Final Endterm Appraisal (100% Weight • Midterm officially waived)`}
+            Simple Running Average across ${count} submitted monthly appraisal${count === 1 ? '' : 's'}
           </div>
         </div>`;
     }
 
-    // Midterm Block
-    let midtermBlock = '';
-    if (t.midterm?.status === 'submitted') {
-      const midSubmitted = getTermSubmittedAt(t.midterm);
-      midtermBlock = `
-        <div style="background:#FAFBFD;border:1px solid #E2E8F0;border-radius:8px;padding:12px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-            <strong style="font-size:0.82rem;color:var(--text-primary);">Midterm Evaluation (50%)</strong>
-            <span class="badge badge--success" style="font-size:0.68rem;display:inline-flex;align-items:center;gap:3px;">Score: ${formatTermScore(t.midterm, 1)} ${icon('starFilled', 10)}</span>
-          </div>
-          <div style="font-size:0.72rem;color:var(--text-secondary);margin-bottom:8px;">
-            Evaluator: ${t.midterm.evaluator_name || 'HR Supervisor'}${midSubmitted ? ` &bull; Submitted ${midSubmitted}` : ''}
-          </div>
-          <button class="btn btn--outline btn--xs btn-view-midterm-details" style="font-size:0.72rem;width:100%;gap:4px;">
-            ${icon('clipboardCheck', 12)} View Midterm Scorecard
-          </button>
-        </div>`;
-    } else if (t.midterm?.status === 'waived' || t.midterm?.is_waived) {
-      midtermBlock = `
-        <div style="background:#FAF5FF;border:1px solid #E9D5FF;border-radius:8px;padding:12px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-            <strong style="font-size:0.82rem;color:#6B21A8;">Midterm Evaluation (Waived)</strong>
-            <span class="badge" style="background:#F3E8FF;color:#6B21A8;font-size:0.68rem;">Exempted</span>
-          </div>
-          <p style="font-size:0.72rem;color:var(--text-secondary);margin:0;line-height:1.4;">
-            Reason: ${t.midterm.waiver_reason || 'Officially waived by coordinator.'}
-          </p>
-        </div>`;
-    } else if (t.midterm?.status === 'pending') {
-      midtermBlock = `
-        <div style="background:#FFFBEB;border:1px solid rgba(245,158,11,0.25);border-radius:8px;padding:12px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-            <strong style="font-size:0.82rem;color:#B45309;">Midterm Evaluation</strong>
-            <span class="badge badge--warning" style="font-size:0.68rem;">Pending Employer</span>
-          </div>
-          <div style="font-size:0.72rem;color:var(--text-secondary);margin-bottom:8px;">Sent on ${t.midterm.sent_at || 'recently'}</div>
-          <button class="btn btn--outline btn--xs btn-dossier-remind-midterm" style="font-size:0.72rem;width:100%;gap:4px;color:#B45309;border-color:rgba(245,158,11,0.4);">
-            ${icon('bell', 12)} Nudge Host Company
-          </button>
-        </div>`;
-    } else if (t.isMidtermEligible) {
-      midtermBlock = `
-        <div style="background:#F0FDF4;border:1px solid rgba(16,185,129,0.3);border-radius:8px;padding:12px;">
-          <div style="font-size:0.82rem;font-weight:700;color:var(--color-primary);margin-bottom:4px;">
-            Midterm Stage Reached (&ge;50% Hours)
-          </div>
-          <p style="font-size:0.72rem;color:var(--text-secondary);margin:0 0 10px;line-height:1.4;">
-            Trainee is ready for Midterm appraisal. If the student pulled out early with minimal hours, you may waive this term.
-          </p>
-          <div style="display:flex;gap:6px;">
-            <button class="btn btn--primary btn--xs btn-dossier-send-midterm" style="flex:1;font-size:0.72rem;gap:4px;">
-              ${icon('send', 11)} Send Midterm
-            </button>
-            <button class="btn btn--ghost btn--xs btn-dossier-waive-midterm" style="font-size:0.72rem;color:#6B21A8;border:1px solid rgba(107,33,168,0.3);">
-              Waive
-            </button>
-          </div>
-        </div>`;
+    // Monthly Appraisals Timeline
+    const evals = t.monthly_evaluations || [];
+    let monthlyEvaluationsHtml = '';
+    if (evals.length > 0) {
+      monthlyEvaluationsHtml = evals.map(ev => {
+        if (ev.status === 'submitted') {
+          const sc = Number(ev.overall_score || 0).toFixed(1);
+          return `
+            <div style="background:#FAFBFD;border:1px solid #E2E8F0;border-radius:8px;padding:12px;margin-bottom:8px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                <strong style="font-size:0.82rem;color:var(--text-primary);">${ev.month_label} Appraisal</strong>
+                <span class="badge badge--success" style="font-size:0.68rem;display:inline-flex;align-items:center;gap:3px;">
+                  Score: ${sc} ${icon('starFilled', 10)}
+                </span>
+              </div>
+              <div style="font-size:0.72rem;color:var(--text-secondary);margin-bottom:6px;">
+                Evaluator: ${ev.evaluator_name || 'Host Supervisor'}${ev.submitted_at ? ` &bull; Submitted ${ev.submitted_at}` : ''}
+              </div>
+              ${ev.coordinator_notes ? `<div style="font-size:0.7rem;color:var(--text-tertiary);margin-bottom:8px;font-style:italic;">Note: "${ev.coordinator_notes}"</div>` : ''}
+              <button class="btn btn--outline btn--xs btn-view-eval-details" data-eval-id="${ev.id}" style="font-size:0.72rem;width:100%;gap:4px;">
+                ${icon('clipboardCheck', 12)} View Monthly Scorecard
+              </button>
+            </div>`;
+        } else if (ev.status === 'pending') {
+          return `
+            <div style="background:#FFFBEB;border:1px solid rgba(245,158,11,0.25);border-radius:8px;padding:12px;margin-bottom:8px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                <strong style="font-size:0.82rem;color:#B45309;">${ev.month_label} Appraisal</strong>
+                <span class="badge badge--warning" style="font-size:0.68rem;">Pending Employer</span>
+              </div>
+              <div style="font-size:0.72rem;color:var(--text-secondary);margin-bottom:6px;">
+                Dispatched on ${ev.sent_at || 'recently'}
+              </div>
+              ${ev.coordinator_notes ? `<div style="font-size:0.7rem;color:var(--text-tertiary);margin-bottom:8px;font-style:italic;">Note: "${ev.coordinator_notes}"</div>` : ''}
+              <button class="btn btn--outline btn--xs btn-dossier-remind-eval" data-eval-id="${ev.id}" style="font-size:0.72rem;width:100%;gap:4px;color:#B45309;border-color:rgba(245,158,11,0.4);">
+                ${icon('bell', 12)} Nudge Host Company
+              </button>
+            </div>`;
+        } else if (ev.status === 'waived' || ev.is_waived) {
+          return `
+            <div style="background:#FAF5FF;border:1px solid #E9D5FF;border-radius:8px;padding:12px;margin-bottom:8px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                <strong style="font-size:0.82rem;color:#6B21A8;">${ev.month_label} (Waived)</strong>
+                <span class="badge" style="background:#F3E8FF;color:#6B21A8;font-size:0.68rem;">Exempted</span>
+              </div>
+              <p style="font-size:0.72rem;color:var(--text-secondary);margin:0;line-height:1.4;">
+                Reason: ${ev.waiver_reason || 'Officially waived by coordinator.'}
+              </p>
+            </div>`;
+        }
+        return '';
+      }).join('');
     } else {
-      midtermBlock = `
-        <div style="background:#FAFBFD;border:1px solid #E2E8F0;border-radius:8px;padding:12px;font-size:0.75rem;color:var(--text-secondary);">
-          <strong>Midterm (50% Weight):</strong> Locked until trainee reaches 50% hours (${Math.round((t.requiredHours || 600) * 0.5)}h).
-        </div>`;
-    }
-
-    // Endterm Block
-    let endtermBlock = '';
-    if (t.endterm?.status === 'submitted') {
-      const endSubmitted = getTermSubmittedAt(t.endterm);
-      endtermBlock = `
-        <div style="background:#FAFBFD;border:1px solid #E2E8F0;border-radius:8px;padding:12px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-            <strong style="font-size:0.82rem;color:var(--text-primary);">Final / Endterm Appraisal (50%)</strong>
-            <span class="badge badge--success" style="font-size:0.68rem;display:inline-flex;align-items:center;gap:3px;">Score: ${formatTermScore(t.endterm, 1)} ${icon('starFilled', 10)}</span>
-          </div>
-          <div style="font-size:0.72rem;color:var(--text-secondary);margin-bottom:8px;">
-            Evaluator: ${t.endterm.evaluator_name || 'HR Supervisor'}${endSubmitted ? ` &bull; Submitted ${endSubmitted}` : ''}
-          </div>
-          <button class="btn btn--outline btn--xs btn-view-endterm-details" style="font-size:0.72rem;width:100%;gap:4px;">
-            ${icon('clipboardCheck', 12)} View Final Scorecard
+      monthlyEvaluationsHtml = `
+        <div style="background:#FAFBFD;border:1px dashed #CBD5E1;border-radius:8px;padding:16px;text-align:center;">
+          <div style="color:var(--text-tertiary);font-size:0.78rem;margin-bottom:8px;">No monthly evaluations have been dispatched for this student yet.</div>
+          <button class="btn btn--primary btn--xs btn-dossier-send-monthly" style="font-size:0.74rem;gap:4px;">
+            ${icon('send', 11)} Dispatch First Monthly Appraisal
           </button>
-        </div>`;
-    } else if (t.endterm?.status === 'pending') {
-      endtermBlock = `
-        <div style="background:#FFFBEB;border:1px solid rgba(245,158,11,0.25);border-radius:8px;padding:12px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-            <strong style="font-size:0.82rem;color:#B45309;">Final / Endterm Appraisal</strong>
-            <span class="badge badge--warning" style="font-size:0.68rem;">Pending Employer</span>
-          </div>
-          <div style="font-size:0.72rem;color:var(--text-secondary);margin-bottom:8px;">Sent on ${t.endterm.sent_at || 'recently'}</div>
-          <button class="btn btn--outline btn--xs btn-dossier-remind-endterm" style="font-size:0.72rem;width:100%;gap:4px;color:#B45309;border-color:rgba(245,158,11,0.4);">
-            ${icon('bell', 12)} Nudge Host Company
-          </button>
-        </div>`;
-    } else if (t.isHoursCompleted) {
-      endtermBlock = `
-        <div style="background:#F0FDF4;border:1px solid rgba(16,185,129,0.3);border-radius:8px;padding:12px;">
-          <div style="font-size:0.82rem;font-weight:700;color:var(--color-primary);margin-bottom:4px;">
-            Final Hours Completed (100%)
-          </div>
-          <p style="font-size:0.72rem;color:var(--text-secondary);margin:0 0 10px;line-height:1.4;">
-            Trainee has completed their practicum hours. Dispatch the final institutional performance appraisal.
-          </p>
-          <button class="btn btn--primary btn--xs btn-dossier-send-endterm" style="width:100%;font-size:0.72rem;gap:4px;">
-            ${icon('send', 11)} Dispatch Final Appraisal Form
-          </button>
-        </div>`;
-    } else {
-      endtermBlock = `
-        <div style="background:#FAFBFD;border:1px solid #E2E8F0;border-radius:8px;padding:12px;font-size:0.75rem;color:var(--text-secondary);">
-          <strong>Endterm (50% Weight):</strong> Locked until trainee renders 100% hours (${t.requiredHours || 600}h).
         </div>`;
     }
 
@@ -2201,67 +2133,49 @@ export default function evaluationsPage(container) {
 
       ${compositeHighlightHtml}
 
-      <!-- Dual-Term Workflow Breakdown -->
-      <div style="display:flex;flex-direction:column;gap:10px;">
-        <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;color:var(--text-secondary);letter-spacing:0.04em;">
-          Academic Dual-Term Appraisals
+      <!-- Monthly Evaluations Progression -->
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+          <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;color:var(--text-secondary);letter-spacing:0.04em;">
+            Monthly Appraisals (${evals.length})
+          </div>
+          ${!t.has_pending_evaluations && evals.length > 0 ? `
+            <button class="btn btn--primary btn--xs btn-dossier-send-monthly" style="font-size:0.7rem;padding:2px 8px;gap:4px;">
+              ${icon('plus', 11)} Dispatch Appraisal
+            </button>
+          ` : ''}
         </div>
-        ${midtermBlock}
-        ${endtermBlock}
+        ${monthlyEvaluationsHtml}
       </div>
     `;
 
     // Attach dossier listeners
-    dossierContent.querySelector('.btn-view-midterm-details')?.addEventListener('click', () => {
-      const evalId = getTermId(t.midterm);
-      if (evalId) openEvaluationDetailsModal(evalId);
-      else showToast('Midterm evaluation record ID is unavailable.', 'error');
+    dossierContent.querySelectorAll('.btn-view-eval-details').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const evalId = btn.getAttribute('data-eval-id');
+        if (evalId) openEvaluationDetailsModal(evalId);
+        else showToast('Evaluation record ID is unavailable.', 'error');
+      });
     });
 
-    dossierContent.querySelector('.btn-view-endterm-details')?.addEventListener('click', () => {
-      const evalId = getTermId(t.endterm);
-      if (evalId) openEvaluationDetailsModal(evalId);
-      else showToast('Final evaluation record ID is unavailable.', 'error');
-    });
-
-    dossierContent.querySelector('.btn-dossier-send-midterm')?.addEventListener('click', () => {
-      openSendConfirmModal(t.id, t.name, t.company, 'midterm');
-    });
-
-    dossierContent.querySelector('.btn-dossier-waive-midterm')?.addEventListener('click', () => {
-      openWaiveModal(t.id, t.name, 'midterm');
-    });
-
-    dossierContent.querySelector('.btn-dossier-send-endterm')?.addEventListener('click', () => {
-      openSendConfirmModal(t.id, t.name, t.company, 'endterm');
-    });
-
-    dossierContent.querySelector('.btn-dossier-remind-midterm')?.addEventListener('click', async () => {
-      const evalId = getTermId(t.midterm);
-      if (evalId) {
-        try {
-          const res = await apiPost(`/supervisor/evaluations/remind/${evalId}`, {});
-          showToast(res?.message || 'Reminder sent!', 'success');
-        } catch (e) {
-          showToast(e.message, 'error');
+    dossierContent.querySelectorAll('.btn-dossier-remind-eval').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const evalId = btn.getAttribute('data-eval-id');
+        if (evalId) {
+          try {
+            const res = await apiPost(`/supervisor/evaluations/remind/${evalId}`, {});
+            showToast(res?.message || 'Reminder sent!', 'success');
+          } catch (e) {
+            showToast(e.message, 'error');
+          }
         }
-      } else {
-        showToast('Unable to locate midterm evaluation record.', 'error');
-      }
+      });
     });
 
-    dossierContent.querySelector('.btn-dossier-remind-endterm')?.addEventListener('click', async () => {
-      const evalId = getTermId(t.endterm);
-      if (evalId) {
-        try {
-          const res = await apiPost(`/supervisor/evaluations/remind/${evalId}`, {});
-          showToast(res?.message || 'Reminder sent!', 'success');
-        } catch (e) {
-          showToast(e.message, 'error');
-        }
-      } else {
-        showToast('Unable to locate final evaluation record.', 'error');
-      }
+    dossierContent.querySelectorAll('.btn-dossier-send-monthly').forEach(btn => {
+      btn.addEventListener('click', () => {
+        openSendConfirmModal(t.id, t.name, t.company);
+      });
     });
   }
 
@@ -2520,16 +2434,28 @@ export default function evaluationsPage(container) {
   // MODALS & DIALOGS
   // =========================================================================
 
-  // Single Evaluation Dispatch Modal
-  function openSendConfirmModal(studentId, name, company, preselectedTerm = null) {
+  // Single Evaluation Dispatch Modal (Monthly Architecture)
+  function openSendConfirmModal(studentId, name, company, preselectedMonth = null) {
     if (!templatesList.length) {
       showToast('No evaluation forms available. Please create one first.', 'warning');
       return;
     }
 
     const trainee = traineesList.find(item => String(item.id) === String(studentId));
-    const targetTerm = preselectedTerm || (trainee?.isMidtermEligible && trainee?.midterm?.status === 'not_sent' ? 'midterm' : 'endterm');
     const defaultTplId = currentTemplateId || templatesList[0].id;
+
+    // Generate Month Options (Option B: Calendar Month)
+    const monthOptions = [];
+    const now = new Date();
+    for (let offset = -2; offset <= 3; offset++) {
+      const d = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+      const label = d.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+      monthOptions.push({
+        label,
+        isDefault: preselectedMonth ? (preselectedMonth === label) : (offset === 0),
+        isCurrent: offset === 0
+      });
+    }
 
     const html = `
       <div class="modal" style="width:95vw;max-width:540px;max-height:88vh;display:flex;flex-direction:column;border-radius:14px;overflow:hidden;background:#ffffff;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);">
@@ -2539,7 +2465,7 @@ export default function evaluationsPage(container) {
               ${icon('send', 18)}
             </div>
             <div>
-              <h3 class="modal__title" style="margin:0;font-size:1.05rem;font-weight:700;">Dispatch Trainee Appraisal</h3>
+              <h3 class="modal__title" style="margin:0;font-size:1.05rem;font-weight:700;">Dispatch Monthly Appraisal</h3>
               <p class="text-xs text-secondary" style="margin:2px 0 0;">Host Company Performance Evaluation</p>
             </div>
           </div>
@@ -2557,27 +2483,30 @@ export default function evaluationsPage(container) {
             <span class="badge badge--success" style="font-size:0.7rem;padding:3px 8px;">Active Deployment</span>
           </div>
 
-          <!-- Term Selector -->
+          <!-- Evaluation Month Selector -->
           <div class="form-group" style="margin-bottom:14px;">
             <label class="form-label" style="font-weight:700;font-size:0.85rem;margin-bottom:6px;display:block;">
-              Appraisal Term (50% Academic Weighting):
+              Appraisal Month / Period:
             </label>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-              <label style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#FAFBFD;border:1px solid var(--border-default);border-radius:8px;cursor:pointer;font-size:0.83rem;">
-                <input type="radio" name="send-eval-term-radio" value="midterm" ${targetTerm === 'midterm' ? 'checked' : ''} style="cursor:pointer;" />
-                <div>
-                  <strong>Midterm (50%)</strong>
-                  <div style="font-size:0.7rem;color:var(--text-secondary);">&ge;50% Hours Progress</div>
-                </div>
-              </label>
-              <label style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#FAFBFD;border:1px solid var(--border-default);border-radius:8px;cursor:pointer;font-size:0.83rem;">
-                <input type="radio" name="send-eval-term-radio" value="endterm" ${targetTerm === 'endterm' ? 'checked' : ''} style="cursor:pointer;" />
-                <div>
-                  <strong>Endterm / Final (50%)</strong>
-                  <div style="font-size:0.7rem;color:var(--text-secondary);">100% Practicum Target</div>
-                </div>
-              </label>
+            <select class="form-select" id="send-eval-month-select" style="width:100%;padding:9px 12px;border:1px solid var(--border-default);border-radius:8px;font-weight:600;font-size:0.86rem;">
+              ${monthOptions.map(m => `
+                <option value="${m.label}" ${m.isDefault ? 'selected' : ''}>
+                  ${m.label}${m.isCurrent ? ' (Current Month)' : ''}
+                </option>
+              `).join('')}
+              <option value="__custom__">Custom Month Label...</option>
+            </select>
+            <div id="send-eval-custom-month-wrap" style="display:none;margin-top:8px;">
+              <input type="text" class="form-input" id="send-eval-custom-month" placeholder="e.g. October 2026 - Sprint 2 or Mid-Month" style="width:100%;padding:8px 12px;border:1px solid var(--border-default);border-radius:8px;font-size:0.85rem;" />
             </div>
+          </div>
+
+          <!-- Coordinator Instructions / Remarks for Employer (Optional) -->
+          <div class="form-group" style="margin-bottom:14px;">
+            <label class="form-label" style="font-weight:700;font-size:0.85rem;margin-bottom:6px;display:block;">
+              Coordinator Instructions / Focus Areas (Optional):
+            </label>
+            <textarea class="form-textarea" id="send-eval-notes" rows="2" placeholder="e.g. Please evaluate progress on system deployment or technical competencies..." style="width:100%;padding:8px 12px;border:1px solid var(--border-default);border-radius:8px;font-size:0.82rem;resize:vertical;"></textarea>
           </div>
 
           <!-- Multi-Company Assignment Selector (if student has multiple companies) -->
@@ -2594,7 +2523,7 @@ export default function evaluationsPage(container) {
                 `).join('')}
               </select>
               <span class="text-xs text-secondary" style="margin-top:4px;display:block;">
-                As Coordinator, you decide which company evaluates this term for transferred trainees.
+                As Coordinator, you decide which company evaluates this monthly appraisal.
               </span>
             </div>
           ` : ''}
@@ -2611,8 +2540,7 @@ export default function evaluationsPage(container) {
               ${templatesList.map(tpl => {
                 const qCount = tpl.questions_count ?? (tpl.questions?.length || 0);
                 const isSel = tpl.id === defaultTplId;
-                const termTag = tpl.term ? ` [${tpl.term.toUpperCase()}]` : '';
-                return `<option value="${tpl.id}" ${isSel ? 'selected' : ''}>${tpl.title}${termTag} (${qCount} Questions)</option>`;
+                return `<option value="${tpl.id}" ${isSel ? 'selected' : ''}>${tpl.title} (${qCount} Questions)</option>`;
               }).join('')}
             </select>
           </div>
@@ -2626,7 +2554,7 @@ export default function evaluationsPage(container) {
           </div>
           
           <p class="text-xs text-tertiary" style="margin:0;line-height:1.4;">
-            The designated employer representative will receive an instant portal notification directing them to evaluate the trainee against this question set.
+            The designated employer representative will receive an instant portal notification directing them to evaluate the trainee for this month.
           </p>
         </div>
         <div class="modal__footer" style="display:flex;justify-content:flex-end;gap:10px;padding:14px 24px;border-top:1px solid var(--border-default);background:#FAFBFD;flex-shrink:0;">
@@ -2639,6 +2567,12 @@ export default function evaluationsPage(container) {
     `;
 
     const { bd, close } = showModal(html, { backdropId: 'send-eval-modal-backdrop' });
+
+    const monthSelect = bd.querySelector('#send-eval-month-select');
+    const customMonthWrap = bd.querySelector('#send-eval-custom-month-wrap');
+    monthSelect.addEventListener('change', () => {
+      customMonthWrap.style.display = monthSelect.value === '__custom__' ? 'block' : 'none';
+    });
 
     const sendTplSelect = bd.querySelector('#send-eval-template-select');
     function updateSendTplCard() {
@@ -2667,7 +2601,15 @@ export default function evaluationsPage(container) {
 
     bd.querySelector('#confirm-send-btn').addEventListener('click', async () => {
       const chosenTemplateId = parseInt(sendTplSelect.value);
-      const chosenTerm = bd.querySelector('input[name="send-eval-term-radio"]:checked')?.value || 'endterm';
+      let monthLabel = monthSelect.value;
+      if (monthLabel === '__custom__') {
+        monthLabel = bd.querySelector('#send-eval-custom-month').value.trim();
+        if (!monthLabel) {
+          showToast('Please enter a custom month label.', 'warning');
+          return;
+        }
+      }
+      const notes = bd.querySelector('#send-eval-notes')?.value.trim() || null;
       const companySelect = bd.querySelector('#send-eval-company-select');
       const chosenCompanyUserId = companySelect ? parseInt(companySelect.value) : null;
 
@@ -2677,7 +2619,8 @@ export default function evaluationsPage(container) {
       try {
         const payload = {
           template_id: chosenTemplateId,
-          term: chosenTerm,
+          month_label: monthLabel,
+          coordinator_notes: notes,
         };
         if (chosenCompanyUserId) {
           payload.company_user_id = chosenCompanyUserId;
@@ -2784,7 +2727,7 @@ export default function evaluationsPage(container) {
     });
   }
 
-  // Batch Evaluation Dispatch Modal
+  // Batch Evaluation Dispatch Modal (Monthly Architecture)
   function openBatchSendModal(selectedIds) {
     if (!selectedIds.length) {
       showToast('No trainees selected.', 'warning');
@@ -2798,6 +2741,19 @@ export default function evaluationsPage(container) {
     const selectedTrainees = traineesList.filter(t => selectedIds.includes(String(t.id)));
     const defaultTplId = currentTemplateId || templatesList[0].id;
 
+    // Generate Month Options
+    const monthOptions = [];
+    const now = new Date();
+    for (let offset = -2; offset <= 3; offset++) {
+      const d = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+      const label = d.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+      monthOptions.push({
+        label,
+        isDefault: offset === 0,
+        isCurrent: offset === 0
+      });
+    }
+
     const html = `
       <div class="modal" style="width:95vw;max-width:580px;max-height:88vh;display:flex;flex-direction:column;border-radius:14px;overflow:hidden;background:#ffffff;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);">
         <div class="modal__header" style="border-bottom:1px solid var(--border-default);background:#FAFBFD;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
@@ -2806,7 +2762,7 @@ export default function evaluationsPage(container) {
               ${icon('send', 18)}
             </div>
             <div>
-              <h3 class="modal__title" style="margin:0;font-size:1.05rem;font-weight:700;">Batch Dispatch Appraisals</h3>
+              <h3 class="modal__title" style="margin:0;font-size:1.05rem;font-weight:700;">Batch Dispatch Monthly Appraisals</h3>
               <p class="text-xs text-secondary" style="margin:2px 0 0;">Dispatching to ${selectedIds.length} host companies</p>
             </div>
           </div>
@@ -2827,12 +2783,26 @@ export default function evaluationsPage(container) {
 
           <div class="form-group" style="margin-bottom:14px;">
             <label class="form-label" style="font-weight:700;font-size:0.85rem;margin-bottom:6px;display:block;">
-              Appraisal Term for Batch:
+              Appraisal Month / Period for Batch:
             </label>
-            <select class="form-select" id="batch-eval-term-select" style="width:100%;padding:9px 12px;border:1px solid var(--border-default);border-radius:8px;font-weight:600;font-size:0.86rem;">
-              <option value="midterm">Midterm Evaluation (50% Academic Weight)</option>
-              <option value="endterm" selected>Final / Endterm Evaluation (50% Academic Weight)</option>
+            <select class="form-select" id="batch-eval-month-select" style="width:100%;padding:9px 12px;border:1px solid var(--border-default);border-radius:8px;font-weight:600;font-size:0.86rem;">
+              ${monthOptions.map(m => `
+                <option value="${m.label}" ${m.isDefault ? 'selected' : ''}>
+                  ${m.label}${m.isCurrent ? ' (Current Month)' : ''}
+                </option>
+              `).join('')}
+              <option value="__custom__">Custom Month Label...</option>
             </select>
+            <div id="batch-eval-custom-month-wrap" style="display:none;margin-top:8px;">
+              <input type="text" class="form-input" id="batch-eval-custom-month" placeholder="e.g. October 2026 - Sprint 2 or Mid-Month" style="width:100%;padding:8px 12px;border:1px solid var(--border-default);border-radius:8px;font-size:0.85rem;" />
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom:14px;">
+            <label class="form-label" style="font-weight:700;font-size:0.85rem;margin-bottom:6px;display:block;">
+              Coordinator Instructions / Focus Areas (Optional):
+            </label>
+            <textarea class="form-textarea" id="batch-eval-notes" rows="2" placeholder="e.g. Please evaluate monthly progress on assigned deliverables..." style="width:100%;padding:8px 12px;border:1px solid var(--border-default);border-radius:8px;font-size:0.82rem;resize:vertical;"></textarea>
           </div>
 
           <div class="form-group" style="margin-bottom:14px;">
@@ -2860,7 +2830,7 @@ export default function evaluationsPage(container) {
           </div>
           
           <p class="text-xs text-tertiary" style="margin:0;line-height:1.4;">
-            All selected host companies will receive evaluation requests standardized on this selected form.
+            All selected host companies will receive monthly evaluation requests standardized on this selected form.
           </p>
         </div>
         <div class="modal__footer" style="display:flex;justify-content:flex-end;gap:10px;padding:14px 24px;border-top:1px solid var(--border-default);background:#FAFBFD;flex-shrink:0;">
@@ -2873,6 +2843,12 @@ export default function evaluationsPage(container) {
     `;
 
     const { bd, close } = showModal(html, { backdropId: 'batch-eval-modal-backdrop' });
+
+    const monthSelect = bd.querySelector('#batch-eval-month-select');
+    const customMonthWrap = bd.querySelector('#batch-eval-custom-month-wrap');
+    monthSelect.addEventListener('change', () => {
+      customMonthWrap.style.display = monthSelect.value === '__custom__' ? 'block' : 'none';
+    });
 
     const batchTplSelect = bd.querySelector('#batch-eval-template-select');
     function updateBatchTplCard() {
@@ -2901,7 +2877,16 @@ export default function evaluationsPage(container) {
 
     bd.querySelector('#confirm-batch-btn').addEventListener('click', async () => {
       const chosenTemplateId = parseInt(batchTplSelect.value);
-      const chosenTerm = bd.querySelector('#batch-eval-term-select').value;
+      let monthLabel = monthSelect.value;
+      if (monthLabel === '__custom__') {
+        monthLabel = bd.querySelector('#batch-eval-custom-month').value.trim();
+        if (!monthLabel) {
+          showToast('Please enter a custom month label.', 'warning');
+          return;
+        }
+      }
+      const notes = bd.querySelector('#batch-eval-notes')?.value.trim() || null;
+
       const btn = bd.querySelector('#confirm-batch-btn');
       btn.disabled = true;
       btn.innerHTML = `${icon('loader', 14)} Dispatching Batch...`;
@@ -2909,7 +2894,8 @@ export default function evaluationsPage(container) {
         const res = await apiPost('/supervisor/evaluations/send-batch', {
           student_ids: selectedIds,
           template_id: chosenTemplateId,
-          term: chosenTerm,
+          month_label: monthLabel,
+          coordinator_notes: notes,
         });
         if (res?.success) {
           close();
@@ -3799,9 +3785,9 @@ export default function evaluationsPage(container) {
       const rawScore = ev.overall_score ?? ev.score;
       const parsedScore = (rawScore !== null && rawScore !== undefined && rawScore !== '') ? Number(rawScore) : NaN;
       const score = Number.isFinite(parsedScore) ? parsedScore.toFixed(2) : '—';
-      const isMidterm = ev.term === 'midterm';
-      const modalTitle = isMidterm ? 'Midterm OJT Performance Appraisal Report' : 'Final OJT Performance Appraisal Report';
-      const scoreHeading = isMidterm ? 'Midterm Appraisal Score' : 'Final Appraisal Score';
+      const appraisalLabel = ev.month_label || (ev.term === 'midterm' ? 'Midterm Appraisal' : ev.term === 'endterm' ? 'Final Appraisal' : 'Monthly Performance Appraisal');
+      const modalTitle = `${appraisalLabel} Report`;
+      const scoreHeading = `${appraisalLabel} Score`;
 
       const html = `
         <div class="modal" style="width:95vw;max-width:760px;max-height:88vh;display:flex;flex-direction:column;border-radius:14px;overflow:hidden;background:#ffffff;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);">

@@ -529,17 +529,43 @@ class EvaluationController extends Controller
                 $completedHours >= $requiredHours || in_array($record?->status, ['completed', 'finished'])
             );
 
-            // Fetch evaluations by term
-            $midterm = $student->studentEvaluations->where('term', 'midterm')->sortByDesc('created_at')->first();
-            $endterm = $student->studentEvaluations->where('term', 'endterm')->sortByDesc('created_at')->first();
+            // All evaluations sorted by creation date
+            $allEvals = $student->studentEvaluations->sortBy('created_at')->values();
+            $submittedEvals = $allEvals->where('status', 'submitted');
+            $pendingEvals = $allEvals->where('status', 'pending');
+            $runningAverage = $submittedEvals->count() > 0 ? round($submittedEvals->avg('overall_score'), 2) : null;
 
-            // Legacy fallback if evaluation created without term
-            if (!$endterm && !$midterm) {
-                $legacy = $student->studentEvaluations->sortByDesc('created_at')->first();
-                if ($legacy) {
-                    $endterm = $legacy;
-                }
-            }
+            $monthlyEvaluations = $allEvals->map(function ($ev) {
+                $mLabel = $ev->month_label ?: ($ev->term === 'midterm' ? 'Midterm Appraisal' : ($ev->term === 'endterm' ? 'Final Appraisal' : 'Monthly Appraisal'));
+                return [
+                    'id'                  => $ev->id,
+                    'evaluationId'        => $ev->id,
+                    'month_label'         => $mLabel,
+                    'term'                => $ev->term,
+                    'evaluation_sequence' => (int) ($ev->evaluation_sequence ?? 1),
+                    'status'              => $ev->is_waived ? 'waived' : $ev->status,
+                    'is_waived'           => (bool) $ev->is_waived,
+                    'waiver_reason'       => $ev->waiver_reason,
+                    'overall_score'       => $ev->overall_score !== null ? (float) $ev->overall_score : null,
+                    'score'               => $ev->overall_score !== null ? (float) $ev->overall_score : null,
+                    'company_name'        => $ev->company?->companyProfile?->company_name ?? $ev->company?->name,
+                    'company_user_id'     => $ev->company_user_id,
+                    'sent_at'             => $ev->sent_at?->format('M d, Y'),
+                    'submitted_at'        => $ev->submitted_at?->format('M d, Y'),
+                    'done_at'             => $ev->submitted_at?->format('M d, Y'),
+                    'evaluator_name'      => $ev->evaluator_name,
+                    'evaluator_position'  => $ev->evaluator_position,
+                    'recommendation'      => $ev->recommendation,
+                    'coordinator_notes'   => $ev->coordinator_notes,
+                ];
+            })->values();
+
+            // Legacy backward-compatibility mapping for existing views
+            $midterm = $allEvals->where('term', 'midterm')->sortByDesc('created_at')->first() ?? $allEvals->first();
+            $endterm = $allEvals->where('term', 'endterm')->sortByDesc('created_at')->first() ?? ($allEvals->count() > 1 ? $allEvals->last() : null);
+
+            $midtermStatus = $midterm ? ($midterm->is_waived ? 'waived' : $midterm->status) : 'not_sent';
+            $endtermStatus = $endterm ? ($endterm->is_waived ? 'waived' : $endterm->status) : 'not_sent';
 
             // Placement History (current host + prior approved pull-outs)
             $companiesHistory = [];
@@ -573,26 +599,8 @@ class EvaluationController extends Controller
                 ];
             }
 
-            // Format Midterm & Endterm payloads
-            $midtermStatus = 'not_sent';
-            if ($midterm) {
-                $midtermStatus = $midterm->is_waived ? 'waived' : $midterm->status;
-            }
-
-            $endtermStatus = 'not_sent';
-            if ($endterm) {
-                $endtermStatus = $endterm->is_waived ? 'waived' : $endterm->status;
-            }
-
-            // Calculate composite final grade
-            $compositeScore = null;
-            if ($midterm && $midterm->status === 'submitted' && $endterm && $endterm->status === 'submitted') {
-                $compositeScore = round((((float) $midterm->overall_score) * 0.50) + (((float) $endterm->overall_score) * 0.50), 2);
-            } elseif ($midterm && $midterm->is_waived && $endterm && $endterm->status === 'submitted') {
-                $compositeScore = (float) $endterm->overall_score;
-            } elseif ($endterm && $endterm->status === 'submitted' && !$midterm) {
-                $compositeScore = (float) $endterm->overall_score;
-            }
+            $evalStatus = $pendingEvals->count() > 0 ? 'pending' : ($submittedEvals->count() > 0 ? 'submitted' : 'not_sent');
+            $latestEval = $allEvals->last();
 
             $rawSection = $sp?->section ?? null;
             $cleanSection = $rawSection ? trim(preg_replace('/^(?:Section|BSIT|BSCS|BSIS|BSCpE)\s*/i', '', $rawSection)) : null;
@@ -616,10 +624,20 @@ class EvaluationController extends Controller
                 'accreditedHours'    => $accreditedHours,
                 'totalCurriculumRendered' => $totalCurriculumRendered,
                 'progressPercent'    => $requiredHours > 0 ? min(100, (int) round(($completedHours / $requiredHours) * 100)) : 0,
-                'isMidtermEligible'  => $isMidtermEligible,
+                'isMidtermEligible'  => $hasPlacement,
                 'isHoursCompleted'   => $isHoursCompleted,
 
-                // Midterm evaluation structure
+                // Monthly Evaluation Structure
+                'monthly_evaluations'   => $monthlyEvaluations,
+                'evaluations_count'     => $allEvals->count(),
+                'submitted_count'       => $submittedEvals->count(),
+                'pending_count'         => $pendingEvals->count(),
+                'has_pending_evaluations'=> $pendingEvals->count() > 0,
+                'running_average'       => $runningAverage,
+                'running_average_score' => $runningAverage,
+                'compositeScore'        => $runningAverage,
+
+                // Legacy Midterm evaluation structure (backward compatible)
                 'midterm' => [
                     'id'              => $midterm?->id,
                     'evaluationId'    => $midterm?->id,
@@ -637,7 +655,7 @@ class EvaluationController extends Controller
                     'recommendation'  => $midterm?->recommendation,
                 ],
 
-                // Endterm evaluation structure
+                // Legacy Endterm evaluation structure (backward compatible)
                 'endterm' => [
                     'id'              => $endterm?->id,
                     'evaluationId'    => $endterm?->id,
@@ -655,14 +673,12 @@ class EvaluationController extends Controller
                     'recommendation'  => $endterm?->recommendation,
                 ],
 
-                'compositeScore'     => $compositeScore,
-
                 // Backward-compatible fields
-                'evaluationStatus'   => $endtermStatus !== 'not_sent' ? $endtermStatus : $midtermStatus,
-                'evaluationId'       => $endterm?->id ?? $midterm?->id,
-                'evaluationScore'    => $compositeScore ?? ($endterm?->overall_score ? (float) $endterm->overall_score : ($midterm?->overall_score ? (float) $midterm->overall_score : null)),
-                'evaluationSentAt'   => $endterm?->sent_at?->format('M d, Y') ?? $midterm?->sent_at?->format('M d, Y'),
-                'evaluationDoneAt'   => $endterm?->submitted_at?->format('M d, Y') ?? $midterm?->submitted_at?->format('M d, Y'),
+                'evaluationStatus'   => $evalStatus,
+                'evaluationId'       => $latestEval?->id,
+                'evaluationScore'    => $runningAverage,
+                'evaluationSentAt'   => $latestEval?->sent_at?->format('M d, Y'),
+                'evaluationDoneAt'   => $latestEval?->submitted_at?->format('M d, Y'),
             ];
         });
 
@@ -672,13 +688,20 @@ class EvaluationController extends Controller
         // Summary KPI statistics
         $kpis = [
             'totalTrainees'      => $data->count(),
-            'midtermReady'       => $data->where('isMidtermEligible', true)->filter(fn($t) => $t['midterm']['status'] === 'not_sent')->count(),
-            'midtermPending'     => $data->filter(fn($t) => $t['midterm']['status'] === 'pending')->count(),
-            'midtermDone'        => $data->filter(fn($t) => in_array($t['midterm']['status'], ['submitted', 'waived']))->count(),
-            'endtermReady'       => $data->where('isHoursCompleted', true)->filter(fn($t) => $t['endterm']['status'] === 'not_sent')->count(),
-            'endtermPending'     => $data->filter(fn($t) => $t['endterm']['status'] === 'pending')->count(),
-            'endtermDone'        => $data->filter(fn($t) => $t['endterm']['status'] === 'submitted')->count(),
-            'allCompleted'       => $data->filter(fn($t) => in_array($t['midterm']['status'], ['submitted', 'waived']) && $t['endterm']['status'] === 'submitted')->count(),
+            'needsEvaluation'    => $data->filter(fn($t) => $t['evaluations_count'] === 0)->count(),
+            'evaluationPending'  => $data->filter(fn($t) => $t['pending_count'] > 0)->count(),
+            'evaluationDone'     => $data->filter(fn($t) => $t['submitted_count'] > 0 && $t['pending_count'] === 0)->count(),
+            'totalDispatched'    => $data->sum('evaluations_count'),
+            'totalSubmitted'     => $data->sum('submitted_count'),
+            'allCompleted'       => $data->filter(fn($t) => $t['isHoursCompleted'] && $t['submitted_count'] > 0 && $t['pending_count'] === 0)->count(),
+            // Legacy KPI keys for backward compatibility
+            'readyToSend'        => $data->filter(fn($t) => $t['hasPlacement'] && $t['evaluations_count'] === 0)->count(),
+            'midtermReady'       => $data->filter(fn($t) => $t['evaluations_count'] === 0)->count(),
+            'midtermPending'     => $data->filter(fn($t) => $t['pending_count'] > 0)->count(),
+            'midtermDone'        => $data->filter(fn($t) => $t['submitted_count'] > 0)->count(),
+            'endtermReady'       => $data->where('isHoursCompleted', true)->filter(fn($t) => $t['pending_count'] === 0)->count(),
+            'endtermPending'     => $data->filter(fn($t) => $t['pending_count'] > 0)->count(),
+            'endtermDone'        => $data->filter(fn($t) => $t['submitted_count'] > 0)->count(),
         ];
 
         return response()->json([
@@ -707,12 +730,17 @@ class EvaluationController extends Controller
         }
 
         $validated = $request->validate([
-            'term'            => ['nullable', 'in:midterm,endterm'],
-            'company_user_id' => ['nullable', 'integer'],
-            'template_id'     => ['nullable', 'integer'],
+            'month_label'       => ['nullable', 'string', 'max:100'],
+            'term'              => ['nullable', 'string', 'max:50'],
+            'company_user_id'   => ['nullable', 'integer'],
+            'template_id'       => ['nullable', 'integer'],
+            'coordinator_notes' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        $term = $validated['term'] ?? 'endterm';
+        $monthLabel = trim($validated['month_label'] ?? $validated['term'] ?? now()->format('F Y'));
+        if (empty($monthLabel)) {
+            $monthLabel = now()->format('F Y');
+        }
 
         // Find accepted OJT interest
         $acceptedInterest = $student->ojtInterests
@@ -768,16 +796,16 @@ class EvaluationController extends Controller
             ], 422);
         }
 
-        // Check if an evaluation is already pending, submitted, or waived for this term
-        $existing = StudentEvaluation::where('student_user_id', $student->id)
-            ->where('term', $term)
+        // Check if an identical evaluation is ALREADY PENDING for this student in this exact month
+        $existingPending = StudentEvaluation::where('student_user_id', $student->id)
+            ->where('month_label', $monthLabel)
+            ->where('status', 'pending')
             ->first();
 
-        if ($existing) {
-            $statusText = $existing->is_waived ? 'waived' : ($existing->status === 'submitted' ? 'already submitted' : 'already pending');
+        if ($existingPending) {
             return response()->json([
                 'success' => false,
-                'message' => 'The ' . ucfirst($term) . " evaluation for {$student->name} is {$statusText}.",
+                'message' => "An evaluation for \"{$monthLabel}\" is already pending with {$companyName} for {$student->name}.",
             ], 422);
         }
 
@@ -794,27 +822,31 @@ class EvaluationController extends Controller
             $template = $this->resolveActiveTemplate($supervisor->id, $course);
         }
 
+        $sequence = StudentEvaluation::where('student_user_id', $student->id)
+            ->where('month_label', $monthLabel)
+            ->count() + 1;
+
         $evaluation = StudentEvaluation::create([
-            'template_id'        => $template->id,
-            'student_user_id'    => $student->id,
-            'company_user_id'    => $companyUserId,
-            'supervisor_user_id' => $supervisor->id,
-            'ojt_record_id'      => $record?->id,
-            'ojt_posting_id'     => $posting?->id,
-            'term'               => $term,
-            'weight'             => 0.50,
-            'status'             => 'pending',
-            'sent_at'            => now(),
+            'template_id'         => $template->id,
+            'student_user_id'     => $student->id,
+            'company_user_id'     => $companyUserId,
+            'supervisor_user_id'  => $supervisor->id,
+            'ojt_record_id'       => $record?->id,
+            'ojt_posting_id'      => $posting?->id,
+            'term'                => 'monthly',
+            'month_label'         => $monthLabel,
+            'evaluation_sequence' => $sequence,
+            'coordinator_notes'   => $validated['coordinator_notes'] ?? null,
+            'weight'              => 1.00,
+            'status'              => 'pending',
+            'sent_at'             => now(),
         ]);
 
         $completedHours = (float) ($record?->completed_hours ?? 0);
         $requiredHours  = (int) ($record?->required_hours ?? 600);
 
-        $termLabel = $term === 'midterm' ? 'Midterm' : 'Final';
-        $evalTitle = "{$termLabel} OJT Performance Evaluation Request";
-        $evalDesc = $term === 'midterm'
-            ? "Trainee {$student->name} has reached the Midterm stage ({$completedHours}/{$requiredHours} hrs). Please complete their midterm performance evaluation."
-            : "Trainee {$student->name} has completed their required OJT hours ({$completedHours}/{$requiredHours} hrs). Please complete their final performance evaluation.";
+        $evalTitle = "Monthly OJT Performance Evaluation Request — {$monthLabel}";
+        $evalDesc = "Trainee {$student->name} ({$completedHours}/{$requiredHours} hrs completed). Please complete their {$monthLabel} performance evaluation.";
 
         // Send AppNotification to company
         AppNotification::send(
@@ -827,7 +859,8 @@ class EvaluationController extends Controller
                 'student_id'    => $student->id,
                 'student_name'  => $student->name,
                 'posting_id'    => $posting?->id,
-                'term'          => $term,
+                'month_label'   => $monthLabel,
+                'term'          => 'monthly',
             ]
         );
 
@@ -835,18 +868,19 @@ class EvaluationController extends Controller
         AppNotification::send(
             $student->id,
             'ojt_evaluation_sent',
-            "{$termLabel} OJT Evaluation Request Sent",
-            "Your OJT Coordinator has requested your {$term} performance evaluation from {$companyName}. You will be notified once they submit it.",
+            "{$monthLabel} OJT Evaluation Request Sent",
+            "Your OJT Coordinator has requested your {$monthLabel} performance evaluation from {$companyName}. You will be notified once they submit it.",
             [
                 'evaluation_id' => $evaluation->id,
                 'company_name'  => $companyName,
-                'term'          => $term,
+                'month_label'   => $monthLabel,
+                'term'          => 'monthly',
             ]
         );
 
         return response()->json([
             'success' => true,
-            'message' => ucfirst($term) . " evaluation request successfully sent to {$companyName} for {$student->name}.",
+            'message' => "{$monthLabel} evaluation request successfully sent to {$companyName} for {$student->name}.",
             'data'    => $evaluation,
         ]);
     }
@@ -945,14 +979,17 @@ class EvaluationController extends Controller
 
     /**
      * POST /supervisor/evaluations/send-batch
-     * Batch send evaluation requests for specified or all eligible students with a chosen template.
+     * Batch send monthly evaluation requests for specified or all eligible students with a chosen template.
      */
     public function sendBatch(Request $request)
     {
         $supervisor = $request->user();
         $course = $this->getSupervisorCourse($request);
 
-        $term = in_array($request->term, ['midterm', 'endterm']) ? $request->term : 'endterm';
+        $monthLabel = trim($request->month_label ?: $request->term ?: now()->format('F Y'));
+        if (empty($monthLabel)) {
+            $monthLabel = now()->format('F Y');
+        }
 
         // 1. Resolve chosen template
         $templateId = $request->template_id;
@@ -1023,43 +1060,35 @@ class EvaluationController extends Controller
             $completedHours = (float) ($record?->completed_hours ?? 0);
             $requiredHours  = (int) ($record?->required_hours ?? 600);
 
-            $accreditedHours = (float) \App\Models\OjtPullOutRequest::where('student_user_id', $student->id)
-                ->where('status', 'approved')
-                ->sum('credited_hours');
-            $totalCurriculumRendered = $completedHours + $accreditedHours;
+            // Check if student already has a pending evaluation for this exact month
+            $hasPendingForMonth = $student->studentEvaluations
+                ->where('month_label', $monthLabel)
+                ->where('status', 'pending')
+                ->isNotEmpty();
 
-            $isMidtermEligible = ($totalCurriculumRendered >= 300) || ($requiredHours > 0 && $completedHours >= ($requiredHours * 0.5));
-            $isHoursCompleted = ($totalCurriculumRendered >= 600) || ($requiredHours > 0 && $completedHours >= $requiredHours) || in_array($record?->status, ['completed', 'finished']);
+            if ($hasPendingForMonth) continue;
 
-            $isEligible = ($term === 'midterm') ? $isMidtermEligible : $isHoursCompleted;
-            $isExplicitSelection = !empty($request->student_ids) && is_array($request->student_ids);
-            if (!$isExplicitSelection && !$isEligible) continue;
-
-            // Check if already sent or submitted for this specific term
-            $hasActiveForTerm = $student->studentEvaluations
-                ->where('term', $term)
-                ->contains(fn($e) => in_array($e->status, ['pending', 'submitted', 'waived']));
-            if ($hasActiveForTerm) continue;
+            $seq = $student->studentEvaluations->where('month_label', $monthLabel)->count() + 1;
 
             // Create evaluation
             $evaluation = StudentEvaluation::create([
-                'template_id'        => $template->id,
-                'student_user_id'    => $student->id,
-                'company_user_id'    => $companyUserId,
-                'supervisor_user_id' => $supervisor->id,
-                'ojt_record_id'      => $record?->id,
-                'ojt_posting_id'     => $posting?->id,
-                'term'               => $term,
-                'weight'             => 0.50,
-                'status'             => 'pending',
-                'sent_at'            => now(),
+                'template_id'         => $template->id,
+                'student_user_id'     => $student->id,
+                'company_user_id'     => $companyUserId,
+                'supervisor_user_id'  => $supervisor->id,
+                'ojt_record_id'       => $record?->id,
+                'ojt_posting_id'      => $posting?->id,
+                'term'                => 'monthly',
+                'month_label'         => $monthLabel,
+                'evaluation_sequence' => $seq,
+                'coordinator_notes'   => $request->coordinator_notes ?? null,
+                'weight'              => 1.00,
+                'status'              => 'pending',
+                'sent_at'             => now(),
             ]);
 
-            $termLabel = $term === 'midterm' ? 'Midterm' : 'Final';
-            $evalTitle = "{$termLabel} OJT Performance Evaluation Request";
-            $evalDesc = $term === 'midterm'
-                ? "Trainee {$student->name} has reached the Midterm stage ({$completedHours}/{$requiredHours} hrs). Please complete their midterm performance evaluation."
-                : "Trainee {$student->name} has completed their required OJT hours ({$completedHours}/{$requiredHours} hrs). Please complete their final performance evaluation.";
+            $evalTitle = "Monthly OJT Performance Evaluation Request — {$monthLabel}";
+            $evalDesc = "Trainee {$student->name} ({$completedHours}/{$requiredHours} hrs completed). Please complete their {$monthLabel} performance evaluation.";
 
             AppNotification::send(
                 $companyUserId,
@@ -1070,7 +1099,22 @@ class EvaluationController extends Controller
                     'evaluation_id' => $evaluation->id,
                     'student_id'    => $student->id,
                     'student_name'  => $student->name,
-                    'term'          => $term,
+                    'month_label'   => $monthLabel,
+                    'term'          => 'monthly',
+                ]
+            );
+
+            // Notify student
+            AppNotification::send(
+                $student->id,
+                'ojt_evaluation_sent',
+                "{$monthLabel} OJT Evaluation Request Sent",
+                "Your OJT Coordinator has requested your {$monthLabel} performance evaluation from {$companyName}.",
+                [
+                    'evaluation_id' => $evaluation->id,
+                    'company_name'  => $companyName,
+                    'month_label'   => $monthLabel,
+                    'term'          => 'monthly',
                 ]
             );
 
@@ -1079,7 +1123,7 @@ class EvaluationController extends Controller
 
         return response()->json([
             'success'   => true,
-            'message'   => "Successfully dispatched {$sentCount} " . ucfirst($term) . " evaluation request(s) to host companies.",
+            'message'   => "Successfully dispatched {$sentCount} {$monthLabel} evaluation request(s) to host companies.",
             'sentCount' => $sentCount,
         ]);
     }
@@ -1155,6 +1199,8 @@ class EvaluationController extends Controller
             'data'    => [
                 'id'                 => $evaluation->id,
                 'term'               => $evaluation->term ?? 'endterm',
+                'month_label'        => $evaluation->month_label ?: ($evaluation->term === 'midterm' ? 'Midterm Appraisal' : 'Final Appraisal'),
+                'coordinator_notes'  => $evaluation->coordinator_notes,
                 'status'             => $evaluation->status,
                 'overall_score'      => $evaluation->overall_score !== null ? (float) $evaluation->overall_score : null,
                 'general_feedback'   => $evaluation->general_feedback,
@@ -1204,13 +1250,16 @@ class EvaluationController extends Controller
             ->map(function ($e) {
                 $sp = $e->student->studentProfile;
                 $record = $e->ojtRecord;
+                $mLabel = $e->month_label ?: ($e->term === 'midterm' ? 'Midterm Appraisal' : ($e->term === 'endterm' ? 'Final Appraisal' : 'Monthly Appraisal'));
                 return [
                     'id'               => $e->id,
                     'status'           => $e->status,
-                    'term'             => $e->term ?? 'endterm',
+                    'term'             => $e->term ?? 'monthly',
+                    'month_label'      => $mLabel,
+                    'coordinator_notes'=> $e->coordinator_notes,
                     'is_waived'        => (bool) $e->is_waived,
                     'waiver_reason'    => $e->waiver_reason,
-                    'weight'           => (float) ($e->weight ?? 0.50),
+                    'weight'           => (float) ($e->weight ?? 1.00),
                     'sent_at'          => $e->sent_at?->format('M d, Y'),
                     'submitted_at'     => $e->submitted_at?->format('M d, Y'),
                     'overall_score'    => $e->overall_score ? (float) $e->overall_score : null,
@@ -1254,16 +1303,19 @@ class EvaluationController extends Controller
 
         $sp = $evaluation->student->studentProfile;
         $record = $evaluation->ojtRecord;
+        $mLabel = $evaluation->month_label ?: ($evaluation->term === 'midterm' ? 'Midterm Appraisal' : ($evaluation->term === 'endterm' ? 'Final Appraisal' : 'Monthly Appraisal'));
 
         return response()->json([
             'success' => true,
             'data'    => [
                 'id'              => $evaluation->id,
                 'status'          => $evaluation->status,
-                'term'            => $evaluation->term ?? 'endterm',
+                'term'            => $evaluation->term ?? 'monthly',
+                'month_label'     => $mLabel,
+                'coordinator_notes'=> $evaluation->coordinator_notes,
                 'is_waived'       => (bool) $evaluation->is_waived,
                 'waiver_reason'   => $evaluation->waiver_reason,
-                'weight'          => (float) ($evaluation->weight ?? 0.50),
+                'weight'          => (float) ($evaluation->weight ?? 1.00),
                 'overall_score'   => $evaluation->overall_score ? (float) $evaluation->overall_score : null,
                 'general_feedback'=> $evaluation->general_feedback,
                 'recommendation'  => $evaluation->recommendation,
@@ -1364,14 +1416,27 @@ class EvaluationController extends Controller
                 'submitted_at'       => now(),
             ]);
 
-            // Only mark OjtRecord completed if this is the final/endterm evaluation
-            if ($evaluation->ojtRecord && $evaluation->term === 'endterm') {
+            // Recalculate simple running average across all submitted evaluations for this student
+            $submittedEvals = StudentEvaluation::where('student_user_id', $evaluation->student_user_id)
+                ->where('status', 'submitted')
+                ->get();
+            $runningAverage = $submittedEvals->count() > 0 ? round($submittedEvals->avg('overall_score'), 2) : $overallScore;
+
+            $pendingCount = StudentEvaluation::where('student_user_id', $evaluation->student_user_id)
+                ->where('status', 'pending')
+                ->count();
+
+            $completedHours = (float) ($evaluation->ojtRecord?->completed_hours ?? 0);
+            $requiredHours  = (int) ($evaluation->ojtRecord?->required_hours ?? 600);
+
+            // If trainee completed hours and no evaluations are pending, mark ojtRecord completed
+            if ($evaluation->ojtRecord && $completedHours >= $requiredHours && $pendingCount === 0) {
                 $evaluation->ojtRecord->update(['status' => 'completed']);
             }
 
             DB::commit();
 
-            $termLabel = $evaluation->term === 'midterm' ? 'Midterm' : 'Final';
+            $mLabel = $evaluation->month_label ?: ($evaluation->term === 'midterm' ? 'Midterm' : ($evaluation->term === 'endterm' ? 'Final' : 'Monthly'));
 
             // Notify supervisor
             if ($evaluation->supervisor_user_id) {
@@ -1379,66 +1444,51 @@ class EvaluationController extends Controller
                 AppNotification::send(
                     $evaluation->supervisor_user_id,
                     'ojt_evaluation_completed',
-                    "{$termLabel} OJT Evaluation Submitted!",
-                    "{$compName} has submitted the {$evaluation->term} performance evaluation for {$evaluation->student->name} with an overall score of {$overallScore}/5.0.",
+                    "Monthly OJT Evaluation Submitted — {$mLabel}",
+                    "{$compName} has submitted the {$mLabel} performance evaluation for {$evaluation->student->name} with a score of {$overallScore}/5.0 (Running Average: {$runningAverage}/5.0).",
                     [
-                        'evaluation_id' => $evaluation->id,
-                        'student_id'    => $evaluation->student_user_id,
-                        'overall_score' => $overallScore,
-                        'term'          => $evaluation->term,
+                        'evaluation_id'   => $evaluation->id,
+                        'student_id'      => $evaluation->student_user_id,
+                        'overall_score'   => $overallScore,
+                        'running_average' => $runningAverage,
+                        'month_label'     => $mLabel,
                     ]
                 );
             }
 
-            // Calculate composite score if this is endterm or all evaluations completed
-            $midterm = StudentEvaluation::where('student_user_id', $evaluation->student_user_id)
-                ->where('term', 'midterm')
-                ->first();
-            $compositeScore = null;
-            if ($evaluation->term === 'endterm') {
-                if ($midterm && $midterm->status === 'submitted') {
-                    $compositeScore = round((((float)$midterm->overall_score) * 0.50) + ($overallScore * 0.50), 2);
-                } elseif ($midterm && ($midterm->is_waived || $midterm->status === 'waived')) {
-                    $compositeScore = $overallScore;
-                } else {
-                    $compositeScore = $overallScore;
-                }
-            }
-
             // Notify student
-            $studentMsg = $evaluation->term === 'midterm'
-                ? "Your host company has completed your Midterm OJT performance evaluation with a rating of {$overallScore}/5.0."
-                : "Your host company has completed your Final OJT performance evaluation with a rating of {$overallScore}/5.0" . ($compositeScore ? " (Composite Final Rating: {$compositeScore}/5.0)" : "") . ". Congratulations on completing your training!";
+            $studentMsg = "Your host company has completed your {$mLabel} OJT performance evaluation with a rating of {$overallScore}/5.0 (Cumulative Practicum Rating: {$runningAverage}/5.0).";
 
             AppNotification::send(
                 $evaluation->student_user_id,
                 'ojt_evaluation_completed',
-                $evaluation->term === 'midterm' ? 'Midterm OJT Evaluation Submitted!' : 'Your OJT Evaluation is Complete!',
+                'Monthly OJT Evaluation Submitted!',
                 $studentMsg,
                 [
                     'evaluation_id'   => $evaluation->id,
                     'overall_score'   => $overallScore,
-                    'composite_score' => $compositeScore,
-                    'term'            => $evaluation->term,
+                    'running_average' => $runningAverage,
+                    'composite_score' => $runningAverage,
+                    'month_label'     => $mLabel,
                 ]
             );
 
-            // Notify admin users that student has completed final evaluation & is ready for graduation review
-            if ($evaluation->term === 'endterm') {
+            // Notify admin users if hours are complete and zero evaluations are pending
+            if ($completedHours >= $requiredHours && $pendingCount === 0) {
                 try {
                     $admins = User::where('role', 'admin')->get();
                     $studentName = $evaluation->student?->name ?? 'Student';
-                    $adminScoreText = $compositeScore ? "composite: {$compositeScore}/5.0" : "{$overallScore}/5.0";
                     foreach ($admins as $admin) {
                         AppNotification::send(
                             $admin->id,
                             'student_eligible_graduation',
-                            'OJT Evaluation Submitted',
-                            "Host company submitted final performance evaluation for {$studentName} ({$adminScoreText}). Candidate is ready for graduation review.",
+                            'OJT Evaluation Submitted — Ready for Graduation Review',
+                            "Host company submitted evaluation for {$studentName}. All evaluations cleared & required hours logged (Rating: {$runningAverage}/5.0). Candidate is ready for graduation review.",
                             [
                                 'student_id'      => $evaluation->student_user_id,
                                 'evaluation_id'   => $evaluation->id,
-                                'composite_score' => $compositeScore,
+                                'composite_score' => $runningAverage,
+                                'running_average' => $runningAverage,
                                 'route'           => '/students',
                             ]
                         );
@@ -1470,7 +1520,7 @@ class EvaluationController extends Controller
 
     /**
      * GET /student/evaluation
-     * Student view of their dual-term evaluations (Midterm, Endterm, and Composite Score).
+     * Student view of their monthly appraisals and cumulative running average score.
      */
     public function studentEvaluation(Request $request)
     {
@@ -1482,24 +1532,21 @@ class EvaluationController extends Controller
             'answers.question',
         ])
             ->where('student_user_id', $studentId)
-            ->whereIn('status', ['submitted', 'waived'])
+            ->whereIn('status', ['submitted', 'waived', 'pending'])
+            ->orderBy('created_at')
             ->get();
 
         if ($evaluations->isEmpty()) {
             return response()->json([
                 'success' => true,
                 'data'    => null,
-                'message' => 'No submitted evaluation yet.',
+                'message' => 'No evaluations on record yet.',
             ]);
         }
 
-        $midterm = $evaluations->where('term', 'midterm')->sortByDesc('submitted_at')->first();
-        $endterm = $evaluations->where('term', 'endterm')->sortByDesc('submitted_at')->first();
-
-        // Fallback for legacy records created without term
-        if (!$midterm && !$endterm) {
-            $endterm = $evaluations->sortByDesc('submitted_at')->first();
-        }
+        $submittedEvals = $evaluations->where('status', 'submitted');
+        $runningAverage = $submittedEvals->count() > 0 ? round($submittedEvals->avg('overall_score'), 2) : null;
+        $pendingCount   = $evaluations->where('status', 'pending')->count();
 
         $formatEval = function ($eval) {
             if (!$eval) return null;
@@ -1520,19 +1567,24 @@ class EvaluationController extends Controller
                 ];
             })->values();
 
+            $mLabel = $eval->month_label ?: ($eval->term === 'midterm' ? 'Midterm Appraisal' : ($eval->term === 'endterm' ? 'Final Appraisal' : 'Monthly Appraisal'));
+
             return [
                 'id'                 => $eval->id,
-                'term'               => $eval->term ?? 'endterm',
+                'term'               => $eval->term ?? 'monthly',
+                'month_label'        => $mLabel,
                 'status'             => $eval->status,
                 'is_waived'          => (bool) $eval->is_waived,
                 'waiver_reason'      => $eval->waiver_reason,
-                'weight'             => (float) ($eval->weight ?? 0.50),
+                'weight'             => 1.00,
                 'overall_score'      => $eval->overall_score ? (float) $eval->overall_score : null,
                 'general_feedback'   => $eval->general_feedback,
                 'recommendation'     => $eval->recommendation,
                 'evaluator_name'     => $eval->evaluator_name,
                 'evaluator_position' => $eval->evaluator_position,
+                'sent_at'            => $eval->sent_at?->format('M d, Y'),
                 'submitted_at'       => $eval->submitted_at?->format('M d, Y'),
+                'coordinator_notes'  => $eval->coordinator_notes,
                 'company'            => [
                     'name'           => $eval->company?->companyProfile?->company_name ?? $eval->company?->name ?? 'Host Company',
                 ],
@@ -1540,28 +1592,29 @@ class EvaluationController extends Controller
             ];
         };
 
+        $monthlyList = $evaluations->map($formatEval)->values();
+
+        // Legacy compatibility mappings
+        $midterm = $evaluations->where('term', 'midterm')->sortByDesc('submitted_at')->first() ?? $evaluations->first();
+        $endterm = $evaluations->where('term', 'endterm')->sortByDesc('submitted_at')->first() ?? ($evaluations->count() > 1 ? $evaluations->last() : null);
+
         $midtermData = $formatEval($midterm);
         $endtermData = $formatEval($endterm);
-
-        $compositeScore = null;
-        if ($midterm && $midterm->status === 'submitted' && $endterm && $endterm->status === 'submitted') {
-            $compositeScore = round((((float)$midterm->overall_score) * 0.50) + (((float)$endterm->overall_score) * 0.50), 2);
-        } elseif ($midterm && ($midterm->is_waived || $midterm->status === 'waived') && $endterm && $endterm->status === 'submitted') {
-            $compositeScore = (float) $endterm->overall_score;
-        } elseif ($endterm && $endterm->status === 'submitted') {
-            $compositeScore = (float) $endterm->overall_score;
-        }
-
-        // Primary object for backwards compatibility with any top-level listeners
-        $primary = $endtermData ?? $midtermData ?? [];
+        $primary = $formatEval($submittedEvals->last()) ?? $monthlyList->last() ?? [];
 
         return response()->json([
             'success' => true,
             'data'    => array_merge($primary, [
-                'has_dual_evaluations' => true,
-                'composite_score'      => $compositeScore,
-                'midterm'              => $midtermData,
-                'endterm'              => $endtermData,
+                'monthly_evaluations'   => $monthlyList,
+                'running_average_score' => $runningAverage,
+                'composite_score'       => $runningAverage,
+                'evaluations_count'     => $evaluations->count(),
+                'submitted_count'       => $submittedEvals->count(),
+                'pending_count'         => $pendingCount,
+                'has_pending'           => $pendingCount > 0,
+                'has_dual_evaluations'  => true,
+                'midterm'               => $midtermData,
+                'endterm'               => $endtermData,
             ]),
         ]);
     }

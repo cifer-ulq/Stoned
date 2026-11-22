@@ -1988,10 +1988,9 @@ async function openCompanyEvaluationModal(evalId, onComplete) {
       5: 'Excellent / Outstanding',
     };
 
-    const termTitle = ev.term === 'midterm' ? 'Midterm OJT Performance Appraisal' : 'Final / Endterm Performance Appraisal';
-    const termBadge = ev.term === 'midterm'
-      ? `<span class="badge" style="background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE;font-size:0.7rem;font-weight:700;padding:2px 8px;margin-left:8px;">MIDTERM (50% WEIGHT)</span>`
-      : `<span class="badge" style="background:#ECFDF5;color:#047857;border:1px solid #A7F3D0;font-size:0.7rem;font-weight:700;padding:2px 8px;margin-left:8px;">FINAL (50% WEIGHT)</span>`;
+    const appraisalLabel = ev.month_label || (ev.term === 'midterm' ? 'Midterm Appraisal' : ev.term === 'endterm' ? 'Final Appraisal' : 'Monthly Performance Appraisal');
+    const termTitle = `Performance Appraisal — ${appraisalLabel}`;
+    const termBadge = `<span class="badge badge--success" style="font-size:0.7rem;font-weight:700;padding:2px 8px;margin-left:8px;text-transform:uppercase;">${ev.month_label ? `${ev.month_label} APPRAISAL` : 'MONTHLY APPRAISAL'}</span>`;
 
     backdrop.innerHTML = `
       <div class="modal modal--visible co-eval-modal" style="max-width:780px;border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);max-height:90vh;display:flex;flex-direction:column;">
@@ -2031,6 +2030,17 @@ async function openCompanyEvaluationModal(evalId, onComplete) {
               <div style="font-size:0.84rem;color:var(--text-primary);font-weight:600;">${ev.ojt?.start_date || '—'} &ndash; ${ev.ojt?.end_date || 'Present'}</div>
             </div>
           </div>
+
+          ${ev.coordinator_notes ? `
+            <div style="background:#FFFBEB;border:1px solid #FCD34D;border-radius:8px;padding:12px 16px;margin-bottom:18px;">
+              <div style="font-size:0.72rem;font-weight:700;color:#92400E;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:2px;">
+                Coordinator Instructions / Directives
+              </div>
+              <div style="font-size:0.84rem;color:#78350F;line-height:1.4;">
+                ${escapeHtml(ev.coordinator_notes)}
+              </div>
+            </div>
+          ` : ''}
 
           <p class="text-sm text-secondary" style="margin:0 0 20px;line-height:1.5;">
             ${escapeHtml(ev.template?.description || 'Please provide an objective appraisal of the trainee’s competencies, attendance, workplace attitude, and performance outputs during their OJT assignment.')}
@@ -2289,10 +2299,9 @@ async function openCompanyViewSubmittedModal(evalId) {
     const ansMap = {};
     answers.forEach(a => { ansMap[a.evaluation_question_id] = a; });
 
-    const termTitle = ev.term === 'midterm' ? 'Submitted Midterm OJT Appraisal' : 'Submitted Final / Endterm Appraisal';
-    const termBadge = ev.term === 'midterm'
-      ? `<span class="badge" style="background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE;font-size:0.7rem;font-weight:700;padding:2px 8px;margin-left:8px;">MIDTERM (50% WEIGHT)</span>`
-      : `<span class="badge" style="background:#ECFDF5;color:#047857;border:1px solid #A7F3D0;font-size:0.7rem;font-weight:700;padding:2px 8px;margin-left:8px;">FINAL (50% WEIGHT)</span>`;
+    const appraisalLabel = ev.month_label || (ev.term === 'midterm' ? 'Midterm Appraisal' : ev.term === 'endterm' ? 'Final Appraisal' : 'Monthly Appraisal');
+    const termTitle = `Official Performance Scorecard — ${appraisalLabel}`;
+    const termBadge = `<span class="badge badge--success" style="font-size:0.7rem;font-weight:700;padding:2px 8px;margin-left:8px;text-transform:uppercase;">${ev.month_label ? `${ev.month_label}` : 'MONTHLY APPRAISAL'}</span>`;
 
     backdrop.innerHTML = `
       <div class="modal modal--visible co-scorecard-modal" style="max-width:720px;border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);max-height:88vh;display:flex;flex-direction:column;">

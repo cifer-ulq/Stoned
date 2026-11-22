@@ -807,11 +807,13 @@ class AdminController extends Controller
 
             // Evaluation status resolution
             $evalList = $evaluationsMap[$u->id] ?? collect();
-            $submittedEval = $evalList->firstWhere('status', 'submitted');
-            $pendingEval   = $evalList->firstWhere('status', 'pending');
-            $evalStatus = $submittedEval ? 'submitted' : ($pendingEval ? 'pending' : 'none');
-            $hasCompanyEval = ($evalStatus === 'submitted');
-            $evalScore = $submittedEval?->overall_score ? (float) $submittedEval->overall_score : null;
+            $submittedEvals = $evalList->where('status', 'submitted');
+            $hasPendingEval = $evalList->contains('status', 'pending');
+            $submittedCount = $submittedEvals->count();
+            $hasCompanyEval = (!$hasPendingEval && $submittedCount > 0);
+            $evalStatus = $hasPendingEval ? 'pending' : ($submittedCount > 0 ? 'submitted' : 'none');
+            $submittedEval = $submittedEvals->sortByDesc('submitted_at')->first();
+            $evalScore = $submittedCount > 0 ? round($submittedEvals->avg('overall_score'), 2) : null;
             $evaluatorName = $submittedEval?->evaluator_name;
             $evaluatorPosition = $submittedEval?->evaluator_position;
             $evalSubmittedAt = $submittedEval?->submitted_at?->format('Y-m-d');
@@ -847,12 +849,12 @@ class AdminController extends Controller
             } elseif ($u->role !== 'student') {
                 $ineligibleReason = 'Account role is not a student';
             } elseif (!$isHoursCompleted && !$hasCompanyEval) {
-                $ineligibleReason = "Incomplete OJT hours (" . round($ojtHours) . "/{$ojtRequired}h) & No company evaluation";
+                $ineligibleReason = "Incomplete OJT hours (" . round($ojtHours) . "/{$ojtRequired}h) & Pending/No company evaluation";
             } elseif (!$isHoursCompleted) {
                 $ineligibleReason = "Incomplete OJT hours (" . round($ojtHours) . "/{$ojtRequired}h logged)";
             } elseif (!$hasCompanyEval) {
-                $ineligibleReason = ($evalStatus === 'pending')
-                    ? 'Host company evaluation is still pending'
+                $ineligibleReason = $hasPendingEval
+                    ? 'Host company monthly evaluation is still pending'
                     : 'No host company evaluation submitted';
             }
 
@@ -975,52 +977,37 @@ class AdminController extends Controller
                 continue;
             }
 
-            // Gate 2: Student MUST have verified dual-term evaluations submitted/cleared
-            $midterm = $user->studentEvaluations->where('term', 'midterm')->sortByDesc('created_at')->first();
-            $endterm = $user->studentEvaluations->where('term', 'endterm')->sortByDesc('created_at')->first();
+            // Gate 2: Student MUST have zero pending evaluations AND at least 1 submitted evaluation
+            $evals = $user->studentEvaluations;
+            $hasPending = $evals->where('status', 'pending')->isNotEmpty();
+            $submittedEvals = $evals->where('status', 'submitted');
+            $submittedCount = $submittedEvals->count();
 
-            // Legacy fallback if evaluation was created without term
-            if (!$endterm && !$midterm) {
-                $legacy = $user->studentEvaluations->sortByDesc('created_at')->first();
-                if ($legacy && $legacy->status === 'submitted') {
-                    $endterm = $legacy;
-                }
-            }
-
-            if (!$endterm || $endterm->status !== 'submitted') {
-                $hasPendingEnd = $user->studentEvaluations->where('term', 'endterm')->where('status', 'pending')->isNotEmpty();
+            if ($hasPending) {
                 $ineligible[] = [
                     'id'              => $user->id,
                     'name'            => $user->name,
                     'completed_hours' => $totalCurriculumRendered,
                     'required_hours'  => $requiredHours,
-                    'reason'          => $hasPendingEnd
-                        ? 'Host company Final/Endterm performance evaluation is still pending'
-                        : 'No host company Final/Endterm performance evaluation has been submitted',
+                    'reason'          => 'Host company monthly evaluation(s) are still pending submission',
                 ];
                 continue;
             }
 
-            if ($midterm && !in_array($midterm->status, ['submitted', 'waived']) && !$midterm->is_waived) {
+            if ($submittedCount === 0) {
                 $ineligible[] = [
                     'id'              => $user->id,
                     'name'            => $user->name,
                     'completed_hours' => $totalCurriculumRendered,
                     'required_hours'  => $requiredHours,
-                    'reason'          => 'Midterm performance evaluation is still pending with company (or must be officially waived)',
+                    'reason'          => 'No host company evaluation has been submitted yet',
                 ];
                 continue;
             }
 
-            // Calculate composite final rating (50% Midterm + 50% Endterm or 100% Endterm if waived)
-            $compositeScore = null;
-            if ($midterm && $midterm->status === 'submitted') {
-                $compositeScore = round((((float) $midterm->overall_score) * 0.50) + (((float) $endterm->overall_score) * 0.50), 2);
-            } else {
-                $compositeScore = (float) $endterm->overall_score;
-            }
-
-            $submittedEval = $endterm;
+            // Calculate running average score (even if score is low, grade does not block promotion)
+            $compositeScore = round($submittedEvals->avg('overall_score'), 2);
+            $submittedEval = $submittedEvals->sortByDesc('submitted_at')->first();
 
             // Student passed both Gates! Proceed with promotion transaction
             $currentSchoolYear = (date('n') >= 6)
