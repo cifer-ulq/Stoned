@@ -8,6 +8,8 @@ use App\Models\OjtRecord;
 use App\Models\TimeLog;
 use App\Models\User;
 use App\Models\StudentProfile;
+use App\Models\GraduateProfile;
+use App\Models\StudentEvaluation;
 use App\Models\AppNotification;
 use App\Models\StudentOjtRequirement;
 use App\Models\OjtEmergencyRequest;
@@ -1043,6 +1045,258 @@ class SupervisorController extends Controller
             'success'  => true,
             'data'     => $data,
             'sections' => $sections,
+        ]);
+    }
+
+    /**
+     * GET /supervisor/archive
+     * Returns historical archived / graduated trainees for the supervisor's program and campus.
+     */
+    public function archive(Request $request)
+    {
+        $course = $this->getSupervisorCourse($request);
+        $campus = $this->getSupervisorCampus($request);
+
+        // Fetch users who have completed graduation / alumni promotion
+        $graduatesQuery = User::where(function ($q) {
+                $q->where('role', 'graduate')
+                  ->orWhereHas('graduateProfile')
+                  ->orWhereHas('studentProfile', fn($sp) => $sp->where('status', 'alumni')->orWhere('year_level', 'ilike', '%graduat%'));
+            })
+            ->with([
+                'studentProfile',
+                'graduateProfile',
+                'ojtRecord',
+                'studentEvaluations' => fn($eq) => $eq->where('status', 'submitted')->orderByDesc('submitted_at'),
+                'studentEvaluations.company.companyProfile',
+                'ojtRequirements',
+                'experiences',
+            ])
+            ->orderBy('name');
+
+        if ($course) {
+            $aliases = CourseNormalizer::getAliases($course);
+            $graduatesQuery->where(function ($topQ) use ($aliases, $campus) {
+                $topQ->whereHas('studentProfile', function ($q) use ($aliases, $campus) {
+                    $q->whereIn('program', $aliases);
+                    if ($campus) {
+                        $q->where(function ($sub) use ($campus) {
+                            $sub->where('campus', $campus);
+                            if (in_array(strtolower($campus), ['talisay campus', 'main campus'])) {
+                                $sub->orWhere('campus', 'Main Campus')->orWhere('campus', 'Talisay Campus');
+                            }
+                        });
+                    }
+                })->orWhereHas('graduateProfile', function ($q) use ($aliases, $campus) {
+                    $q->whereIn('course', $aliases);
+                    if ($campus) {
+                        $q->where(function ($sub) use ($campus) {
+                            $sub->where('campus', $campus);
+                            if (in_array(strtolower($campus), ['talisay campus', 'main campus'])) {
+                                $sub->orWhere('campus', 'Main Campus')->orWhere('campus', 'Talisay Campus');
+                            }
+                        });
+                    }
+                });
+            });
+        }
+
+        $graduates = $graduatesQuery->get();
+
+        $mapped = $graduates->map(function ($user) {
+            $sp = $user->studentProfile;
+            $gp = $user->graduateProfile;
+            $ojt = $user->ojtRecord;
+            $evals = $user->studentEvaluations;
+
+            // Batch Year: priority: gp.year_graduated -> sp.batch -> school year
+            $batch = $gp?->year_graduated ?: ($sp?->batch ?: 'Unspecified Batch');
+
+            // Completed hours calculation
+            $completedHours = (float) ($ojt?->completed_hours ?? 0);
+            if ($completedHours == 0) {
+                $logsSum = (float) TimeLog::where('user_id', $user->id)
+                    ->where('status', 'approved')
+                    ->sum('hours_rendered');
+                if ($logsSum > 0) {
+                    $completedHours = $logsSum;
+                }
+            }
+            $requiredHours = (int) ($ojt?->required_hours ?? 600);
+            if ($requiredHours <= 0) $requiredHours = 600;
+
+            // Evaluations calculation
+            $submittedEvals = $evals->where('status', 'submitted');
+            $avgScore = $submittedEvals->count() > 0 ? round($submittedEvals->avg('overall_score'), 2) : null;
+            $latestEval = $submittedEvals->sortByDesc('submitted_at')->first();
+
+            // Company Name & Location
+            $companyName = $ojt?->company_name;
+            if (!$companyName && $latestEval?->company) {
+                $companyName = $latestEval->company->companyProfile?->company_name ?? $latestEval->company->name;
+            }
+            if (!$companyName) {
+                $exp = $user->experiences?->where('type', 'Internship')->first();
+                $companyName = $exp?->company;
+            }
+            $companyName = $companyName ?: 'Host Training Establishment';
+
+            // Clean Section
+            $rawSection = $gp?->section ?: ($sp?->section ?? null);
+            $cleanSection = $rawSection ? trim(preg_replace('/^(?:Section|BSIT|BSCS|BSIS|BSCpE)\s*/i', '', $rawSection)) : '—';
+
+            // Tracer Employment Status
+            $employmentStatus = $gp?->employment_status ?: 'seeking';
+
+            // Requirements clearance status
+            $req = $user->ojtRequirements->sortByDesc('updated_at')->first();
+            $reqStatus = $req?->status ?? 'verified';
+
+            return [
+                'id'                  => $user->id,
+                'name'                => $user->name,
+                'email'               => $user->email,
+                'avatar'              => $user->avatar ?? $user->avatar_url ?? null,
+                'student_id'          => $sp?->student_id ?: ($gp?->student_id ?: '—'),
+                'program'             => $sp?->program ?: ($gp?->course ?: 'Information Technology'),
+                'campus'              => $sp?->campus ?: ($gp?->campus ?: 'Alijis Campus'),
+                'section'             => $cleanSection,
+                'batch'               => $batch,
+                'company_name'        => $companyName,
+                'supervisor_name'     => $ojt?->supervisor_name ?: '—',
+                'company_location'    => $ojt?->location ?: '—',
+                'start_date'          => $ojt?->start_date ? Carbon::parse($ojt->start_date)->format('M d, Y') : '—',
+                'end_date'            => $ojt?->end_date ? Carbon::parse($ojt->end_date)->format('M d, Y') : ($gp?->approved_at ? Carbon::parse($gp->approved_at)->format('M d, Y') : '—'),
+                'completed_hours'     => $completedHours,
+                'required_hours'      => $requiredHours,
+                'progress_pct'        => min(100, round(($completedHours / max(1, $requiredHours)) * 100)),
+                'evaluation_score'    => $avgScore,
+                'evaluations_count'   => $submittedEvals->count(),
+                'recommendation'      => $latestEval?->recommendation ?? null,
+                'employment_status'   => $employmentStatus,
+                'requirements_status' => $reqStatus,
+                'promoted_at'         => $gp?->approved_at ? Carbon::parse($gp->approved_at)->format('M d, Y') : ($user->updated_at ? Carbon::parse($user->updated_at)->format('M d, Y') : '—'),
+            ];
+        });
+
+        // Compute KPIs across this scoped cohort
+        $totalGraduates = $mapped->count();
+        $totalHours = round($mapped->sum('completed_hours'));
+        $evalScores = $mapped->pluck('evaluation_score')->filter()->values();
+        $avgScore = $evalScores->count() > 0 ? round($evalScores->avg(), 2) : 5.0;
+
+        $employedCount = $mapped->filter(fn($m) => in_array(strtolower($m['employment_status']), ['employed', 'freelance']))->count();
+        $employmentRate = $totalGraduates > 0 ? round(($employedCount / $totalGraduates) * 100) : 0;
+
+        // Distinct Batches & Sections for UI Filter Dropdowns
+        $batches = $mapped->pluck('batch')->filter(fn($b) => !empty($b) && $b !== 'Unspecified Batch')->unique()->sortDesc()->values();
+        $sections = $mapped->pluck('section')->filter(fn($s) => !empty($s) && $s !== '—')->unique()->sort()->values();
+
+        return response()->json([
+            'success' => true,
+            'data'    => $mapped->values(),
+            'kpis'    => [
+                'total_graduates' => $totalGraduates,
+                'total_hours'     => $totalHours,
+                'avg_score'       => $avgScore,
+                'employed_count'  => $employedCount,
+                'employment_rate' => $employmentRate,
+            ],
+            'batches'  => $batches,
+            'sections' => $sections,
+        ]);
+    }
+
+    /**
+     * GET /supervisor/archive/{userId}
+     * Returns full historical dossier for an individual archived student.
+     */
+    public function archiveDetails(Request $request, $userId)
+    {
+        $course = $this->getSupervisorCourse($request);
+        $campus = $this->getSupervisorCampus($request);
+
+        $user = User::with([
+            'studentProfile',
+            'graduateProfile',
+            'ojtRecord',
+            'studentEvaluations.company.companyProfile',
+            'studentEvaluations.template',
+            'ojtRequirements',
+            'experiences',
+        ])->findOrFail($userId);
+
+        $sp = $user->studentProfile;
+        $gp = $user->graduateProfile;
+
+        // Verify scope authorization
+        $studentProgram = $sp?->program ?: $gp?->course;
+        $studentCampus = $sp?->campus ?: $gp?->campus;
+        if ($course) {
+            $aliases = CourseNormalizer::getAliases($course);
+            if (!in_array($studentProgram, $aliases, true)) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized: Student is not under your assigned program.'], 403);
+            }
+        }
+
+        // Get time logs summary & recent logs
+        $logs = TimeLog::where('user_id', $user->id)
+            ->orderByDesc('log_date')
+            ->take(30)
+            ->get()
+            ->map(fn($l) => [
+                'id'             => $l->id,
+                'date'           => $l->log_date ? Carbon::parse($l->log_date)->format('M d, Y') : '—',
+                'hours_rendered' => (float) $l->hours_rendered,
+                'time_in'        => $l->time_in,
+                'time_out'       => $l->time_out,
+                'description'    => $l->description ?? 'Regular OJT duties',
+                'status'         => $l->status,
+            ]);
+
+        // Get evaluations details
+        $evaluations = $user->studentEvaluations->map(fn($ev) => [
+            'id'             => $ev->id,
+            'term'           => $ev->term,
+            'month_label'    => $ev->month_label,
+            'overall_score'  => (float) $ev->overall_score,
+            'evaluator_name' => $ev->evaluator_name ?: ($ev->company?->name ?? 'Host Supervisor'),
+            'company_name'   => $ev->company?->companyProfile?->company_name ?? ($user->ojtRecord?->company_name ?? 'Host Company'),
+            'submitted_at'   => $ev->submitted_at ? Carbon::parse($ev->submitted_at)->format('M d, Y') : '—',
+            'recommendation' => $ev->recommendation,
+            'status'         => $ev->status,
+            'ratings'        => $ev->ratings,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data'    => [
+                'id'          => $user->id,
+                'name'        => $user->name,
+                'email'       => $user->email,
+                'avatar'      => $user->avatar ?? $user->avatar_url,
+                'student_id'  => $sp?->student_id ?: ($gp?->student_id ?: '—'),
+                'program'     => $studentProgram,
+                'campus'      => $studentCampus,
+                'section'     => $gp?->section ?: ($sp?->section ?: '—'),
+                'batch'       => $gp?->year_graduated ?: ($sp?->batch ?: '—'),
+                'employment'  => [
+                    'status'  => $gp?->employment_status ?: 'seeking',
+                    'updated' => $gp?->updated_at ? Carbon::parse($gp->updated_at)->format('M d, Y') : '—',
+                ],
+                'ojt'         => [
+                    'company'         => $user->ojtRecord?->company_name ?? 'Host Training Establishment',
+                    'supervisor'      => $user->ojtRecord?->supervisor_name ?? '—',
+                    'location'        => $user->ojtRecord?->location ?? '—',
+                    'start_date'      => $user->ojtRecord?->start_date ? Carbon::parse($user->ojtRecord->start_date)->format('M d, Y') : '—',
+                    'end_date'        => $user->ojtRecord?->end_date ? Carbon::parse($user->ojtRecord->end_date)->format('M d, Y') : '—',
+                    'completed_hours' => (float) ($user->ojtRecord?->completed_hours ?? 600),
+                    'required_hours'  => (int) ($user->ojtRecord?->required_hours ?? 600),
+                ],
+                'logs'        => $logs,
+                'evaluations' => $evaluations,
+                'requirements'=> $user->ojtRequirements,
+            ]
         ]);
     }
 

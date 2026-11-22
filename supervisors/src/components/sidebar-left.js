@@ -52,6 +52,10 @@ export function createSidebarLeft() {
         <span class="sidebar-nav__icon" style="background: rgba(245,158,11,0.12); color: #F59E0B;">${icon('clipboardCheck', 20)}</span>
         <span class="sidebar-nav__label">Evaluations</span>
       </a>
+      <a class="sidebar-nav__item" href="#/archive" data-route="/archive">
+        <span class="sidebar-nav__icon" style="background: rgba(0, 89, 48, 0.12); color: #005930;">${icon('graduationCap', 20)}</span>
+        <span class="sidebar-nav__label">Trainee Archive</span>
+      </a>
       <a class="sidebar-nav__item" href="#/reports" data-route="/reports">
         <span class="sidebar-nav__icon" style="background: rgba(99,102,241,0.12); color: #6366F1;">${icon('barChart', 20)}</span>
         <span class="sidebar-nav__label">Analysis &amp; Insights</span>

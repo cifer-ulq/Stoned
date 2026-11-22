@@ -58,6 +58,10 @@ export function createNavbar() {
           ${icon('clipboardCheck', 22)}
           <span class="navbar__tab-indicator"></span>
         </a>
+        <a class="navbar__tab" href="#/archive" data-route="/archive" title="Trainee Archive">
+          ${icon('graduationCap', 22)}
+          <span class="navbar__tab-indicator"></span>
+        </a>
         <a class="navbar__tab" href="#/reports" data-route="/reports" title="Analysis &amp; Insights">
           ${icon('barChart2', 22)}
           <span class="navbar__tab-indicator"></span>

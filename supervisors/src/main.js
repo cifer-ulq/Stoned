@@ -24,6 +24,7 @@ import monitoringMapPage from './pages/monitoring-map.js';
 import analyticsPage from './pages/reports.js';
 import interestsPage from './pages/interests.js';
 import evaluationsPage from './pages/evaluations.js';
+import archivePage from './pages/archive.js';
 
 /* ─────────────────────────────────────────
    SMART PAGE VIEW & CACHING MANAGER
@@ -39,6 +40,7 @@ const routeEndpointMap = {
   '/map':         ['/supervisor/monitoring'],
   '/reports':     ['/supervisor/analytics'],
   '/evaluations': ['/supervisor/evaluations/trainees', '/supervisor/evaluations/templates'],
+  '/archive':     ['/supervisor/archive'],
 };
 
 function getEndpointsForRoute(routePath) {
@@ -323,6 +325,7 @@ async function initApp() {
   registerRoute('/reports', renderPage('/reports', analyticsPage));
   registerRoute('/interests', renderPage('/interests', interestsPage));
   registerRoute('/evaluations', renderPage('/evaluations', evaluationsPage));
+  registerRoute('/archive', renderPage('/archive', archivePage));
 
   // Boot router
   initRouter();

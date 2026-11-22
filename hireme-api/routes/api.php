@@ -249,6 +249,8 @@ Route::middleware('auth:sanctum')->prefix('supervisor')->group(function () {
     Route::post('request-endorsement/{id}',    [SupervisorController::class, 'requestEndorsement']);
     Route::post('final-accept/{id}',           [SupervisorController::class, 'finalAccept']);
     Route::get('trainees',                                [SupervisorController::class, 'trainees']);
+    Route::get('archive',                                 [SupervisorController::class, 'archive']);
+    Route::get('archive/{userId}',                        [SupervisorController::class, 'archiveDetails']);
     Route::post('trainees/{id}/approve',                  [SupervisorController::class, 'approveStudent']);
     Route::post('trainees/{id}/reject',                   [SupervisorController::class, 'rejectStudent']);
     Route::post('students/import',                        [SupervisorController::class, 'importStudents']);
