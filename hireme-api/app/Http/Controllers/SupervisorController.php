@@ -1145,17 +1145,36 @@ class SupervisorController extends Controller
             $rawSection = $gp?->section ?: ($sp?->section ?? null);
             $cleanSection = $rawSection ? trim(preg_replace('/^(?:Section|BSIT|BSCS|BSIS|BSCpE)\s*/i', '', $rawSection)) : '—';
 
-            // Tracer Employment Status
-            $employmentStatus = $gp?->employment_status ?: 'seeking';
+            // Tracer Employment Status & Current Job Role
+            $currentJob = $user->experiences?->where('is_current', true)->sortByDesc('updated_at')->first();
+            $currentJobTitle = $currentJob?->role ?: null;
+            $currentJobCompany = $currentJob?->company ?: null;
+            $isItRelated = $currentJob ? (bool) $currentJob->is_it_related : false;
+
+            $employmentStatus = $currentJob ? 'employed' : ($gp?->employment_status ?: 'seeking');
+
+            // Qualitative evaluation descriptor based on CHMSU 5-point scale
+            $ratingDescriptor = 'Not Graded';
+            if ($avgScore !== null) {
+                if ($avgScore >= 4.80) $ratingDescriptor = 'Outstanding';
+                elseif ($avgScore >= 4.50) $ratingDescriptor = 'Superior';
+                elseif ($avgScore >= 4.00) $ratingDescriptor = 'Very Satisfactory';
+                elseif ($avgScore >= 3.50) $ratingDescriptor = 'Satisfactory';
+                else $ratingDescriptor = 'Fair';
+            }
 
             // Requirements clearance status
             $req = $user->ojtRequirements->sortByDesc('updated_at')->first();
             $reqStatus = $req?->status ?? 'verified';
+            $reqItems = is_array($req?->items) ? $req->items : [];
+            $approvedItemsCount = count(array_filter($reqItems, fn($it) => ($it['status'] ?? '') === 'approved'));
+            $totalItemsCount = count($reqItems);
 
             return [
                 'id'                  => $user->id,
                 'name'                => $user->name,
                 'email'               => $user->email,
+                'phone'               => $sp?->phone ?: '—',
                 'avatar'              => $user->avatar ?? $user->avatar_url ?? null,
                 'student_id'          => $sp?->student_id ?: ($gp?->student_id ?: '—'),
                 'program'             => $sp?->program ?: ($gp?->course ?: 'Information Technology'),
@@ -1163,7 +1182,8 @@ class SupervisorController extends Controller
                 'section'             => $cleanSection,
                 'batch'               => $batch,
                 'company_name'        => $companyName,
-                'supervisor_name'     => $ojt?->supervisor_name ?: '—',
+                'supervisor_name'     => $ojt?->supervisor_name ?: ($latestEval?->evaluator_name ?: '—'),
+                'supervisor_position' => $latestEval?->evaluator_position ?: 'Authorized Company Mentor',
                 'company_location'    => $ojt?->location ?: '—',
                 'start_date'          => $ojt?->start_date ? Carbon::parse($ojt->start_date)->format('M d, Y') : '—',
                 'end_date'            => $ojt?->end_date ? Carbon::parse($ojt->end_date)->format('M d, Y') : ($gp?->approved_at ? Carbon::parse($gp->approved_at)->format('M d, Y') : '—'),
@@ -1171,10 +1191,18 @@ class SupervisorController extends Controller
                 'required_hours'      => $requiredHours,
                 'progress_pct'        => min(100, round(($completedHours / max(1, $requiredHours)) * 100)),
                 'evaluation_score'    => $avgScore,
+                'evaluation_descriptor'=> $ratingDescriptor,
                 'evaluations_count'   => $submittedEvals->count(),
                 'recommendation'      => $latestEval?->recommendation ?? null,
+                'general_feedback'    => $latestEval?->general_feedback ?? null,
                 'employment_status'   => $employmentStatus,
+                'current_job_title'   => $currentJobTitle,
+                'current_job_company' => $currentJobCompany,
+                'is_it_related'       => $isItRelated,
                 'requirements_status' => $reqStatus,
+                'approved_items_count'=> $approvedItemsCount,
+                'total_items_count'   => $totalItemsCount,
+                'drive_url'           => $sp?->requirements_drive_url ?: null,
                 'promoted_at'         => $gp?->approved_at ? Carbon::parse($gp->approved_at)->format('M d, Y') : ($user->updated_at ? Carbon::parse($user->updated_at)->format('M d, Y') : '—'),
             ];
         });
@@ -1222,6 +1250,7 @@ class SupervisorController extends Controller
             'ojtRecord',
             'studentEvaluations.company.companyProfile',
             'studentEvaluations.template',
+            'studentEvaluations.answers.question',
             'ojtRequirements',
             'experiences',
         ])->findOrFail($userId);
@@ -1242,31 +1271,70 @@ class SupervisorController extends Controller
         // Get time logs summary & recent logs
         $logs = TimeLog::where('user_id', $user->id)
             ->orderByDesc('log_date')
-            ->take(30)
+            ->take(50)
             ->get()
             ->map(fn($l) => [
                 'id'             => $l->id,
                 'date'           => $l->log_date ? Carbon::parse($l->log_date)->format('M d, Y') : '—',
                 'hours_rendered' => (float) $l->hours_rendered,
-                'time_in'        => $l->time_in,
-                'time_out'       => $l->time_out,
-                'description'    => $l->description ?? 'Regular OJT duties',
-                'status'         => $l->status,
+                'time_in'        => $l->time_in ? Carbon::parse($l->time_in)->format('h:i A') : '—',
+                'time_out'       => $l->time_out ? Carbon::parse($l->time_out)->format('h:i A') : '—',
+                'description'    => $l->description ?? 'Regular OJT duties & tasks',
+                'status'         => $l->status ?: 'approved',
             ]);
 
-        // Get evaluations details
-        $evaluations = $user->studentEvaluations->map(fn($ev) => [
-            'id'             => $ev->id,
-            'term'           => $ev->term,
-            'month_label'    => $ev->month_label,
-            'overall_score'  => (float) $ev->overall_score,
-            'evaluator_name' => $ev->evaluator_name ?: ($ev->company?->name ?? 'Host Supervisor'),
-            'company_name'   => $ev->company?->companyProfile?->company_name ?? ($user->ojtRecord?->company_name ?? 'Host Company'),
-            'submitted_at'   => $ev->submitted_at ? Carbon::parse($ev->submitted_at)->format('M d, Y') : '—',
-            'recommendation' => $ev->recommendation,
-            'status'         => $ev->status,
-            'ratings'        => $ev->ratings,
-        ]);
+        // Get evaluations details with rubric criteria breakdown
+        $evaluations = $user->studentEvaluations->where('status', 'submitted')->values()->map(function ($ev) {
+            $answers = $ev->answers->map(function ($ans) {
+                return [
+                    'id'            => $ans->id,
+                    'category'      => $ans->question?->category ?: 'Core Evaluation Competency',
+                    'question_text' => $ans->question?->question_text ?: 'Performance Criterion',
+                    'rating_value'  => $ans->rating_value !== null ? (float) $ans->rating_value : null,
+                    'text_value'    => $ans->text_value,
+                ];
+            });
+
+            return [
+                'id'                 => $ev->id,
+                'term'               => $ev->term,
+                'month_label'        => $ev->month_label ?: 'Official Performance Appraisal',
+                'overall_score'      => (float) $ev->overall_score,
+                'evaluator_name'     => $ev->evaluator_name ?: ($ev->company?->name ?? 'Host Supervisor'),
+                'evaluator_position' => $ev->evaluator_position ?: 'Authorized Company Mentor',
+                'company_name'       => $ev->company?->companyProfile?->company_name ?? ($user->ojtRecord?->company_name ?? 'Host Company'),
+                'submitted_at'       => $ev->submitted_at ? Carbon::parse($ev->submitted_at)->format('M d, Y') : '—',
+                'recommendation'     => $ev->recommendation ?: 'Successfully completed training competencies with commendable dedication.',
+                'general_feedback'   => $ev->general_feedback,
+                'status'             => $ev->status,
+                'answers'            => $answers,
+            ];
+        });
+
+        // Employment Tracer / Current Career Role
+        $currentJob = $user->experiences?->where('is_current', true)->sortByDesc('updated_at')->first();
+        $allExperiences = $user->experiences?->sortByDesc('period_start')->values()->map(fn($exp) => [
+            'role'          => $exp->role,
+            'company'       => $exp->company,
+            'type'          => $exp->type ?: 'Full-time',
+            'period'        => "{$exp->period_start} — " . ($exp->is_current ? 'Present' : ($exp->period_end ?: '—')),
+            'location'      => $exp->location ?: 'Philippines',
+            'description'   => $exp->description,
+            'is_it_related' => (bool) $exp->is_it_related,
+            'is_current'    => (bool) $exp->is_current,
+        ]) ?? [];
+
+        // Requirements packets
+        $requirements = $user->ojtRequirements->map(function ($r) {
+            return [
+                'id'                  => $r->id,
+                'title'               => $r->title ?: 'OJT Document Clearance Packet',
+                'status'              => $r->status,
+                'items'               => is_array($r->items) ? $r->items : [],
+                'supervisor_remarks'  => $r->supervisor_remarks,
+                'reviewed_at'         => $r->reviewed_at ? Carbon::parse($r->reviewed_at)->format('M d, Y') : '—',
+            ];
+        });
 
         return response()->json([
             'success' => true,
@@ -1274,28 +1342,39 @@ class SupervisorController extends Controller
                 'id'          => $user->id,
                 'name'        => $user->name,
                 'email'       => $user->email,
+                'phone'       => $sp?->phone ?: '—',
                 'avatar'      => $user->avatar ?? $user->avatar_url,
                 'student_id'  => $sp?->student_id ?: ($gp?->student_id ?: '—'),
                 'program'     => $studentProgram,
                 'campus'      => $studentCampus,
                 'section'     => $gp?->section ?: ($sp?->section ?: '—'),
                 'batch'       => $gp?->year_graduated ?: ($sp?->batch ?: '—'),
+                'drive_url'   => $sp?->requirements_drive_url ?: null,
                 'employment'  => [
-                    'status'  => $gp?->employment_status ?: 'seeking',
-                    'updated' => $gp?->updated_at ? Carbon::parse($gp->updated_at)->format('M d, Y') : '—',
+                    'status'        => $currentJob ? 'employed' : ($gp?->employment_status ?: 'seeking'),
+                    'job_title'     => $currentJob?->role ?: null,
+                    'company'       => $currentJob?->company ?: null,
+                    'is_it_related' => $currentJob ? (bool) $currentJob->is_it_related : false,
+                    'updated'       => $gp?->updated_at ? Carbon::parse($gp->updated_at)->format('M d, Y') : '—',
                 ],
+                'experiences' => $allExperiences,
                 'ojt'         => [
-                    'company'         => $user->ojtRecord?->company_name ?? 'Host Training Establishment',
-                    'supervisor'      => $user->ojtRecord?->supervisor_name ?? '—',
-                    'location'        => $user->ojtRecord?->location ?? '—',
-                    'start_date'      => $user->ojtRecord?->start_date ? Carbon::parse($user->ojtRecord->start_date)->format('M d, Y') : '—',
-                    'end_date'        => $user->ojtRecord?->end_date ? Carbon::parse($user->ojtRecord->end_date)->format('M d, Y') : '—',
-                    'completed_hours' => (float) ($user->ojtRecord?->completed_hours ?? 600),
-                    'required_hours'  => (int) ($user->ojtRecord?->required_hours ?? 600),
+                    'company'          => $user->ojtRecord?->company_name ?? 'Host Training Establishment',
+                    'supervisor'       => $user->ojtRecord?->supervisor_name ?? ($evaluations->first()['evaluator_name'] ?? '—'),
+                    'supervisor_email' => $user->ojtRecord?->supervisor_email ?? '—',
+                    'location'         => $user->ojtRecord?->location ?? '—',
+                    'start_date'       => $user->ojtRecord?->start_date ? Carbon::parse($user->ojtRecord->start_date)->format('M d, Y') : '—',
+                    'end_date'         => $user->ojtRecord?->end_date ? Carbon::parse($user->ojtRecord->end_date)->format('M d, Y') : '—',
+                    'completed_hours'  => (float) ($user->ojtRecord?->completed_hours ?? 600),
+                    'required_hours'   => (int) ($user->ojtRecord?->required_hours ?? 600),
+                    'shift'            => ($user->ojtRecord?->shift_start && $user->ojtRecord?->shift_end)
+                                            ? "{$user->ojtRecord->shift_start} — {$user->ojtRecord->shift_end}"
+                                            : '8:00 AM — 5:00 PM',
+                    'daily_hours'      => (int) ($user->ojtRecord?->daily_hours ?? 8),
                 ],
                 'logs'        => $logs,
                 'evaluations' => $evaluations,
-                'requirements'=> $user->ojtRequirements,
+                'requirements'=> $requirements,
             ]
         ]);
     }
