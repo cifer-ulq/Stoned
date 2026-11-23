@@ -1546,7 +1546,7 @@ class SupervisorController extends Controller
                     'rejectionReason'      => $log->rejection_reason,
                     'approvedAt'           => $log->approved_at?->format('M j, Y g:i A'),
                     'locationValidity'   => $log->distance_meters !== null
-                        ? ((float) $log->distance_meters <= 100 ? 'In Site' : 'Too Far')
+                        ? ((float) $log->distance_meters <= TimeLog::GEOFENCE_RADIUS_METERS ? 'In Site' : 'Too Far')
                         : ($log->location_validity === 'valid' ? 'In Site' : $log->location_validity),
                     'distanceMeters'     => $log->distance_meters,
                     'inLat'              => (function () use ($log) {
@@ -1674,13 +1674,13 @@ class SupervisorController extends Controller
             ->where(function ($q) {
                 $q->where('location_validity', 'In Site')
                   ->orWhere('location_validity', 'valid')
-                  ->orWhere(fn ($sq) => $sq->whereNotNull('distance_meters')->where('distance_meters', '<=', 100));
+                  ->orWhere(fn ($sq) => $sq->whereNotNull('distance_meters')->where('distance_meters', '<=', TimeLog::GEOFENCE_RADIUS_METERS));
             })->count();
         $tooFar   = TimeLog::whereIn('user_id', $studentIds)
             ->where(function ($q) {
                 $q->where('location_validity', 'Too Far')
                   ->orWhere('location_validity', 'not_valid')
-                  ->orWhere(fn ($sq) => $sq->whereNotNull('distance_meters')->where('distance_meters', '>', 100));
+                  ->orWhere(fn ($sq) => $sq->whereNotNull('distance_meters')->where('distance_meters', '>', TimeLog::GEOFENCE_RADIUS_METERS));
             })->count();
         $noGps    = TimeLog::whereIn('user_id', $studentIds)
             ->whereNull('location_validity')
@@ -1724,7 +1724,7 @@ class SupervisorController extends Controller
                 'distanceMeters' => $l->distance_meters !== null ? (int) $l->distance_meters : null,
                 'task'           => $l->task_description ?? $l->tasks_completed ?? 'Daily OJT duties',
                 'validity'       => $l->distance_meters !== null
-                    ? ((float) $l->distance_meters <= 100 ? 'In Site' : 'Too Far')
+                    ? ((float) $l->distance_meters <= TimeLog::GEOFENCE_RADIUS_METERS ? 'In Site' : 'Too Far')
                     : ($l->location_validity === 'valid' ? 'In Site' : ($l->location_validity ?? 'N/A')),
             ]);
 

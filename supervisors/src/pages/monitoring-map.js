@@ -895,13 +895,13 @@ function initLogMap(container, company) {
   markersLayer = L.layerGroup().addTo(mapInstance);
   logsLayer    = L.layerGroup().addTo(mapInstance);
 
-  // If host site coordinates exist, plot company marker and 100m geofence radius
+  // If host site coordinates exist, plot company marker and 50m geofence radius
   if (company?.lat && company?.lng) {
     const cLat = parseFloat(company.lat);
     const cLng = parseFloat(company.lng);
 
     L.circle([cLat, cLng], {
-      radius: 100,
+      radius: 50,
       color: THEME.emerald,
       fillColor: THEME.emerald,
       fillOpacity: 0.12,
@@ -911,7 +911,7 @@ function initLogMap(container, company) {
       <div class="mon-popup">
         <div class="mon-popup__badge" style="background:${THEME.emeraldBg};color:${THEME.emerald}">Verified Geofence</div>
         <div class="mon-popup__title">${escapeHtml(company.company || 'Host Training Site')}</div>
-        <div class="mon-popup__sub">100-meter valid check-in radius</div>
+        <div class="mon-popup__sub">50-meter valid check-in radius</div>
       </div>
     `);
 
@@ -952,7 +952,7 @@ function renderLogMarkers(company, student, logs) {
 
   logs.forEach((log, idx) => {
     const num     = idx + 1;
-    const isValid = log.distanceMeters != null ? Number(log.distanceMeters) <= 100 : (log.locationValidity !== 'Too Far' && log.locationValidity !== 'not_valid');
+    const isValid = log.distanceMeters != null ? Number(log.distanceMeters) <= 50 : (log.locationValidity !== 'Too Far' && log.locationValidity !== 'not_valid');
     const inLat   = log.inLat != null ? parseFloat(log.inLat) : null;
     const inLon   = log.inLon != null ? parseFloat(log.inLon) : null;
     const outLat  = log.outLat != null ? parseFloat(log.outLat) : null;
@@ -1148,7 +1148,7 @@ function renderLogsPanel(container, logs) {
     const isApp = (l.approvalStatus ?? 'approved') === 'approved';
     return a + (isApp ? (l.hoursCredited ?? l.hours ?? 0) : 0);
   }, 0).toFixed(1);
-  const invalidCount = logs.filter(l => (l.distanceMeters != null ? Number(l.distanceMeters) > 100 : (l.locationValidity === 'Too Far' || l.locationValidity === 'not_valid'))).length;
+  const invalidCount = logs.filter(l => (l.distanceMeters != null ? Number(l.distanceMeters) > 50 : (l.locationValidity === 'Too Far' || l.locationValidity === 'not_valid'))).length;
 
   if (headEl) {
     headEl.innerHTML = `
@@ -1182,7 +1182,7 @@ function renderLogsPanel(container, logs) {
         const isPending = (log.approvalStatus || '') === 'pending_company';
         const isRejected = (log.approvalStatus || '') === 'rejected';
         const isApprovedExemption = (log.approvalStatus || '') === 'approved' && isExemption;
-        const isInvalid = !isApprovedExemption && (log.distanceMeters != null ? Number(log.distanceMeters) > 100 : (log.locationValidity === 'Too Far' || log.locationValidity === 'not_valid'));
+        const isInvalid = !isApprovedExemption && (log.distanceMeters != null ? Number(log.distanceMeters) > 50 : (log.locationValidity === 'Too Far' || log.locationValidity === 'not_valid'));
 
         let statusPillHtml = '';
         if (log.status === 'absent') {

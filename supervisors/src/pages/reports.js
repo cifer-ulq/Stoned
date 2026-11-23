@@ -228,7 +228,7 @@ function exportAttendanceAuditCsv(data, supervisorName, supervisorDept) {
   lines.push(`# Faculty Supervisor: "${supervisorName.replace(/"/g, '""')}"`);
   lines.push(`# Department / College: "${supervisorDept.replace(/"/g, '""')}"`);
   lines.push(`# Export Date: ${dateStr}`);
-  lines.push('# Geofence Standard Radius: <= 100 Meters from registered worksite coordinates');
+  lines.push('# Geofence Standard Radius: <= 50 Meters from registered worksite coordinates');
   lines.push('#');
 
   const headers = [
@@ -287,7 +287,7 @@ function exportExecutiveSummaryCsv(data, supervisorName, supervisorDept) {
   lines.push(`Hours Completion,Average Hours Completed,${avgHrs},Prescribed target: 600 hours`);
   const avgPct = trainees.length ? Math.round(trainees.reduce((s, t) => s + (t.pct || 0), 0) / trainees.length) : 0;
   lines.push(`Hours Completion,Average Progress Percentage,${avgPct}%,Overall cohort pacing metric`);
-  lines.push(`Attendance Verification,On-Site Geofence Compliance,${inSitePct}%,Verified within 100m registered worksite`);
+  lines.push(`Attendance Verification,On-Site Geofence Compliance,${inSitePct}%,Verified within 50m registered worksite`);
   lines.push(`Attendance Verification,Out-of-Bounds Check-Ins,${locationStats.tooFar || 0},Exceeded distance threshold (flagged)`);
   lines.push(`Supervisory Oversight,Pending Endorsement Letters,${kpi.pendingLetters || 0},Awaiting coordinator sign-off`);
   lines.push(`Supervisory Oversight,Flagged Trainees,${kpi.flaggedCount || 0},Requires remedial interview or doc review`);
@@ -547,7 +547,7 @@ async function loadAnalytics(container, supervisorName, supervisorDept, todayFor
     {
       label: 'Geofence Verification Rate',
       val: `${inSitePct}% In-Site`,
-      sub: `${(locationStats.inSite || 0).toLocaleString()} verified check-ins within 100m`,
+      sub: `${(locationStats.inSite || 0).toLocaleString()} verified check-ins within 50m`,
       trend: locationStats.tooFar > 0 ? `${locationStats.tooFar} out-of-bounds flagged` : 'Zero location exceptions',
       icon: 'shieldCheck',
       color: '#059669',
@@ -613,7 +613,7 @@ async function loadAnalytics(container, supervisorName, supervisorDept, todayFor
           </div>
           <p class="an-briefing-item__text">
             Geofence integrity demonstrates a <strong>${inSitePct}% verification rate</strong> across registered partner company coordinates.
-            <strong>${locationStats.tooFar || 0} entries</strong> exceeded the 100-meter threshold and have been highlighted for faculty review.
+            <strong>${locationStats.tooFar || 0} entries</strong> exceeded the 50-meter threshold and have been highlighted for faculty review.
           </p>
         </div>
 
@@ -692,7 +692,7 @@ async function loadAnalytics(container, supervisorName, supervisorDept, todayFor
 
   const locCard = `
     <div class="an-card">
-      ${cardHead('shieldCheck', 'Worksite Geofence Verification', 'GPS radius verification against registered partner facility coordinates (100m threshold)')}
+      ${cardHead('shieldCheck', 'Worksite Geofence Verification', 'GPS radius verification against registered partner facility coordinates (50m threshold)')}
       <div class="an-loc-content">
         <div class="an-loc-donut-area">
           <div class="an-donut-container">
@@ -717,7 +717,7 @@ async function loadAnalytics(container, supervisorName, supervisorDept, todayFor
 
           <div class="an-loc-item">
             <div class="an-loc-item__header">
-              <span class="an-loc-item__title"><span class="an-status-dot" style="background:#E11D48"></span> Out of Bounds (&gt;100m from site)</span>
+              <span class="an-loc-item__title"><span class="an-status-dot" style="background:#E11D48"></span> Out of Bounds (&gt;50m from site)</span>
               <strong>${(locationStats.tooFar || 0).toLocaleString()} logs (${tooFarPct}%)</strong>
             </div>
             <div class="an-loc-progress">
@@ -935,7 +935,7 @@ async function loadAnalytics(container, supervisorName, supervisorDept, todayFor
                 const statusType = isInSite ? 'insite' : (isTooFar ? 'toofar' : 'nogps');
 
                 const pillHtml = isInSite
-                  ? `<span class="an-status-chip an-status-chip--good">${icon('checkCircle', 12)} In-Site (${l.distanceMeters != null ? `${l.distanceMeters}m` : '≤100m'})</span>`
+                  ? `<span class="an-status-chip an-status-chip--good">${icon('checkCircle', 12)} In-Site (${l.distanceMeters != null ? `${l.distanceMeters}m` : '≤50m'})</span>`
                   : (isTooFar
                     ? `<span class="an-status-chip an-status-chip--warn">${icon('alertTriangle', 12)} Out of Bounds (${l.distanceMeters}m)</span>`
                     : `<span class="an-status-chip an-status-chip--neutral">${icon('helpCircle', 12)} Unrecorded GPS</span>`);
@@ -1401,7 +1401,7 @@ function openTraineeModal(t, logs, container) {
                       <td><strong>${l.hours} hrs</strong></td>
                       <td>
                         <span class="an-status-chip ${l.validity === 'In Site' ? 'an-status-chip--good' : 'an-status-chip--warn'}">
-                          ${l.validity} (${l.distanceMeters != null ? `${l.distanceMeters}m` : '≤100m'})
+                          ${l.validity} (${l.distanceMeters != null ? `${l.distanceMeters}m` : '≤50m'})
                         </span>
                       </td>
                       <td><small>${escapeHtml(l.task || 'Daily tasks')}</small></td>

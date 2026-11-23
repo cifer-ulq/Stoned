@@ -342,7 +342,7 @@ function renderPrestartOJT(container, res) {
                 <span class="ojt-guide-num">2</span>
                 <div class="ojt-guide-text">
                   <strong>GPS-Verified Clock In</strong>
-                  <p>Upon arriving on-site, open this page and tap <strong>Log In</strong> to verify your attendance within 100 meters of the company premises.</p>
+                  <p>Upon arriving on-site, open this page and tap <strong>Log In</strong> to verify your attendance within 50 meters of the company premises.</p>
                 </div>
               </li>
               <li class="ojt-guide-item">
@@ -1971,7 +1971,7 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
           <div class="ojt-map-footer" style="padding:8px 14px;display:flex;align-items:center;gap:12px;border-top:1px solid var(--border-light);background:var(--bg-secondary);flex-shrink:0;flex-wrap:wrap;">
             <div class="ojt-map-legend" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
               <span style="display:flex;align-items:center;gap:5px;font-size:0.68rem;color:var(--text-secondary);"><span style="width:10px;height:10px;border-radius:50%;background:#ef4444;display:inline-block;flex-shrink:0;"></span>Company</span>
-              <span style="display:flex;align-items:center;gap:5px;font-size:0.68rem;color:var(--text-secondary);"><span style="width:10px;height:10px;border-radius:50%;border:1.5px dashed #005930;background:rgba(34,197,94,0.2);display:inline-block;flex-shrink:0;"></span>100m Geofence</span>
+              <span style="display:flex;align-items:center;gap:5px;font-size:0.68rem;color:var(--text-secondary);"><span style="width:10px;height:10px;border-radius:50%;border:1.5px dashed #005930;background:rgba(34,197,94,0.2);display:inline-block;flex-shrink:0;"></span>${ojt.geofenceRadius || 50}m Geofence</span>
             </div>
             <div class="ojt-map-filters" style="display:flex;align-items:center;gap:4px;margin-left:auto;flex-wrap:wrap;">
               <button id="map-filter-all" class="btn btn--outline btn--sm active" style="height:22px;padding:0 8px;font-size:0.65rem;border-radius:99px;font-weight:600;background:rgba(0,89,48,0.1);color:#005930;border-color:#005930;">All Pins</button>
@@ -2080,12 +2080,12 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
                 </button>
                 ${logs.filter(l => {
                   const st = (l.status || '').toLowerCase();
-                  return st !== 'absent' && (Boolean(l.hasGeofenceExemption) || l.locationValidity === 'Too Far' || (l.distanceMeters != null && l.distanceMeters > 100));
+                  return st !== 'absent' && (Boolean(l.hasGeofenceExemption) || l.locationValidity === 'Too Far' || (l.distanceMeters != null && l.distanceMeters > (ojt.geofenceRadius || 50)));
                 }).length > 0 ? `
                   <button type="button" class="ojt-dtr-filter-btn" data-filter="offsite">
                     Off-Site / Too Far <span class="ojt-dtr-filter-count">${logs.filter(l => {
                       const st = (l.status || '').toLowerCase();
-                      return st !== 'absent' && (Boolean(l.hasGeofenceExemption) || l.locationValidity === 'Too Far' || (l.distanceMeters != null && l.distanceMeters > 100));
+                      return st !== 'absent' && (Boolean(l.hasGeofenceExemption) || l.locationValidity === 'Too Far' || (l.distanceMeters != null && l.distanceMeters > (ojt.geofenceRadius || 50)));
                     }).length}</span>
                   </button>
                 ` : ''}
@@ -2387,7 +2387,7 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
       const lv = log.locationValidity;
       const isAbsent = st === 'absent';
       const isPending = (log.approvalStatus || '') === 'pending_company';
-      const isOffsite = Boolean(log.hasGeofenceExemption) || lv === 'Too Far' || (log.distanceMeters != null && log.distanceMeters > 100);
+      const isOffsite = Boolean(log.hasGeofenceExemption) || lv === 'Too Far' || (log.distanceMeters != null && log.distanceMeters > (ojt?.geofenceRadius || 50));
       const isValid = (st === 'valid' || lv === 'In Site') && !isAbsent;
 
       if (activeFilter === 'valid' && !isValid) return false;
@@ -2723,8 +2723,8 @@ function renderTrackerLogRow(log) {
     let isTooFar = false;
 
     if (dist !== null) {
-      isInSite = dist <= 100;
-      isTooFar = dist > 100;
+      isInSite = dist <= (ojt?.geofenceRadius || 50);
+      isTooFar = dist > (ojt?.geofenceRadius || 50);
     } else if (log.locationValidity === 'In Site' || log.locationValidity === 'valid' || log.status === 'valid') {
       isInSite = true;
     } else if (log.locationValidity === 'Too Far' || log.status === 'not_valid') {
@@ -2926,13 +2926,13 @@ function initLeafletMap(container, ojt, logs = []) {
       logMarkersMap[log.id] = { inMarker, outMarker, inLat, inLon, outLat, outLon };
     });
 
-    // ── Red Pin + 100m Geofence Circle: Company Location ────────────────────
+    // ── Red Pin + 50m Geofence Circle: Company Location ─────────────────────
     function placeCompanyPin(compLat, compLon) {
       allPoints.push([compLat, compLon]);
 
-      // Circular Geofence Boundary (100-meter radius)
+      // Circular Geofence Boundary (50-meter radius)
       L.circle([compLat, compLon], {
-        radius: ojt.geofenceRadius || 100,
+        radius: ojt.geofenceRadius || 50,
         color: '#005930',
         fillColor: '#22c55e',
         fillOpacity: 0.12,
@@ -2940,7 +2940,7 @@ function initLeafletMap(container, ojt, logs = []) {
         dashArray: '6 6',
       }).addTo(map).bindPopup(`
         <div style="font-size:0.8rem;min-width:150px;">
-          <strong style="color:#005930;">${ojt.geofenceRadius || 100}m Geofence Perimeter</strong><br>
+          <strong style="color:#005930;">${ojt.geofenceRadius || 50}m Geofence Perimeter</strong><br>
           <span style="color:#555;font-size:0.75rem;">Verified host site check-in boundary</span>
         </div>
       `);
@@ -3241,7 +3241,7 @@ function showOutsideGeofenceModal(errOrDistance) {
   const dist = isObj && errOrDistance.distance_meters != null
     ? `${errOrDistance.distance_meters} m`
     : (typeof errOrDistance === 'number' ? `${errOrDistance} m` : 'Too far');
-  const allowed = (isObj && errOrDistance.allowed_radius_meters != null) ? `${errOrDistance.allowed_radius_meters} m` : '100 m';
+  const allowed = (isObj && errOrDistance.allowed_radius_meters != null) ? `${errOrDistance.allowed_radius_meters} m` : '50 m';
   const comp = (isObj && (errOrDistance.company_name || errOrDistance.company)) || 'Host Training Site';
   const loc = (isObj && errOrDistance.location) || '';
 
@@ -3750,7 +3750,7 @@ function showLogInModal(sessionLabelOrSuccess, ojtContextOrSuccess, onSuccessMay
             <span>Geofence &amp; Escrow Governance</span>
           </div>
           <p class="ojt-protocol-body">
-            Attendance within the 100m site perimeter is auto-verified. Out-of-range entries require photo proof and are held in escrow for host company approval.
+            Attendance within the 50m site perimeter is auto-verified. Out-of-range entries require photo proof and are held in escrow for host company approval.
           </p>
         </div>
       </div>
@@ -3808,7 +3808,7 @@ function showLogInModal(sessionLabelOrSuccess, ojtContextOrSuccess, onSuccessMay
       if (result && result.lat != null && result.lon != null) {
         const compLat = ojtContext?.companyLat != null ? Number(ojtContext.companyLat) : null;
         const compLon = ojtContext?.companyLon != null ? Number(ojtContext.companyLon) : null;
-        const maxRadius = ojtContext?.geofenceRadius || 100;
+        const maxRadius = ojtContext?.geofenceRadius || 50;
         const compName = ojtContext?.company || 'Host Training Site';
 
         if (compLat != null && compLon != null) {
@@ -3897,7 +3897,7 @@ function showLogInModal(sessionLabelOrSuccess, ojtContextOrSuccess, onSuccessMay
       showToast('GPS location is required to log attendance.', 'error');
       return;
     }
-    const maxRadius = ojtContext?.geofenceRadius || 100;
+    const maxRadius = ojtContext?.geofenceRadius || 50;
     if (computedDistance != null && computedDistance > maxRadius && !evidenceData) {
       showToast('Please take a live photo and provide an assignment reason.', 'warning');
       return;
@@ -4043,7 +4043,7 @@ function showLogOutModal(todayLog, sessionLabelOrOjt, ojtContextOrSuccess, onSuc
             <span>Geofence &amp; Escrow Governance</span>
           </div>
           <p class="ojt-protocol-body">
-            Attendance within the 100m site perimeter is auto-verified. Out-of-range entries require photo proof and are held in escrow for host company approval.
+            Attendance within the 50m site perimeter is auto-verified. Out-of-range entries require photo proof and are held in escrow for host company approval.
           </p>
         </div>
       </div>
@@ -4145,7 +4145,7 @@ function showLogOutModal(todayLog, sessionLabelOrOjt, ojtContextOrSuccess, onSuc
       if (result && result.lat != null && result.lon != null) {
         const compLat = ojtContext?.companyLat != null ? Number(ojtContext.companyLat) : null;
         const compLon = ojtContext?.companyLon != null ? Number(ojtContext.companyLon) : null;
-        const maxRadius = ojtContext?.geofenceRadius || 100;
+        const maxRadius = ojtContext?.geofenceRadius || 50;
         const compName = ojtContext?.company || 'Host Training Site';
 
         if (compLat != null && compLon != null) {
@@ -4237,7 +4237,7 @@ function showLogOutModal(todayLog, sessionLabelOrOjt, ojtContextOrSuccess, onSuc
       showToast('GPS location is required to log attendance.', 'error');
       return;
     }
-    const maxRadius = ojtContext?.geofenceRadius || 100;
+    const maxRadius = ojtContext?.geofenceRadius || 50;
     if (computedDistance != null && computedDistance > maxRadius && !evidenceData) {
       showToast('Please take a live photo and provide an assignment reason.', 'warning');
       return;

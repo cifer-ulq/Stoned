@@ -26,9 +26,9 @@ use Illuminate\Support\Facades\Http;
 class StudentController extends Controller
 {
     /**
-     * Strict geofence perimeter radius in meters for OJT time-in and time-out validation.
+     * Strict geofence perimeter radius in meters for OJT time-in and time-out validation (Option B: 50m).
      */
-    public const GEOFENCE_RADIUS_METERS = 100;
+    public const GEOFENCE_RADIUS_METERS = TimeLog::GEOFENCE_RADIUS_METERS;
 
     /**
      * GET /api/student/dashboard
@@ -1218,7 +1218,7 @@ class StudentController extends Controller
             ->get()
             ->map(function ($log) {
                 // Compute location-based validity to display in the student UI.
-                // Rule: ≤ 100 m from company = 'valid', > 100 m = 'not_valid', no GPS = 'no_gps'.
+                // Rule: ≤ 50 m from company = 'valid', > 50 m = 'not_valid', no GPS = 'no_gps'.
                 // This replaces the raw DB status ('pending/approved/rejected') which is
                 // an admin-workflow field and meaningless to the student.
                 $inLat = $log->time_in_lat ?? $log->latitude;
@@ -1226,7 +1226,7 @@ class StudentController extends Controller
                 if ($inLat === null || $inLon === null) {
                     $locationStatus = 'no_gps';
                 } elseif ($log->distance_meters !== null) {
-                    $locationStatus = ((float) $log->distance_meters <= 100) ? 'valid' : 'not_valid';
+                    $locationStatus = ((float) $log->distance_meters <= self::GEOFENCE_RADIUS_METERS) ? 'valid' : 'not_valid';
                 } elseif ($log->location_validity === 'In Site' || $log->location_validity === 'valid') {
                     $locationStatus = 'valid';
                 } elseif ($log->location_validity === 'Too Far' || $log->location_validity === 'not_valid') {
@@ -1238,7 +1238,7 @@ class StudentController extends Controller
 
                 $normalizedValidity = null;
                 if ($log->distance_meters !== null) {
-                    $normalizedValidity = ((float) $log->distance_meters <= 100) ? 'In Site' : 'Too Far';
+                    $normalizedValidity = ((float) $log->distance_meters <= self::GEOFENCE_RADIUS_METERS) ? 'In Site' : 'Too Far';
                 } elseif ($log->location_validity === 'valid' || $log->location_validity === 'In Site') {
                     $normalizedValidity = 'In Site';
                 } elseif ($log->location_validity === 'not_valid' || $log->location_validity === 'Too Far') {
@@ -1839,7 +1839,7 @@ class StudentController extends Controller
             }
         }
 
-        // 3. Location validity & geofence distance enforcement (<= 100m)
+        // 3. Location validity & geofence distance enforcement (<= 50m)
         $locationValidity = null;
         $distanceMeters   = null;
         $lat = $request->latitude  !== null ? (float) $request->latitude  : null;
@@ -1860,7 +1860,7 @@ class StudentController extends Controller
                 ));
                 $locationValidity = $distanceMeters <= self::GEOFENCE_RADIUS_METERS ? 'In Site' : 'Too Far';
 
-                // Geofence check: if trainee is outside 100m radius, require photo & explanation
+                // Geofence check: if trainee is outside 50m radius, require photo & explanation
                 if ($distanceMeters > self::GEOFENCE_RADIUS_METERS) {
                     $compName = $posting->company_name ?: 'Host Company';
                     $reason   = trim((string) $request->input('out_of_range_reason', ''));
@@ -2716,7 +2716,7 @@ class StudentController extends Controller
                     return response()->json([
                         'success'               => false,
                         'error_code'            => 'OUTSIDE_GEOFENCE',
-                        'message'               => "You cannot log attendance because you are outside the OJT site radius. You are currently {$distanceMeters}m away from {$compName} (maximum allowed radius: 100m).",
+                        'message'               => "You cannot log attendance because you are outside the OJT site radius. You are currently {$distanceMeters}m away from {$compName} (maximum allowed radius: " . self::GEOFENCE_RADIUS_METERS . "m).",
                         'distance_meters'       => $distanceMeters,
                         'allowed_radius_meters' => self::GEOFENCE_RADIUS_METERS,
                         'company_name'          => $compName,

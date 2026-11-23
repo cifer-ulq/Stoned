@@ -2931,7 +2931,7 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
         </span>`;
     } else if (val === 'In Site') {
       badgeHtml = `
-        <span class="co-dtr-loc-pill co-dtr-loc-pill--in-site" title="Validated within host company geofence (100m perimeter)">
+        <span class="co-dtr-loc-pill co-dtr-loc-pill--in-site" title="Validated within host company geofence (50m perimeter)">
           ${icon('check', 11)} In Site${dist ? ` (${dist})` : ''}
         </span>`;
     } else if (val === 'Too Far') {
@@ -4126,7 +4126,7 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
           <!-- Card 3: Location Compliance -->
           <div class="co-dtr-kpi-card">
             <div class="co-dtr-kpi-card__header">
-              <span class="co-dtr-kpi-card__label">Location Compliance (100m)</span>
+              <span class="co-dtr-kpi-card__label">Location Compliance (50m)</span>
               <span style="color:#64748B;">${icon('mapPin', 13)}</span>
             </div>
             <div class="co-dtr-kpi-pill-group">

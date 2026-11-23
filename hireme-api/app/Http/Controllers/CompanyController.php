@@ -1610,7 +1610,7 @@ class CompanyController extends Controller
         $hrs  = (float) ($log->hours_rendered ?? 0);
 
         $locValidity = $log->distance_meters !== null
-            ? ((float) $log->distance_meters <= 100 ? 'In Site' : 'Too Far')
+            ? ((float) $log->distance_meters <= TimeLog::GEOFENCE_RADIUS_METERS ? 'In Site' : 'Too Far')
             : ($log->location_validity === 'valid' ? 'In Site' : $log->location_validity);
 
         if ($log->status === 'absent') {
@@ -1702,7 +1702,7 @@ class CompanyController extends Controller
 
         $logs = $rawLogs->map(function ($log) use ($siteLocation) {
             $locValidity = $log->distance_meters !== null
-                ? ((float) $log->distance_meters <= 100 ? 'In Site' : 'Too Far')
+                ? ((float) $log->distance_meters <= TimeLog::GEOFENCE_RADIUS_METERS ? 'In Site' : 'Too Far')
                 : ($log->location_validity === 'valid' ? 'In Site' : ($log->location_validity ?: 'No GPS'));
 
             $inLat  = $log->time_in_lat ?? $log->morning_in_lat ?? $log->afternoon_in_lat ?? $log->latitude;

@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -12,9 +11,12 @@ class DatabaseSeeder extends Seeder
 
     /**
      * Seed the application's database.
+     * Ensures only the administrator account is provisioned.
      */
     public function run(): void
     {
-        // No automatic seeders - prevents injecting test data into the database
+        $this->call([
+            AdminSeeder::class,
+        ]);
     }
 }

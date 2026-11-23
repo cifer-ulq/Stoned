@@ -50,7 +50,7 @@ By creating an account, accessing, or using this platform as a Student, Alumni/J
       {
         num: '4',
         heading: 'GPS Geofencing & Mandatory Attendance Rules',
-        content: `• Geofenced Time-In and Time-Out: To ensure absolute attendance integrity and satisfy CHED audit standards, CHMSU HireMe enforces strict GPS geofencing. Students may only record Time-In and Time-Out when their device's physical coordinates fall within the officially registered 100-meter radius of the Host Training Establishment's training site.
+        content: `• Geofenced Time-In and Time-Out: To ensure absolute attendance integrity and satisfy CHED audit standards, CHMSU HireMe enforces strict GPS geofencing. Students may only record Time-In and Time-Out when their device's physical coordinates fall within the officially registered 50-meter radius of the Host Training Establishment's training site.
 • Prohibition of GPS Manipulation: Any attempt to spoof, fake, bypass, or manipulate geographic coordinates using third-party mock location apps, VPNs, emulator software, or proxy log-ins constitutes severe academic dishonesty.
 • Disciplinary Sanctions: Fraudulent attendance entries will result in immediate invalidation of logged hours, reporting to the College Dean and Student Disciplinary Board, and potential failure of the OJT course.`
       },
@@ -98,7 +98,7 @@ This Privacy Policy explains what personal data CHMSU HireMe collects, how it is
         num: '3',
         heading: 'Geolocation & GPS Data Processing for OJT Attendance',
         content: `• Explicit GPS Collection: During the exact moments when a student activates the "Time-In" or "Time-Out" action within the OJT Tracker, the platform captures the device's instantaneous geographic coordinates (latitude, longitude, and accuracy radius).
-• Specific Purpose: This location data is processed exclusively to compute mathematical distance relative to the Host Training Establishment's registered coordinates and verify that the student is physically within the authorized 100-meter training perimeter.
+• Specific Purpose: This location data is processed exclusively to compute mathematical distance relative to the Host Training Establishment's registered coordinates and verify that the student is physically within the authorized 50-meter training perimeter.
 • No Continuous Surveillance: CHMSU HireMe does NOT track, harvest, or record continuous location or background movement once the attendance transaction is submitted. Your location is never sold, broadcast publicly, or processed for commercial analytics.`
       },
       {
@@ -648,7 +648,7 @@ export function openTermsModal({
       <div class="chmsu-legal-banner">
         <span class="chmsu-legal-banner__icon" style="display:inline-flex;align-items:center;">${legalIcons.mapPin}</span>
         <div>
-          <strong>Mandatory OJT GPS Verification & Privacy Notice:</strong> In compliance with the Philippine Data Privacy Act of 2012 (R.A. 10173) and CHED SIPP standards, CHMSU HireMe captures instantaneous GPS coordinates exclusively during Time-In and Time-Out to verify physical presence within the 100-meter Host Training Establishment radius. Continuous tracking is strictly disabled.
+          <strong>Mandatory OJT GPS Verification & Privacy Notice:</strong> In compliance with the Philippine Data Privacy Act of 2012 (R.A. 10173) and CHED SIPP standards, CHMSU HireMe captures instantaneous GPS coordinates exclusively during Time-In and Time-Out to verify physical presence within the 50-meter Host Training Establishment radius. Continuous tracking is strictly disabled.
         </div>
       </div>
 

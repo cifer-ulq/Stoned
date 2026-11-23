@@ -9,6 +9,11 @@ class TimeLog extends Model
 {
     use HasFactory;
 
+    /**
+     * Strict geofence perimeter radius in meters for OJT time-in and time-out validation (Option B: 50m).
+     */
+    public const GEOFENCE_RADIUS_METERS = 50;
+
     protected $fillable = [
         'user_id', 'ojt_record_id', 'log_date', 'time_in', 'time_out',
         'morning_in', 'morning_out', 'afternoon_in', 'afternoon_out',
@@ -61,9 +66,9 @@ class TimeLog extends Model
                 $log->longitude = $log->time_in_lon;
             }
 
-            // Standardize location_validity: <= 100m is 'In Site', > 100m is 'Too Far'
+            // Standardize location_validity: <= 50m is 'In Site', > 50m is 'Too Far'
             if ($log->distance_meters !== null) {
-                $log->location_validity = ((float) $log->distance_meters <= 100) ? 'In Site' : 'Too Far';
+                $log->location_validity = ((float) $log->distance_meters <= self::GEOFENCE_RADIUS_METERS) ? 'In Site' : 'Too Far';
             } elseif ($log->location_validity === 'valid') {
                 $log->location_validity = 'In Site';
             } elseif ($log->location_validity === 'not_valid') {

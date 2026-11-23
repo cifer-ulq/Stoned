@@ -3401,7 +3401,7 @@ class AdminController extends Controller
     /**
      * POST /api/admin/seed-bsit4b-attendance
      * Seed validated historical attendance logs (5 x 600h = 100%, 5 x 300h = 50%)
-     * with randomized in-site 100m geofence scatter for the 10 active BSIT 4-B students.
+     * with randomized in-site 50m geofence scatter for the 10 active BSIT 4-B students.
      */
     public function seedBsit4bAttendance(Request $request)
     {
