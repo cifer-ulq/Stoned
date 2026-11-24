@@ -263,8 +263,8 @@ export function openSetOjtScheduleModal({
                 <input
                   type="number"
                   id="sosi-max-ot"
-                  min="0.5"
-                  max="6"
+                  min="2.0"
+                  max="4.0"
                   step="0.5"
                   value="${existingData?.max_overtime_hours || '2.0'}"
                   style="width:64px;height:30px;padding:0 6px;text-align:center;border:1px solid var(--border-default);border-radius:6px;font-size:0.82rem;background:var(--bg-elevated);color:var(--text-primary);"
@@ -273,7 +273,7 @@ export function openSetOjtScheduleModal({
               </div>
             </div>
             <p style="font-size:0.7rem;color:var(--text-tertiary);margin:6px 0 0;">
-              Overtime hours will require supervisor verification and task endorsement.
+              Daily overtime cap must be between 2.0 and 4.0 hours. Overtime hours will require supervisor verification and task justification.
             </p>
           </div>
         </div>
@@ -609,6 +609,10 @@ export function openSetOjtScheduleModal({
     }
     if (!instructions || instructions.length < 10) {
       showErr('Please enter reporting instructions for the student (at least 10 characters).');
+      return;
+    }
+    if (allowOt && (maxOt < 2.0 || maxOt > 4.0)) {
+      showErr('Daily overtime cap must be between 2.0 and 4.0 hours per day.');
       return;
     }
 

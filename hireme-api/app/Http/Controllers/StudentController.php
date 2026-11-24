@@ -1161,6 +1161,8 @@ class StudentController extends Controller
         $lunchStart   = $interest->lunch_start ?? $ojtRecord?->lunch_start ?? '12:00';
         $lunchEnd     = $interest->lunch_end ?? $ojtRecord?->lunch_end ?? '13:00';
         $hasLunch     = (bool) ($interest->has_lunch_break ?? $ojtRecord?->has_lunch_break ?? true);
+        $allowOt      = (bool) ($interest->allow_overtime ?? $ojtRecord?->allow_overtime ?? false);
+        $maxOtHours   = min(4.0, max(2.0, (float) ($interest->max_overtime_hours ?? $ojtRecord?->max_overtime_hours ?? 2.0)));
 
         $todayStr          = \Carbon\Carbon::today()->toDateString();
         $nowTime           = \Carbon\Carbon::now()->format('H:i');
@@ -1169,7 +1171,14 @@ class StudentController extends Controller
         $lunchStartHM      = \Carbon\Carbon::parse($lunchStart)->format('H:i');
         $lunchEndHM        = \Carbon\Carbon::parse($lunchEnd)->format('H:i');
         $earlyGateHM       = \Carbon\Carbon::parse($shiftStart)->subHour()->format('H:i');
-        $afternoonCutoffHM = \Carbon\Carbon::parse($shiftEnd)->addMinutes(30)->format('H:i');
+
+        // Dynamic Cutoff: If overtime allowed, extend cutoff to shiftEnd + maxOtHours + 30 mins (capped to 22:00 night curfew)
+        $extraOtMins       = $allowOt ? min((int)($maxOtHours * 60) + 30, 300) : 30;
+        $calculatedCutoff  = \Carbon\Carbon::parse($shiftEnd)->addMinutes($extraOtMins);
+        if ($calculatedCutoff->format('H:i') > '22:00') {
+            $calculatedCutoff = \Carbon\Carbon::parse('22:00');
+        }
+        $afternoonCutoffHM = $calculatedCutoff->format('H:i');
 
         // 1. Auto-close any unfinalized logs from previous days
         $pastUnclosed = TimeLog::where('user_id', $user->id)
@@ -1259,6 +1268,13 @@ class StudentController extends Controller
                     'afternoonOut'        => $log->afternoon_out ? \Carbon\Carbon::parse($log->afternoon_out)->format('g:i A') : null,
                     'morningHours'        => (float) ($log->morning_hours ?? 0),
                     'afternoonHours'      => (float) ($log->afternoon_hours ?? 0),
+                    'regularHours'        => (float) ($log->regular_hours ?? 0),
+                    'overtimeHours'       => (float) ($log->overtime_hours ?? 0),
+                    'overtimeStatus'      => $log->overtime_status ?? 'none',
+                    'overtimeReason'      => $log->overtime_reason,
+                    'isTimeoutIneligible' => (bool) ($log->is_timeout_ineligible ?? false),
+                    'timeoutIneligibleReason' => $log->timeout_ineligible_reason,
+                    'ineligibleHoursEscrow'   => (float) ($log->ineligible_hours_escrow ?? 0),
                     'autoMorningTimeout'  => (bool) ($log->auto_morning_timeout ?? false),
                     'autoAfternoonTimeout' => (bool) ($log->auto_afternoon_timeout ?? false),
                     'hours'               => (float) $log->hours_rendered,
@@ -1571,17 +1587,18 @@ class StudentController extends Controller
             }
 
             $log->update([
-                'morning_out'          => $lunchStart,
-                'morning_hours'        => $mHours,
-                'auto_morning_timeout' => true,
-                'hours_rendered'       => (float) $mHours + (float) ($log->afternoon_hours ?? 0),
-                'time_out'             => $lunchStart,
+                'morning_out'               => $lunchStart,
+                'morning_hours'             => $mHours,
+                'regular_hours'             => (float) ($log->regular_hours ?? 0) + $mHours,
+                'auto_morning_timeout'      => true,
+                'is_timeout_ineligible'     => true,
+                'timeout_ineligible_reason' => 'Unlogged Exit: Student forgot to clock out at lunch break.',
+                'ineligible_hours_escrow'   => (float) ($log->ineligible_hours_escrow ?? 0) + $mHours,
+                'hours_rendered'            => (float) $mHours + (float) ($log->afternoon_hours ?? 0),
+                'hours_credited'            => 0.00,
+                'approval_status'           => 'pending_company',
+                'time_out'                  => $lunchStart,
             ]);
-
-            if ($ojtRecord && $mHours > 0 && ($log->approval_status ?? 'approved') === 'approved') {
-                $ojtRecord->increment('completed_hours', $mHours);
-                $log->increment('hours_credited', $mHours);
-            }
         }
     }
 
@@ -1601,21 +1618,24 @@ class StudentController extends Controller
             }
 
             $totalDayHours = (float) ($log->morning_hours ?? 0) + $pmHours;
+            $cleanMorningCredited = ($log->morning_out && !$log->auto_morning_timeout && (float) ($log->morning_hours ?? 0) > 0)
+                ? (float) $log->morning_hours
+                : 0.00;
 
             $log->update([
-                'afternoon_out'          => $shiftEnd,
-                'afternoon_hours'        => $pmHours,
-                'auto_afternoon_timeout' => true,
-                'afternoon_validity'     => 'No Exit GPS (Auto)',
-                'hours_rendered'         => $totalDayHours,
-                'time_out'               => $shiftEnd,
+                'afternoon_out'             => $shiftEnd,
+                'afternoon_hours'           => $pmHours,
+                'regular_hours'             => $totalDayHours,
+                'auto_afternoon_timeout'    => true,
+                'afternoon_validity'        => 'No Exit GPS (Auto)',
+                'is_timeout_ineligible'     => true,
+                'timeout_ineligible_reason' => 'Unlogged Exit: Student forgot to clock out at shift end.',
+                'ineligible_hours_escrow'   => (float) ($log->ineligible_hours_escrow ?? 0) + $pmHours,
+                'hours_rendered'            => $totalDayHours,
+                'hours_credited'            => $cleanMorningCredited,
+                'approval_status'           => 'pending_company',
+                'time_out'                  => $shiftEnd,
             ]);
-
-            $record = $ojtRecord ?? $log->ojtRecord;
-            if ($record && $pmHours > 0 && ($log->approval_status ?? 'approved') === 'approved') {
-                $record->increment('completed_hours', $pmHours);
-                $log->update(['hours_credited' => $totalDayHours]);
-            }
         }
         // Case 2: Half-day schedule without lunch break (time_in active, no time_out)
         elseif (!$log->time_out && $log->time_in && !$log->morning_out && !$log->afternoon_in) {
@@ -1624,18 +1644,18 @@ class StudentController extends Controller
             $hours = $pEnd->gt($tIn) ? round($tIn->diffInMinutes($pEnd) / 60, 2) : 0;
 
             $log->update([
-                'time_out'               => $shiftEnd,
-                'morning_out'            => $shiftEnd,
-                'morning_hours'          => $hours,
-                'hours_rendered'         => $hours,
-                'auto_afternoon_timeout' => true,
+                'time_out'                  => $shiftEnd,
+                'morning_out'               => $shiftEnd,
+                'morning_hours'             => $hours,
+                'regular_hours'             => $hours,
+                'hours_rendered'            => $hours,
+                'hours_credited'            => 0.00,
+                'auto_afternoon_timeout'    => true,
+                'is_timeout_ineligible'     => true,
+                'timeout_ineligible_reason' => 'Unlogged Exit: Student forgot to clock out at shift end.',
+                'ineligible_hours_escrow'   => $hours,
+                'approval_status'           => 'pending_company',
             ]);
-
-            $record = $ojtRecord ?? $log->ojtRecord;
-            if ($record && $hours > 0 && ($log->approval_status ?? 'approved') === 'approved') {
-                $record->increment('completed_hours', $hours);
-                $log->update(['hours_credited' => $hours]);
-            }
         }
     }
 
@@ -1746,6 +1766,7 @@ class StudentController extends Controller
             'longitude'           => 'required|numeric|between:-180,180',
             'session'             => 'nullable|in:morning,afternoon,auto',
             'out_of_range_reason' => 'nullable|string|max:1000',
+            'overtime_reason'     => 'nullable|string|max:1000',
             'proof_image'         => 'nullable',
         ], [
             'latitude.required'  => 'GPS location is required to log attendance. Please enable location access on your device.',
@@ -1819,6 +1840,8 @@ class StudentController extends Controller
         $lunchStart = $ojtRecord?->lunch_start ?? $interest?->lunch_start ?? '12:00';
         $lunchEnd   = $ojtRecord?->lunch_end   ?? $interest?->lunch_end   ?? '13:00';
         $hasLunch   = (bool) ($ojtRecord?->has_lunch_break ?? $interest?->has_lunch_break ?? true);
+        $allowOt    = (bool) ($ojtRecord?->allow_overtime ?? $interest?->allow_overtime ?? false);
+        $maxOtHours = min(4.0, max(2.0, (float) ($ojtRecord?->max_overtime_hours ?? $interest?->max_overtime_hours ?? 2.0)));
 
         // Sweep any past unclosed logs for this student
         $pastUnclosed = TimeLog::where('user_id', $user->id)
@@ -2207,6 +2230,13 @@ class StudentController extends Controller
                 'afternoonOut'         => $log->afternoon_out ? \Carbon\Carbon::parse($log->afternoon_out)->format('g:i A') : null,
                 'morningHours'         => (float) ($log->morning_hours ?? 0),
                 'afternoonHours'       => (float) ($log->afternoon_hours ?? 0),
+                'regularHours'         => (float) ($log->regular_hours ?? 0),
+                'overtimeHours'        => (float) ($log->overtime_hours ?? 0),
+                'overtimeStatus'       => $log->overtime_status ?? 'none',
+                'overtimeReason'       => $log->overtime_reason,
+                'isTimeoutIneligible'  => (bool) ($log->is_timeout_ineligible ?? false),
+                'timeoutIneligibleReason' => $log->timeout_ineligible_reason,
+                'ineligibleHoursEscrow'   => (float) ($log->ineligible_hours_escrow ?? 0),
                 'autoMorningTimeout'   => (bool) $log->auto_morning_timeout,
                 'autoAfternoonTimeout' => (bool) $log->auto_afternoon_timeout,
                 'hours'                => (float) $log->hours_rendered,
@@ -2239,6 +2269,7 @@ class StudentController extends Controller
             'longitude'           => 'required|numeric|between:-180,180',
             'session'             => 'nullable|in:morning,afternoon,auto',
             'out_of_range_reason' => 'nullable|string|max:1000',
+            'overtime_reason'     => 'nullable|string|max:1000',
             'proof_image'         => 'nullable',
         ], [
             'latitude.required'  => 'GPS location is required to log attendance. Please enable location access on your device.',
@@ -2310,6 +2341,8 @@ class StudentController extends Controller
         $lunchStart = $ojtRecord?->lunch_start ?? $interest?->lunch_start ?? '12:00';
         $lunchEnd   = $ojtRecord?->lunch_end   ?? $interest?->lunch_end   ?? '13:00';
         $hasLunch   = (bool) ($ojtRecord?->has_lunch_break ?? $interest?->has_lunch_break ?? true);
+        $allowOt    = (bool) ($ojtRecord?->allow_overtime ?? $interest?->allow_overtime ?? false);
+        $maxOtHours = min(4.0, max(2.0, (float) ($ojtRecord?->max_overtime_hours ?? $interest?->max_overtime_hours ?? 2.0)));
 
         $outLat = $request->latitude  !== null ? (float) $request->latitude  : null;
         $outLon = $request->longitude !== null ? (float) $request->longitude : null;
@@ -2394,27 +2427,57 @@ class StudentController extends Controller
                 $outFmt = $reqTimeOut->format('g:i A');
                 return response()->json(['message' => "Time out ({$outFmt}) cannot be earlier than time in ({$inFmt})."], 422);
             }
-            $hours = round($timeIn->diffInMinutes($reqTimeOut) / 60, 2);
+
+            $shiftEndCarbon = \Carbon\Carbon::parse($shiftEnd);
+            $isPastShiftEnd = $reqTimeOut->gt($shiftEndCarbon);
+
+            $regularHours = 0.00;
+            $otHours = 0.00;
+            $otStatus = 'none';
+
+            if ($isPastShiftEnd) {
+                if ($allowOt) {
+                    $regularHours = $shiftEndCarbon->gt($timeIn) ? round($timeIn->diffInMinutes($shiftEndCarbon) / 60, 2) : 0;
+                    $rawOtHours = round($shiftEndCarbon->diffInMinutes($reqTimeOut) / 60, 2);
+                    $otHours = min($rawOtHours, $maxOtHours);
+                    $otStatus = $otHours > 0 ? 'pending' : 'none';
+                } else {
+                    $regularHours = $shiftEndCarbon->gt($timeIn) ? round($timeIn->diffInMinutes($shiftEndCarbon) / 60, 2) : 0;
+                    $otHours = 0.00;
+                    $otStatus = 'none';
+                }
+            } else {
+                $regularHours = round($timeIn->diffInMinutes($reqTimeOut) / 60, 2);
+                $otHours = 0.00;
+                $otStatus = 'none';
+            }
+
+            $totalHours = $regularHours + $otHours;
+            $creditImmediately = $isPendingCompany ? 0.00 : $regularHours;
 
             $updateData = [
                 'time_out'               => $request->time_out,
-                'hours_rendered'         => $hours,
+                'hours_rendered'         => $totalHours,
+                'regular_hours'          => $regularHours,
+                'overtime_hours'         => $otHours,
+                'overtime_status'        => $otStatus,
+                'overtime_reason'        => $request->input('overtime_reason') ? trim($request->input('overtime_reason')) : null,
                 'time_out_lat'           => $outLat,
                 'time_out_lon'           => $outLon,
                 'has_geofence_exemption' => $isPendingCompany,
                 'approval_status'        => $effectiveApprovalStatus,
-                'hours_credited'         => $isPendingCompany ? 0.00 : $hours,
+                'hours_credited'         => $creditImmediately,
             ];
             if ($outOutOfRangeReason) $updateData['out_of_range_reason'] = $outOutOfRangeReason;
             if ($outProofPath) $updateData['proof_image_path'] = $outProofPath;
 
             $log->update($updateData);
 
-            if ($ojtRecord && !$isPendingCompany && $hours > 0) {
-                $ojtRecord->increment('completed_hours', $hours);
+            if ($ojtRecord && !$isPendingCompany && $creditImmediately > 0) {
+                $ojtRecord->increment('completed_hours', $creditImmediately);
             }
-            $sessionLabel = 'Time-out';
-            $sessionHours = $hours;
+            $sessionLabel = $otHours > 0 ? "Time Out (+{$otHours}h OT)" : 'Time-out';
+            $sessionHours = $totalHours;
         }
         // -------------------------------------------------------------
         // Case 2: Full-Day schedule (Morning Lunch Out OR Afternoon End-of-Day Out)
@@ -2485,12 +2548,44 @@ class StudentController extends Controller
                     ], 422);
                 }
 
-                $pmHours = round($timeIn->diffInMinutes($reqTimeOut) / 60, 2);
-                $totalDayHours = (float) ($log->morning_hours ?? 0) + $pmHours;
+                $shiftEndCarbon = \Carbon\Carbon::parse($shiftEnd);
+                $isPastShiftEnd = $reqTimeOut->gt($shiftEndCarbon);
+
+                $regularPmHours = 0.00;
+                $otHours = 0.00;
+                $otStatus = 'none';
+
+                if ($isPastShiftEnd) {
+                    if ($allowOt) {
+                        $regularPmHours = $shiftEndCarbon->gt($timeIn) ? round($timeIn->diffInMinutes($shiftEndCarbon) / 60, 2) : 0;
+                        $rawOtHours = round($shiftEndCarbon->diffInMinutes($reqTimeOut) / 60, 2);
+                        $otHours = min($rawOtHours, $maxOtHours);
+                        $otStatus = $otHours > 0 ? 'pending' : 'none';
+                    } else {
+                        $regularPmHours = $shiftEndCarbon->gt($timeIn) ? round($timeIn->diffInMinutes($shiftEndCarbon) / 60, 2) : 0;
+                        $otHours = 0.00;
+                        $otStatus = 'none';
+                    }
+                } else {
+                    $regularPmHours = round($timeIn->diffInMinutes($reqTimeOut) / 60, 2);
+                    $otHours = 0.00;
+                    $otStatus = 'none';
+                }
+
+                $morningHours = (float) ($log->morning_hours ?? 0);
+                $regularDayHours = $morningHours + $regularPmHours;
+                $totalDayHours = $regularDayHours + $otHours;
+
+                // Regular hours credited immediately (if within geofence); OT held in escrow pending review
+                $hoursToCreditImmediately = $isPendingCompany ? 0.00 : $regularDayHours;
 
                 $updateData = [
                     'afternoon_out'          => $request->time_out,
-                    'afternoon_hours'        => $pmHours,
+                    'afternoon_hours'        => $regularPmHours + $otHours,
+                    'regular_hours'          => $regularDayHours,
+                    'overtime_hours'         => $otHours,
+                    'overtime_status'        => $otStatus,
+                    'overtime_reason'        => $request->input('overtime_reason') ? trim($request->input('overtime_reason')) : null,
                     'afternoon_out_lat'      => $outLat,
                     'afternoon_out_lon'      => $outLon,
                     'time_out'               => $request->time_out,
@@ -2499,19 +2594,19 @@ class StudentController extends Controller
                     'hours_rendered'         => $totalDayHours,
                     'has_geofence_exemption' => $isPendingCompany,
                     'approval_status'        => $effectiveApprovalStatus,
-                    'hours_credited'         => $isPendingCompany ? 0.00 : $totalDayHours,
+                    'hours_credited'         => $hoursToCreditImmediately,
                 ];
                 if ($outOutOfRangeReason) $updateData['out_of_range_reason'] = $outOutOfRangeReason;
                 if ($outProofPath) $updateData['proof_image_path'] = $outProofPath;
 
                 $log->update($updateData);
 
-                if ($ojtRecord && !$isPendingCompany && $pmHours > 0) {
-                    $ojtRecord->increment('completed_hours', $pmHours);
+                if ($ojtRecord && !$isPendingCompany && $regularPmHours > 0) {
+                    $ojtRecord->increment('completed_hours', $regularPmHours);
                 }
 
-                $sessionLabel = 'Time Out (Afternoon)';
-                $sessionHours = $pmHours;
+                $sessionLabel = $otHours > 0 ? "Time Out (Afternoon + {$otHours}h OT)" : 'Time Out (Afternoon)';
+                $sessionHours = $regularPmHours + $otHours;
             }
             // Branch C: Already completed or no active punch
             else {
@@ -2619,6 +2714,13 @@ class StudentController extends Controller
                 'afternoonOut'         => $log->afternoon_out ? \Carbon\Carbon::parse($log->afternoon_out)->format('g:i A') : null,
                 'morningHours'         => (float) ($log->morning_hours ?? 0),
                 'afternoonHours'       => (float) ($log->afternoon_hours ?? 0),
+                'regularHours'         => (float) ($log->regular_hours ?? 0),
+                'overtimeHours'        => (float) ($log->overtime_hours ?? 0),
+                'overtimeStatus'       => $log->overtime_status ?? 'none',
+                'overtimeReason'       => $log->overtime_reason,
+                'isTimeoutIneligible'  => (bool) ($log->is_timeout_ineligible ?? false),
+                'timeoutIneligibleReason' => $log->timeout_ineligible_reason,
+                'ineligibleHoursEscrow'   => (float) ($log->ineligible_hours_escrow ?? 0),
                 'autoMorningTimeout'   => (bool) $log->auto_morning_timeout,
                 'autoAfternoonTimeout' => (bool) $log->auto_afternoon_timeout,
                 'hours'                => (float) $log->hours_rendered,

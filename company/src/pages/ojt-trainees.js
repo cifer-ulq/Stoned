@@ -2594,6 +2594,165 @@ function renderTodayDtrBadge(todayDtr) {
   `;
 }
 
+function openOvertimeReviewModal(log, studentInfo, onComplete) {
+  const existing = document.getElementById('company-overtime-review-modal');
+  if (existing) existing.remove();
+
+  const bd = document.createElement('div');
+  bd.id = 'company-overtime-review-modal';
+  bd.className = 'modal-backdrop modal-backdrop--visible';
+  bd.style.cssText = `
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(4px);
+    z-index: 100006; display: flex; align-items: center; justify-content: center;
+    padding: 20px; box-sizing: border-box; animation: fadeIn 0.15s ease-out;
+  `;
+
+  const regHrs = Number(log.regularHours ?? (log.hours - log.overtimeHours)).toFixed(2);
+  const otHrs = Number(log.overtimeHours || 0).toFixed(2);
+  const isPending = (log.overtimeStatus || 'pending') === 'pending';
+  const isApproved = log.overtimeStatus === 'approved';
+  const isRejected = log.overtimeStatus === 'rejected';
+
+  bd.innerHTML = `
+    <div class="modal modal--visible" style="max-width:480px;width:100%;border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);">
+      <div class="modal__header" style="padding:16px 20px;border-bottom:1px solid #E2E8F0;display:flex;align-items:center;justify-content:space-between;background:#FAFBFD;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="width:34px;height:34px;border-radius:8px;background:#fef3c7;color:#b45309;display:flex;align-items:center;justify-content:center;">
+            ${icon('zap', 18)}
+          </div>
+          <div>
+            <h3 style="margin:0;font-size:0.98rem;font-weight:800;color:var(--text-primary);">
+              Review Overtime Request
+            </h3>
+            <p style="margin:0;font-size:0.74rem;color:var(--text-secondary);">
+              ${escapeHtml(studentInfo.name || 'Trainee')} &bull; ${escapeHtml(log.dayLabel || log.date)}
+            </p>
+          </div>
+        </div>
+        <button type="button" id="ot-close-btn" style="background:none;border:none;cursor:pointer;color:var(--text-secondary);padding:6px;border-radius:6px;">
+          ${icon('x', 18)}
+        </button>
+      </div>
+
+      <div class="modal__body" style="padding:18px 20px;">
+        <div style="padding:12px;background:rgba(245,158,11,0.08);border:1px solid #fde68a;border-radius:10px;margin-bottom:14px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+            <span style="font-size:0.78rem;font-weight:700;color:#b45309;">Overtime Hours Requested</span>
+            <span style="font-size:0.95rem;font-weight:800;color:#b45309;">+${otHrs} hrs</span>
+          </div>
+          <p style="font-size:0.74rem;color:#78350f;margin:0;line-height:1.45;">
+            Regular shift hours (<strong>${regHrs} hrs</strong>) have been recorded. Approving this overtime will add <strong>${otHrs} hrs</strong> directly to the trainee's total completed OJT hours.
+          </p>
+        </div>
+
+        <div style="margin-bottom:14px;">
+          <label style="display:block;font-size:0.72rem;font-weight:700;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:5px;">
+            Trainee Task / Overtime Justification
+          </label>
+          <div style="padding:10px 12px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;font-size:0.82rem;color:var(--text-primary);line-height:1.5;">
+            ${escapeHtml(log.overtimeReason || 'No justification entered by trainee.')}
+          </div>
+        </div>
+
+        <!-- Rejection reason panel (collapsible) -->
+        <div id="ot-reject-box" style="display:none;margin-top:12px;padding:12px;background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;">
+          <label style="display:block;font-size:0.74rem;font-weight:700;color:#991B1B;margin-bottom:4px;">
+            Reason for Declining Overtime
+          </label>
+          <textarea id="ot-reject-reason" class="input" rows="2" placeholder="e.g. Overtime was not pre-authorized, task could wait for next regular shift..." style="width:100%;font-size:0.78rem;"></textarea>
+          <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px;">
+            <button type="button" class="btn btn--outline btn--xs" id="ot-cancel-reject-btn">Cancel</button>
+            <button type="button" class="btn btn--xs" id="ot-confirm-reject-btn" style="background:#DC2626;color:#fff;border:none;">Confirm Decline</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal__footer" style="padding:14px 20px;border-top:1px solid #E2E8F0;background:#FAFBFD;display:flex;align-items:center;justify-content:flex-end;gap:10px;">
+        ${isPending ? `
+          <button type="button" class="btn btn--outline btn--sm" id="ot-start-reject-btn" style="color:#DC2626;border-color:#FCA5A5;">
+            ${icon('x', 14)} Decline OT
+          </button>
+          <button type="button" class="btn btn--primary btn--sm" id="ot-approve-btn" style="background:#005930;gap:6px;">
+            ${icon('checkCircle', 15)} Approve +${otHrs}h OT
+          </button>
+        ` : `
+          <button type="button" class="btn btn--outline btn--sm" id="ot-done-btn">Close</button>
+        `}
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(bd);
+
+  const close = () => bd.remove();
+  bd.querySelector('#ot-close-btn')?.addEventListener('click', close);
+  bd.querySelector('#ot-done-btn')?.addEventListener('click', close);
+  bd.addEventListener('click', e => { if (e.target === bd) close(); });
+
+  const approveBtn = bd.querySelector('#ot-approve-btn');
+  const startRejectBtn = bd.querySelector('#ot-start-reject-btn');
+  const rejectBox = bd.querySelector('#ot-reject-box');
+  const cancelRejectBtn = bd.querySelector('#ot-cancel-reject-btn');
+  const confirmRejectBtn = bd.querySelector('#ot-confirm-reject-btn');
+  const rejectReasonInput = bd.querySelector('#ot-reject-reason');
+
+  if (approveBtn) {
+    approveBtn.addEventListener('click', async () => {
+      approveBtn.disabled = true;
+      approveBtn.textContent = 'Approving...';
+      try {
+        const res = await apiPost(`/company/ojt-trainees/attendance/${log.id}/approve-overtime`);
+        if (!res?.success) throw new Error(res?.message || 'Failed to approve overtime.');
+        showToast(res.message || 'Overtime approved successfully.');
+        close();
+        if (typeof onComplete === 'function') onComplete();
+      } catch (err) {
+        alert(err.message || 'Failed to approve overtime.');
+        approveBtn.disabled = false;
+        approveBtn.textContent = 'Approve OT';
+      }
+    });
+  }
+
+  if (startRejectBtn) {
+    startRejectBtn.addEventListener('click', () => {
+      rejectBox.style.display = 'block';
+      startRejectBtn.style.display = 'none';
+      if (approveBtn) approveBtn.style.display = 'none';
+      rejectReasonInput?.focus();
+    });
+  }
+
+  if (cancelRejectBtn) {
+    cancelRejectBtn.addEventListener('click', () => {
+      rejectBox.style.display = 'none';
+      startRejectBtn.style.display = 'inline-flex';
+      if (approveBtn) approveBtn.style.display = 'inline-flex';
+    });
+  }
+
+  if (confirmRejectBtn) {
+    confirmRejectBtn.addEventListener('click', async () => {
+      confirmRejectBtn.disabled = true;
+      confirmRejectBtn.textContent = 'Declining...';
+      try {
+        const res = await apiPost(`/company/ojt-trainees/attendance/${log.id}/reject-overtime`, {
+          reason: rejectReasonInput?.value?.trim() || null,
+        });
+        if (!res?.success) throw new Error(res?.message || 'Failed to decline overtime.');
+        showToast(res.message || 'Overtime declined.');
+        close();
+        if (typeof onComplete === 'function') onComplete();
+      } catch (err) {
+        alert(err.message || 'Failed to decline overtime.');
+        confirmRejectBtn.disabled = false;
+        confirmRejectBtn.textContent = 'Confirm Decline';
+      }
+    });
+  }
+}
+
 function openAttendanceReviewModal(log, studentInfo, onComplete) {
   const existing = document.getElementById('company-attendance-review-modal');
   if (existing) existing.remove();
@@ -2625,12 +2784,12 @@ function openAttendanceReviewModal(log, studentInfo, onComplete) {
     <div class="modal modal--visible" style="max-width:540px;width:100%;border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);">
       <div class="modal__header" style="padding:16px 20px;border-bottom:1px solid #E2E8F0;display:flex;align-items:center;justify-content:space-between;background:#FAFBFD;">
         <div style="display:flex;align-items:center;gap:8px;">
-          <div style="width:34px;height:34px;border-radius:8px;background:rgba(217,119,6,0.12);color:#D97706;display:flex;align-items:center;justify-content:center;">
-            ${icon('camera', 18)}
+          <div style="width:34px;height:34px;border-radius:8px;background:${log.isTimeoutIneligible ? '#fee2e2;color:#991b1b;' : 'rgba(217,119,6,0.12);color:#D97706;'}display:flex;align-items:center;justify-content:center;">
+            ${icon(log.isTimeoutIneligible ? 'alertTriangle' : 'camera', 18)}
           </div>
           <div>
             <h3 style="margin:0;font-size:0.98rem;font-weight:800;color:var(--text-primary);">
-              ${isPending ? 'Review Off-Site Attendance' : 'Off-Site Attendance Evidence'}
+              ${log.isTimeoutIneligible ? 'Review Unlogged Exit (Ineligible Attendance)' : (isPending ? 'Review Off-Site Attendance' : 'Off-Site Attendance Evidence')}
             </h3>
             <p style="margin:0;font-size:0.74rem;color:var(--text-secondary);">
               ${escapeHtml(studentInfo.name || 'Trainee')} &bull; ${escapeHtml(log.dayLabel || log.date)}
@@ -2644,7 +2803,11 @@ function openAttendanceReviewModal(log, studentInfo, onComplete) {
 
       <div class="modal__body" style="padding:18px 20px;max-height:75vh;overflow-y:auto;">
         <!-- Status Banner -->
-        ${isPending ? `
+        ${log.isTimeoutIneligible && isPending ? `
+          <div style="padding:10px 14px;background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;margin-bottom:14px;font-size:0.78rem;color:#991B1B;line-height:1.5;">
+            <strong>Unlogged Exit Detected:</strong> The trainee did not time out for this session. By institutional rule, rendered hours (<strong>${Number(log.ineligibleHoursEscrow || log.hours || 0).toFixed(2)} hrs</strong>) are currently <strong>held in escrow as ineligible (0.00 hrs credited)</strong>. Review and click <strong>Approve &amp; Credit Hours</strong> if their departure was legitimate, or <strong>Reject</strong> to keep the hours permanently ineligible.
+          </div>
+        ` : isPending ? `
           <div style="padding:10px 14px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;margin-bottom:14px;font-size:0.78rem;color:#B45309;line-height:1.5;">
             <strong>Awaiting Your Decision:</strong> The student logged attendance outside the host training site perimeter (${escapeHtml(dist)}). Hours rendered (<strong>${Number(log.hours || 0).toFixed(2)} hrs</strong>) are currently <strong>held in escrow</strong> and will only count towards their OJT completion if you approve.
           </div>
@@ -2810,7 +2973,8 @@ function openAttendanceReviewModal(log, studentInfo, onComplete) {
     });
 
     approveBtn?.addEventListener('click', async () => {
-      if (!confirm(`Are you sure you want to approve this off-site attendance and credit ${Number(log.hours || 0).toFixed(2)} hours to ${studentInfo.name || 'the student'}?`)) {
+      const hrsToCredit = Number(log.ineligibleHoursEscrow || log.hours || 0).toFixed(2);
+      if (!confirm(`Are you sure you want to approve this attendance and credit ${hrsToCredit} hours to ${studentInfo.name || 'the student'}?`)) {
         return;
       }
       approveBtn.disabled = true;
@@ -2904,6 +3068,8 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
       if (validityFilter === 'absent' && log.status !== 'absent') return false;
       if (validityFilter === 'no_gps' && (log.locationValidity === 'In Site' || log.locationValidity === 'Too Far' || log.status === 'absent')) return false;
       if (validityFilter === 'pending' && log.approvalStatus !== 'pending_company') return false;
+      if (validityFilter === 'pending_ot' && (log.overtimeStatus !== 'pending' || !(Number(log.overtimeHours) > 0))) return false;
+      if (validityFilter === 'unlogged_exit' && !log.isTimeoutIneligible) return false;
 
       if (q) {
         const hay = `${log.dayLabel || ''} ${log.date || ''} ${log.rawDate || ''} ${log.locationValidity || ''} ${log.siteLocation || ''} ${log.outOfRangeReason || ''} ${log.status || ''} ${log.hours || ''}`.toLowerCase();
@@ -2986,6 +3152,12 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
   }
 
   function renderStatusBadge(log) {
+    if (log.isTimeoutIneligible) {
+      return `<span class="co-dtr-status-badge" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;" title="${escapeHtml(log.timeoutIneligibleReason || 'Unlogged Exit: Ineligible (0.00 hrs) pending supervisor review')}">
+        ${icon('alertTriangle', 11)} Unlogged Exit
+      </span>`;
+    }
+
     const isPending = (log.approvalStatus || '') === 'pending_company';
     const isRejected = (log.approvalStatus || '') === 'rejected';
     const isApprovedExemption = (log.approvalStatus || '') === 'approved' && log.hasGeofenceExemption;
@@ -3104,6 +3276,10 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
         ? `<div class="co-dtr-time-wrap">
              <span class="co-dtr-time">${escapeHtml(aOut)}</span>
              ${log.autoAfternoonTimeout ? `<span class="co-dtr-auto-tag" title="Automatically closed at scheduled shift end">Auto ${escapeHtml(aOut)}</span>` : ''}
+             ${log.overtimeHours > 0 ? `
+               <span class="co-dtr-auto-tag" style="margin-top:2px;background:${log.overtimeStatus === 'approved' ? '#dcfce7;color:#166534;border:1px solid #bbf7d0;' : (log.overtimeStatus === 'rejected' ? '#fee2e2;color:#991b1b;border:1px solid #fca5a5;' : '#fef3c7;color:#b45309;border:1px solid #fde68a;')}" title="OT: ${log.overtimeHours}h (${log.overtimeStatus})">
+                 ${icon('zap', 9)} +${Number(log.overtimeHours).toFixed(1)}h OT (${log.overtimeStatus === 'approved' ? 'Approved' : (log.overtimeStatus === 'rejected' ? 'Declined' : 'Pending')})
+               </span>` : ''}
            </div>`
         : (aIn
           ? `<span class="co-dtr-active-chip"><span class="co-dtr-live-pulse-dot"></span> Active (PM)</span>`
@@ -3114,7 +3290,15 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
 
       const rawHrs = Number(log.hours || 0).toFixed(2);
       let hrsHtml = '';
-      if (isPending) {
+      if (log.isTimeoutIneligible) {
+        const escrow = Number(log.ineligibleHoursEscrow || log.hours || 0).toFixed(2);
+        hrsHtml = `
+          <div class="co-dtr-hrs-box" title="Unlogged exit: ${escrow}h in escrow pending review">
+            <span class="co-dtr-hrs-val co-dtr-hrs-val--rejected">0.00 hrs</span>
+            <span class="co-dtr-escrow-pill" style="background:#fee2e2;color:#991b1b;border-color:#fca5a5;">${escrow}h Ineligible</span>
+          </div>
+        `;
+      } else if (isPending) {
         hrsHtml = `
           <div class="co-dtr-hrs-box">
             <span class="co-dtr-hrs-val co-dtr-hrs-val--pending">${rawHrs} hrs</span>
@@ -3128,6 +3312,32 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
             <span class="co-dtr-rejected-pill">Rejected</span>
           </div>
         `;
+      } else if (log.overtimeHours > 0) {
+        const regHrs = Number(log.regularHours ?? (log.hours - log.overtimeHours)).toFixed(2);
+        const otHrs = Number(log.overtimeHours).toFixed(2);
+        if (log.overtimeStatus === 'approved') {
+          const totHrs = (Number(regHrs) + Number(otHrs)).toFixed(2);
+          hrsHtml = `
+            <div class="co-dtr-hrs-box" title="${regHrs}h regular + ${otHrs}h overtime approved">
+              <span class="co-dtr-hrs-val co-dtr-hrs-val--valid">${totHrs} hrs</span>
+              <span class="co-dtr-hrs-sub" style="color:#166534;font-weight:700;">${regHrs}h + ${otHrs}h OT</span>
+            </div>
+          `;
+        } else if (log.overtimeStatus === 'rejected') {
+          hrsHtml = `
+            <div class="co-dtr-hrs-box" title="${regHrs}h regular credited, ${otHrs}h overtime declined">
+              <span class="co-dtr-hrs-val co-dtr-hrs-val--valid">${regHrs} hrs</span>
+              <span class="co-dtr-hrs-sub" style="color:#dc2626;font-weight:700;">${otHrs}h OT Declined</span>
+            </div>
+          `;
+        } else {
+          hrsHtml = `
+            <div class="co-dtr-hrs-box" title="${regHrs}h regular credited, ${otHrs}h overtime pending review">
+              <span class="co-dtr-hrs-val co-dtr-hrs-val--valid">${regHrs} hrs</span>
+              <span class="co-dtr-escrow-pill" style="background:#fef3c7;color:#b45309;border-color:#fde68a;">+${otHrs}h OT Escrow</span>
+            </div>
+          `;
+        }
       } else if (isAbsent) {
         hrsHtml = `
           <div class="co-dtr-hrs-box">
@@ -3155,18 +3365,39 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
         `;
       } else if (isExcused) {
         actionHtml = `<span class="co-dtr-action-excused">${icon('shieldCheck', 11)} Excused</span>`;
-      } else if (isPending) {
-        actionHtml = `
-          <button type="button" class="co-dtr-btn-action co-dtr-btn-action--review js-review-attendance-btn" data-log-id="${log.id}" title="Review proof & decide">
-            ${icon('camera', 11)} Review Proof
-          </button>
-        `;
-      } else if (log.hasGeofenceExemption) {
-        actionHtml = `
-          <button type="button" class="co-dtr-btn-action co-dtr-btn-action--view js-review-attendance-btn" data-log-id="${log.id}" title="View proof evidence">
-            ${icon('eye', 11)} View Proof
-          </button>
-        `;
+      } else {
+        const btns = [];
+        if (log.isTimeoutIneligible && isPending) {
+          btns.push(`
+            <button type="button" class="co-dtr-btn-action co-dtr-btn-action--review js-review-attendance-btn" data-log-id="${log.id}" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;" title="Review unlogged exit">
+              ${icon('alertTriangle', 11)} Review Exit
+            </button>
+          `);
+        } else if (isPending) {
+          btns.push(`
+            <button type="button" class="co-dtr-btn-action co-dtr-btn-action--review js-review-attendance-btn" data-log-id="${log.id}" title="Review proof & decide">
+              ${icon('camera', 11)} Review Proof
+            </button>
+          `);
+        } else if (log.hasGeofenceExemption) {
+          btns.push(`
+            <button type="button" class="co-dtr-btn-action co-dtr-btn-action--view js-review-attendance-btn" data-log-id="${log.id}" title="View proof evidence">
+              ${icon('eye', 11)} View Proof
+            </button>
+          `);
+        }
+
+        if (log.overtimeHours > 0 && log.overtimeStatus === 'pending') {
+          btns.push(`
+            <button type="button" class="co-dtr-btn-action js-review-ot-btn" data-log-id="${log.id}" style="background:#fef3c7;color:#b45309;border:1px solid #fde68a;" title="Review overtime request">
+              ${icon('zap', 11)} Review OT
+            </button>
+          `);
+        } else if (log.overtimeHours > 0 && log.overtimeStatus === 'approved') {
+          btns.push(`<span class="co-dtr-action-excused" style="background:#dcfce7;color:#166534;border:1px solid #bbf7d0;" title="OT Approved (+${log.overtimeHours}h)">${icon('zap', 10)} OT Approved</span>`);
+        }
+
+        actionHtml = btns.length ? `<div style="display:flex;flex-direction:column;gap:4px;align-items:center;">${btns.join('')}</div>` : `<span class="co-dtr-time-empty">&mdash;</span>`;
       }
 
       const rowClass = [
@@ -3209,6 +3440,19 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
         const log = logsData.find(l => l.id === logId);
         if (log) {
           openAttendanceReviewModal(log, studentInfo, () => {
+            fetchAndRenderDtr();
+          });
+        }
+      });
+    });
+
+    backdrop.querySelectorAll('.js-review-ot-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const logId = parseInt(btn.dataset.logId, 10);
+        const log = logsData.find(l => l.id === logId);
+        if (log) {
+          openOvertimeReviewModal(log, studentInfo, () => {
             fetchAndRenderDtr();
           });
         }
@@ -4177,6 +4421,38 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
               </div>
             </div>
           ` : ''}
+
+          <!-- Card 6 (Conditional): Overtime Requests -->
+          ${(summaryInfo.pendingOtCount > 0) ? `
+            <div class="co-dtr-kpi-card js-kpi-filter-ot" style="cursor:pointer;border-color:#FDE68A;background:#FFFDF5;" title="Click to filter pending overtime">
+              <div class="co-dtr-kpi-card__header">
+                <span class="co-dtr-kpi-card__label" style="color:#B45309;">Overtime Requests</span>
+                <span class="co-dtr-kpi-badge" style="background:#FEF3C7;color:#B45309;border:1px solid #FDE68A;">OT Action</span>
+              </div>
+              <div class="co-dtr-kpi-card__val" style="color:#D97706;">
+                ${summaryInfo.pendingOtCount} <span class="co-dtr-kpi-card__unit" style="color:#B45309;">Needs Approval</span>
+              </div>
+              <div class="co-dtr-kpi-card__sub" style="color:#92400E;display:flex;align-items:center;gap:4px;font-weight:600;">
+                ${icon('zap', 11)} Click to view overtime logs
+              </div>
+            </div>
+          ` : ''}
+
+          <!-- Card 7 (Conditional): Unlogged Exits -->
+          ${(summaryInfo.ineligibleTimeoutCount > 0) ? `
+            <div class="co-dtr-kpi-card co-dtr-kpi-card--danger js-kpi-filter-ineligible" style="cursor:pointer;" title="Click to filter unlogged exits">
+              <div class="co-dtr-kpi-card__header">
+                <span class="co-dtr-kpi-card__label" style="color:#991B1B;">Unlogged Exits</span>
+                <span class="co-dtr-kpi-badge" style="background:#FEE2E2;color:#991B1B;border:1px solid #FCA5A5;">Ineligible</span>
+              </div>
+              <div class="co-dtr-kpi-card__val" style="color:#DC2626;">
+                ${summaryInfo.ineligibleTimeoutCount} <span class="co-dtr-kpi-card__unit" style="color:#991B1B;">Unverified</span>
+              </div>
+              <div class="co-dtr-kpi-card__sub" style="color:#7F1D1D;display:flex;align-items:center;gap:4px;font-weight:600;">
+                ${icon('alertTriangle', 11)} Click to review unlogged exits
+              </div>
+            </div>
+          ` : ''}
         </div>
 
         <!-- Filter & Search Bar -->
@@ -4211,6 +4487,16 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
                   ${icon('alertTriangle', 11)} Pending Review <span class="co-dtr-filter-pill__count">${summaryInfo.pendingApprovalCount}</span>
                 </button>
               ` : ''}
+              ${(summaryInfo.pendingOtCount > 0) ? `
+                <button type="button" class="co-dtr-filter-pill ${validityFilter === 'pending_ot' ? 'is-active' : ''}" data-filter="pending_ot" style="color:#B45309;">
+                  ${icon('zap', 11)} Pending OT <span class="co-dtr-filter-pill__count" style="background:#FEF3C7;color:#B45309;">${summaryInfo.pendingOtCount}</span>
+                </button>
+              ` : ''}
+              ${(summaryInfo.ineligibleTimeoutCount > 0) ? `
+                <button type="button" class="co-dtr-filter-pill ${validityFilter === 'unlogged_exit' ? 'is-active' : ''}" data-filter="unlogged_exit" style="color:#DC2626;">
+                  ${icon('alertTriangle', 11)} Unlogged Exits <span class="co-dtr-filter-pill__count" style="background:#FEE2E2;color:#DC2626;">${summaryInfo.ineligibleTimeoutCount}</span>
+                </button>
+              ` : ''}
               <button type="button" class="co-dtr-filter-pill ${validityFilter === 'absent' ? 'is-active' : ''}" data-filter="absent">
                 Absences <span class="co-dtr-filter-pill__count">${summaryInfo.unexcusedAbsenceCount ?? 0}</span>
               </button>
@@ -4224,6 +4510,8 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
               <option value="absent" ${validityFilter === 'absent' ? 'selected' : ''}>Absences (${summaryInfo.unexcusedAbsenceCount ?? 0})</option>
               <option value="no_gps" ${validityFilter === 'no_gps' ? 'selected' : ''}>No GPS</option>
               ${(summaryInfo.pendingApprovalCount > 0) ? `<option value="pending" ${validityFilter === 'pending' ? 'selected' : ''}>Pending Review (${summaryInfo.pendingApprovalCount})</option>` : ''}
+              ${(summaryInfo.pendingOtCount > 0) ? `<option value="pending_ot" ${validityFilter === 'pending_ot' ? 'selected' : ''}>Pending Overtime (${summaryInfo.pendingOtCount})</option>` : ''}
+              ${(summaryInfo.ineligibleTimeoutCount > 0) ? `<option value="unlogged_exit" ${validityFilter === 'unlogged_exit' ? 'selected' : ''}>Unlogged Exits (${summaryInfo.ineligibleTimeoutCount})</option>` : ''}
             </select>
           </div>
 
@@ -4321,6 +4609,18 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
 
     backdrop.querySelector('.js-kpi-filter-pending')?.addEventListener('click', () => {
       validityFilter = 'pending';
+      syncPillFilterState();
+      updateTableOnly();
+    });
+
+    backdrop.querySelector('.js-kpi-filter-ot')?.addEventListener('click', () => {
+      validityFilter = 'pending_ot';
+      syncPillFilterState();
+      updateTableOnly();
+    });
+
+    backdrop.querySelector('.js-kpi-filter-ineligible')?.addEventListener('click', () => {
+      validityFilter = 'unlogged_exit';
       syncPillFilterState();
       updateTableOnly();
     });

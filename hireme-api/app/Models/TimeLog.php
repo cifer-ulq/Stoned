@@ -27,6 +27,9 @@ class TimeLog extends Model
         'has_geofence_exemption', 'approval_status', 'out_of_range_reason',
         'proof_image_path', 'hours_credited', 'approved_by_user_id',
         'approved_at', 'rejection_reason',
+        'regular_hours', 'overtime_hours', 'overtime_status', 'overtime_reason',
+        'overtime_rejection_reason', 'overtime_approved_at', 'overtime_approved_by',
+        'is_timeout_ineligible', 'timeout_ineligible_reason', 'ineligible_hours_escrow',
     ];
 
     protected function casts(): array
@@ -37,10 +40,15 @@ class TimeLog extends Model
             'hours_credited'         => 'decimal:2',
             'morning_hours'          => 'decimal:2',
             'afternoon_hours'        => 'decimal:2',
+            'regular_hours'          => 'decimal:2',
+            'overtime_hours'         => 'decimal:2',
+            'ineligible_hours_escrow'=> 'decimal:2',
             'auto_morning_timeout'   => 'boolean',
             'auto_afternoon_timeout' => 'boolean',
+            'is_timeout_ineligible'  => 'boolean',
             'has_geofence_exemption' => 'boolean',
             'approved_at'            => 'datetime',
+            'overtime_approved_at'   => 'datetime',
         ];
     }
 

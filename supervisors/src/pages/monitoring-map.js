@@ -1244,6 +1244,8 @@ function renderLogsPanel(container, logs) {
           statusPillHtml = `<span class="mon-status-pill" style="background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE;font-weight:700;">Half Day (PM)</span>`;
         } else if (log.status === 'excused') {
           statusPillHtml = `<span class="mon-status-pill" style="background:#F1F5F9;color:#475569;border:1px solid #E2E8F0;font-weight:700;" title="${escapeHtml(log.outOfRangeReason || 'Absence excused')}">Excused</span>`;
+        } else if (log.isTimeoutIneligible) {
+          statusPillHtml = `<span class="mon-status-pill" style="background:#FEF2F2;color:#991B1B;border:1px solid #FCA5A5;font-weight:700;">Unlogged Exit</span>`;
         } else if (isPending) {
           statusPillHtml = `<span class="mon-status-pill mon-badge--amber" style="background:#FFFBEB;color:#B45309;border:1px solid #FDE68A;">Pending Co. Review</span>`;
         } else if (isRejected) {
@@ -1257,12 +1259,24 @@ function renderLogsPanel(container, logs) {
         }
 
         let hrsChipHtml = '';
-        if (log.status === 'absent' || log.status === 'excused') {
+        if (log.isTimeoutIneligible) {
+          hrsChipHtml = `<span class="mon-time-chip" style="color:#DC2626;font-weight:700;">0h (${log.ineligibleHoursEscrow || log.hours || 0}h Escrow)</span>`;
+        } else if (log.status === 'absent' || log.status === 'excused') {
           hrsChipHtml = `<span class="mon-time-chip" style="color:var(--text-tertiary);font-weight:600;">0 hrs</span>`;
         } else if (isPending) {
           hrsChipHtml = `<span class="mon-time-chip" style="color:#B45309;font-weight:700;">${log.hours || 0}h (Escrow)</span>`;
         } else if (isRejected) {
           hrsChipHtml = `<span class="mon-time-chip" style="color:#DC2626;text-decoration:line-through;">${log.hours || 0}h</span>`;
+        } else if (log.overtimeHours > 0) {
+          const reg = Number(log.regularHours ?? (log.hours - log.overtimeHours)).toFixed(1);
+          const ot = Number(log.overtimeHours).toFixed(1);
+          if (log.overtimeStatus === 'approved') {
+            hrsChipHtml = `<span class="mon-time-chip mon-time-chip--hrs" style="color:#166534;font-weight:700;">${(Number(reg)+Number(ot)).toFixed(1)}h (${reg}h + ${ot}h OT)</span>`;
+          } else if (log.overtimeStatus === 'rejected') {
+            hrsChipHtml = `<span class="mon-time-chip mon-time-chip--hrs">${reg}h (${ot}h OT Declined)</span>`;
+          } else {
+            hrsChipHtml = `<span class="mon-time-chip mon-time-chip--hrs" style="color:#B45309;font-weight:700;">${reg}h (+${ot}h OT Escrow)</span>`;
+          }
         } else {
           hrsChipHtml = `<span class="mon-time-chip mon-time-chip--hrs">${log.hoursCredited ?? log.hours ?? 0} hrs</span>`;
         }

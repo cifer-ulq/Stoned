@@ -182,6 +182,8 @@ Route::middleware('auth:sanctum')->prefix('company')->group(function () {
     Route::get('ojt-trainees/{studentId}/logs',   [CompanyController::class, 'traineeTimeLogs']);
     Route::post('ojt-trainees/attendance/{logId}/approve', [CompanyController::class, 'approveAttendance']);
     Route::post('ojt-trainees/attendance/{logId}/reject',  [CompanyController::class, 'rejectAttendance']);
+    Route::post('ojt-trainees/attendance/{logId}/approve-overtime', [CompanyController::class, 'approveOvertime']);
+    Route::post('ojt-trainees/attendance/{logId}/reject-overtime',  [CompanyController::class, 'rejectOvertime']);
     Route::post('ojt-trainees/attendance/{logId}/excuse',  [CompanyController::class, 'excuseAttendance']);
     Route::post('ojt-trainees/attendance/mark-company-closed', [CompanyController::class, 'markCompanyClosed']);
     Route::get('ojt-postings',                    [CompanyController::class, 'ojtPostings']);

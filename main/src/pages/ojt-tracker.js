@@ -2174,6 +2174,9 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
           body.out_of_range_reason = extraData.out_of_range_reason;
           body.proof_image = extraData.proof_image;
         }
+        if (extraData?.overtime_reason) {
+          body.overtime_reason = extraData.overtime_reason;
+        }
         const res = await apiPost('/student/ojt-tracker/log-in', body);
         if (res && res.log) {
           refreshAfterLog(res.log, lat, lon, res.message || 'Time In (Morning) recorded!');
@@ -2196,6 +2199,9 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
         if (extraData?.out_of_range_reason) {
           body.out_of_range_reason = extraData.out_of_range_reason;
           body.proof_image = extraData.proof_image;
+        }
+        if (extraData?.overtime_reason) {
+          body.overtime_reason = extraData.overtime_reason;
         }
         const res = await apiPost('/student/ojt-tracker/log-out', body);
         if (res && res.log) {
@@ -2220,6 +2226,9 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
           body.out_of_range_reason = extraData.out_of_range_reason;
           body.proof_image = extraData.proof_image;
         }
+        if (extraData?.overtime_reason) {
+          body.overtime_reason = extraData.overtime_reason;
+        }
         const res = await apiPost('/student/ojt-tracker/log-in', body);
         if (res && res.log) {
           refreshAfterLog(res.log, lat, lon, res.message || 'Time In (Afternoon) recorded!');
@@ -2242,6 +2251,9 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
         if (extraData?.out_of_range_reason) {
           body.out_of_range_reason = extraData.out_of_range_reason;
           body.proof_image = extraData.proof_image;
+        }
+        if (extraData?.overtime_reason) {
+          body.overtime_reason = extraData.overtime_reason;
         }
         const res = await apiPost('/student/ojt-tracker/log-out', body);
         if (res && res.log) {
@@ -2266,6 +2278,9 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
           body.out_of_range_reason = extraData.out_of_range_reason;
           body.proof_image = extraData.proof_image;
         }
+        if (extraData?.overtime_reason) {
+          body.overtime_reason = extraData.overtime_reason;
+        }
         const res = await apiPost('/student/ojt-tracker/log-in', body);
         if (res && res.log) {
           refreshAfterLog(res.log, lat, lon, res.message || 'Time-in recorded!');
@@ -2287,6 +2302,9 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
         if (extraData?.out_of_range_reason) {
           body.out_of_range_reason = extraData.out_of_range_reason;
           body.proof_image = extraData.proof_image;
+        }
+        if (extraData?.overtime_reason) {
+          body.overtime_reason = extraData.overtime_reason;
         }
         const res = await apiPost('/student/ojt-tracker/log-out', body);
         if (res && res.log) {
@@ -2686,6 +2704,10 @@ function renderTrackerLogRow(log) {
     ? `<div style="display:flex;flex-direction:column;align-items:center;">
          <span class="dtr-time-val">${esc(aOut)}</span>
          ${log.autoAfternoonTimeout ? `<span class="dtr-auto-chip" title="Automatically closed at scheduled shift end">${icon('clock', 10)} Auto ${esc(aOut)}</span>` : ''}
+         ${log.overtimeHours > 0 ? `
+           <span class="dtr-auto-chip" style="margin-top:2px;background:${log.overtimeStatus === 'approved' ? '#dcfce7;color:#166534;border-color:#bbf7d0;' : (log.overtimeStatus === 'rejected' ? '#fee2e2;color:#991b1b;border-color:#fca5a5;' : '#fef3c7;color:#b45309;border-color:#fde68a;')}" title="OT: ${log.overtimeHours}h (${log.overtimeStatus})">
+             ${icon('zap', 9)} +${Number(log.overtimeHours).toFixed(1)}h OT (${log.overtimeStatus === 'approved' ? 'Approved' : (log.overtimeStatus === 'rejected' ? 'Declined' : 'Pending')})
+           </span>` : ''}
        </div>`
     : (aIn
       ? `<span class="dtr-active-chip"><span class="dtr-pulse-dot"></span> Active</span>`
@@ -2694,7 +2716,14 @@ function renderTrackerLogRow(log) {
   // 4. Hours rendered
   const rawHrs = Number(log.hours || 0).toFixed(1);
   let hrsHtml = '';
-  if (isAbsent || (isExcused && !Number(log.hours))) {
+  if (log.isTimeoutIneligible) {
+    const escrow = Number(log.ineligibleHoursEscrow || log.hours || 0).toFixed(1);
+    hrsHtml = `
+      <div class="dtr-hrs-box" title="Unlogged exit: ${escrow}h rendered held in escrow pending supervisor review">
+        <span class="dtr-hrs-val dtr-hrs-val--rejected">0.0 hrs</span>
+        <span class="dtr-hrs-sub" style="color:#b45309;font-weight:700;">(${escrow}h Ineligible)</span>
+      </div>`;
+  } else if (isAbsent || (isExcused && !Number(log.hours))) {
     hrsHtml = `<div class="dtr-hrs-box"><span class="dtr-hrs-val dtr-hrs-val--zero">0.0 hrs</span></div>`;
   } else if (isPendingApproval) {
     hrsHtml = `
@@ -2708,6 +2737,29 @@ function renderTrackerLogRow(log) {
         <span class="dtr-hrs-val dtr-hrs-val--rejected">${rawHrs} hrs</span>
         <span class="dtr-hrs-sub" style="color:#dc2626;font-weight:700;">(Rejected)</span>
       </div>`;
+  } else if (log.overtimeHours > 0) {
+    const regHrs = Number(log.regularHours ?? (log.hours - log.overtimeHours)).toFixed(1);
+    const otHrs = Number(log.overtimeHours).toFixed(1);
+    if (log.overtimeStatus === 'approved') {
+      const totalHrs = (Number(regHrs) + Number(otHrs)).toFixed(1);
+      hrsHtml = `
+        <div class="dtr-hrs-box" title="${regHrs}h regular + ${otHrs}h overtime approved">
+          <span class="dtr-hrs-val">${totalHrs} hrs</span>
+          <span class="dtr-hrs-sub" style="color:#166534;font-weight:700;">(${regHrs}h + ${otHrs}h OT)</span>
+        </div>`;
+    } else if (log.overtimeStatus === 'rejected') {
+      hrsHtml = `
+        <div class="dtr-hrs-box" title="${regHrs}h regular approved, ${otHrs}h overtime declined">
+          <span class="dtr-hrs-val">${regHrs} hrs</span>
+          <span class="dtr-hrs-sub" style="color:#ef4444;font-weight:700;">(${otHrs}h OT Declined)</span>
+        </div>`;
+    } else {
+      hrsHtml = `
+        <div class="dtr-hrs-box" title="${regHrs}h regular credited, ${otHrs}h overtime pending review">
+          <span class="dtr-hrs-val">${regHrs} hrs</span>
+          <span class="dtr-hrs-sub" style="color:#b45309;font-weight:700;">(+${otHrs}h OT Escrow)</span>
+        </div>`;
+    }
   } else {
     const hasSplit = (log.morningHours > 0 || log.afternoonHours > 0);
     const splitText = hasSplit ? `${Number(log.morningHours || 0).toFixed(1)}h AM · ${Number(log.afternoonHours || 0).toFixed(1)}h PM` : '';
@@ -2720,7 +2772,9 @@ function renderTrackerLogRow(log) {
 
   // 5. Status Badge
   let statusBadgeHtml = '';
-  if (isPendingApproval) {
+  if (log.isTimeoutIneligible) {
+    statusBadgeHtml = `<span class="dtr-status-pill" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;" title="${esc(log.timeoutIneligibleReason || 'Unlogged Exit - Ineligible pending supervisor approval')}">${icon('alertTriangle', 11)} Unlogged Exit</span>`;
+  } else if (isPendingApproval) {
     statusBadgeHtml = `<span class="dtr-status-pill dtr-status-pill--pending" title="Outside geofence - awaiting company supervisor approval">${icon('alertTriangle', 11)} Pending Review</span>`;
   } else if (isRejected) {
     statusBadgeHtml = `<span class="dtr-status-pill dtr-status-pill--rejected" title="${esc(log.rejectionReason || 'Attendance rejected')}">${icon('x', 11)} Rejected</span>`;
@@ -4055,6 +4109,27 @@ function showLogOutModal(todayLog, sessionLabelOrOjt, ojtContextOrSuccess, onSuc
           <p id="lo-time-warning" class="text-xs" style="margin-top:4px;display:none;color:#ef4444;font-weight:600;"></p>
         </div>
 
+        <!-- Overtime Detection Panel -->
+        <div id="lo-ot-panel" style="display:none;margin-top:10px;padding:12px;background:rgba(245,158,11,0.08);border:1.5px solid #f59e0b;border-radius:12px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">
+            <span style="font-size:0.82rem;font-weight:700;color:#b45309;display:flex;align-items:center;gap:6px;">
+              ${icon('zap', 15)} Overtime Detected
+            </span>
+            <span id="lo-ot-badge" style="font-size:0.72rem;font-weight:700;background:#fef3c7;color:#b45309;padding:2px 8px;border-radius:99px;border:1px solid #fde68a;">
+              +0.0 hrs OT
+            </span>
+          </div>
+          <p id="lo-ot-desc" style="font-size:0.75rem;color:#78350f;margin:0 0 8px;line-height:1.4;">
+            Clocking out past regular shift end. Overtime hours will be submitted for company supervisor verification.
+          </p>
+          <div id="lo-ot-reason-group" class="ojt-req-form-group" style="margin-bottom:0;">
+            <label for="lo-ot-reason" class="ojt-req-label" style="font-size:0.76rem;">
+              Overtime Task / Justification <span class="ojt-req-required-star">*</span>
+            </label>
+            <textarea class="ojt-req-input" id="lo-ot-reason" rows="2" placeholder="Describe the duties or deliverables worked on during overtime..." style="font-size:0.78rem;resize:vertical;min-height:50px;"></textarea>
+          </div>
+        </div>
+
         <!-- Location Geofence Status Banner -->
         <div id="lo-geo-status" class="ojt-geo-status-banner ojt-geo-status-banner--detecting">
           <div class="ojt-geo-status-content">
@@ -4117,6 +4192,61 @@ function showLogOutModal(todayLog, sessionLabelOrOjt, ojtContextOrSuccess, onSuc
   const warningEl = bd.querySelector('#lo-time-warning');
   const evidenceContainer = bd.querySelector('#lo-evidence-container');
 
+  const sched = ojtContext?.schedule || {};
+  const allowOt = !!sched.allowOvertime;
+  const maxOt = Math.min(4.0, Math.max(2.0, Number(sched.maxOvertimeHours) || 2.0));
+  const shiftEnd24 = parseTimeTo24(sched.shiftEnd || '17:00') || '17:00';
+
+  const otPanel = bd.querySelector('#lo-ot-panel');
+  const otBadge = bd.querySelector('#lo-ot-badge');
+  const otDesc = bd.querySelector('#lo-ot-desc');
+  const otReasonGroup = bd.querySelector('#lo-ot-reason-group');
+  const otReasonInput = bd.querySelector('#lo-ot-reason');
+
+  function checkOvertime() {
+    if (isMorning) {
+      if (otPanel) otPanel.style.display = 'none';
+      return { isOt: false, hours: 0 };
+    }
+    const val = normalizeOutTime(timeInput.value);
+    if (!val || !shiftEnd24) {
+      if (otPanel) otPanel.style.display = 'none';
+      return { isOt: false, hours: 0 };
+    }
+    const [outH, outM] = val.split(':').map(Number);
+    const [endH, endM] = shiftEnd24.split(':').map(Number);
+    const diffMins = (outH * 60 + outM) - (endH * 60 + endM);
+
+    if (diffMins > 0) {
+      const rawOt = diffMins / 60;
+      if (allowOt) {
+        const cappedOt = Math.min(rawOt, maxOt);
+        if (otPanel) {
+          otPanel.style.display = 'block';
+          otBadge.textContent = `+${cappedOt.toFixed(1)} hrs OT (Max ${maxOt}h)`;
+          otBadge.style.background = '#fef3c7';
+          otBadge.style.color = '#b45309';
+          otDesc.textContent = `You are clocking out past your regular shift end (${sched.shiftEnd || '5:00 PM'}). ${cappedOt < rawOt ? `Raw OT is ${rawOt.toFixed(1)}h, capped at policy max ${maxOt}h.` : `Detected ${cappedOt.toFixed(1)}h overtime.`} Overtime hours will be reviewed by your host company.`;
+          if (otReasonGroup) otReasonGroup.style.display = 'block';
+        }
+        return { isOt: true, hours: cappedOt, rawHours: rawOt };
+      } else {
+        if (otPanel) {
+          otPanel.style.display = 'block';
+          otBadge.textContent = 'OT Not Permitted';
+          otBadge.style.background = '#fee2e2';
+          otBadge.style.color = '#dc2626';
+          otDesc.textContent = `Your shift ended at ${sched.shiftEnd || '5:00 PM'}. Your company schedule does not permit overtime. Hours beyond shift end will not be credited.`;
+          if (otReasonGroup) otReasonGroup.style.display = 'none';
+        }
+        return { isOt: false, hours: 0, unauthorized: true };
+      }
+    } else {
+      if (otPanel) otPanel.style.display = 'none';
+      return { isOt: false, hours: 0 };
+    }
+  }
+
   function updateGeoStatus(state, title, desc, badgeText, badgeType) {
     geoBox.className = `ojt-geo-status-banner ojt-geo-status-banner--${state}`;
     if (geoTitle) geoTitle.textContent = title;
@@ -4153,6 +4283,7 @@ function showLogOutModal(todayLog, sessionLabelOrOjt, ojtContextOrSuccess, onSuc
       return false;
     } else {
       warningEl.style.display = 'none';
+      checkOvertime();
       if (updateBtn) {
         if (geoResult && geoResult.lat != null && geoResult.lon != null) {
           if (isWithinGeofence) {
@@ -4290,8 +4421,18 @@ function showLogOutModal(todayLog, sessionLabelOrOjt, ojtContextOrSuccess, onSuc
       showToast('Please take a live photo and provide an assignment reason.', 'warning');
       return;
     }
+    const otInfo = checkOvertime();
+    let otReason = null;
+    if (otInfo.isOt && allowOt) {
+      otReason = otReasonInput?.value?.trim() || '';
+      if (!otReason) {
+        showToast('Please provide an overtime task/reason before submitting.', 'warning');
+        otReasonInput?.focus();
+        return;
+      }
+    }
     close();
-    onSuccess(timeVal, geoResult.lat, geoResult.lon, evidenceData);
+    onSuccess(timeVal, geoResult.lat, geoResult.lon, { ...(evidenceData || {}), overtime_reason: otReason });
   });
 }
 
@@ -4312,7 +4453,9 @@ function showLogDetail(log) {
     ? { label: 'No GPS',    color: 'var(--text-tertiary)',                            bg: 'var(--bg-tertiary)',                                  ic: 'mapPin'       }
     : { label: 'GPS Saved', color: 'var(--color-warning)',                            bg: 'var(--color-warning-bg)',                             ic: 'clock'        };
 
-  if (isPending) {
+  if (log.isTimeoutIneligible) {
+    sc = { label: 'Unlogged Exit (Ineligible)', color: '#991b1b', bg: '#fee2e2', ic: 'alertTriangle' };
+  } else if (isPending) {
     sc = { label: 'Pending Review', color: '#d97706', bg: 'rgba(217,119,6,0.12)', ic: 'alertTriangle' };
   } else if (isRej) {
     sc = { label: 'Rejected', color: 'var(--color-error,#ef4444)', bg: 'var(--color-error-bg,rgba(239,68,68,0.1))', ic: 'x' };
@@ -4327,12 +4470,56 @@ function showLogDetail(log) {
   const aHrs = log.afternoonHours != null ? `${log.afternoonHours}h` : '—';
   
   let totalDisplay = (log.hours > 0 || log.timeOut || log.afternoonOut) ? `${log.hours}h` : '—';
-  if (isPending) {
+  if (log.isTimeoutIneligible) {
+    totalDisplay = `<span style="color:#dc2626;">0.0h (${Number(log.ineligibleHoursEscrow || log.hours || 0).toFixed(1)}h Ineligible Escrow)</span>`;
+  } else if (isPending) {
     totalDisplay = `<span style="color:#d97706;">${log.hours || 0}h (Held in Escrow)</span>`;
   } else if (isRej) {
     totalDisplay = `<span style="color:#ef4444;text-decoration:line-through;">${log.hours || 0}h (Rejected)</span>`;
+  } else if (log.overtimeHours > 0) {
+    const regHrs = Number(log.regularHours ?? (log.hours - log.overtimeHours)).toFixed(1);
+    const otHrs = Number(log.overtimeHours).toFixed(1);
+    if (log.overtimeStatus === 'approved') {
+      totalDisplay = `${(Number(regHrs) + Number(otHrs)).toFixed(1)}h (${regHrs}h Reg + ${otHrs}h OT)`;
+    } else if (log.overtimeStatus === 'rejected') {
+      totalDisplay = `${regHrs}h (${otHrs}h OT Declined)`;
+    } else {
+      totalDisplay = `${regHrs}h (+${otHrs}h OT Escrow)`;
+    }
   } else if (log.hoursCredited != null) {
     totalDisplay = `${log.hoursCredited}h`;
+  }
+
+  let ineligibleSection = '';
+  if (log.isTimeoutIneligible) {
+    ineligibleSection = `
+      <div style="margin-top:12px;padding:10px 12px;background:#fee2e2;border:1px solid #fca5a5;border-radius:var(--radius-md);text-align:left;">
+        <div style="display:flex;align-items:center;gap:6px;color:#991b1b;font-weight:700;font-size:0.78rem;margin-bottom:3px;">
+          ${icon('alertTriangle', 14)} Unlogged Exit &middot; Hours Ineligible
+        </div>
+        <p style="font-size:0.75rem;color:#7f1d1d;margin:0;">
+          ${esc(log.timeoutIneligibleReason || 'Timeout was not logged. Rendered hours are in escrow (0.0h credited) pending host company verification.')}
+        </p>
+      </div>
+    `;
+  }
+
+  let overtimeSection = '';
+  if (log.overtimeHours > 0) {
+    overtimeSection = `
+      <div style="margin-top:10px;padding:10px 12px;background:rgba(245,158,11,0.08);border:1px solid #fde68a;border-radius:var(--radius-md);text-align:left;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-size:0.76rem;font-weight:700;color:#b45309;display:flex;align-items:center;gap:4px;">
+            ${icon('zap', 13)} Overtime (${Number(log.overtimeHours).toFixed(1)} hrs)
+          </span>
+          <span style="font-size:0.7rem;font-weight:700;padding:2px 8px;border-radius:99px;background:${log.overtimeStatus === 'approved' ? '#dcfce7;color:#166534;' : (log.overtimeStatus === 'rejected' ? '#fee2e2;color:#991b1b;' : '#fef3c7;color:#b45309;')}">
+            ${log.overtimeStatus === 'approved' ? 'Approved' : (log.overtimeStatus === 'rejected' ? 'Declined' : 'Pending Company Review')}
+          </span>
+        </div>
+        ${log.overtimeReason ? `<div style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:3px;"><b>OT Task / Reason:</b> ${esc(log.overtimeReason)}</div>` : ''}
+        ${log.overtimeRejectionReason ? `<div style="font-size:0.75rem;color:#dc2626;"><b>Supervisor Note:</b> ${esc(log.overtimeRejectionReason)}</div>` : ''}
+      </div>
+    `;
   }
 
   let exemptionSection = '';
@@ -4412,6 +4599,8 @@ function showLogDetail(log) {
           <span style="font-size:0.95rem;font-weight:800;color:var(--color-primary);">${totalDisplay}</span>
         </div>
 
+        ${ineligibleSection}
+        ${overtimeSection}
         ${exemptionSection}
 
         <button class="btn btn--outline" style="margin-top:16px;width:100%;" id="log-detail-close">Close</button>

@@ -55,9 +55,16 @@ class AutoCloseAfternoonLogs extends Command
             $shiftEnd   = $ojtRecord?->shift_end   ?? $interest?->shift_end   ?? '17:00';
             $lunchStart = $ojtRecord?->lunch_start ?? $interest?->lunch_start ?? '12:00';
             $hasLunch   = (bool) ($ojtRecord?->has_lunch_break ?? $interest?->has_lunch_break ?? true);
+            $allowOt    = (bool) ($ojtRecord?->allow_overtime ?? $interest?->allow_overtime ?? false);
+            $maxOtHours = min(4.0, max(2.0, (float) ($ojtRecord?->max_overtime_hours ?? $interest?->max_overtime_hours ?? 2.0)));
 
             $shiftEndHM = Carbon::parse($shiftEnd)->format('H:i');
-            $afternoonCutoffHM = Carbon::parse($shiftEnd)->addMinutes(30)->format('H:i');
+            $extraOtMins = $allowOt ? min((int)($maxOtHours * 60) + 30, 300) : 30;
+            $calculatedCutoff = Carbon::parse($shiftEnd)->addMinutes($extraOtMins);
+            if ($calculatedCutoff->format('H:i') > '22:00') {
+                $calculatedCutoff = Carbon::parse('22:00');
+            }
+            $afternoonCutoffHM = $calculatedCutoff->format('H:i');
 
             // 1. Morning auto-close if past day or passed lunch
             if ($log->morning_in && !$log->morning_out) {
@@ -67,17 +74,19 @@ class AutoCloseAfternoonLogs extends Command
                     $mHours = $mLunch->gt($mIn) ? round($mIn->diffInMinutes($mLunch) / 60, 2) : 0;
 
                     $log->update([
-                        'morning_out'          => $lunchStart,
-                        'morning_hours'        => $mHours,
-                        'auto_morning_timeout' => true,
-                        'hours_rendered'       => (float) $mHours + (float) ($log->afternoon_hours ?? 0),
-                        'time_out'             => $lunchStart,
+                        'morning_out'               => $lunchStart,
+                        'morning_hours'             => $mHours,
+                        'regular_hours'             => (float) ($log->regular_hours ?? 0) + $mHours,
+                        'auto_morning_timeout'      => true,
+                        'is_timeout_ineligible'     => true,
+                        'timeout_ineligible_reason' => 'Unlogged Exit: Student forgot to clock out at lunch break.',
+                        'ineligible_hours_escrow'   => (float) ($log->ineligible_hours_escrow ?? 0) + $mHours,
+                        'hours_rendered'            => (float) $mHours + (float) ($log->afternoon_hours ?? 0),
+                        'hours_credited'            => 0.00,
+                        'approval_status'           => 'pending_company',
+                        'time_out'                  => $lunchStart,
                     ]);
 
-                    if ($ojtRecord && $mHours > 0 && ($log->approval_status ?? 'approved') === 'approved') {
-                        $ojtRecord->increment('completed_hours', $mHours);
-                        $log->increment('hours_credited', $mHours);
-                    }
                     $closedCount++;
                 }
             }
@@ -94,37 +103,42 @@ class AutoCloseAfternoonLogs extends Command
                         $pmHours = $pEnd->gt($pIn) ? round($pIn->diffInMinutes($pEnd) / 60, 2) : 0;
 
                         $totalDayHours = (float) ($log->morning_hours ?? 0) + $pmHours;
+                        $cleanMorningCredited = ($log->morning_out && !$log->auto_morning_timeout && (float) ($log->morning_hours ?? 0) > 0)
+                            ? (float) $log->morning_hours
+                            : 0.00;
 
                         $log->update([
-                            'afternoon_out'          => $shiftEnd,
-                            'afternoon_hours'        => $pmHours,
-                            'auto_afternoon_timeout' => true,
-                            'afternoon_validity'     => 'No Exit GPS (Auto)',
-                            'hours_rendered'         => $totalDayHours,
-                            'time_out'               => $shiftEnd,
+                            'afternoon_out'             => $shiftEnd,
+                            'afternoon_hours'           => $pmHours,
+                            'regular_hours'             => $totalDayHours,
+                            'auto_afternoon_timeout'    => true,
+                            'afternoon_validity'        => 'No Exit GPS (Auto)',
+                            'is_timeout_ineligible'     => true,
+                            'timeout_ineligible_reason' => 'Unlogged Exit: Student forgot to clock out at shift end.',
+                            'ineligible_hours_escrow'   => (float) ($log->ineligible_hours_escrow ?? 0) + $pmHours,
+                            'hours_rendered'            => $totalDayHours,
+                            'hours_credited'            => $cleanMorningCredited,
+                            'approval_status'           => 'pending_company',
+                            'time_out'                  => $shiftEnd,
                         ]);
-
-                        if ($ojtRecord && $pmHours > 0 && ($log->approval_status ?? 'approved') === 'approved') {
-                            $ojtRecord->increment('completed_hours', $pmHours);
-                            $log->update(['hours_credited' => $totalDayHours]);
-                        }
                     } elseif (!$hasLunch && $log->time_in && !$log->time_out) {
                         $tIn   = Carbon::parse($log->time_in);
                         $pEnd  = Carbon::parse($shiftEnd);
                         $hours = $pEnd->gt($tIn) ? round($tIn->diffInMinutes($pEnd) / 60, 2) : 0;
 
                         $log->update([
-                            'time_out'               => $shiftEnd,
-                            'morning_out'            => $shiftEnd,
-                            'morning_hours'          => $hours,
-                            'hours_rendered'         => $hours,
-                            'auto_afternoon_timeout' => true,
+                            'time_out'                  => $shiftEnd,
+                            'morning_out'               => $shiftEnd,
+                            'morning_hours'             => $hours,
+                            'regular_hours'             => $hours,
+                            'hours_rendered'            => $hours,
+                            'hours_credited'            => 0.00,
+                            'auto_afternoon_timeout'    => true,
+                            'is_timeout_ineligible'     => true,
+                            'timeout_ineligible_reason' => 'Unlogged Exit: Student forgot to clock out at shift end.',
+                            'ineligible_hours_escrow'   => $hours,
+                            'approval_status'           => 'pending_company',
                         ]);
-
-                        if ($ojtRecord && $hours > 0 && ($log->approval_status ?? 'approved') === 'approved') {
-                            $ojtRecord->increment('completed_hours', $hours);
-                            $log->update(['hours_credited' => $hours]);
-                        }
                     }
                     $closedCount++;
                 }

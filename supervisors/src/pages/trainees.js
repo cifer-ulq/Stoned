@@ -1463,7 +1463,11 @@ export default function traineesPage(container) {
           let badgeClass = 'badge--warning';
           let hrsText = `${l.hoursCredited ?? l.hours}h`;
 
-          if (isAbsent) {
+          if (l.isTimeoutIneligible) {
+            badgeText = 'Unlogged Exit';
+            badgeClass = 'badge--danger';
+            hrsText = `0h (${Number(l.ineligibleHoursEscrow || l.hours || 0).toFixed(1)}h Ineligible)`;
+          } else if (isAbsent) {
             badgeText = 'Absent';
             badgeClass = 'badge--danger';
             hrsText = '0h';
@@ -1485,6 +1489,12 @@ export default function traineesPage(container) {
             badgeText = 'Rejected';
             badgeClass = 'badge--danger';
             hrsText = `${l.hours}h (Rejected)`;
+          } else if (l.overtimeHours > 0) {
+            const reg = Number(l.regularHours ?? (l.hours - l.overtimeHours)).toFixed(1);
+            const ot = Number(l.overtimeHours).toFixed(1);
+            badgeText = l.overtimeStatus === 'approved' ? `OT Approved (+${ot}h)` : (l.overtimeStatus === 'rejected' ? `OT Declined` : `OT Pending (+${ot}h)`);
+            badgeClass = l.overtimeStatus === 'approved' ? 'badge--success' : (l.overtimeStatus === 'rejected' ? 'badge--danger' : 'badge--warning');
+            hrsText = l.overtimeStatus === 'approved' ? `${(Number(reg) + Number(ot)).toFixed(1)}h` : `${reg}h`;
           } else {
             badgeText = escapeHtml(l.status || 'recorded');
             badgeClass = l.status === 'approved' ? 'badge--success' : 'badge--warning';
