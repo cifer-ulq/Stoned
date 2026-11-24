@@ -12,6 +12,7 @@ use App\Models\GraduateProfile;
 use App\Models\StudentEvaluation;
 use App\Models\AppNotification;
 use App\Models\StudentOjtRequirement;
+use App\Models\SupervisorRequirementTemplate;
 use App\Models\OjtEmergencyRequest;
 use App\Models\OjtPullOutRequest;
 use App\Mail\StudentWelcome;
@@ -2650,6 +2651,256 @@ class SupervisorController extends Controller
             'success'     => true,
             'message'     => 'Requirement item removed successfully.',
             'data'        => $reqRecord->fresh(['supervisor:id,name', 'posting:id,title']),
+        ]);
+    }
+
+    /**
+     * GET /api/supervisor/requirement-templates
+     * List all personalized requirement templates owned by the authenticated supervisor.
+     */
+    public function getRequirementTemplates(Request $request)
+    {
+        $supervisor = $request->user();
+        $templates = SupervisorRequirementTemplate::where('supervisor_user_id', $supervisor->id)
+            ->orderBy('name')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data'    => $templates,
+        ]);
+    }
+
+    /**
+     * POST /api/supervisor/requirement-templates
+     * Create a new personalized requirement template.
+     */
+    public function saveRequirementTemplate(Request $request)
+    {
+        $supervisor = $request->user();
+
+        $validated = $request->validate([
+            'name'                     => 'required|string|max:255',
+            'title'                    => 'required|string|max:255',
+            'items'                    => 'required|array|min:1',
+            'instructions'             => 'nullable|string|max:2000',
+            'default_master_drive_url' => 'nullable|string|max:1000',
+        ]);
+
+        $cleanItems = StudentOjtRequirement::normalizeItemsArray($validated['items']);
+        if (empty($cleanItems)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please provide at least one valid requirement item.',
+            ], 422);
+        }
+
+        $template = SupervisorRequirementTemplate::create([
+            'supervisor_user_id'       => $supervisor->id,
+            'name'                     => trim($validated['name']),
+            'title'                    => trim($validated['title']),
+            'items'                    => $cleanItems,
+            'instructions'             => !empty($validated['instructions']) ? trim($validated['instructions']) : null,
+            'default_master_drive_url' => !empty($validated['default_master_drive_url']) ? trim($validated['default_master_drive_url']) : null,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Personalized template "' . $template->name . '" saved successfully.',
+            'data'    => $template,
+        ], 201);
+    }
+
+    /**
+     * PUT /api/supervisor/requirement-templates/{id}
+     * Update an existing personalized requirement template.
+     */
+    public function updateRequirementTemplate(Request $request, $id)
+    {
+        $supervisor = $request->user();
+        $template = SupervisorRequirementTemplate::where('supervisor_user_id', $supervisor->id)->findOrFail($id);
+
+        $validated = $request->validate([
+            'name'                     => 'sometimes|required|string|max:255',
+            'title'                    => 'sometimes|required|string|max:255',
+            'items'                    => 'sometimes|required|array|min:1',
+            'instructions'             => 'nullable|string|max:2000',
+            'default_master_drive_url' => 'nullable|string|max:1000',
+        ]);
+
+        if (isset($validated['items'])) {
+            $cleanItems = StudentOjtRequirement::normalizeItemsArray($validated['items']);
+            if (empty($cleanItems)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Please provide at least one valid requirement item.',
+                ], 422);
+            }
+            $template->items = $cleanItems;
+        }
+
+        if (isset($validated['name'])) {
+            $template->name = trim($validated['name']);
+        }
+        if (isset($validated['title'])) {
+            $template->title = trim($validated['title']);
+        }
+        if (array_key_exists('instructions', $validated)) {
+            $template->instructions = !empty($validated['instructions']) ? trim($validated['instructions']) : null;
+        }
+        if (array_key_exists('default_master_drive_url', $validated)) {
+            $template->default_master_drive_url = !empty($validated['default_master_drive_url']) ? trim($validated['default_master_drive_url']) : null;
+        }
+
+        $template->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Template "' . $template->name . '" updated successfully.',
+            'data'    => $template,
+        ]);
+    }
+
+    /**
+     * DELETE /api/supervisor/requirement-templates/{id}
+     * Delete a personalized requirement template.
+     */
+    public function deleteRequirementTemplate(Request $request, $id)
+    {
+        $supervisor = $request->user();
+        $template = SupervisorRequirementTemplate::where('supervisor_user_id', $supervisor->id)->findOrFail($id);
+        $name = $template->name;
+        $template->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Template "' . $name . '" deleted successfully.',
+        ]);
+    }
+
+    /**
+     * GET /api/supervisor/requirement-catalog
+     * Return dynamic requirement choices categorized into stages, including supervisor-created custom items.
+     */
+    public function getRequirementCatalog(Request $request)
+    {
+        $supervisor = $request->user();
+
+        // Base standardized document catalog
+        $catalog = [
+            [
+                'category'    => 'Pre-Deployment & Clearance',
+                'description' => 'CHED & University standard pre-internship clearance documents',
+                'key'         => 'pre_deployment',
+                'items'       => [
+                    'Parents / Guardian Waiver (Notarized)',
+                    'Medical Examination Certificate (Fit to Work)',
+                    'Certificate of Registration (COR) / Study Load',
+                    'Barangay or Police Clearance',
+                    'OJT Training Agreement / MOA',
+                    'Updated Resume / Curriculum Vitae',
+                    'Good Moral Character Certificate',
+                    'OJT Endorsement Letter',
+                    '2x2 ID Photo (White Background)',
+                    'Student Practicum Insurance Policy',
+                ],
+            ],
+            [
+                'category'    => 'In-Progress & Midterm Logs',
+                'description' => 'Periodic attendance, performance, and reflective logs',
+                'key'         => 'in_progress',
+                'items'       => [
+                    'Midterm OJT Progress Report',
+                    'Midterm Daily Time Record (DTR) signed by Company Supervisor',
+                    'Weekly Internship Reflective Journal (Weeks 1-6)',
+                    'Host Company Supervisor Midterm Evaluation Form',
+                    'OJT Attendance Logsheet',
+                ],
+            ],
+            [
+                'category'    => 'Final Clearance & Exit',
+                'description' => 'Completion certification and academic endorsement requirements',
+                'key'         => 'final_clearance',
+                'items'       => [
+                    'Certificate of OJT Completion from Host Company',
+                    'Final Daily Time Record (600 Hours Completed)',
+                    'Host Company Supervisor Final Performance Evaluation',
+                    'Comprehensive OJT Narrative / Capstone Report',
+                    'Student Practicum Exit Survey / Clearance Form',
+                    'Certificate of Appearance / Deployment Order',
+                ],
+            ],
+        ];
+
+        // Gather all existing items in catalog to avoid duplicates
+        $knownItems = [];
+        foreach ($catalog as $cat) {
+            foreach ($cat['items'] as $it) {
+                $knownItems[mb_strtolower(trim($it))] = true;
+            }
+        }
+
+        // Dynamically harvest custom items previously created by this supervisor
+        $customItems = [];
+
+        // 1. From supervisor\'s saved templates
+        $templates = SupervisorRequirementTemplate::where('supervisor_user_id', $supervisor->id)->get();
+        foreach ($templates as $tmpl) {
+            if (is_array($tmpl->items)) {
+                foreach ($tmpl->items as $it) {
+                    $name = is_array($it) ? ($it['name'] ?? $it['title'] ?? '') : (string)$it;
+                    $cleanName = trim($name);
+                    $lower = mb_strtolower($cleanName);
+                    if ($cleanName !== '' && !isset($knownItems[$lower])) {
+                        $knownItems[$lower] = true;
+                        $customItems[] = $cleanName;
+                    }
+                }
+            }
+        }
+
+        // 2. From previously assigned requirements by this supervisor
+        $assigned = StudentOjtRequirement::where('supervisor_user_id', $supervisor->id)
+            ->latest()
+            ->limit(30)
+            ->get();
+        foreach ($assigned as $req) {
+            if (is_array($req->items)) {
+                foreach ($req->items as $it) {
+                    $name = is_array($it) ? ($it['name'] ?? $it['title'] ?? '') : (string)$it;
+                    $cleanName = trim($name);
+                    $lower = mb_strtolower($cleanName);
+                    if ($cleanName !== '' && !isset($knownItems[$lower])) {
+                        $knownItems[$lower] = true;
+                        $customItems[] = $cleanName;
+                    }
+                }
+            }
+        }
+
+        if (!empty($customItems)) {
+            $catalog[] = [
+                'category'    => 'My Custom Requirements',
+                'description' => 'Custom documents created by you across templates and batches',
+                'key'         => 'custom',
+                'items'       => array_values($customItems),
+            ];
+        }
+
+        // Flat array of all distinct items for quick lookup
+        $flat = [];
+        foreach ($catalog as $c) {
+            foreach ($c['items'] as $item) {
+                if (!in_array($item, $flat, true)) {
+                    $flat[] = $item;
+                }
+            }
+        }
+
+        return response()->json([
+            'success'    => true,
+            'categories' => $catalog,
+            'all_items'  => $flat,
         ]);
     }
 

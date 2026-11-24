@@ -115,6 +115,11 @@ class User extends Authenticatable
         return $this->hasOne(SupervisorProfile::class);
     }
 
+    public function supervisorRequirementTemplates()
+    {
+        return $this->hasMany(SupervisorRequirementTemplate::class, 'supervisor_user_id');
+    }
+
     public function graduateProfile()
     {
         return $this->hasOne(GraduateProfile::class);

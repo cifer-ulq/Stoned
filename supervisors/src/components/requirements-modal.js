@@ -3,47 +3,13 @@
    ========================================================================== */
 
 import { icon } from './icons.js';
-import { apiPost, apiPut, apiDelete } from '../api/client.js';
+import { apiGet, apiPost, apiPut, apiDelete } from '../api/client.js';
 
 export function getReqItemName(it) {
   if (!it) return '';
   if (typeof it === 'string') return it.trim();
   return (it.name || it.title || it.label || it.document || '').trim();
 }
-
-const PRESETS = {
-  pre_deployment: {
-    title: 'Pre-Deployment OJT Document Packet',
-    items: [
-      'Parents / Guardian Waiver (Notarized)',
-      'Medical Examination Certificate (Fit to Work)',
-      'Certificate of Registration (COR) / Study Load',
-      'Barangay or Police Clearance',
-      'OJT Training Agreement / MOA',
-      'Updated Resume / Curriculum Vitae',
-    ],
-    instructions: 'Upload all signed and stamped documents into your designated Google Drive folder. Ensure file sharing is set to "Anyone with the link can view".',
-  },
-  midterm: {
-    title: 'Midterm Progress & Performance Packet',
-    items: [
-      'Midterm OJT Progress Report',
-      'Midterm Daily Time Record (DTR) signed by Company Supervisor',
-      'Weekly Internship Reflective Journal (Weeks 1-6)',
-    ],
-    instructions: 'Submit your signed midterm logs and journal entries into your Drive folder.',
-  },
-  final_clearance: {
-    title: 'Final OJT Clearance & Completion Documents',
-    items: [
-      'Certificate of OJT Completion from Host Company',
-      'Final Daily Time Record (600 Hours Completed)',
-      'Host Company Supervisor Evaluation Form',
-      'Comprehensive OJT Narrative / Capstone Report',
-    ],
-    instructions: 'Upload all final completion documents for academic coordinator verification before graduation promotion.',
-  },
-};
 
 function escapeHtml(str = '') {
   if (!str) return '';
@@ -57,6 +23,7 @@ function escapeHtml(str = '') {
 
 /**
  * Open modal to assign OJT requirements to one student or batch assign to multiple/all students.
+ * Supports personalized supervisor templates, dynamic requirements choices bank, and custom requirements.
  */
 export function openAssignRequirementsModal({
   studentId = null,
@@ -86,10 +53,10 @@ export function openAssignRequirementsModal({
     currentScope = filteredStudents.length > 0 && filteredStudents.length < allStudents.length ? 'filtered' : 'all';
   }
 
-  const activePreset = PRESETS.pre_deployment;
-  let items = [...activePreset.items];
-  let customTitle = activePreset.title;
-  let customNotes = activePreset.instructions;
+  // Active packet state
+  let items = [];
+  let customTitle = 'Pre-Deployment OJT Document Packet';
+  let customNotes = 'Upload all signed and stamped documents into your designated Google Drive folder. Ensure file sharing is set to "Anyone with the link can view".';
   let customMasterDrive = masterDriveUrl || '';
 
   if (!customMasterDrive && selectedStudents.length > 0) {
@@ -100,6 +67,16 @@ export function openAssignRequirementsModal({
   // Default due date to +14 days from now
   let customDueDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
   let skipVerified = true;
+
+  // Personalized Templates & Catalog state
+  let savedTemplates = [];
+  let catalogCategories = [];
+  let catalogAll = [];
+  let activeCategory = 'all';
+  let catalogSearch = '';
+  let selectedTemplateId = '';
+  let showSaveTemplateDialog = false;
+  let isLoadingData = true;
 
   const overlay = document.createElement('div');
   overlay.id = 'sup-req-modal-overlay';
@@ -124,7 +101,23 @@ export function openAssignRequirementsModal({
     return allStudents;
   }
 
-  function renderModal() {
+  function getFilteredCatalogItems() {
+    let pool = [];
+    if (activeCategory === 'all') {
+      pool = [...catalogAll];
+    } else {
+      const cat = catalogCategories.find(c => c.key === activeCategory);
+      pool = cat ? [...cat.items] : [];
+    }
+
+    if (catalogSearch.trim()) {
+      const q = catalogSearch.toLowerCase().trim();
+      pool = pool.filter(name => name.toLowerCase().includes(q));
+    }
+    return pool;
+  }
+
+  function renderModalShell() {
     const targetStudents = resolveTargetStudents();
     const targetCount = targetStudents.length;
 
@@ -135,10 +128,10 @@ export function openAssignRequirementsModal({
     }).length;
 
     overlay.innerHTML = `
-      <div style="background:var(--bg-card, #fff);border:1px solid var(--border-default, #e2e8f0);border-radius:14px;max-width:${isBatchMode ? '640px' : '560px'};width:100%;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 20px 45px rgba(0,0,0,0.22);overflow:hidden;animation:sup-modal-in .18s ease-out;">
+      <div style="background:var(--bg-card, #fff);border:1px solid var(--border-default, #e2e8f0);border-radius:14px;max-width:${isBatchMode ? '680px' : '620px'};width:100%;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 24px 50px rgba(0,0,0,0.24);overflow:hidden;animation:sup-modal-in .18s ease-out;">
         
         <!-- Header -->
-        <div style="padding:18px 22px;border-bottom:1px solid var(--border-default, #e2e8f0);display:flex;align-items:flex-start;justify-content:space-between;background:linear-gradient(135deg, rgba(0,89,48,0.06) 0%, rgba(2,132,199,0.04) 100%);">
+        <div style="padding:16px 22px;border-bottom:1px solid var(--border-default, #e2e8f0);display:flex;align-items:flex-start;justify-content:space-between;background:linear-gradient(135deg, rgba(0,89,48,0.06) 0%, rgba(2,132,199,0.04) 100%);">
           <div style="display:flex;align-items:center;gap:12px;">
             <div style="width:42px;height:42px;border-radius:10px;background:rgba(0,89,48,0.12);color:#005930;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
               ${icon('clipboardCheck', 22)}
@@ -149,7 +142,7 @@ export function openAssignRequirementsModal({
               </h3>
               <p style="margin:2px 0 0;font-size:0.8rem;color:var(--text-secondary, #64748b);">
                 ${isBatchMode
-                  ? `CHMSU OJT Practicum &middot; Batch Dispatch to <strong>${targetCount}</strong> student${targetCount !== 1 ? 's' : ''}`
+                  ? `CHMSU OJT Practicum &middot; Dispatch to <strong>${targetCount}</strong> student${targetCount !== 1 ? 's' : ''}`
                   : `Target: <strong>${escapeHtml(studentName)}</strong> ${program ? `&middot; ${escapeHtml(program)}` : ''}`
                 }
               </p>
@@ -161,12 +154,12 @@ export function openAssignRequirementsModal({
         </div>
 
         <!-- Form Body -->
-        <form id="sup-req-form" style="padding:20px 22px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:16px;">
+        <form id="sup-req-form" style="padding:18px 22px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:15px;">
           
           ${isBatchMode ? `
             <!-- Batch Audience Scope Selector -->
             <div>
-              <label style="display:block;font-size:0.78rem;font-weight:700;color:var(--text-primary, #1e293b);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.03em;">
+              <label style="display:block;font-size:0.76rem;font-weight:700;color:var(--text-primary, #1e293b);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.03em;">
                 Target Student Scope
               </label>
               <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(130px, 1fr));gap:8px;">
@@ -200,79 +193,140 @@ export function openAssignRequirementsModal({
             ` : ''}
           ` : ''}
 
-          <!-- Template Preset Selector -->
-          <div>
-            <label style="display:block;font-size:0.78rem;font-weight:700;color:var(--text-primary, #1e293b);margin-bottom:6px;">
-              Template Preset
-            </label>
-            <select id="sup-req-preset" class="form-select" style="width:100%;padding:8px 12px;font-size:0.85rem;border-radius:8px;border:1px solid var(--border-default, #cbd5e1);background:var(--bg-card,#fff);">
-              <option value="pre_deployment" ${customTitle.includes('Pre-Deployment') ? 'selected' : ''}>Pre-Deployment OJT Document Packet (CHED CMO 104)</option>
-              <option value="midterm" ${customTitle.includes('Midterm') ? 'selected' : ''}>Midterm Progress &amp; Performance Packet</option>
-              <option value="final_clearance" ${customTitle.includes('Final') ? 'selected' : ''}>Final OJT Clearance &amp; Completion Documents</option>
-              <option value="custom" ${(!customTitle.includes('Pre-Deployment') && !customTitle.includes('Midterm') && !customTitle.includes('Final')) ? 'selected' : ''}>Custom Requirements</option>
-            </select>
+          <!-- Personalized Template Selector & Actions -->
+          <div style="background:var(--bg-secondary, #f8fafc);border:1px solid var(--border-default, #e2e8f0);border-radius:10px;padding:12px 14px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px;flex-wrap:wrap;">
+              <label style="font-size:0.76rem;font-weight:700;color:var(--text-primary, #1e293b);text-transform:uppercase;letter-spacing:0.03em;display:flex;align-items:center;gap:6px;">
+                ${icon('clipboardList', 15)} <span>Personalized Template</span>
+              </label>
+              <div id="sup-tmpl-actions" style="display:flex;align-items:center;gap:6px;">
+                <button type="button" id="sup-tmpl-update-btn" class="btn btn--ghost btn--xs" style="display:${selectedTemplateId ? 'inline-flex' : 'none'};color:#0284c7;font-size:0.72rem;padding:3px 8px;gap:4px;" title="Save changes to this template">
+                  ${icon('squarePen', 12)} Update Template
+                </button>
+                <button type="button" id="sup-tmpl-delete-btn" class="btn btn--ghost btn--xs" style="display:${selectedTemplateId ? 'inline-flex' : 'none'};color:#dc2626;font-size:0.72rem;padding:3px 8px;gap:4px;" title="Delete this template">
+                  ${icon('x', 12)} Delete
+                </button>
+                <button type="button" id="sup-tmpl-new-toggle-btn" class="btn btn--outline btn--xs" style="font-size:0.72rem;padding:4px 10px;gap:4px;color:#005930;border-color:rgba(0,89,48,0.3);background:#fff;font-weight:600;">
+                  ${icon('plus', 12)} Save as New Template
+                </button>
+              </div>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:8px;">
+              <select id="sup-req-template-select" class="form-select" style="flex:1;padding:7px 12px;font-size:0.84rem;border-radius:8px;border:1px solid var(--border-default, #cbd5e1);background:#fff;">
+                <option value="">-- Custom Packet (No Template) --</option>
+                ${savedTemplates.map(t => `
+                  <option value="${t.id}" ${String(selectedTemplateId) === String(t.id) ? 'selected' : ''}>
+                    ${escapeHtml(t.name)} &middot; (${Array.isArray(t.items) ? t.items.length : 0} documents)
+                  </option>
+                `).join('')}
+              </select>
+            </div>
+
+            <!-- Inline Save New Template Box -->
+            <div id="sup-tmpl-save-box" style="display:${showSaveTemplateDialog ? 'flex' : 'none'};margin-top:10px;padding:10px 12px;background:#ffffff;border:1px solid #bbf7d0;border-radius:8px;align-items:center;gap:8px;box-shadow:0 2px 6px rgba(0,0,0,0.03);">
+              <input type="text" id="sup-tmpl-name-input" placeholder="Template Name (e.g. BSIT Pre-Deployment 2026)..." style="flex:1;padding:6px 10px;font-size:0.8rem;border:1px solid #cbd5e1;border-radius:6px;" />
+              <button type="button" id="sup-tmpl-save-confirm" class="btn btn--primary btn--xs" style="background:#005930;border-color:#005930;color:#fff;padding:6px 12px;font-size:0.75rem;font-weight:600;white-space:nowrap;">
+                Save Template
+              </button>
+              <button type="button" id="sup-tmpl-save-cancel" class="btn btn--ghost btn--xs" style="font-size:0.75rem;padding:6px 8px;">
+                Cancel
+              </button>
+            </div>
           </div>
 
           <!-- Packet Title -->
           <div>
-            <label style="display:block;font-size:0.78rem;font-weight:700;color:var(--text-primary, #1e293b);margin-bottom:6px;">
-              Packet Title
+            <label style="display:block;font-size:0.76rem;font-weight:700;color:var(--text-primary, #1e293b);margin-bottom:6px;">
+              Packet Title <span style="color:#dc2626;">*</span>
             </label>
-            <input type="text" id="sup-req-title" class="form-input" value="${escapeHtml(customTitle)}" required style="width:100%;padding:8px 12px;font-size:0.88rem;border-radius:8px;border:1px solid var(--border-default, #cbd5e1);" />
+            <input type="text" id="sup-req-title" class="form-input" value="${escapeHtml(customTitle)}" required style="width:100%;padding:8px 12px;font-size:0.86rem;border-radius:8px;border:1px solid var(--border-default, #cbd5e1);" placeholder="e.g. Pre-Deployment OJT Document Packet" />
           </div>
 
           <!-- Unified Master Google Drive Folder Link -->
           <div>
-            <label style="display:block;font-size:0.78rem;font-weight:700;color:var(--text-primary, #1e293b);margin-bottom:4px;">
+            <label style="display:block;font-size:0.76rem;font-weight:700;color:var(--text-primary, #1e293b);margin-bottom:4px;">
               Unified Section / Batch Google Drive Folder Link <span style="color:#dc2626;">*</span>
             </label>
             <div style="position:relative;">
-              <input type="url" id="sup-req-master-drive" class="form-input" placeholder="https://drive.google.com/drive/folders/..." value="${escapeHtml(customMasterDrive)}" style="width:100%;padding:8px 12px;font-size:0.85rem;border-radius:8px;border:1px solid var(--border-default, #cbd5e1);background:#fff;" required />
+              <input type="url" id="sup-req-master-drive" class="form-input" placeholder="https://drive.google.com/drive/folders/..." value="${escapeHtml(customMasterDrive)}" style="width:100%;padding:8px 12px;font-size:0.84rem;border-radius:8px;border:1px solid var(--border-default, #cbd5e1);background:#fff;" required />
             </div>
             <p style="font-size:0.72rem;color:#0284c7;margin:4px 0 0;line-height:1.4;">
-              Students will open this folder and create their personal trainee subfolder inside it. (Make sure folder access is set to <strong>"Anyone with link can edit"</strong>).
+              Students will open this folder and create their personal trainee subfolder inside it. (Folder access should be <strong>"Anyone with link can edit"</strong>).
             </p>
           </div>
 
-          <!-- Checklist Items -->
-          <div>
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-              <label style="font-size:0.78rem;font-weight:700;color:var(--text-primary, #1e293b);text-transform:uppercase;letter-spacing:0.03em;">
-                Required Checklist Items (${items.length})
-              </label>
-              <span style="font-size:0.72rem;color:#0284c7;font-weight:600;">Trainees will receive this exact checklist</span>
-            </div>
-            
-            <div id="sup-req-items-list" style="display:flex;flex-direction:column;gap:6px;max-height:165px;overflow-y:auto;padding:8px 10px;border:1px solid var(--border-default, #e2e8f0);border-radius:8px;background:var(--bg-secondary, #f8fafc);">
-              ${items.map((it, idx) => `
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 8px;background:#fff;border:1px solid #e2e8f0;border-radius:6px;">
-                  <span style="font-size:0.8rem;color:#1e293b;display:flex;align-items:center;gap:6px;">
-                    <span style="color:#005930;">${icon('checkCircle', 13)}</span>
-                    ${escapeHtml(getReqItemName(it))}
-                  </span>
-                  <button type="button" class="del-req-item-btn" data-idx="${idx}" style="background:none;border:none;cursor:pointer;color:#94a3b8;padding:2px;" title="Remove item">
-                    ${icon('x', 14)}
-                  </button>
+          <!-- Dynamic Requirements Choices Bank -->
+          <div style="background:#ffffff;border:1px solid var(--border-default, #e2e8f0);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:10px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+              <div>
+                <div style="font-size:0.76rem;font-weight:700;color:var(--text-primary, #1e293b);text-transform:uppercase;letter-spacing:0.03em;display:flex;align-items:center;gap:6px;">
+                  ${icon('grid', 14)} <span>Requirement Choices Bank</span>
                 </div>
-              `).join('')}
+                <div style="font-size:0.71rem;color:var(--text-secondary, #64748b);margin-top:2px;">
+                  Click any requirement to dynamically add or remove it from your packet.
+                </div>
+              </div>
+              
+              <!-- Search inside catalog -->
+              <div style="position:relative;min-width:180px;max-width:240px;flex:1;">
+                <input type="text" id="sup-req-search" placeholder="Search choices..." value="${escapeHtml(catalogSearch)}" style="width:100%;padding:5px 8px 5px 26px;font-size:0.76rem;border-radius:6px;border:1px solid #cbd5e1;background:#f8fafc;" />
+                <span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);color:#94a3b8;pointer-events:none;display:flex;">
+                  ${icon('search', 12)}
+                </span>
+                <button type="button" id="sup-req-search-clear" style="display:${catalogSearch ? 'flex' : 'none'};position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;color:#94a3b8;cursor:pointer;padding:2px;">
+                  ${icon('x', 12)}
+                </button>
+              </div>
             </div>
 
-            <!-- Add custom item line -->
-            <div style="display:flex;gap:6px;margin-top:8px;">
-              <input type="text" id="sup-req-new-item" placeholder="Add another required document..." style="flex:1;padding:6px 10px;font-size:0.8rem;border-radius:6px;border:1px solid #cbd5e1;" />
-              <button type="button" id="sup-req-add-item-btn" class="btn btn--outline btn--sm" style="font-size:0.75rem;padding:0 10px;gap:4px;">
-                ${icon('plus', 12)} Add
+            <!-- Category Filter Pills -->
+            <div id="sup-category-pills" style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;border-bottom:1px solid #f1f5f9;padding-bottom:8px;">
+              <!-- Injected by renderCategories() -->
+            </div>
+
+            <!-- Items Chips Grid -->
+            <div id="sup-catalog-chips-container" style="display:flex;flex-wrap:wrap;gap:6px;max-height:135px;overflow-y:auto;padding:2px 1px;">
+              <!-- Injected by renderChips() -->
+            </div>
+          </div>
+
+          <!-- Add Specific / Custom Requirement -->
+          <div style="background:#f8fafc;border:1px dashed #cbd5e1;border-radius:10px;padding:12px 14px;">
+            <label style="display:block;font-size:0.76rem;font-weight:700;color:var(--text-primary, #1e293b);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.03em;">
+              Add Specific / Personalized Requirement
+            </label>
+            <div style="display:flex;gap:6px;margin-top:4px;">
+              <input type="text" id="sup-req-new-item" placeholder="Type a specific document (e.g. Drug Test Result, SSS E-1, Confidentiality Agreement)..." style="flex:1;padding:7px 10px;font-size:0.8rem;border-radius:6px;border:1px solid #cbd5e1;background:#fff;" />
+              <button type="button" id="sup-req-add-item-btn" class="btn btn--outline btn--sm" style="font-size:0.75rem;padding:0 12px;gap:5px;color:#005930;border-color:rgba(0,89,48,0.4);font-weight:600;white-space:nowrap;background:#fff;">
+                ${icon('plus', 12)} Add to Packet
               </button>
+            </div>
+          </div>
+
+          <!-- Active Checklist Items -->
+          <div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+              <label id="sup-req-items-count-label" style="font-size:0.76rem;font-weight:700;color:var(--text-primary, #1e293b);text-transform:uppercase;letter-spacing:0.03em;">
+                Active Packet Checklist (${items.length})
+              </label>
+              <button type="button" id="sup-req-clear-all-btn" class="btn btn--ghost btn--xs" style="font-size:0.7rem;color:#dc2626;padding:2px 6px;">
+                Clear Checklist
+              </button>
+            </div>
+            
+            <div id="sup-req-items-list" style="display:flex;flex-direction:column;gap:6px;max-height:155px;overflow-y:auto;padding:8px 10px;border:1px solid var(--border-default, #e2e8f0);border-radius:8px;background:var(--bg-secondary, #f8fafc);">
+              <!-- Injected by renderChecklist() -->
             </div>
           </div>
 
           <!-- Due Date -->
           <div>
-            <label style="display:block;font-size:0.78rem;font-weight:700;color:var(--text-primary, #1e293b);margin-bottom:6px;">
+            <label style="display:block;font-size:0.76rem;font-weight:700;color:var(--text-primary, #1e293b);margin-bottom:6px;">
               Submission Deadline (Due Date)
             </label>
             <div style="display:flex;align-items:center;gap:8px;">
-              <input type="date" id="sup-req-due" value="${customDueDate}" style="padding:6px 10px;font-size:0.85rem;border-radius:6px;border:1px solid #cbd5e1;background:#fff;" />
+              <input type="date" id="sup-req-due" value="${customDueDate}" style="padding:6px 10px;font-size:0.84rem;border-radius:6px;border:1px solid #cbd5e1;background:#fff;" />
               <div style="display:flex;gap:4px;">
                 <button type="button" class="btn btn--ghost btn--xs quick-due" data-days="7" style="font-size:0.7rem;padding:3px 7px;">+7d</button>
                 <button type="button" class="btn btn--ghost btn--xs quick-due" data-days="14" style="font-size:0.7rem;padding:3px 7px;">+14d</button>
@@ -283,10 +337,10 @@ export function openAssignRequirementsModal({
 
           <!-- Instructions / Remarks -->
           <div>
-            <label style="display:block;font-size:0.78rem;font-weight:700;color:var(--text-primary, #1e293b);margin-bottom:6px;">
+            <label style="display:block;font-size:0.76rem;font-weight:700;color:var(--text-primary, #1e293b);margin-bottom:6px;">
               Instructions / Notes for Trainees
             </label>
-            <textarea id="sup-req-notes" rows="2" style="width:100%;padding:8px 10px;font-size:0.82rem;border-radius:8px;border:1px solid #cbd5e1;resize:vertical;" placeholder="Optional guidelines...">${escapeHtml(customNotes)}</textarea>
+            <textarea id="sup-req-notes" rows="2" style="width:100%;padding:8px 10px;font-size:0.82rem;border-radius:8px;border:1px solid #cbd5e1;resize:vertical;" placeholder="Optional guidelines for trainees...">${escapeHtml(customNotes)}</textarea>
           </div>
 
           <!-- Notification preview alert -->
@@ -294,7 +348,7 @@ export function openAssignRequirementsModal({
             <span style="color:#0284c7;flex-shrink:0;margin-top:1px;">${icon('bell', 14)}</span>
             <span>
               ${isBatchMode
-                ? `Assigning this packet will immediately dispatch in-app notifications and portfolio checklists to <strong>${targetCount} trainees</strong>.`
+                ? `Assigning this packet will immediately dispatch in-app notifications & checklists to <strong>${targetCount} trainees</strong>.`
                 : `Assigning this packet will immediately dispatch an in-app notification & checklist reminder to <strong>${escapeHtml(studentName)}</strong>.`
               }
             </span>
@@ -314,36 +368,176 @@ export function openAssignRequirementsModal({
       </div>
     `;
 
-    // Event listeners
-    const closeBtn = overlay.querySelector('#sup-req-close');
-    const cancelBtn = overlay.querySelector('#sup-req-cancel');
+    bindEvents();
+    renderCategories();
+    renderChips();
+    renderChecklist();
+  }
+
+  function renderCategories() {
+    const container = overlay.querySelector('#sup-category-pills');
+    if (!container) return;
+
+    let html = `
+      <button type="button" class="sup-cat-pill" data-cat="all" style="font-size:0.72rem;padding:3px 9px;border-radius:99px;border:1px solid ${activeCategory === 'all' ? '#005930' : '#e2e8f0'};background:${activeCategory === 'all' ? '#005930' : '#fff'};color:${activeCategory === 'all' ? '#fff' : '#475569'};cursor:pointer;font-weight:600;">
+        All Choices (${catalogAll.length})
+      </button>
+    `;
+
+    catalogCategories.forEach(cat => {
+      const isAct = activeCategory === cat.key;
+      html += `
+        <button type="button" class="sup-cat-pill" data-cat="${cat.key}" style="font-size:0.72rem;padding:3px 9px;border-radius:99px;border:1px solid ${isAct ? '#005930' : '#e2e8f0'};background:${isAct ? '#005930' : '#fff'};color:${isAct ? '#fff' : '#475569'};cursor:pointer;font-weight:600;">
+          ${escapeHtml(cat.category)} (${cat.items.length})
+        </button>
+      `;
+    });
+
+    container.innerHTML = html;
+
+    container.querySelectorAll('.sup-cat-pill').forEach(btn => {
+      btn.onclick = () => {
+        activeCategory = btn.dataset.cat;
+        renderCategories();
+        renderChips();
+      };
+    });
+  }
+
+  function renderChips() {
+    const container = overlay.querySelector('#sup-catalog-chips-container');
+    if (!container) return;
+
+    if (isLoadingData) {
+      container.innerHTML = `<span style="font-size:0.75rem;color:#64748b;display:flex;align-items:center;gap:6px;padding:8px 4px;">${icon('loader', 14)} Loading choices catalog & templates...</span>`;
+      return;
+    }
+
+    const filtered = getFilteredCatalogItems();
+    if (!filtered.length) {
+      container.innerHTML = `<span style="font-size:0.74rem;color:#94a3b8;padding:8px 4px;">No matching documents in this category. You can add a custom document below.</span>`;
+      return;
+    }
+
+    container.innerHTML = filtered.map(docName => {
+      const isSelected = items.some(it => getReqItemName(it).toLowerCase() === docName.toLowerCase());
+      return `
+        <button type="button" class="sup-choice-chip" data-name="${escapeHtml(docName)}" style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:99px;font-size:0.74rem;cursor:pointer;transition:all .15s ease;border:${isSelected ? '1.5px solid #005930' : '1px solid #cbd5e1'};background:${isSelected ? 'rgba(0,89,48,0.1)' : '#ffffff'};color:${isSelected ? '#005930' : '#334155'};font-weight:${isSelected ? '700' : '500'};">
+          ${isSelected ? icon('check', 11) : icon('plus', 11)}
+          <span>${escapeHtml(docName)}</span>
+        </button>
+      `;
+    }).join('');
+
+    container.querySelectorAll('.sup-choice-chip').forEach(chip => {
+      chip.onclick = () => {
+        const docName = chip.dataset.name;
+        const existingIdx = items.findIndex(it => getReqItemName(it).toLowerCase() === docName.toLowerCase());
+        if (existingIdx >= 0) {
+          items.splice(existingIdx, 1);
+        } else {
+          items.push(docName);
+        }
+        renderChips();
+        renderChecklist();
+      };
+    });
+  }
+
+  function renderChecklist() {
+    const listEl = overlay.querySelector('#sup-req-items-list');
+    const countLabel = overlay.querySelector('#sup-req-items-count-label');
+    if (countLabel) {
+      countLabel.textContent = `Active Packet Checklist (${items.length})`;
+    }
+    if (!listEl) return;
+
+    if (!items.length) {
+      listEl.innerHTML = `
+        <div style="text-align:center;padding:16px 8px;color:#94a3b8;font-size:0.78rem;">
+          No requirements in checklist yet. Click choices above or type a custom document to build your packet.
+        </div>
+      `;
+      return;
+    }
+
+    listEl.innerHTML = items.map((it, idx) => {
+      const name = getReqItemName(it);
+      return `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;background:#fff;border:1px solid #e2e8f0;border-radius:6px;">
+          <span style="font-size:0.8rem;color:#1e293b;display:flex;align-items:center;gap:6px;min-width:0;flex:1;">
+            <span style="color:#005930;flex-shrink:0;">${icon('checkCircle', 14)}</span>
+            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(name)}</span>
+          </span>
+          <button type="button" class="del-req-item-btn" data-idx="${idx}" style="background:none;border:none;cursor:pointer;color:#94a3b8;padding:2px;display:flex;" title="Remove document">
+            ${icon('x', 14)}
+          </button>
+        </div>
+      `;
+    }).join('');
+
+    listEl.querySelectorAll('.del-req-item-btn').forEach(btn => {
+      btn.onclick = () => {
+        const idx = parseInt(btn.dataset.idx, 10);
+        items.splice(idx, 1);
+        renderChecklist();
+        renderChips();
+      };
+    });
+  }
+
+  function refreshTemplateDropdown() {
+    const select = overlay.querySelector('#sup-req-template-select');
+    if (!select) return;
+
+    select.innerHTML = `
+      <option value="">-- Custom Packet (No Template) --</option>
+      ${savedTemplates.map(t => `
+        <option value="${t.id}" ${String(selectedTemplateId) === String(t.id) ? 'selected' : ''}>
+          ${escapeHtml(t.name)} &middot; (${Array.isArray(t.items) ? t.items.length : 0} documents)
+        </option>
+      `).join('')}
+    `;
+
+    const updateBtn = overlay.querySelector('#sup-tmpl-update-btn');
+    const deleteBtn = overlay.querySelector('#sup-tmpl-delete-btn');
+    if (updateBtn) updateBtn.style.display = selectedTemplateId ? 'inline-flex' : 'none';
+    if (deleteBtn) deleteBtn.style.display = selectedTemplateId ? 'inline-flex' : 'none';
+  }
+
+  function bindEvents() {
+    const closeModal = () => overlay.remove();
+    overlay.querySelector('#sup-req-close').onclick = closeModal;
+    overlay.querySelector('#sup-req-cancel').onclick = closeModal;
+    overlay.onclick = (e) => { if (e.target === overlay) closeModal(); };
+
     const form = overlay.querySelector('#sup-req-form');
-    const presetSelect = overlay.querySelector('#sup-req-preset');
     const titleInput = overlay.querySelector('#sup-req-title');
     const notesInput = overlay.querySelector('#sup-req-notes');
     const dueInput = overlay.querySelector('#sup-req-due');
+    const masterDriveInput = overlay.querySelector('#sup-req-master-drive');
     const newItemInput = overlay.querySelector('#sup-req-new-item');
     const addItemBtn = overlay.querySelector('#sup-req-add-item-btn');
     const errEl = overlay.querySelector('#sup-req-error');
     const submitBtn = overlay.querySelector('#sup-req-submit-btn');
+    const searchInput = overlay.querySelector('#sup-req-search');
+    const searchClearBtn = overlay.querySelector('#sup-req-search-clear');
+    const clearAllBtn = overlay.querySelector('#sup-req-clear-all-btn');
     const skipVerifiedCheckbox = overlay.querySelector('#sup-req-skip-verified');
-    const masterDriveInput = overlay.querySelector('#sup-req-master-drive');
+    const templateSelect = overlay.querySelector('#sup-req-template-select');
+    const newTemplateToggleBtn = overlay.querySelector('#sup-tmpl-new-toggle-btn');
+    const saveBox = overlay.querySelector('#sup-tmpl-save-box');
+    const saveNameInput = overlay.querySelector('#sup-tmpl-name-input');
+    const saveConfirmBtn = overlay.querySelector('#sup-tmpl-save-confirm');
+    const saveCancelBtn = overlay.querySelector('#sup-tmpl-save-cancel');
+    const updateTemplateBtn = overlay.querySelector('#sup-tmpl-update-btn');
+    const deleteTemplateBtn = overlay.querySelector('#sup-tmpl-delete-btn');
 
-    const closeModal = () => overlay.remove();
-    closeBtn.onclick = closeModal;
-    cancelBtn.onclick = closeModal;
-    overlay.onclick = (e) => { if (e.target === overlay) closeModal(); };
-
-    // Scope change in batch mode
+    // Batch scope changes
     overlay.querySelectorAll('input[name="scope"]').forEach(radio => {
       radio.onchange = () => {
         currentScope = radio.value;
-        customTitle = titleInput.value;
-        customNotes = notesInput.value;
-        customDueDate = dueInput.value;
-        customMasterDrive = masterDriveInput?.value || '';
-        if (skipVerifiedCheckbox) skipVerified = skipVerifiedCheckbox.checked;
-        renderModal();
+        renderModalShell();
       };
     });
 
@@ -353,27 +547,7 @@ export function openAssignRequirementsModal({
       };
     }
 
-    // Preset selection change
-    presetSelect.onchange = () => {
-      const pKey = presetSelect.value;
-      if (PRESETS[pKey]) {
-        titleInput.value = PRESETS[pKey].title;
-        notesInput.value = PRESETS[pKey].instructions;
-        items = [...PRESETS[pKey].items];
-      } else {
-        titleInput.value = 'Custom OJT Requirements';
-        notesInput.value = '';
-        items = [];
-      }
-      customTitle = titleInput.value;
-      customNotes = notesInput.value;
-      customDueDate = dueInput.value;
-      customMasterDrive = masterDriveInput?.value || '';
-      if (skipVerifiedCheckbox) skipVerified = skipVerifiedCheckbox.checked;
-      renderModal();
-    };
-
-    // Quick due buttons
+    // Quick due date shortcuts
     overlay.querySelectorAll('.quick-due').forEach(b => {
       b.onclick = () => {
         const days = parseInt(b.dataset.days, 10);
@@ -383,38 +557,235 @@ export function openAssignRequirementsModal({
       };
     });
 
-    // Delete item
-    overlay.querySelectorAll('.del-req-item-btn').forEach(b => {
-      b.onclick = () => {
-        const idx = parseInt(b.dataset.idx, 10);
-        items.splice(idx, 1);
-        customTitle = titleInput.value;
-        customNotes = notesInput.value;
-        customDueDate = dueInput.value;
-        customMasterDrive = masterDriveInput?.value || '';
-        if (skipVerifiedCheckbox) skipVerified = skipVerifiedCheckbox.checked;
-        renderModal();
+    // Clear all checklist
+    if (clearAllBtn) {
+      clearAllBtn.onclick = () => {
+        if (!items.length) return;
+        items = [];
+        renderChecklist();
+        renderChips();
       };
-    });
+    }
 
-    // Add item
-    const addItem = () => {
+    // Search filter in choices bank
+    if (searchInput) {
+      searchInput.oninput = () => {
+        catalogSearch = searchInput.value;
+        if (searchClearBtn) searchClearBtn.style.display = catalogSearch ? 'flex' : 'none';
+        renderChips();
+      };
+    }
+    if (searchClearBtn) {
+      searchClearBtn.onclick = () => {
+        catalogSearch = '';
+        searchInput.value = '';
+        searchClearBtn.style.display = 'none';
+        renderChips();
+      };
+    }
+
+    // Add specific custom item
+    const addCustomItem = () => {
       const v = newItemInput.value.trim();
-      if (v) {
-        items.push(v);
-        newItemInput.value = '';
-        customTitle = titleInput.value;
-        customNotes = notesInput.value;
-        customDueDate = dueInput.value;
-        customMasterDrive = masterDriveInput?.value || '';
-        if (skipVerifiedCheckbox) skipVerified = skipVerifiedCheckbox.checked;
-        renderModal();
+      if (!v) return;
+      const alreadyIn = items.some(it => getReqItemName(it).toLowerCase() === v.toLowerCase());
+      if (alreadyIn) {
+        errEl.textContent = `"${v}" is already included in this packet.`;
+        errEl.style.display = 'block';
+        return;
+      }
+      errEl.style.display = 'none';
+      items.push(v);
+
+      // Also dynamically register in catalog so it can be re-toggled
+      if (!catalogAll.some(c => c.toLowerCase() === v.toLowerCase())) {
+        catalogAll.push(v);
+        let myCat = catalogCategories.find(c => c.key === 'custom');
+        if (!myCat) {
+          myCat = { category: 'My Custom Requirements', key: 'custom', items: [] };
+          catalogCategories.push(myCat);
+          renderCategories();
+        }
+        myCat.items.push(v);
+      }
+
+      newItemInput.value = '';
+      renderChecklist();
+      renderChips();
+    };
+
+    addItemBtn.onclick = addCustomItem;
+    newItemInput.onkeydown = (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        addCustomItem();
       }
     };
-    addItemBtn.onclick = addItem;
-    newItemInput.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); addItem(); } };
 
-    // Submit assignment
+    // Template selection change
+    if (templateSelect) {
+      templateSelect.onchange = () => {
+        const tId = templateSelect.value;
+        selectedTemplateId = tId;
+        refreshTemplateDropdown();
+
+        const tmpl = savedTemplates.find(t => String(t.id) === String(tId));
+        if (tmpl) {
+          titleInput.value = tmpl.title || 'OJT Document Packet';
+          notesInput.value = tmpl.instructions || '';
+          if (tmpl.default_master_drive_url) {
+            masterDriveInput.value = tmpl.default_master_drive_url;
+          }
+          items = Array.isArray(tmpl.items) ? tmpl.items.map(it => getReqItemName(it)).filter(Boolean) : [];
+        }
+        renderChecklist();
+        renderChips();
+      };
+    }
+
+    // Toggle save template dialog
+    if (newTemplateToggleBtn) {
+      newTemplateToggleBtn.onclick = () => {
+        showSaveTemplateDialog = !showSaveTemplateDialog;
+        saveBox.style.display = showSaveTemplateDialog ? 'flex' : 'none';
+        if (showSaveTemplateDialog) {
+          saveNameInput.value = titleInput.value ? `${titleInput.value} Template` : '';
+          saveNameInput.focus();
+        }
+      };
+    }
+    if (saveCancelBtn) {
+      saveCancelBtn.onclick = () => {
+        showSaveTemplateDialog = false;
+        saveBox.style.display = 'none';
+      };
+    }
+
+    // Save as New Template confirm
+    if (saveConfirmBtn) {
+      saveConfirmBtn.onclick = async () => {
+        const nameVal = saveNameInput.value.trim();
+        if (!nameVal) {
+          errEl.textContent = 'Please enter a name for your personalized template.';
+          errEl.style.display = 'block';
+          saveNameInput.focus();
+          return;
+        }
+        if (!items.length) {
+          errEl.textContent = 'Please add at least one requirement item before saving as a template.';
+          errEl.style.display = 'block';
+          return;
+        }
+
+        saveConfirmBtn.disabled = true;
+        saveConfirmBtn.innerHTML = `${icon('loader', 12)} Saving...`;
+        errEl.style.display = 'none';
+
+        try {
+          const res = await apiPost('/supervisor/requirement-templates', {
+            name: nameVal,
+            title: titleInput.value.trim() || 'OJT Document Packet',
+            items: items,
+            instructions: notesInput.value.trim() || null,
+            default_master_drive_url: masterDriveInput.value.trim() || null,
+          });
+
+          if (res?.success && res.data) {
+            savedTemplates.push(res.data);
+            selectedTemplateId = String(res.data.id);
+            showSaveTemplateDialog = false;
+            saveBox.style.display = 'none';
+            refreshTemplateDropdown();
+            // Re-fetch catalog to harvest any new custom items
+            apiGet('/supervisor/requirement-catalog').then(c => {
+              if (c?.success) {
+                catalogCategories = c.categories || [];
+                catalogAll = c.all_items || [];
+                renderCategories();
+                renderChips();
+              }
+            });
+          } else {
+            errEl.textContent = res?.message || 'Failed to save template.';
+            errEl.style.display = 'block';
+          }
+        } catch (e) {
+          errEl.textContent = e.message || 'Error saving template.';
+          errEl.style.display = 'block';
+        } finally {
+          saveConfirmBtn.disabled = false;
+          saveConfirmBtn.innerHTML = 'Save Template';
+        }
+      };
+    }
+
+    // Update active template
+    if (updateTemplateBtn) {
+      updateTemplateBtn.onclick = async () => {
+        const curTmpl = savedTemplates.find(t => String(t.id) === String(selectedTemplateId));
+        if (!curTmpl) return;
+        if (!confirm(`Save current requirements into template "${curTmpl.name}"?`)) return;
+
+        updateTemplateBtn.disabled = true;
+        errEl.style.display = 'none';
+
+        try {
+          const res = await apiPut(`/supervisor/requirement-templates/${curTmpl.id}`, {
+            title: titleInput.value.trim() || curTmpl.title,
+            items: items,
+            instructions: notesInput.value.trim() || null,
+            default_master_drive_url: masterDriveInput.value.trim() || null,
+          });
+
+          if (res?.success && res.data) {
+            curTmpl.title = res.data.title;
+            curTmpl.items = res.data.items;
+            curTmpl.instructions = res.data.instructions;
+            curTmpl.default_master_drive_url = res.data.default_master_drive_url;
+            refreshTemplateDropdown();
+          } else {
+            errEl.textContent = res?.message || 'Failed to update template.';
+            errEl.style.display = 'block';
+          }
+        } catch (e) {
+          errEl.textContent = e.message || 'Error updating template.';
+          errEl.style.display = 'block';
+        } finally {
+          updateTemplateBtn.disabled = false;
+        }
+      };
+    }
+
+    // Delete active template
+    if (deleteTemplateBtn) {
+      deleteTemplateBtn.onclick = async () => {
+        const curTmpl = savedTemplates.find(t => String(t.id) === String(selectedTemplateId));
+        if (!curTmpl) return;
+        if (!confirm(`Delete template "${curTmpl.name}"? This cannot be undone.`)) return;
+
+        deleteTemplateBtn.disabled = true;
+        errEl.style.display = 'none';
+
+        try {
+          const res = await apiDelete(`/supervisor/requirement-templates/${curTmpl.id}`);
+          if (res?.success) {
+            savedTemplates = savedTemplates.filter(t => String(t.id) !== String(curTmpl.id));
+            selectedTemplateId = '';
+            refreshTemplateDropdown();
+          } else {
+            errEl.textContent = res?.message || 'Failed to delete template.';
+            errEl.style.display = 'block';
+          }
+        } catch (e) {
+          errEl.textContent = e.message || 'Error deleting template.';
+          errEl.style.display = 'block';
+        } finally {
+          deleteTemplateBtn.disabled = false;
+        }
+      };
+    }
+
+    // Submit packet assignment
     form.onsubmit = async (e) => {
       e.preventDefault();
       if (!items.length) {
@@ -479,8 +850,53 @@ export function openAssignRequirementsModal({
     };
   }
 
-  renderModal();
+  // Initial render of modal shell
+  renderModalShell();
   document.body.appendChild(overlay);
+
+  // Fetch dynamic catalog and personalized templates asynchronously
+  async function initCatalogAndTemplates() {
+    try {
+      const [catRes, tmplRes] = await Promise.all([
+        apiGet('/supervisor/requirement-catalog').catch(() => null),
+        apiGet('/supervisor/requirement-templates').catch(() => null),
+      ]);
+
+      if (catRes?.success) {
+        catalogCategories = catRes.categories || [];
+        catalogAll = catRes.all_items || [];
+      }
+
+      if (tmplRes?.success) {
+        savedTemplates = tmplRes.data || [];
+      }
+
+      // Default selection if items is empty
+      if (savedTemplates.length > 0 && items.length === 0) {
+        const first = savedTemplates[0];
+        selectedTemplateId = String(first.id);
+        customTitle = first.title || customTitle;
+        customNotes = first.instructions || customNotes;
+        if (first.default_master_drive_url && !customMasterDrive) {
+          customMasterDrive = first.default_master_drive_url;
+        }
+        items = Array.isArray(first.items) ? first.items.map(it => getReqItemName(it)).filter(Boolean) : [];
+      } else if (items.length === 0 && catalogCategories.length > 0) {
+        // Default to pre-deployment category items if no templates exist yet
+        const preCat = catalogCategories.find(c => c.key === 'pre_deployment') || catalogCategories[0];
+        if (preCat && Array.isArray(preCat.items)) {
+          items = [...preCat.items];
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load requirement catalog or templates:', e);
+    } finally {
+      isLoadingData = false;
+      renderModalShell();
+    }
+  }
+
+  initCatalogAndTemplates();
 }
 
 /**

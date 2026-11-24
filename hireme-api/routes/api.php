@@ -267,6 +267,20 @@ Route::middleware('auth:sanctum')->prefix('supervisor')->group(function () {
     Route::post('requirements/{id}/items',                 [SupervisorController::class, 'addRequirementItem']);
     Route::delete('requirements/{id}/items/{itemId}',      [SupervisorController::class, 'deleteRequirementItem']);
 
+    // Personalized Requirement Templates & Dynamic Catalog
+    Route::get('requirement-templates',                    [SupervisorController::class, 'getRequirementTemplates']);
+    Route::post('requirement-templates',                   [SupervisorController::class, 'saveRequirementTemplate']);
+    Route::put('requirement-templates/{id}',               [SupervisorController::class, 'updateRequirementTemplate']);
+    Route::delete('requirement-templates/{id}',            [SupervisorController::class, 'deleteRequirementTemplate']);
+    Route::get('requirement-catalog',                      [SupervisorController::class, 'getRequirementCatalog']);
+
+    // Aliases with requirements/ prefix
+    Route::get('requirements/templates',                   [SupervisorController::class, 'getRequirementTemplates']);
+    Route::post('requirements/templates',                  [SupervisorController::class, 'saveRequirementTemplate']);
+    Route::put('requirements/templates/{id}',              [SupervisorController::class, 'updateRequirementTemplate']);
+    Route::delete('requirements/templates/{id}',           [SupervisorController::class, 'deleteRequirementTemplate']);
+    Route::get('requirements/catalog',                     [SupervisorController::class, 'getRequirementCatalog']);
+
     // Evaluations (Supervisor / Coordinator Side)
     Route::get('evaluations/templates',                    [EvaluationController::class, 'listTemplates']);
     Route::post('evaluations/templates',                   [EvaluationController::class, 'createTemplate']);
