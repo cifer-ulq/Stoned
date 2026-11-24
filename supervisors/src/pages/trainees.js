@@ -523,7 +523,7 @@ export default function traineesPage(container) {
               <th style="min-width:200px;">Host Company</th>
               <th style="min-width:200px;">OJT Progress</th>
               <th style="width:155px;">Status</th>
-              <th style="width:175px;text-align:right;">Actions</th>
+              <th style="min-width:240px;width:250px;text-align:right;">Actions</th>
             </tr>
           </thead>
           <tbody id="trainee-tbody"></tbody>
@@ -1213,8 +1213,8 @@ export default function traineesPage(container) {
                 <button class="tr2-btn-action tr2-reject-btn" data-id="${t.id}" data-name="${escapeHtml(t.name)}" style="background:#FFF1F2;color:#E11D48;border:1px solid #FECDD3;" title="Reject student registration">
                   ${icon('x', 14)} Reject
                 </button>
-                <button class="btn btn--outline btn--sm tr2-view-btn" data-id="${t.id}" style="padding:7px 11px;font-size:0.83rem;font-weight:600;" title="View Student Profile">
-                  ${icon('eye', 14)}
+                <button class="tr2-btn-action tr2-view-btn" data-id="${t.id}" style="background:#F8FAFC;color:#334155;border:1px solid #CBD5E1;box-shadow:0 1px 2px rgba(0,0,0,0.03);" title="View Student Profile">
+                  ${icon('eye', 14)} View
                 </button>
               ` : `
                 ${t.emergency_status && t.emergency_status !== 'none' ? `

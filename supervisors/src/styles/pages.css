@@ -777,10 +777,16 @@
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.tr2-actions-group > * {
+  flex-shrink: 0 !important;
 }
 .tr2-btn-action {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   padding: 7px 13px;
   font-size: 0.83rem;
@@ -789,6 +795,14 @@
   cursor: pointer;
   transition: all 0.15s ease;
   white-space: nowrap;
+  box-sizing: border-box;
+}
+.tr2-btn-action:hover {
+  filter: brightness(0.96);
+  transform: translateY(-1px);
+}
+.tr2-btn-action:active {
+  transform: translateY(0);
 }
 
 /* ── Pagination Footer ── */
