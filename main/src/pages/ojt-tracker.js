@@ -5,6 +5,7 @@
  */
 import { icon } from '../components/icons.js';
 import { apiGet, apiPost, apiUpload, apiCache, storageUrl } from '../api/client.js';
+import { openDtrPrintModal } from '@shared/dtr-print-modal.js';
 
 // Haversine distance in metres (client-side, for quick UI check)
 function haversineMeters(lat1, lon1, lat2, lon2) {
@@ -2037,6 +2038,9 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
                 ${icon('x', 13)} <strong>${logs.filter(l => (l.status || '').toLowerCase() === 'absent').length}</strong> absences
               </span>
             ` : ''}
+            <button type="button" class="btn btn--primary btn--sm" id="time-logs-print-dtr" style="height:30px;padding:0 12px;font-size:0.75rem;background:#005930;color:#ffffff;border-color:#005930;display:inline-flex;align-items:center;gap:6px;border-radius:6px;cursor:pointer;font-weight:700;">
+              ${icon('printer', 13)} Print Official DTR
+            </button>
             <button type="button" class="btn btn--outline btn--sm" id="time-logs-export-csv" style="height:30px;padding:0 10px;font-size:0.75rem;display:inline-flex;align-items:center;gap:5px;border-radius:6px;cursor:pointer;">
               ${icon('download', 13)} Export CSV
             </button>
@@ -2518,6 +2522,50 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
   exportBtn?.addEventListener('click', () => {
     const dataToExport = getFilteredLogs();
     exportLogsToCSV(dataToExport.length ? dataToExport : logs);
+  });
+
+  const printDtrBtn = container.querySelector('#time-logs-print-dtr');
+  printDtrBtn?.addEventListener('click', () => {
+    let studentUser = {};
+    try { studentUser = JSON.parse(localStorage.getItem('hireme_user') || '{}'); } catch {}
+
+    const studentInfo = {
+      name: studentUser.name || 'Student Trainee',
+      student_id: studentUser.student_id || studentUser.studentId || ('CHMSU-' + (studentUser.id || '')),
+      program: studentUser.program || studentUser.course || ojt?.posting?.preferred_courses?.[0] || 'Bachelor of Science in Information Technology',
+      section: studentUser.section || 'A',
+      year_level: studentUser.year_level || studentUser.yearLevel || '4th Year',
+      campus: studentUser.campus || 'Alijis Campus, Bacolod City',
+    };
+
+    const companyInfo = {
+      name: ojt?.company || ojt?.company_name || ojt?.posting?.company_name || 'Host Training Establishment',
+      department: ojt?.department || ojt?.posting?.department || 'OJT Training Division',
+      supervisor_name: ojt?.supervisor || ojt?.supervisor_name || 'Host Company Supervisor',
+      supervisor_title: 'Internship Supervisor / Mentor',
+    };
+
+    const coordinatorInfo = {
+      name: ojt?.coordinator?.name || ojt?.endorser?.name || 'Prof. Mariene Labrador',
+      title: 'OJT Academic Coordinator',
+      college: 'College of Computer Studies',
+      department: 'Department of Information Technology',
+    };
+
+    const deploymentInfo = {
+      required_hours: ojt?.totalHours || ojt?.required_hours || 600,
+      start_date: ojt?.startDate || ojt?.start_date,
+    };
+
+    openDtrPrintModal({
+      student: studentInfo,
+      company: companyInfo,
+      coordinator: coordinatorInfo,
+      deployment: deploymentInfo,
+      logs: logs,
+      progress: ojt,
+      role: 'student',
+    });
   });
 
   updateLogsPage(1);

@@ -10,6 +10,7 @@ import { openStudentImportModal } from '../components/student-import-modal.js';
 import { openAssignRequirementsModal, openReviewRequirementsModal } from '../components/requirements-modal.js';
 import { openReviewEmergencyModal } from '../components/review-emergency-modal.js';
 import { openReviewPullOutModal } from '../components/review-pullout-modal.js';
+import { openDtrPrintModal } from '@shared/dtr-print-modal.js';
 
 const REAL = v => v && v !== '—' && v !== '';
 const PER_PAGE = 10;
@@ -1752,7 +1753,12 @@ export default function traineesPage(container) {
 
             <!-- Daily Logs -->
             <div class="tr2-modal-section">
-              <h4 class="tr2-modal-sec-title">${icon('clock', 16)} Recent Daily Time Records</h4>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+                <h4 class="tr2-modal-sec-title" style="margin-bottom:0;">${icon('clock', 16)} Recent Daily Time Records</h4>
+                <button type="button" class="btn btn--primary btn--sm js-print-trainee-dtr" style="gap:5px;font-size:0.75rem;padding:4px 11px;font-weight:700;background:#005930;color:#ffffff;border-color:#005930;">
+                  ${icon('printer', 13)} Print Official DTR
+                </button>
+              </div>
               <div class="tr2-logs">${logsHtml}</div>
             </div>
 
@@ -1785,6 +1791,70 @@ export default function traineesPage(container) {
     const close = () => { root.innerHTML = ''; };
     root.querySelector('#tr2-cls').addEventListener('click', close);
     root.querySelector('#modal-close-btn').addEventListener('click', close);
+
+    root.querySelector('.js-print-trainee-dtr')?.addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      const origHtml = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = `${icon('clock', 13)} Loading DTR...`;
+
+      try {
+        let logs = t.dailyLogs || [];
+        try {
+          const res = await apiGet(`/supervisor/monitoring/student/${t.id}/logs`);
+          if (res && Array.isArray(res.data)) logs = res.data;
+          else if (Array.isArray(res)) logs = res;
+        } catch (_) {}
+
+        const svUser = getState('user') || {};
+
+        const studentData = {
+          name: t.name || 'Student Trainee',
+          student_id: t.studentId || ('CHMSU-' + (t.id || '')),
+          program: t.course || t.program || 'Bachelor of Science in Information Technology',
+          section: t.section || 'A',
+          year_level: t.year || '4th Year',
+          campus: t.campus || 'Alijis Campus, Bacolod City',
+        };
+
+        const companyData = {
+          name: t.company && t.company !== '—' ? t.company : 'Host Training Establishment',
+          department: t.department || 'OJT Training Division',
+          supervisor_name: t.supervisor && t.supervisor !== '—' ? t.supervisor : 'Host Company Supervisor',
+          supervisor_title: 'Internship Supervisor / Mentor',
+        };
+
+        const coordinatorData = {
+          name: svUser.name || 'Prof. Mariene Labrador',
+          title: svUser.role || 'OJT Academic Coordinator',
+          college: 'College of Computer Studies',
+          department: svUser.department || 'Department of Information Technology',
+        };
+
+        const deploymentData = {
+          required_hours: t.requiredHours || 600,
+          start_date: t.startDate || '',
+        };
+
+        openDtrPrintModal({
+          student: studentData,
+          company: companyData,
+          coordinator: coordinatorData,
+          deployment: deploymentData,
+          logs: logs,
+          progress: {
+            completedHours: t.completedHours,
+            requiredHours: t.requiredHours,
+          },
+          role: 'supervisor',
+        });
+      } catch (err) {
+        showToast('Unable to prepare DTR printable view: ' + (err.message || 'Error'), 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = origHtml;
+      }
+    });
 
     const triggerApprove = () => {
       close();

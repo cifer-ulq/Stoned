@@ -5,6 +5,8 @@
 
 import { icon } from '../components/icons.js';
 import { apiFetch, apiGet, storageUrl, directStorageUrl } from '../api/client.js';
+import { getState } from '../store.js';
+import { openDtrPrintModal } from '@shared/dtr-print-modal.js';
 
 /* ── Module state ── */
 let mapInstance   = null;
@@ -826,11 +828,14 @@ async function openStudentDetail(container, company, student) {
       <!-- RIGHT: Time Log History -->
       <div class="mon-split-side">
         <div class="mon-panel mon-panel--scrollable">
-          <div class="mon-panel__header" id="logs-head">
+          <div class="mon-panel__header" id="logs-head" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
             <div class="mon-panel__title-wrap">
               <span class="mon-panel__icon" style="background:${THEME.primaryBg};color:${THEME.primary}">${icon('clock', 14)}</span>
               <span class="mon-panel__title">Time Log Records</span>
             </div>
+            <button type="button" class="btn btn--outline btn--xs" id="mon-print-dtr-btn" style="gap:5px;font-size:0.75rem;font-weight:700;display:inline-flex;align-items:center;cursor:pointer;">
+              ${icon('printer', 12)} Print DTR
+            </button>
           </div>
 
           <div id="mon-logs-body" class="mon-logs-body">
@@ -859,6 +864,52 @@ async function openStudentDetail(container, company, student) {
     const logList = Array.isArray(logs) ? logs : [];
     renderLogMarkers(company, student, logList);
     renderLogsPanel(container, logList);
+
+    view.querySelector('#mon-print-dtr-btn')?.addEventListener('click', () => {
+      let svUser = {};
+      try { svUser = getState('user') || {}; } catch {}
+
+      const studentData = {
+        name: student.name || 'Student Trainee',
+        student_id: student.studentId || ('CHMSU-' + (student.id || '')),
+        program: student.course || student.program || 'Bachelor of Science in Information Technology',
+        section: student.section || 'A',
+        year_level: student.year || '4th Year',
+        campus: student.campus || 'Alijis Campus, Bacolod City',
+      };
+
+      const companyData = {
+        name: company.company || company.name || 'Host Training Establishment',
+        department: student.department || 'OJT Training Division',
+        supervisor_name: company.supervisor || 'Host Company Supervisor',
+        supervisor_title: 'Internship Supervisor / Mentor',
+      };
+
+      const coordinatorData = {
+        name: svUser.name || 'Prof. Mariene Labrador',
+        title: svUser.role || 'OJT Academic Coordinator',
+        college: 'College of Computer Studies',
+        department: svUser.department || 'Department of Information Technology',
+      };
+
+      const deploymentData = {
+        required_hours: student.requiredHours || 600,
+        start_date: student.startDate || '',
+      };
+
+      openDtrPrintModal({
+        student: studentData,
+        company: companyData,
+        coordinator: coordinatorData,
+        deployment: deploymentData,
+        logs: logList,
+        progress: {
+          completedHours: student.completedHours,
+          requiredHours: student.requiredHours,
+        },
+        role: 'supervisor',
+      });
+    });
   } catch (err) {
     const body = container.querySelector('#mon-logs-body');
     if (body) {

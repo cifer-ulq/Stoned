@@ -6,6 +6,7 @@
 
 import { icon } from '../components/icons.js';
 import { apiGet, apiPost, apiCache, storageUrl, directStorageUrl } from '../api/client.js';
+import { openDtrPrintModal } from '@shared/dtr-print-modal.js';
 
 export async function renderOjtTrainees(container) {
   // State
@@ -4081,6 +4082,9 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
           </div>
 
           <div style="display:flex;align-items:center;gap:8px;">
+            <button type="button" class="btn btn--primary btn--sm" id="dtr-modal-print-btn" style="gap:5px;font-size:0.76rem;font-weight:700;background:#005930;color:#ffffff;border-color:#005930;">
+              ${icon('printer', 13)} Print Official DTR
+            </button>
             <button type="button" class="btn btn--outline btn--sm" id="dtr-modal-export-csv" style="gap:5px;font-size:0.76rem;font-weight:600;">
               ${icon('download', 13)} Export CSV
             </button>
@@ -4328,6 +4332,49 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
     });
 
     attachReviewButtonListeners();
+
+    backdrop.querySelector('#dtr-modal-print-btn')?.addEventListener('click', () => {
+      let companyUser = {};
+      try { companyUser = JSON.parse(localStorage.getItem('hireme_user') || '{}'); } catch {}
+
+      const studentData = {
+        name: studentInfo.name || 'Student Trainee',
+        student_id: studentInfo.student_id || ('CHMSU-' + (studentInfo.id || '')),
+        program: studentInfo.program || studentInfo.course || 'Bachelor of Science in Information Technology',
+        section: studentInfo.section || 'A',
+        year_level: studentInfo.year_level || studentInfo.year || '4th Year',
+        campus: studentInfo.campus || 'Alijis Campus, Bacolod City',
+      };
+
+      const companyData = {
+        name: companyUser.company_name || companyUser.name || studentInfo.company || 'Host Training Establishment',
+        department: studentInfo.department || studentInfo.posting_title || 'OJT Division',
+        supervisor_name: companyUser.name || companyUser.contact_person || 'Host Company Supervisor',
+        supervisor_title: 'Internship Supervisor / Mentor',
+      };
+
+      const coordinatorData = {
+        name: studentInfo.coordinator_name || 'Prof. Mariene Labrador',
+        title: 'OJT Academic Coordinator',
+        college: 'College of Computer Studies',
+        department: 'Department of Information Technology',
+      };
+
+      const deploymentData = {
+        required_hours: summaryInfo.requiredHours || 600,
+        start_date: studentInfo.start_date || studentInfo.deployed_at || '',
+      };
+
+      openDtrPrintModal({
+        student: studentData,
+        company: companyData,
+        coordinator: coordinatorData,
+        deployment: deploymentData,
+        logs: logsData,
+        progress: summaryInfo,
+        role: 'company',
+      });
+    });
 
     backdrop.querySelector('#dtr-modal-export-csv')?.addEventListener('click', () => {
       const rows = getFilteredLogs();
