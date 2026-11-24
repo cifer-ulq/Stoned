@@ -1045,10 +1045,34 @@ function renderApplicationsBody(body, students, slot, bd, allInterests, onUpdate
       </div>`;
   }
 
+  function endorsementSectionHdr(label, count) {
+    return `
+      <div class="ojts-stage-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;margin:0;font-size:0.77rem;font-weight:600;color:var(--text-secondary);" title="Select all eligible students for batch endorsement">
+            <input type="checkbox" id="ojts-select-all-endorsements" class="ojts-card-checkbox" />
+            <span>Select All (${count})</span>
+          </label>
+          <span style="color:var(--border-default);font-size:0.8rem;">|</span>
+          <span class="ojts-stage-title">${label}</span>
+          <span class="ojts-stage-count">${count}</span>
+        </div>
+        <div style="font-size:0.72rem;color:var(--text-tertiary);">
+          Tip: Check trainees to batch send endorsements
+        </div>
+      </div>`;
+  }
+
+  const selectedInterestIds = new Set();
+
   // 1. Endorsement Letter Requested (Priority Action)
   if ((activeFilter === 'all' || activeFilter === 'action') && endorsementRequested.length) {
-    html += sectionHdr(`${icon('mail', 13)} Endorsement Letter Requested`, endorsementRequested.length);
-    endorsementRequested.forEach(s => { html += studentDetailCard(s, 'endorsement_requested'); });
+    if (endorsementRequested.length > 1) {
+      html += endorsementSectionHdr(`${icon('mail', 13)} Endorsement Letter Requested`, endorsementRequested.length);
+    } else {
+      html += sectionHdr(`${icon('mail', 13)} Endorsement Letter Requested`, endorsementRequested.length);
+    }
+    endorsementRequested.forEach(s => { html += studentDetailCard(s, 'endorsement_requested', selectedInterestIds.has(String(s.id))); });
   }
 
   // 2. Company Accepted — Final OJT Approval Required
@@ -1095,6 +1119,91 @@ function renderApplicationsBody(body, students, slot, bd, allInterests, onUpdate
 
   html += `</div>`;
   body.innerHTML = html;
+
+  // Batch Endorsement Sync & Action Bar Management
+  const selectAllChk = body.querySelector('#ojts-select-all-endorsements');
+
+  function updateBatchBar() {
+    if (selectAllChk && endorsementRequested.length) {
+      const totalEligible = endorsementRequested.length;
+      const countSelected = endorsementRequested.filter(s => selectedInterestIds.has(String(s.id))).length;
+      selectAllChk.checked = countSelected === totalEligible && totalEligible > 0;
+      selectAllChk.indeterminate = countSelected > 0 && countSelected < totalEligible;
+    }
+
+    let batchBar = body.querySelector('#ojts-batch-action-bar');
+    const n = selectedInterestIds.size;
+    if (n > 0) {
+      if (!batchBar) {
+        batchBar = document.createElement('div');
+        batchBar.id = 'ojts-batch-action-bar';
+        batchBar.className = 'ojts-batch-action-bar';
+        body.appendChild(batchBar);
+      }
+      batchBar.innerHTML = `
+        <div class="ojts-batch-bar__left">
+          <span class="ojts-batch-bar__badge">${n}</span>
+          <span class="ojts-batch-bar__label">${n === 1 ? '1 trainee selected' : `${n} trainees selected`}</span>
+          <button type="button" class="ojts-batch-bar__clear" id="ojts-batch-clear-btn">Clear selection</button>
+        </div>
+        <div class="ojts-batch-bar__right">
+          <button type="button" class="btn btn--primary ojts-batch-bar__action-btn" id="ojts-batch-endorse-btn">
+            ${icon('send', 14)} Batch Endorse (${n})
+          </button>
+        </div>
+      `;
+
+      batchBar.querySelector('#ojts-batch-clear-btn')?.addEventListener('click', () => {
+        selectedInterestIds.clear();
+        body.querySelectorAll('.ojts-endorse-check').forEach(c => { c.checked = false; });
+        body.querySelectorAll('.ojts-candidate-card--selected').forEach(c => { c.classList.remove('ojts-candidate-card--selected'); });
+        if (selectAllChk) { selectAllChk.checked = false; selectAllChk.indeterminate = false; }
+        batchBar.remove();
+      });
+
+      batchBar.querySelector('#ojts-batch-endorse-btn')?.addEventListener('click', () => {
+        showBatchEndorsementModal(Array.from(selectedInterestIds), slot, students, body, bd, allInterests, onUpdate);
+      });
+    } else {
+      batchBar?.remove();
+    }
+  }
+
+  // Individual card checkboxes
+  body.querySelectorAll('.ojts-endorse-check').forEach(chk => {
+    chk.addEventListener('change', () => {
+      const id = String(chk.dataset.id);
+      const card = body.querySelector(`.ojts-candidate-card[data-id="${id}"]`);
+      if (chk.checked) {
+        selectedInterestIds.add(id);
+        card?.classList.add('ojts-candidate-card--selected');
+      } else {
+        selectedInterestIds.delete(id);
+        card?.classList.remove('ojts-candidate-card--selected');
+      }
+      updateBatchBar();
+    });
+  });
+
+  // Select-All checkbox
+  selectAllChk?.addEventListener('change', () => {
+    const isChecked = selectAllChk.checked;
+    endorsementRequested.forEach(s => {
+      const id = String(s.id);
+      const card = body.querySelector(`.ojts-candidate-card[data-id="${id}"]`);
+      const cardChk = body.querySelector(`.ojts-endorse-check[data-id="${id}"]`);
+      if (isChecked) {
+        selectedInterestIds.add(id);
+        card?.classList.add('ojts-candidate-card--selected');
+        if (cardChk) cardChk.checked = true;
+      } else {
+        selectedInterestIds.delete(id);
+        card?.classList.remove('ojts-candidate-card--selected');
+        if (cardChk) cardChk.checked = false;
+      }
+    });
+    updateBatchBar();
+  });
 
   // Filter tab events
   body.querySelectorAll('.ojts-pipeline-filter__btn').forEach(btn => {
@@ -1221,7 +1330,7 @@ function renderApplicationsBody(body, students, slot, bd, allInterests, onUpdate
   });
 }
 
-function studentDetailCard(s, state) {
+function studentDetailCard(s, state, isSelected = false) {
   const st       = s.student || {};
   const name     = st.name || 'Student';
   const initials = name.trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
@@ -1279,11 +1388,18 @@ function studentDetailCard(s, state) {
     actionBtn = `<button class="ojts-action-btn ojts-action-btn--good btn--final-accept" data-id="${s.id}" data-name="${name}">${icon('checkCircle', 13)} Approve OJT</button>`;
   }
 
+  const checkboxHtml = isUrgent ? `
+    <label class="ojts-card-checkbox-label" title="Select ${escHtml(name)} for batch endorsement">
+      <input type="checkbox" class="ojts-card-checkbox ojts-endorse-check" data-id="${s.id}" data-name="${escHtml(name)}" ${isSelected ? 'checked' : ''} />
+    </label>
+  ` : '';
+
   return `
-    <div class="ojts-candidate-card${state === 'declined' ? ' ojts-candidate-card--declined' : ''}${isUrgent ? ' ojts-candidate-card--urgent' : ''}${isApprovalUrgent ? ' ojts-candidate-card--approval-urgent' : ''}">
+    <div class="ojts-candidate-card${state === 'declined' ? ' ojts-candidate-card--declined' : ''}${isUrgent ? ' ojts-candidate-card--urgent' : ''}${isApprovalUrgent ? ' ojts-candidate-card--approval-urgent' : ''}${isSelected ? ' ojts-candidate-card--selected' : ''}" data-id="${s.id}">
       <!-- Header Row: Avatar, Name, Program, Status Badge & Action -->
       <div class="ojts-candidate-card__head">
         <div class="ojts-candidate-card__head-left">
+          ${checkboxHtml}
           <div class="ojts-candidate-card__avatar"><span>${initials}</span></div>
           <div class="ojts-candidate-card__info">
             <div class="ojts-candidate-card__name-row">
@@ -1483,6 +1599,398 @@ function escHtml(str = '') {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
+}
+
+// ── Batch Endorsement Modal ──────────────────────────────────────────────────
+function showBatchEndorsementModal(selectedIds, slot, students, body, bd, allInterests, onUpdate) {
+  let selectedRecords = students.filter(s => selectedIds.map(String).includes(String(s.id)));
+  if (!selectedRecords.length) return;
+
+  const company        = slot.company || slot.company_name || 'Host Partner Company';
+  const companyAddress = slot.location || slot.full_address || 'Negros Occidental, Philippines';
+  const contactName    = slot.contact_name || 'The Internship Director / Human Resources Management';
+  const posting        = slot.title || slot.slotTitle || 'OJT Industry Trainee';
+  const duration       = slot.duration || '600 Hours';
+
+  // Supervisor info from local storage
+  let supervisorUser = {};
+  try { supervisorUser = JSON.parse(localStorage.getItem('hireme_user') || '{}'); } catch {}
+  const supervisorName    = supervisorUser?.name || 'Prof. Mariene Labrador';
+  const supervisorEmail   = supervisorUser?.email || 'ojt.coordinator@chmsu.edu.ph';
+  const supervisorTitle   = supervisorUser?.position || 'OJT Academic Coordinator';
+  const supervisorCampus  = supervisorUser?.supervisor_profile?.campus || supervisorUser?.campus || 'Alijis Campus';
+  const campusAddressLine = resolveCampusAddress(supervisorCampus);
+
+  const todayDate = new Date().toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+
+  let activePreviewIdx = 0;
+  const defaultBody = `Carlos Hilado Memorial State University, through the College of Computer Studies and the CIER Internship Directorate, is pleased to officially endorse our qualified bona fide student for deployment in your organization:`;
+
+  const modal = document.createElement('div');
+  modal.className = 'modal-backdrop modal-backdrop--visible';
+  modal.style.zIndex = '9999';
+
+  function renderModalContent() {
+    const activeRec = selectedRecords[activePreviewIdx] || selectedRecords[0];
+    const st        = activeRec?.student || {};
+    const stName    = st.name || 'Student';
+    const stId      = st.student_id || st.studentId || ('CHMSU-' + (st.id || activeRec.id));
+    const prog      = st.program || 'Bachelor of Science in Information Technology';
+    const sec       = st.section || 'A';
+    const yLevel    = st.year_level || st.yearLevel || '4th Year';
+    const deptInfo  = resolveCollegeAndDept(prog);
+    const refCode   = `CHMSU-CIER-OJT-2026-${String(activeRec.id).padStart(4, '0')}`;
+
+    modal.innerHTML = `
+      <div class="modal modal--visible" style="max-width:920px;width:95vw;max-height:92vh;display:flex;flex-direction:column;padding:0;overflow:hidden;border-radius:14px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);">
+        <!-- Header -->
+        <div class="modal__header" style="border-bottom:1px solid var(--border-default);padding:16px 24px;display:flex;align-items:center;justify-content:space-between;background:var(--bg-card);flex-shrink:0;">
+          <div style="display:flex;align-items:center;gap:12px;min-width:0;">
+            <div style="width:40px;height:40px;border-radius:10px;background:#00593014;color:#005930;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${icon('send', 20)}</div>
+            <div style="min-width:0;">
+              <h3 class="modal__title" style="margin:0;font-size:1.12rem;font-weight:700;">Batch Endorsement Memorandum</h3>
+              <p style="font-size:0.78rem;color:var(--text-secondary);margin:2px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                <strong>${selectedRecords.length} Trainee(s) Selected</strong> &bull; ${escHtml(company)} &bull; ${escHtml(posting)}
+              </p>
+            </div>
+          </div>
+          <button class="modal__close" id="el-batch-close" style="background:none;border:none;cursor:pointer;color:var(--text-tertiary);">${icon('x', 20)}</button>
+        </div>
+
+        <!-- Trainee Cohort Roster Strip -->
+        <div style="background:#f8fafc;padding:12px 24px;border-bottom:1px solid var(--border-default);flex-shrink:0;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <span style="font-size:0.75rem;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.04em;">
+              Selected Trainee Cohort (${selectedRecords.length}) — Click chip to switch preview:
+            </span>
+            <span style="font-size:0.72rem;color:var(--text-tertiary);">Previewing: <strong style="color:#005930;">${escHtml(stName)}</strong></span>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;max-height:85px;overflow-y:auto;" id="el-batch-chips">
+            ${selectedRecords.map((rec, idx) => {
+              const rst = rec.student || {};
+              const rname = rst.name || 'Student';
+              const rinitials = rname.trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
+              const isCur = idx === activePreviewIdx;
+              return `
+                <div class="ojts-roster-pill${isCur ? ' ojts-roster-pill--active' : ''}" style="${isCur ? 'border-color:#005930;background:#ecfdf5;font-weight:700;' : ''}cursor:pointer;" data-idx="${idx}" title="Click to view endorsement preview">
+                  <div class="ojts-roster-pill__avatar" style="${isCur ? 'background:#005930;color:#fff;' : ''}">${rinitials}</div>
+                  <span style="color:${isCur ? '#005930' : 'inherit'};">${escHtml(rname)}</span>
+                  ${selectedRecords.length > 1 ? `<button type="button" class="ojts-roster-pill__remove" data-remove-id="${rec.id}" title="Remove from batch">&times;</button>` : ''}
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+
+        <!-- Modal Body (Scrollable) -->
+        <div class="modal__body" style="flex:1;overflow-y:auto;padding:20px 24px;background:#f1f5f9;">
+          <!-- Editor Customization Controls (Shared for Cohort) -->
+          <div style="background:#ffffff;border:1px solid var(--border-default);border-radius:10px;padding:16px;margin-bottom:18px;box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+              <span style="font-size:0.78rem;font-weight:700;color:#005930;text-transform:uppercase;letter-spacing:0.05em;display:inline-flex;align-items:center;gap:6px;">
+                ${icon('edit3', 13)} Cohort Endorsement Details (Applied to All ${selectedRecords.length} Letters)
+              </span>
+              <span style="font-size:0.72rem;color:var(--text-tertiary);">Each student receives their official memorandum with personal ref code</span>
+            </div>
+
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:12px;margin-bottom:12px;">
+              <div>
+                <label style="display:block;font-size:0.76rem;font-weight:600;color:var(--text-secondary);margin-bottom:4px;">
+                  Addressee / Recipient (Company Contact)
+                </label>
+                <input type="text" id="el-input-contact" value="${escHtml(contactName)}" class="form-input" style="width:100%;font-size:0.84rem;padding:7px 10px;border-radius:6px;border:1px solid #cbd5e1;" />
+              </div>
+              <div>
+                <label style="display:block;font-size:0.76rem;font-weight:600;color:var(--text-secondary);margin-bottom:4px;">
+                  Special Coordinator Remarks / Instructions (Optional)
+                </label>
+                <input type="text" id="el-input-notes" placeholder="e.g. Cleared for 600 hours standard OJT. Orientation completed." value="" class="form-input" style="width:100%;font-size:0.84rem;padding:7px 10px;border-radius:6px;border:1px solid #cbd5e1;" />
+              </div>
+            </div>
+
+            <div>
+              <label style="display:block;font-size:0.76rem;font-weight:600;color:var(--text-secondary);margin-bottom:4px;">
+                Introductory Endorsement Statement
+              </label>
+              <textarea id="el-input-body" rows="2" class="form-input" style="width:100%;font-size:0.82rem;padding:8px 10px;border-radius:6px;border:1px solid #cbd5e1;resize:vertical;">${escHtml(defaultBody)}</textarea>
+            </div>
+          </div>
+
+          <!-- Official Stationery Paper Container (Real-Time Preview) -->
+          <div id="el-letter-paper" style="background:#ffffff;border:1.5px solid #cbd5e1;border-radius:8px;padding:32px 36px;box-shadow:0 4px 20px rgba(0,0,0,0.06);font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;color:#1e293b;position:relative;">
+            <!-- Top University Accent Bar -->
+            <div style="height:4px;background:#005930;border-radius:2px 2px 0 0;margin:-32px -36px 20px -36px;"></div>
+            <div style="height:2px;background:#D97706;margin:-20px -36px 24px -36px;"></div>
+
+            <!-- Letterhead -->
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;border-bottom:2px solid #005930;padding-bottom:14px;margin-bottom:18px;">
+              <div>
+                <h2 style="margin:0;font-size:1.18rem;font-weight:800;color:#005930;letter-spacing:-0.01em;">CARLOS HILADO MEMORIAL STATE UNIVERSITY</h2>
+                <p style="margin:2px 0 0;font-size:0.83rem;color:#475569;font-weight:600;">Center for Internationalization and External Relations (CIER)</p>
+                <p style="margin:2px 0 0;font-size:0.82rem;color:#005930;font-weight:700;">${escHtml(deptInfo.college)} &mdash; ${escHtml(deptInfo.department)}</p>
+                <p style="margin:2px 0 0;font-size:0.73rem;color:#64748b;">${campusAddressLine}</p>
+              </div>
+              <div style="text-align:right;">
+                <span style="display:inline-block;padding:3px 8px;background:#ecfdf5;border:1px solid #00593033;border-radius:4px;font-size:0.71rem;font-weight:700;color:#005930;">
+                  OFFICIAL ISSUANCE
+                </span>
+                <p style="margin:4px 0 0;font-size:0.72rem;color:#64748b;">Ref: ${refCode}</p>
+              </div>
+            </div>
+
+            <!-- Document Title -->
+            <div style="text-align:center;margin:16px 0 20px;">
+              <h3 style="margin:0;font-size:1.02rem;font-weight:800;color:#005930;letter-spacing:0.04em;text-transform:uppercase;">
+                OFFICIAL ENDORSEMENT MEMORANDUM FOR ON-THE-JOB TRAINING
+              </h3>
+              <p style="margin:4px 0 0;font-size:0.76rem;color:#64748b;">
+                Date: <strong>${todayDate}</strong> &nbsp;|&nbsp; Academic Year 2026&ndash;2027
+              </p>
+            </div>
+
+            <!-- Addressee Block -->
+            <div style="margin-bottom:18px;font-size:0.84rem;line-height:1.45;">
+              <p style="margin:0;font-weight:700;color:#0f172a;">TO: <span id="el-prev-contact">${escHtml(contactName)}</span></p>
+              <p style="margin:1px 0 0;font-weight:700;color:#005930;">${escHtml(company)}</p>
+              <p style="margin:1px 0 0;color:#64748b;font-size:0.78rem;">${escHtml(companyAddress)}</p>
+            </div>
+
+            <!-- Salutation -->
+            <p style="margin:0 0 12px;font-size:0.86rem;font-weight:600;color:#0f172a;">Dear Industry Partner,</p>
+
+            <!-- Paragraph 1 -->
+            <p id="el-prev-body" style="margin:0 0 14px;font-size:0.85rem;line-height:1.6;color:#334155;">
+              ${escHtml(defaultBody)}
+            </p>
+
+            <!-- Trainee Highlight Card -->
+            <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-left:4px solid #005930;border-radius:6px;padding:12px 16px;margin:0 0 16px;">
+              <div id="el-prev-student-name" style="font-size:0.95rem;font-weight:800;color:#005930;margin-bottom:4px;">
+                ${escHtml(stName)}
+              </div>
+              <div id="el-prev-student-sub" style="font-size:0.79rem;color:#334155;line-height:1.5;">
+                <strong>Student ID:</strong> ${escHtml(stId)} &nbsp;&bull;&nbsp; <strong>Degree Program:</strong> ${escHtml(prog)}<br>
+                <strong>Academic Standing:</strong> ${escHtml(yLevel)} &ndash; Section ${escHtml(sec)} &nbsp;&bull;&nbsp; <strong>Status:</strong> Cleared for Deployment
+              </div>
+            </div>
+
+            <!-- Paragraph 2 -->
+            <p style="margin:0 0 12px;font-size:0.85rem;line-height:1.6;color:#334155;">
+              The aforementioned student has successfully completed all university pre-deployment clearances and academic prerequisites. The student is authorized to render a required minimum of <strong>${escHtml(duration)}</strong> of specialized industry training for the position of <strong>&ldquo;${escHtml(posting)}&rdquo;</strong>.
+            </p>
+
+            <!-- Paragraph 3 -->
+            <p style="margin:0 0 14px;font-size:0.85rem;line-height:1.6;color:#334155;">
+              This endorsement is anchored on our active Memorandum of Agreement (MOA). The student has been instructed to observe the utmost professionalism, workplace safety rules, data confidentiality, and your company's operating protocols.
+            </p>
+
+            <!-- Real-time Coordinator Remarks Box (if any) -->
+            <div id="el-prev-notes-box" style="display:none;background:#fffbeb;border:1px solid #fde68a;border-left:3px solid #D97706;border-radius:6px;padding:8px 12px;margin:0 0 14px;font-size:0.8rem;color:#92400e;">
+              <strong>SPECIAL INSTRUCTIONS / REMARKS:</strong> <span id="el-prev-notes-text"></span>
+            </div>
+
+            <!-- Paragraph 4 -->
+            <p style="margin:0 0 24px;font-size:0.85rem;line-height:1.6;color:#334155;">
+              Thank you very much for your continuous partnership and dedication in training our university students.
+            </p>
+
+            <!-- Sign-off & Seal Block -->
+            <div style="display:flex;align-items:flex-end;justify-content:space-between;border-top:1px dashed #cbd5e1;padding-top:16px;margin-top:20px;">
+              <div>
+                <p style="margin:0 0 14px;font-size:0.75rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">
+                  ENDORSED AND CERTIFIED BY:
+                </p>
+                <p style="margin:0;font-size:0.98rem;font-weight:800;color:#005930;text-transform:uppercase;">
+                  ${escHtml(supervisorName)}
+                </p>
+                <p style="margin:2px 0 0;font-size:0.78rem;color:#475569;">${escHtml(supervisorTitle)} &ndash; ${escHtml(deptInfo.department)}</p>
+                <p style="margin:1px 0 0;font-size:0.76rem;color:#64748b;">${escHtml(deptInfo.college)}, CHMSU (${escHtml(supervisorCampus)})</p>
+                <p style="margin:1px 0 0;font-size:0.74rem;color:#64748b;">Email: ${escHtml(supervisorEmail)}</p>
+              </div>
+
+              <!-- Digital Stamp Box -->
+              <div style="background:#ecfdf5;border:1.5px solid #005930;border-radius:8px;padding:8px 12px;text-align:center;min-width:180px;">
+                <span style="font-size:0.73rem;font-weight:800;color:#005930;display:block;">CHMSU CIER ENDORSED</span>
+                <span style="font-size:0.69rem;color:#065f46;display:block;">Digitally Verified &bull; Official</span>
+                <span style="font-size:0.66rem;color:#64748b;font-family:monospace;display:block;margin-top:2px;">SEC: ${refCode}</span>
+              </div>
+            </div>
+          </div>
+
+          <p id="el-batch-error" style="color:#EF4444;font-size:0.81rem;margin:12px 0 0;display:none;padding:8px 12px;background:#EF444412;border-radius:var(--radius-sm);"></p>
+        </div>
+
+        <!-- Footer -->
+        <div class="modal__footer" style="border-top:1px solid var(--border-default);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;background:var(--bg-card);flex-shrink:0;">
+          <button type="button" class="btn btn--outline" id="el-batch-print" style="gap:6px;font-size:0.82rem;">
+            ${icon('printer', 14)} Print Current Preview
+          </button>
+
+          <div style="display:flex;align-items:center;gap:8px;">
+            <button class="btn btn--outline" id="el-batch-cancel">Cancel</button>
+            <button class="btn btn--primary" id="el-batch-submit" style="background:#005930;border-color:#005930;color:#fff;gap:6px;font-weight:700;">
+              ${icon('send', 14)} Send ${selectedRecords.length} Endorsement Letters
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Wire events inside modal
+    const closeModal = () => modal.remove();
+    modal.querySelector('#el-batch-close')?.addEventListener('click', closeModal);
+    modal.querySelector('#el-batch-cancel')?.addEventListener('click', closeModal);
+
+    // Chip click to switch preview
+    modal.querySelectorAll('.ojts-roster-pill').forEach(pill => {
+      pill.addEventListener('click', (e) => {
+        if (e.target.closest('.ojts-roster-pill__remove')) return;
+        const idx = parseInt(pill.dataset.idx, 10);
+        if (!isNaN(idx) && idx !== activePreviewIdx) {
+          activePreviewIdx = idx;
+          renderModalContent();
+        }
+      });
+    });
+
+    // Chip remove student
+    modal.querySelectorAll('.ojts-roster-pill__remove').forEach(rmBtn => {
+      rmBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const rmId = String(rmBtn.dataset.removeId);
+        selectedRecords = selectedRecords.filter(r => String(r.id) !== rmId);
+        if (!selectedRecords.length) {
+          closeModal();
+          return;
+        }
+        if (activePreviewIdx >= selectedRecords.length) {
+          activePreviewIdx = 0;
+        }
+        renderModalContent();
+      });
+    });
+
+    // Live preview listeners
+    const inputContact = modal.querySelector('#el-input-contact');
+    const prevContact  = modal.querySelector('#el-prev-contact');
+    inputContact?.addEventListener('input', () => {
+      prevContact.textContent = inputContact.value.trim() || 'The Internship Director / Human Resources Management';
+    });
+
+    const inputBody = modal.querySelector('#el-input-body');
+    const prevBody  = modal.querySelector('#el-prev-body');
+    inputBody?.addEventListener('input', () => {
+      prevBody.textContent = inputBody.value.trim() || defaultBody;
+    });
+
+    const inputNotes    = modal.querySelector('#el-input-notes');
+    const prevNotesBox  = modal.querySelector('#el-prev-notes-box');
+    const prevNotesText = modal.querySelector('#el-prev-notes-text');
+    inputNotes?.addEventListener('input', () => {
+      const val = inputNotes.value.trim();
+      if (val) {
+        prevNotesBox.style.display = 'block';
+        prevNotesText.textContent = val;
+      } else {
+        prevNotesBox.style.display = 'none';
+      }
+    });
+
+    // Print button
+    modal.querySelector('#el-batch-print')?.addEventListener('click', () => {
+      const paperHtml = modal.querySelector('#el-letter-paper').innerHTML;
+      const printWin = window.open('', '_blank', 'width=850,height=950');
+      if (printWin) {
+        printWin.document.write(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <title>Official CHMSU Endorsement Memorandum - ${escHtml(stName)}</title>
+              <style>
+                @page { size: letter portrait; margin: 15mm; }
+                body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; margin: 0; padding: 20px; line-height: 1.5; background: #fff; }
+                @media print { body { padding: 0; } }
+              </style>
+            </head>
+            <body>
+              ${paperHtml}
+              <script>window.onload = function() { window.print(); };</script>
+            </body>
+          </html>
+        `);
+        printWin.document.close();
+      }
+    });
+
+    // Submit handler
+    const submitBtn = modal.querySelector('#el-batch-submit');
+    const errEl = modal.querySelector('#el-batch-error');
+    submitBtn?.addEventListener('click', async () => {
+      errEl.style.display = 'none';
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `${icon('clock', 14)} Dispatching ${selectedRecords.length} letters…`;
+
+      const formData = new FormData();
+      formData.append('posting_id', slot.id);
+      selectedRecords.forEach(r => formData.append('interest_ids[]', r.id));
+      const contactVal = inputContact?.value.trim();
+      const notesVal   = inputNotes?.value.trim();
+      const bodyVal    = inputBody?.value.trim();
+
+      if (contactVal) formData.append('contact_person', contactVal);
+      if (notesVal)   formData.append('coordinator_note', notesVal);
+      if (bodyVal)    formData.append('custom_body', bodyVal);
+
+      try {
+        const res = await apiUpload('/supervisor/interests/batch-endorse', formData);
+        if (res?.success) {
+          closeModal();
+          showToast(res.message || `Successfully sent ${selectedRecords.length} endorsement letters!`, 'success');
+
+          const refreshed = await apiGetFresh(`/supervisor/posting/${slot.id}/applications`).catch(() => null);
+          const endorsedIdsSet = new Set(selectedRecords.map(r => String(r.id)));
+
+          const newStudents = (refreshed?.success && Array.isArray(refreshed.data))
+            ? refreshed.data
+            : students.map(s => endorsedIdsSet.has(String(s.id)) ? { ...s, status: 'endorsed' } : s);
+
+          const countEl = bd.querySelector('#int-app-count');
+          if (countEl) countEl.textContent = newStudents.length;
+
+          const updatedAllInterests = allInterests.map(i =>
+            endorsedIdsSet.has(String(i.id)) ? { ...i, status: 'endorsed' } : i
+          );
+          allInterests = updatedAllInterests;
+          onUpdate?.(updatedAllInterests);
+
+          apiCache.invalidate([
+            '/supervisor/interests*',
+            `/supervisor/posting/${slot.id}/applications*`,
+            '/supervisor/dashboard*',
+          ]);
+
+          renderApplicationsBody(body, newStudents, slot, bd, allInterests, onUpdate);
+        } else {
+          errEl.textContent = res?.message || 'Failed to dispatch batch endorsement. Please try again.';
+          errEl.style.display = 'block';
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = `${icon('send', 14)} Send ${selectedRecords.length} Endorsement Letters`;
+        }
+      } catch (err) {
+        errEl.textContent = 'Network or server error while dispatching batch. Please check connectivity.';
+        errEl.style.display = 'block';
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `${icon('send', 14)} Send ${selectedRecords.length} Endorsement Letters`;
+      }
+    });
+  }
+
+  renderModalContent();
+  document.body.appendChild(modal);
 }
 
 // ── Upload / Dynamic Endorsement Letter Modal ────────────────────────────────

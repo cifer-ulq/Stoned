@@ -612,6 +612,162 @@ class SupervisorController extends Controller
     }
 
     /**
+     * POST /supervisor/interests/batch-endorse
+     * Batch endorse multiple students applying to the same company and OJT posting.
+     */
+    public function batchEndorse(Request $request)
+    {
+        $validated = $request->validate([
+            'posting_id'         => ['required', 'integer', 'exists:ojt_postings,id'],
+            'interest_ids'       => ['required', 'array', 'min:1'],
+            'interest_ids.*'     => ['required', 'integer', 'exists:student_ojt_interests,id'],
+            'endorsement_letter' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
+            'contact_person'     => ['nullable', 'string', 'max:255'],
+            'coordinator_note'   => ['nullable', 'string', 'max:1000'],
+            'custom_body'        => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $posting = OjtPosting::findOrFail($validated['posting_id']);
+        $course  = $this->getSupervisorCourse($request);
+        $campus  = $this->getSupervisorCampus($request);
+
+        // Fetch all target interests with relations
+        $interests = StudentOjtInterest::with(['posting', 'student', 'student.studentProfile'])
+            ->whereIn('id', $validated['interest_ids'])
+            ->get();
+
+        if ($interests->isEmpty()) {
+            return response()->json(['success' => false, 'message' => 'No matching student interest records found.'], 404);
+        }
+
+        // 1. Cohesion Check: All interests must belong to the specified posting
+        foreach ($interests as $interest) {
+            if ((int)$interest->ojt_posting_id !== (int)$posting->id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "All students in a batch endorsement must belong to the same OJT listing. Record #{$interest->id} belongs to a different posting.",
+                ], 422);
+            }
+        }
+
+        // 2. Supervisor Scope Check: All students must be within supervisor's program/campus
+        foreach ($interests as $interest) {
+            if ($err = $this->authorizeStudentScope($course, $campus, $interest->student?->studentProfile)) {
+                $studentName = $interest->student?->name ?? "Student #{$interest->student_user_id}";
+                return response()->json([
+                    'success' => false,
+                    'message' => "Unauthorized for {$studentName}: {$err}",
+                ], 403);
+            }
+        }
+
+        // 3. Status Eligibility Check: All must be awaiting endorsement
+        $ineligible = $interests->filter(fn($i) => !in_array($i->status, ['endorsement_requested', 'company_accepted']));
+        if ($ineligible->isNotEmpty()) {
+            $ineligibleNames = $ineligible->map(fn($i) => $i->student?->name ?? "#{$i->id}")->join(', ');
+            return response()->json([
+                'success' => false,
+                'message' => "The following student(s) are not awaiting an endorsement letter: {$ineligibleNames}.",
+            ], 422);
+        }
+
+        // 4. Pre-flight MOA Guard: Verify company's MOA status
+        $companyUserId = $posting->company_user_id;
+        if ($companyUserId) {
+            $companyProfile = \App\Models\CompanyProfile::where('user_id', $companyUserId)->first();
+            if ($companyProfile) {
+                $effectiveMoa = strtolower($companyProfile->getEffectiveMoaStatus());
+                if (in_array($effectiveMoa, ['expired', 'rejected'], true)) {
+                    $companyName = $posting->company_name ?? 'this partner company';
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Cannot endorse students. {$companyName}'s MOA agreement with CHMSU has expired. Please coordinate with CIER Admin for agreement renewal before deploying new trainee cohorts.",
+                        'reason'  => 'moa_expired',
+                    ], 422);
+                }
+            }
+        }
+
+        // Handle uploaded file if supervisor uploaded a single custom document for the cohort
+        $uploadedLetterPath = null;
+        if ($request->hasFile('endorsement_letter')) {
+            $uploadedLetterPath = $request->file('endorsement_letter')->store('endorsement-letters', 'public');
+        }
+
+        $endorsedRecords = [];
+        $now = now();
+
+        DB::transaction(function () use (
+            $interests,
+            $request,
+            $posting,
+            $uploadedLetterPath,
+            $now,
+            &$endorsedRecords
+        ) {
+            foreach ($interests as $interest) {
+                // If custom file was uploaded, reuse that path; otherwise generate personalized CHMSU PDF
+                $letterPath = $uploadedLetterPath ?? \App\Services\EndorsementPdfService::generateAndStore(
+                    $interest,
+                    $request->user(),
+                    [
+                        'contact_person'   => $request->input('contact_person'),
+                        'coordinator_note' => $request->input('coordinator_note'),
+                        'custom_body'      => $request->input('custom_body'),
+                    ]
+                );
+
+                $interest->update([
+                    'status'                     => 'endorsed',
+                    'endorsed_by'                => $request->user()->id,
+                    'endorsed_at'                => $now,
+                    'endorsement_letter'         => $letterPath,
+                    'endorsement_letter_sent_at' => $now,
+                    'coordinator_note'           => $request->input('coordinator_note', $interest->coordinator_note),
+                ]);
+
+                // Notify individual student
+                AppNotification::send(
+                    $interest->student_user_id,
+                    'endorsement_sent',
+                    'Endorsement Letter Sent',
+                    "Your supervisor has sent your endorsement letter to {$posting->company_name} for \"{$posting->title}\". Waiting for company interview/confirmation.",
+                    ['posting_id' => $posting->id, 'interest_id' => $interest->id]
+                );
+
+                $endorsedRecords[] = $interest->fresh();
+            }
+
+            // Consolidated notification for the company
+            $count = count($interests);
+            $studentNames = $interests->map(fn($i) => $i->student?->name)->filter()->join(', ');
+            $truncatedNames = strlen($studentNames) > 80 ? substr($studentNames, 0, 77) . '...' : $studentNames;
+
+            AppNotification::send(
+                $posting->company_user_id,
+                'endorsement_sent',
+                "Batch Endorsements Received ({$count} Trainees)",
+                "The OJT Coordinator has sent endorsement letters for {$count} student(s) ({$truncatedNames}) applying to \"{$posting->title}\". You can now schedule their interviews or proceed with placement.",
+                [
+                    'posting_id'   => $posting->id,
+                    'interest_ids' => $interests->pluck('id')->toArray(),
+                    'count'        => $count,
+                ]
+            );
+        });
+
+        $count = count($endorsedRecords);
+        $companyName = $posting->company_name ?? 'the host company';
+
+        return response()->json([
+            'success' => true,
+            'message' => "Successfully sent {$count} endorsement letter(s) to {$companyName}.",
+            'count'   => $count,
+            'data'    => $endorsedRecords,
+        ]);
+    }
+
+    /**
      * POST /supervisor/reject/{interest_id}
      * Supervisor declines to send an endorsement letter.
      */

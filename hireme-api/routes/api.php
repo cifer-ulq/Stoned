@@ -245,6 +245,7 @@ Route::middleware('auth:sanctum')->prefix('supervisor')->group(function () {
     Route::get('companies',            [SupervisorController::class, 'companies']);
     Route::get('posting/{id}/applications', [SupervisorController::class, 'postingApplications']);
     Route::post('recommend/{id}',              [SupervisorController::class, 'recommend']);
+    Route::post('interests/batch-endorse',     [SupervisorController::class, 'batchEndorse']);
     Route::post('reject/{id}',                 [SupervisorController::class, 'reject']);
     Route::post('request-endorsement/{id}',    [SupervisorController::class, 'requestEndorsement']);
     Route::post('final-accept/{id}',           [SupervisorController::class, 'finalAccept']);

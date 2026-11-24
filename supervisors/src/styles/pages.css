@@ -4797,3 +4797,157 @@
   .db-header__nav-group { width: 100%; justify-content: stretch; }
   .db-btn-link { flex: 1; justify-content: center; }
 }
+
+/* ════════════════════════════════════════════════════════════
+   OJT BATCH ENDORSEMENT STYLES
+   ════════════════════════════════════════════════════════════ */
+.ojts-card-checkbox-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  cursor: pointer;
+  border-radius: var(--radius-sm, 6px);
+  user-select: none;
+}
+.ojts-card-checkbox {
+  width: 17px;
+  height: 17px;
+  accent-color: #005930;
+  cursor: pointer;
+  border-radius: 4px;
+  margin: 0;
+  flex-shrink: 0;
+  transition: transform 0.1s ease;
+}
+.ojts-card-checkbox:hover {
+  transform: scale(1.1);
+}
+.ojts-candidate-card--selected {
+  border-color: #005930 !important;
+  background: rgba(0, 89, 48, 0.035) !important;
+  box-shadow: 0 0 0 1px #005930, 0 2px 8px rgba(0, 89, 48, 0.08) !important;
+}
+
+/* Floating Batch Action Bar */
+.ojts-batch-action-bar {
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #0f172a;
+  color: #f8fafc;
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.22);
+  z-index: 100;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  margin: 16px -24px -24px -24px;
+  animation: ojtsSlideUpBar 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes ojtsSlideUpBar {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.ojts-batch-bar__left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.ojts-batch-bar__badge {
+  background: #005930;
+  color: #ffffff;
+  font-size: 0.76rem;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.ojts-batch-bar__label {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #f1f5f9;
+}
+.ojts-batch-bar__clear {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 0.77rem;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 2px 6px;
+  transition: color 0.15s ease;
+}
+.ojts-batch-bar__clear:hover {
+  color: #ffffff;
+}
+.ojts-batch-bar__action-btn {
+  background: #005930 !important;
+  border: 1px solid #005930 !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  font-size: 0.83rem !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 89, 48, 0.3);
+  transition: all 0.15s ease;
+}
+.ojts-batch-bar__action-btn:hover {
+  background: #004626 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0, 89, 48, 0.45);
+}
+.ojts-batch-bar__action-btn:active {
+  transform: translateY(0);
+}
+
+/* Batch Modal Roster Pills */
+.ojts-roster-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: #ffffff;
+  border: 1px solid var(--border-default);
+  border-radius: 20px;
+  font-size: 0.79rem;
+  color: var(--text-primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+.ojts-roster-pill__avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #00593014;
+  color: #005930;
+  font-size: 0.68rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ojts-roster-pill__remove {
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  border-radius: 50%;
+  transition: color 0.15s ease;
+}
+.ojts-roster-pill__remove:hover {
+  color: #EF4444;
+}
+
