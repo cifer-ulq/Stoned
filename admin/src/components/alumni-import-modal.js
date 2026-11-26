@@ -12,14 +12,29 @@ function escapeHtml(str) {
     .replace(/'/g, '&#039;');
 }
 
+function splitCredentialName(cred) {
+  if (cred?.first_name || cred?.last_name) {
+    return {
+      firstName: cred.first_name || '',
+      lastName: cred.last_name || '',
+    };
+  }
+  const parts = String(cred?.name || '').trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return { firstName: '', lastName: '' };
+  if (parts.length === 1) return { firstName: parts[0], lastName: '' };
+  return { firstName: parts[0], lastName: parts.slice(1).join(' ') };
+}
+
 function downloadCredentialsCSV(creds) {
   if (!creds || !creds.length) return;
   const rows = [
-    ['Name', 'Student ID', 'Email', 'Course', 'Batch', 'Section', 'Temporary Password', 'Login URL']
+    ['First Name', 'Last Name', 'Student ID', 'Email', 'Course', 'Batch', 'Section', 'Temporary Password', 'Login URL']
   ];
   creds.forEach(c => {
+    const { firstName, lastName } = splitCredentialName(c);
     rows.push([
-      `"${(c.name || '').replace(/"/g, '""')}"`,
+      `"${firstName.replace(/"/g, '""')}"`,
+      `"${lastName.replace(/"/g, '""')}"`,
       `"${(c.student_id || '').replace(/"/g, '""')}"`,
       `"${(c.email || '').replace(/"/g, '""')}"`,
       `"${(c.course || '').replace(/"/g, '""')}"`,
@@ -44,10 +59,10 @@ function downloadCredentialsCSV(creds) {
 ───────────────────────────────────────────────────────────────────────────── */
 function downloadTemplate() {
   const csv = [
-    'batch,section,name,studentid,email,course',
-    '2023-2024,A,Juan Dela Cruz,DJM01030400,jdelacruz@gmail.com,Bachelor of Science in Information Technology',
-    '2023-2024,B,Maria Santos,SMA02140400,msantos@gmail.com,Bachelor of Science in Information Systems',
-    '2022-2023,A,Carlo Reyes,RCA05100300,creyes@gmail.com,Bachelor of Science in Computer Science',
+    'batch,section,first_name,last_name,studentid,email,course',
+    '2023-2024,A,Juan,Dela Cruz,DJM01030400,jdelacruz@gmail.com,Bachelor of Science in Information Technology',
+    '2023-2024,B,Maria,Santos,SMA02140400,msantos@gmail.com,Bachelor of Science in Information Systems',
+    '2022-2023,A,Carlo,Reyes,RCA05100300,creyes@gmail.com,Bachelor of Science in Computer Science',
   ].join('\r\n');
 
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -95,6 +110,10 @@ function parseCSV(text) {
     headers.forEach((h, j) => { obj[h] = vals[j] ?? ''; });
     if (!obj.student_id && obj.studentid) obj.student_id = obj.studentid;
     if (!obj.batch && obj.year_graduated) obj.batch = obj.year_graduated;
+    if (!obj.course && obj.program) obj.course = obj.program;
+    if (!obj.first_name && obj.firstname) obj.first_name = obj.firstname;
+    if (!obj.last_name && obj.lastname) obj.last_name = obj.lastname;
+    if (!obj.middle_initial && obj.middle_name) obj.middle_initial = obj.middle_name;
     return obj;
   });
 
@@ -104,7 +123,20 @@ function parseCSV(text) {
 /* ─────────────────────────────────────────────────────────────────────────────
    Validate parsed rows in-browser for instant feedback
 ───────────────────────────────────────────────────────────────────────────── */
-const REQUIRED_COLS = ['name', 'email', 'course', 'batch'];
+const REQUIRED_HEADER_ALIASES = [
+  { key: 'batch',      aliases: ['batch', 'year_graduated'] },
+  { key: 'section',    aliases: ['section'] },
+  { key: 'first_name', aliases: ['first_name', 'firstname'] },
+  { key: 'last_name',  aliases: ['last_name', 'lastname'] },
+  { key: 'studentid',  aliases: ['studentid', 'student_id'] },
+  { key: 'email',      aliases: ['email'] },
+  { key: 'course',     aliases: ['course', 'program'] },
+];
+
+function isBlankSection(val) {
+  const s = String(val || '').trim().toLowerCase();
+  return !s || s === '—' || s === 'n/a' || s === 'none';
+}
 
 function validateRows(rows) {
   const seenEmails = new Set();
@@ -113,12 +145,14 @@ function validateRows(rows) {
     const issues = [];
     const sid = row.student_id || row.studentid;
 
-    if (!row.name)       issues.push('Missing name');
-    if (!row.email)      issues.push('Missing email');
+    if (!row.batch)               issues.push('Missing batch');
+    if (isBlankSection(row.section)) issues.push('Missing section');
+    if (!row.first_name)          issues.push('Missing first_name');
+    if (!row.last_name)           issues.push('Missing last_name');
+    if (!sid)                     issues.push('Missing studentid');
+    if (!row.email)               issues.push('Missing email');
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email)) issues.push('Invalid email');
-    if (!sid)            issues.push('Missing studentid');
-    if (!row.course)     issues.push('Missing course');
-    if (!row.batch)      issues.push('Missing batch');
+    if (!row.course)              issues.push('Missing course');
 
     if (row.email && seenEmails.has(row.email.toLowerCase())) issues.push('Duplicate email');
     else if (row.email) seenEmails.add(row.email.toLowerCase());
@@ -221,12 +255,12 @@ export function openAlumniImportModal(onSuccess) {
           </button>
         </div>
         <div class="sim-format-columns">
-          ${['batch *', 'section', 'name *', 'studentid *', 'email *', 'course *'].map(c => {
+          ${['batch *', 'section *', 'first_name *', 'last_name *', 'studentid *', 'email *', 'course *'].map(c => {
             const req = c.includes('*');
             return `<span class="sim-col-pill ${req ? 'sim-col-pill--req' : ''}">${c.replace(' *', '')}${req ? ` ${icon('sparkles', 10)}` : ''}</span>`;
           }).join('')}
         </div>
-        <p class="sim-format-note" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;"><span style="display:inline-flex;align-items:center;gap:3px;color:var(--color-primary);font-weight:600;">${icon('sparkles', 11)} Required</span> &nbsp;·&nbsp; Case-insensitive headers &nbsp;·&nbsp; "studentid" or "student_id" accepted</p>
+        <p class="sim-format-note" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;"><span style="display:inline-flex;align-items:center;gap:3px;color:var(--color-primary);font-weight:600;">${icon('sparkles', 11)} Required</span> &nbsp;·&nbsp; Optional: <code>middle_initial</code> &nbsp;·&nbsp; Case-insensitive headers &nbsp;·&nbsp; "studentid" or "student_id" accepted</p>
       </div>
     `;
     renderIcons();
@@ -267,9 +301,9 @@ export function openAlumniImportModal(onSuccess) {
       const { headers, rows } = parseCSV(e.target.result);
 
       // Verify required headers
-      const hasId = headers.includes('studentid') || headers.includes('student_id');
-      const missing = REQUIRED_COLS.filter(c => !headers.includes(c));
-      if (!hasId) missing.push('studentid');
+      const missing = REQUIRED_HEADER_ALIASES
+        .filter(({ aliases }) => !aliases.some(a => headers.includes(a)))
+        .map(({ key }) => key);
 
       if (missing.length > 0) {
         showFileError(`Missing required columns: ${missing.map(c => `"${c}"`).join(', ')}. Please check your CSV header row.`);
@@ -305,7 +339,7 @@ export function openAlumniImportModal(onSuccess) {
       <div class="sim-preview-stats">
         <div class="sim-preview-stat sim-preview-stat--file">
           ${icon('file-text', 15)}
-          <span class="sim-preview-stat__val">${fileName}</span>
+          <span class="sim-preview-stat__val">${escapeHtml(fileName)}</span>
         </div>
         <div class="sim-preview-stat sim-preview-stat--good">
           ${icon('check-circle', 14)}
@@ -333,7 +367,8 @@ export function openAlumniImportModal(onSuccess) {
               <th>#</th>
               <th>Batch</th>
               <th>Section</th>
-              <th>Name</th>
+              <th>First Name</th>
+              <th>Last Name</th>
               <th>Student ID</th>
               <th>Email</th>
               <th>Course</th>
@@ -344,16 +379,17 @@ export function openAlumniImportModal(onSuccess) {
             ${preview.map(r => `
               <tr class="${r._valid ? '' : 'sim-table__row--bad'}">
                 <td class="sim-table__row-num">${r._row}</td>
-                <td><strong>${r.batch || '—'}</strong></td>
-                <td>${r.section || '—'}</td>
-                <td>${r.name || '<span class="sim-missing">—</span>'}</td>
-                <td>${r._student_id || '<span class="sim-missing">—</span>'}</td>
-                <td>${r.email || '<span class="sim-missing">—</span>'}</td>
-                <td>${r.course || '<span class="sim-missing">—</span>'}</td>
+                <td>${r.batch ? `<strong>${escapeHtml(r.batch)}</strong>` : '<span class="sim-missing">—</span>'}</td>
+                <td>${!isBlankSection(r.section) ? escapeHtml(r.section) : '<span class="sim-missing">—</span>'}</td>
+                <td>${r.first_name ? escapeHtml(r.first_name) : '<span class="sim-missing">—</span>'}</td>
+                <td>${r.last_name ? escapeHtml(r.last_name) : '<span class="sim-missing">—</span>'}</td>
+                <td>${r._student_id ? escapeHtml(r._student_id) : '<span class="sim-missing">—</span>'}</td>
+                <td>${r.email ? escapeHtml(r.email) : '<span class="sim-missing">—</span>'}</td>
+                <td>${r.course ? escapeHtml(r.course) : '<span class="sim-missing">—</span>'}</td>
                 <td>
                   ${r._valid
                     ? `<span class="sim-status-pill sim-status-pill--ok">${icon('check', 10)} Ready</span>`
-                    : `<span class="sim-status-pill sim-status-pill--err">${icon('x', 10)} ${r._issues[0]}</span>`}
+                    : `<span class="sim-status-pill sim-status-pill--err">${icon('x', 10)} ${escapeHtml(r._issues[0])}</span>`}
                 </td>
               </tr>
             `).join('')}
@@ -470,27 +506,34 @@ export function openAlumniImportModal(onSuccess) {
             <table class="sim-table sim-table--compact" style="width:100%;font-size:0.8rem;">
               <thead>
                 <tr>
-                  <th>Alumni Name</th>
+                  <th>First Name</th>
+                  <th>Last Name</th>
                   <th>Student ID</th>
                   <th>Email</th>
                   <th>Batch</th>
+                  <th>Section</th>
                   <th>Temporary Password</th>
                 </tr>
               </thead>
               <tbody>
-                ${creds.map(c => `
+                ${creds.map(c => {
+                  const { firstName, lastName } = splitCredentialName(c);
+                  return `
                   <tr>
-                    <td style="font-weight:600;">${escapeHtml(c.name)}</td>
+                    <td style="font-weight:600;">${escapeHtml(firstName)}</td>
+                    <td style="font-weight:600;">${escapeHtml(lastName)}</td>
                     <td><code>${escapeHtml(c.student_id)}</code></td>
                     <td>${escapeHtml(c.email)}</td>
                     <td><span style="font-weight:600;">${escapeHtml(c.batch || '—')}</span></td>
+                    <td>${escapeHtml(c.section || '—')}</td>
                     <td>
                       <span style="background:var(--bg-elevated);border:1px solid var(--border-color);padding:2px 8px;border-radius:4px;font-family:monospace;font-weight:700;color:#0F766E;">
                         ${escapeHtml(c.temporary_password)}
                       </span>
                     </td>
                   </tr>
-                `).join('')}
+                `;
+                }).join('')}
               </tbody>
             </table>
           </div>

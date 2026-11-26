@@ -3137,8 +3137,17 @@ class AdminController extends Controller
         if (! isset($idx['batch']) && isset($idx['year_graduated'])) {
             $idx['batch'] = $idx['year_graduated'];
         }
+        if (! isset($idx['first_name']) && isset($idx['firstname'])) {
+            $idx['first_name'] = $idx['firstname'];
+        }
+        if (! isset($idx['last_name']) && isset($idx['lastname'])) {
+            $idx['last_name'] = $idx['lastname'];
+        }
+        if (! isset($idx['middle_initial']) && isset($idx['middle_name'])) {
+            $idx['middle_initial'] = $idx['middle_name'];
+        }
 
-        $required = ['name', 'email', 'student_id', 'course', 'batch'];
+        $required = ['first_name', 'last_name', 'email', 'student_id', 'course', 'batch', 'section'];
         foreach ($required as $col) {
             if (! isset($idx[$col])) {
                 $displayCol = ($col === 'student_id') ? 'studentid (or student_id)' : $col;
@@ -3147,6 +3156,8 @@ class AdminController extends Controller
                 ], 422);
             }
         }
+
+        $hasNamePartCols = Schema::hasColumns('users', ['first_name', 'middle_initial', 'last_name']);
 
         // ── Process rows ─────────────────────────────────────────────────────
         $imported            = 0;
@@ -3167,21 +3178,30 @@ class AdminController extends Controller
             $rowNum = $i + 1;
             $values = str_getcsv($lines[$i]);
 
-            $nameRaw   = $get($values, 'name');
-            $name      = $nameRaw ? preg_replace('/\s+/', ' ', trim($nameRaw)) : null;
-            $emailRaw  = $get($values, 'email');
-            $email     = $emailRaw ? strtolower(trim($emailRaw)) : null;
-            $studentId = StudentIdHelper::sanitize($get($values, 'student_id'));
-            $courseRaw = $get($values, 'course');
-            $course    = $courseRaw ? CourseNormalizer::normalize($courseRaw) : null;
-            $batchRaw  = $get($values, 'batch');
-            $batch     = $batchRaw ? preg_replace('/\s*-\s*/', '-', trim($batchRaw)) : null;
-            $section   = SectionNormalizer::normalize($get($values, 'section')) ?? '—';
-            $campus    = $get($values, 'campus') ?? 'Alijis Campus';
+            $firstNameRaw  = $get($values, 'first_name');
+            $firstName     = $firstNameRaw ? preg_replace('/\s+/', ' ', trim($firstNameRaw)) : null;
+            $lastNameRaw   = $get($values, 'last_name');
+            $lastName      = $lastNameRaw ? preg_replace('/\s+/', ' ', trim($lastNameRaw)) : null;
+            $middleRaw     = $get($values, 'middle_initial');
+            $alphaMid      = preg_replace('/[^A-Za-z]/', '', (string) ($middleRaw ?? ''));
+            $middleInitial = $alphaMid !== '' ? strtoupper(substr($alphaMid, 0, 1)) : null;
+            $emailRaw      = $get($values, 'email');
+            $email         = $emailRaw ? strtolower(trim($emailRaw)) : null;
+            $studentId     = StudentIdHelper::sanitize($get($values, 'student_id'));
+            $courseRaw     = $get($values, 'course');
+            $course        = $courseRaw ? CourseNormalizer::normalize($courseRaw) : null;
+            $batchRaw      = $get($values, 'batch');
+            $batch         = $batchRaw ? preg_replace('/\s*-\s*/', '-', trim($batchRaw)) : null;
+            $section       = SectionNormalizer::normalize($get($values, 'section'));
+            $campus        = $get($values, 'campus') ?? 'Alijis Campus';
 
             // ── Per-row validation ───────────────────────────────────────────
-            if (! $name) {
-                $errors[] = ['row' => $rowNum, 'email' => $email ?? '—', 'reason' => 'Missing name'];
+            if (! $firstName) {
+                $errors[] = ['row' => $rowNum, 'email' => $email ?? '—', 'reason' => 'Missing first name'];
+                $skipped++; continue;
+            }
+            if (! $lastName) {
+                $errors[] = ['row' => $rowNum, 'email' => $email ?? '—', 'reason' => 'Missing last name'];
                 $skipped++; continue;
             }
             if (! $email) {
@@ -3202,6 +3222,10 @@ class AdminController extends Controller
             }
             if (! $batch) {
                 $errors[] = ['row' => $rowNum, 'email' => $email, 'reason' => 'Missing batch'];
+                $skipped++; continue;
+            }
+            if (! $section) {
+                $errors[] = ['row' => $rowNum, 'email' => $email, 'reason' => 'Missing section'];
                 $skipped++; continue;
             }
 
@@ -3228,6 +3252,11 @@ class AdminController extends Controller
             $seenEmails[]     = strtolower($email);
             $seenStudentIds[] = $studentId;
 
+            $name = $middleInitial
+                ? "{$firstName} {$middleInitial}. {$lastName}"
+                : "{$firstName} {$lastName}";
+            $nameParts = StudentIdHelper::parseNameParts($name, $firstName, $middleInitial, $lastName);
+
             // ── Create records atomically ────────────────────────────────────
             try {
                 $rawId = trim((string) $studentId);
@@ -3237,16 +3266,22 @@ class AdminController extends Controller
                 }
 
                 DB::transaction(function () use (
-                    $name, $email, $studentId, $course, $section, $campus, $batch, $tempPassword
+                    $name, $nameParts, $email, $studentId, $course, $section, $campus, $batch, $tempPassword, $hasNamePartCols
                 ) {
-                    $user = User::create([
+                    $userAttrs = [
                         'name'                 => $name,
                         'email'                => $email,
                         'password'             => Hash::make($tempPassword),
                         'must_change_password' => true,
                         'role'                 => 'graduate',
                         'onboarding_completed' => true,
-                    ]);
+                    ];
+                    if ($hasNamePartCols) {
+                        $userAttrs['first_name']     = $nameParts['first_name'];
+                        $userAttrs['middle_initial'] = $nameParts['middle_initial'];
+                        $userAttrs['last_name']      = $nameParts['last_name'];
+                    }
+                    $user = User::create($userAttrs);
 
                     StudentProfile::create([
                         'user_id'    => $user->id,
@@ -3290,11 +3325,14 @@ class AdminController extends Controller
                 // Credentials are compiled for immediate CSV export/distribution by admin.
                 $importedCredentials[] = [
                     'name'               => $name,
+                    'first_name'         => $nameParts['first_name'],
+                    'middle_initial'     => $nameParts['middle_initial'],
+                    'last_name'          => $nameParts['last_name'],
                     'email'              => $email,
                     'student_id'         => $studentId,
                     'course'             => $course,
                     'batch'              => $batch,
-                    'section'            => $section ?? '—',
+                    'section'            => $section,
                     'temporary_password' => $tempPassword,
                 ];
 
