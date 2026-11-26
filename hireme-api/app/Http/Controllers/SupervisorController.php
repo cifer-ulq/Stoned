@@ -15,6 +15,7 @@ use App\Models\StudentOjtRequirement;
 use App\Models\SupervisorRequirementTemplate;
 use App\Models\OjtEmergencyRequest;
 use App\Models\OjtPullOutRequest;
+use App\Models\OjtScheduleRequest;
 use App\Mail\StudentWelcome;
 use App\Services\CourseNormalizer;
 use App\Services\SectionNormalizer;
@@ -826,7 +827,7 @@ class SupervisorController extends Controller
             $this->applySupervisorScope($query, $course, $campus);
         }
 
-        $interests = $query
+        $interestsCollection = $query
             ->orderByRaw("CASE status
                 WHEN 'interested' THEN 1
                 WHEN 'company_reviewed' THEN 2
@@ -840,9 +841,30 @@ class SupervisorController extends Controller
                 WHEN 'rejected' THEN 10
                 ELSE 11 END")
             ->latest()
-            ->get()
-            ->map(function ($i) use ($supervisorId) {
+            ->get();
+
+        $schedReqByStudent = Schema::hasTable('ojt_schedule_requests')
+            ? OjtScheduleRequest::whereIn('student_user_id', $interestsCollection->pluck('student_user_id')->filter()->unique())
+                ->orderByDesc('id')
+                ->get()
+                ->groupBy('student_user_id')
+            : collect();
+
+        $interests = $interestsCollection
+            ->map(function ($i) use ($supervisorId, $schedReqByStudent) {
                 $sp = $i->student->studentProfile;
+                $latestReq = $schedReqByStudent->get($i->student_user_id)?->first();
+                $hasConfirmedSchedule = $i->schedule_confirmed_at !== null
+                    || (!empty($i->schedule_days) && !empty($i->shift_start) && !empty($i->shift_end));
+                $scheduleStatus = 'not_set';
+                if (in_array($i->status, ['rejected', 'declined'], true)) {
+                    $scheduleStatus = 'undeployed';
+                } elseif ($hasConfirmedSchedule) {
+                    $scheduleStatus = 'confirmed';
+                } elseif ($latestReq && $latestReq->status === 'pending') {
+                    $scheduleStatus = 'requested';
+                }
+
                 return [
                     'id'                         => $i->id,
                     'status'                     => $i->status,
@@ -870,6 +892,17 @@ class SupervisorController extends Controller
                     'allow_overtime'             => (bool) ($i->allow_overtime ?? false),
                     'max_overtime_hours'         => (float) ($i->max_overtime_hours ?? 0),
                     'estimated_end_date'         => $i->estimated_end_date?->format('M d, Y'),
+                    'schedule_confirmed_at'      => $i->schedule_confirmed_at?->toIso8601String(),
+                    'has_confirmed_schedule'     => $hasConfirmedSchedule,
+                    'schedule_status'            => $scheduleStatus,
+                    'schedule_request'           => $latestReq ? [
+                        'id'               => $latestReq->id,
+                        'status'           => $latestReq->status,
+                        'request_type'     => $latestReq->request_type,
+                        'supervisor_note'  => $latestReq->supervisor_note,
+                        'requested_at'     => ($latestReq->last_reminded_at ?? $latestReq->created_at)?->diffForHumans(),
+                        'fulfilled_at'     => $latestReq->fulfilled_at?->format('M d, Y h:i A'),
+                    ] : null,
                     'student'         => [
                         'id'                     => $i->student->id,
                         'name'                   => $i->student->name,
@@ -913,7 +946,7 @@ class SupervisorController extends Controller
                       $sp->where(function ($sq) {
                           $sq->whereNull('status')->orWhere('status', '!=', 'alumni');
                       })->where(function ($sq) {
-                          $sq->whereNull('year_level')->orWhere('year_level', 'not ilike', '%graduat%');
+                          $sq->whereNull('year_level')->orWhereRaw('LOWER(year_level) NOT LIKE ?', ['%graduat%']);
                       });
                   });
             })
@@ -926,14 +959,20 @@ class SupervisorController extends Controller
 
         $students = $studentsQuery->get();
 
-        $data = $students->map(function ($student) {
+        $schedReqByStudent = Schema::hasTable('ojt_schedule_requests')
+            ? OjtScheduleRequest::whereIn('student_user_id', $students->pluck('id'))
+                ->orderByDesc('id')
+                ->get()
+                ->groupBy('student_user_id')
+            : collect();
+
+        $data = $students->map(function ($student) use ($schedReqByStudent) {
             $sp     = $student->studentProfile;
             $record = $student->ojtRecord;
 
-            // Get accepted OJT interest for placement info
-            // Include ojt_started (current active status), accepted (legacy), and endorsed
+            // Get accepted/confirmed/active OJT interest for placement info
             $acceptedInterest = $student->ojtInterests
-                ->filter(fn($i) => in_array($i->status, ['ojt_started', 'accepted', 'endorsed']))
+                ->filter(fn($i) => in_array($i->status, ['ojt_started', 'ojt_confirmed', 'accepted', 'endorsed']))
                 ->sortByDesc('updated_at')
                 ->first();
 
@@ -986,8 +1025,8 @@ class SupervisorController extends Controller
                 })->values();
 
             $hasActiveOjt = (
-                ($record && in_array($record->status, ['active', 'in_progress', 'completed', 'ojt_started'])) ||
-                $student->ojtInterests->contains(fn($i) => in_array($i->status, ['accepted', 'ojt_started', 'endorsed']))
+                ($record && in_array($record->status, ['active', 'in_progress', 'completed', 'ojt_started', 'pending'])) ||
+                $student->ojtInterests->contains(fn($i) => in_array($i->status, ['accepted', 'ojt_confirmed', 'ojt_started', 'endorsed']))
             );
 
             $approvalStatus = $sp?->approval_status ?? 'approved';
@@ -1151,6 +1190,10 @@ class SupervisorController extends Controller
                     'created_at'              => $latestPullOut->created_at?->diffForHumans(),
                 ] : null,
                 'flag'           => ($record?->status === 'flagged') ? 'Needs review' : null,
+                'interest_id'          => $acceptedInterest?->id,
+                'ojt_posting_id'       => $acceptedInterest?->ojt_posting_id,
+                'interest_status'      => $acceptedInterest?->status,
+                'ojt_instructions'     => $record?->company_instructions ?? $acceptedInterest?->ojt_instructions,
                 'schedule_days'        => $record?->schedule_days ?? $acceptedInterest?->schedule_days,
                 'shift_start'          => $record?->shift_start ?? $acceptedInterest?->shift_start,
                 'shift_end'            => $record?->shift_end ?? $acceptedInterest?->shift_end,
@@ -1162,10 +1205,61 @@ class SupervisorController extends Controller
                 'allow_overtime'       => (bool) ($record?->allow_overtime ?? $acceptedInterest?->allow_overtime ?? false),
                 'max_overtime_hours'   => (float) ($record?->max_overtime_hours ?? $acceptedInterest?->max_overtime_hours ?? 0),
                 'estimated_end_date'   => ($record?->estimated_end_date ?? $acceptedInterest?->estimated_end_date)?->format('M d, Y'),
+                'schedule_confirmed_at' => ($record?->schedule_confirmed_at ?? $acceptedInterest?->schedule_confirmed_at)?->toIso8601String(),
+                'has_confirmed_schedule' => (bool) (
+                    $record?->schedule_confirmed_at
+                    ?? $acceptedInterest?->schedule_confirmed_at
+                    ?? (
+                        !empty($record?->schedule_days ?? $acceptedInterest?->schedule_days)
+                        && !empty($record?->shift_start ?? $acceptedInterest?->shift_start)
+                        && !empty($record?->shift_end ?? $acceptedInterest?->shift_end)
+                    )
+                ),
+                'schedule_status' => (function () use ($hasPlacement, $isPulledOut, $approvalStatus, $record, $acceptedInterest, $schedReqByStudent, $student) {
+                    if (!$hasPlacement || $isPulledOut || $approvalStatus === 'pending') {
+                        return 'undeployed';
+                    }
+                    $confirmed = $record?->schedule_confirmed_at
+                        ?? $acceptedInterest?->schedule_confirmed_at
+                        ?? (
+                            !empty($record?->schedule_days ?? $acceptedInterest?->schedule_days)
+                            && !empty($record?->shift_start ?? $acceptedInterest?->shift_start)
+                            && !empty($record?->shift_end ?? $acceptedInterest?->shift_end)
+                        );
+                    if ($confirmed) {
+                        return 'confirmed';
+                    }
+                    $latestReq = $schedReqByStudent->get($student->id)?->first();
+                    if ($latestReq && $latestReq->status === 'pending') {
+                        return 'requested';
+                    }
+                    return 'not_set';
+                })(),
+                'schedule_request' => (function () use ($schedReqByStudent, $student) {
+                    $latestReq = $schedReqByStudent->get($student->id)?->first();
+                    return $latestReq ? [
+                        'id'              => $latestReq->id,
+                        'status'          => $latestReq->status,
+                        'request_type'    => $latestReq->request_type,
+                        'supervisor_note' => $latestReq->supervisor_note,
+                        'requested_at'    => ($latestReq->last_reminded_at ?? $latestReq->created_at)?->diffForHumans(),
+                        'fulfilled_at'    => $latestReq->fulfilled_at?->format('M d, Y h:i A'),
+                    ] : null;
+                })(),
                 'dailyLogs'      => $recentLogs,
                 'evaluations'    => ['midterm' => 'n/a', 'final' => 'n/a'],
             ];
         });
+
+        $schedFilter = $request->query('schedule_status');
+        if ($schedFilter) {
+            $data = $data->filter(function ($item) use ($schedFilter) {
+                if ($schedFilter === 'missing') {
+                    return in_array($item['schedule_status'], ['not_set', 'requested'], true);
+                }
+                return $item['schedule_status'] === $schedFilter;
+            })->values();
+        }
 
         $reqFilter = $request->query('requirements_status');
         if ($reqFilter) {
@@ -2289,7 +2383,7 @@ class SupervisorController extends Controller
                       $sp->where(function ($sq) {
                           $sq->whereNull('status')->orWhere('status', '!=', 'alumni');
                       })->where(function ($sq) {
-                          $sq->whereNull('year_level')->orWhere('year_level', 'not ilike', '%graduat%');
+                          $sq->whereNull('year_level')->orWhereRaw('LOWER(year_level) NOT LIKE ?', ['%graduat%']);
                       });
                   });
             });
@@ -3480,6 +3574,305 @@ class SupervisorController extends Controller
             'success' => true,
             'wiped'   => false,
             'message' => "Student {$student->name} registration has been rejected.",
+        ]);
+    }
+
+    /**
+     * GET /api/supervisor/schedule-requests
+     * Lists OJT schedule requests scoped to the supervisor's assigned program & campus.
+     */
+    public function listScheduleRequests(Request $request)
+    {
+        $course = $this->getSupervisorCourse($request);
+        $campus = $this->getSupervisorCampus($request);
+
+        $query = OjtScheduleRequest::with([
+            'student:id,name,email,avatar_url',
+            'student.studentProfile:id,user_id,student_id,program,section,campus',
+            'company:id,name,email',
+            'company.companyProfile:id,user_id,company_name',
+        ])->orderByDesc('id');
+
+        if ($course) {
+            $this->applySupervisorScope($query, $course, $campus);
+        }
+
+        if ($status = $request->query('status')) {
+            $query->where('status', $status);
+        }
+
+        $items = $query->get()->map(function ($req) {
+            return [
+                'id'              => $req->id,
+                'student_user_id' => $req->student_user_id,
+                'student_name'    => $req->student?->name ?? 'Student',
+                'program'         => $req->student?->studentProfile?->program ?? '',
+                'section'         => $req->student?->studentProfile?->section ?? '',
+                'company_user_id' => $req->company_user_id,
+                'company_name'    => $req->company?->companyProfile?->company_name ?? $req->company?->name ?? $req->company_name_snapshot ?? '—',
+                'request_type'    => $req->request_type,
+                'status'          => $req->status,
+                'supervisor_note' => $req->supervisor_note,
+                'requested_at'    => ($req->last_reminded_at ?? $req->created_at)?->diffForHumans(),
+                'fulfilled_at'    => $req->fulfilled_at?->format('M d, Y h:i A'),
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data'    => $items,
+        ]);
+    }
+
+    /**
+     * POST /api/supervisor/schedule-requests
+     * Supervisor requests OJT work schedule(s) from the host company for one or many students.
+     * Groups notifications per company so batch requests do not spam partner companies.
+     */
+    public function requestOjtSchedules(Request $request)
+    {
+        $validated = $request->validate([
+            'student_id'   => ['nullable', 'integer', 'exists:users,id'],
+            'student_ids'  => ['nullable', 'array', 'min:1'],
+            'student_ids.*'=> ['integer', 'exists:users,id'],
+            'note'         => ['nullable', 'string', 'max:1000'],
+            'request_type' => ['nullable', 'in:initial_schedule,missing_schedule,schedule_update'],
+        ]);
+
+        $ids = collect($validated['student_ids'] ?? []);
+        if (!empty($validated['student_id'])) {
+            $ids->push((int) $validated['student_id']);
+        }
+        $ids = $ids->map(fn ($id) => (int) $id)->filter()->unique()->values();
+
+        if ($ids->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please select at least one student to request an OJT schedule.',
+            ], 422);
+        }
+
+        $isSingle   = $ids->count() === 1;
+        $course     = $this->getSupervisorCourse($request);
+        $campus     = $this->getSupervisorCampus($request);
+        $supervisor = $request->user();
+        $note       = isset($validated['note']) ? trim($validated['note']) : null;
+        if ($note === '') {
+            $note = null;
+        }
+
+        $students = User::where('role', 'student')
+            ->whereIn('id', $ids)
+            ->with(['studentProfile', 'ojtRecord', 'ojtInterests.posting'])
+            ->get()
+            ->keyBy('id');
+
+        foreach ($ids as $sid) {
+            $student = $students->get($sid);
+            if (!$student) {
+                if ($isSingle) {
+                    return response()->json(['success' => false, 'message' => 'Student not found.'], 404);
+                }
+                continue;
+            }
+            if ($err = $this->authorizeStudentScope($course, $campus, $student->studentProfile)) {
+                return response()->json(['success' => false, 'message' => $err], 403);
+            }
+        }
+
+        $createdOrUpdated = [];
+        $skipped = [];
+        $byCompany = [];
+        $now = now();
+
+        foreach ($ids as $sid) {
+            $student = $students->get($sid);
+            if (!$student) {
+                continue;
+            }
+
+            $record = $student->ojtRecord;
+            $interest = $student->ojtInterests
+                ->filter(fn ($i) => in_array($i->status, ['ojt_started', 'ojt_confirmed', 'accepted', 'on_leave', 'endorsed'], true))
+                ->sortByDesc('updated_at')
+                ->first();
+
+            // Exclude students who are pulled out, withdrawn, or not yet placed
+            $isPulledOut = ($record?->status === 'pulled_out')
+                || OjtPullOutRequest::where('student_user_id', $student->id)->where('status', 'approved')->exists();
+            $isWithdrawn = ($record?->status === 'withdrawn_emergency');
+
+            if ($isPulledOut || $isWithdrawn || (!$interest && !$record)) {
+                $reason = $isPulledOut
+                    ? 'Student is pulled out / awaiting redeployment.'
+                    : ($isWithdrawn ? 'Student has withdrawn due to emergency.' : 'Student is not yet placed with a host company.');
+                if ($isSingle) {
+                    return response()->json(['success' => false, 'message' => $reason], 422);
+                }
+                $skipped[] = ['student_id' => $student->id, 'name' => $student->name, 'reason' => $reason];
+                continue;
+            }
+
+            // Must have reached at least coordinator approval (`accepted` or beyond) or an active OjtRecord
+            if ($interest && !in_array($interest->status, ['accepted', 'ojt_confirmed', 'ojt_started', 'on_leave'], true) && !$record) {
+                $reason = 'Student placement must be approved before requesting a work schedule.';
+                if ($isSingle) {
+                    return response()->json(['success' => false, 'message' => $reason], 422);
+                }
+                $skipped[] = ['student_id' => $student->id, 'name' => $student->name, 'reason' => $reason];
+                continue;
+            }
+
+            $companyUserId = $interest?->posting?->company_user_id;
+            $companyName   = $record?->company_name ?? $interest?->posting?->company_name;
+
+            if (!$companyUserId && $companyName) {
+                $exactProfile = \App\Models\CompanyProfile::whereRaw('LOWER(company_name) = ?', [strtolower(trim($companyName))])->first();
+                if ($exactProfile) {
+                    $companyUserId = $exactProfile->user_id;
+                } else {
+                    $likeProfile = \App\Models\CompanyProfile::whereRaw('LOWER(company_name) LIKE ?', ['%' . strtolower(trim($companyName)) . '%'])->first();
+                    $companyUserId = $likeProfile?->user_id;
+                }
+            }
+
+            if (!$companyUserId) {
+                $reason = 'No registered partner company account found for this placement.';
+                if ($isSingle) {
+                    return response()->json(['success' => false, 'message' => $reason], 422);
+                }
+                $skipped[] = ['student_id' => $student->id, 'name' => $student->name, 'reason' => $reason];
+                continue;
+            }
+
+            $hasConfirmed = (bool) (
+                $record?->schedule_confirmed_at
+                ?? $interest?->schedule_confirmed_at
+                ?? (
+                    !empty($record?->schedule_days ?? $interest?->schedule_days)
+                    && !empty($record?->shift_start ?? $interest?->shift_start)
+                    && !empty($record?->shift_end ?? $interest?->shift_end)
+                )
+            );
+
+            $reqType = $validated['request_type'] ?? (
+                $hasConfirmed
+                    ? 'schedule_update'
+                    : ($interest?->status === 'accepted' ? 'initial_schedule' : 'missing_schedule')
+            );
+
+            $existingPending = OjtScheduleRequest::where('student_user_id', $student->id)
+                ->where('company_user_id', $companyUserId)
+                ->where('status', 'pending')
+                ->latest('id')
+                ->first();
+
+            if ($existingPending) {
+                $existingPending->update([
+                    'supervisor_user_id'    => $supervisor->id,
+                    'ojt_interest_id'       => $existingPending->ojt_interest_id ?? $interest?->id,
+                    'ojt_record_id'         => $existingPending->ojt_record_id ?? $record?->id,
+                    'request_type'          => $reqType,
+                    'supervisor_note'       => $note ?? $existingPending->supervisor_note,
+                    'company_name_snapshot' => $companyName ?? $existingPending->company_name_snapshot,
+                    'last_reminded_at'      => $now,
+                ]);
+                $schedReq = $existingPending->fresh();
+            } else {
+                $schedReq = OjtScheduleRequest::create([
+                    'student_user_id'       => $student->id,
+                    'supervisor_user_id'    => $supervisor->id,
+                    'company_user_id'       => $companyUserId,
+                    'ojt_interest_id'       => $interest?->id,
+                    'ojt_record_id'         => $record?->id,
+                    'request_type'          => $reqType,
+                    'status'                => 'pending',
+                    'supervisor_note'       => $note,
+                    'company_name_snapshot' => $companyName,
+                    'last_reminded_at'      => $now,
+                ]);
+            }
+
+            $createdOrUpdated[] = $schedReq;
+            $byCompany[$companyUserId][] = [
+                'request'     => $schedReq,
+                'student'     => $student,
+                'interest'    => $interest,
+                'companyName' => $companyName,
+            ];
+        }
+
+        if (empty($createdOrUpdated)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'None of the selected students are eligible for an OJT schedule request.',
+                'data'    => ['requested_count' => 0, 'skipped_count' => count($skipped), 'skipped' => $skipped],
+            ], 422);
+        }
+
+        // Send 1 grouped notification per company
+        foreach ($byCompany as $companyUserId => $entries) {
+            $count = count($entries);
+            $first = $entries[0];
+            $noteSuffix = $note ? " Note: \"{$note}\"" : '';
+
+            if ($count === 1) {
+                $st = $first['student'];
+                $interest = $first['interest'];
+                $targetRoute = ($interest && $interest->status === 'accepted') ? '#/applicants' : '#/ojt-trainees';
+                AppNotification::send(
+                    (int) $companyUserId,
+                    'ojt_schedule_requested',
+                    "OJT Schedule Requested: {$st->name}",
+                    "{$supervisor->name} requested the official OJT work schedule for {$st->name}.{$noteSuffix}",
+                    [
+                        'student_id'          => $st->id,
+                        'interest_id'         => $interest?->id,
+                        'posting_id'          => $interest?->ojt_posting_id,
+                        'schedule_request_id' => $first['request']->id,
+                        'route'               => $targetRoute,
+                    ]
+                );
+            } else {
+                $names = collect($entries)->take(3)->map(fn ($e) => $e['student']->name)->join(', ');
+                $more  = $count > 3 ? ' and ' . ($count - 3) . ' more' : '';
+                $allAccepted = collect($entries)->every(fn ($e) => $e['interest']?->status === 'accepted');
+                $targetRoute = $allAccepted ? '#/applicants' : '#/ojt-trainees';
+
+                AppNotification::send(
+                    (int) $companyUserId,
+                    'ojt_schedule_requested',
+                    "OJT Schedules Requested ({$count} Trainees)",
+                    "{$supervisor->name} requested official OJT work schedules for {$count} trainees ({$names}{$more}).{$noteSuffix}",
+                    [
+                        'student_ids' => collect($entries)->map(fn ($e) => $e['student']->id)->values()->all(),
+                        'route'       => $targetRoute,
+                    ]
+                );
+            }
+        }
+
+        $reqCount = count($createdOrUpdated);
+        $skipCount = count($skipped);
+        $msg = $reqCount === 1
+            ? "OJT schedule request sent to " . ($byCompany[array_key_first($byCompany)][0]['companyName'] ?? 'host company') . "."
+            : "OJT schedule requests sent for {$reqCount} student(s)" . ($skipCount > 0 ? " ({$skipCount} undeployed/ineligible skipped)." : ".");
+
+        return response()->json([
+            'success' => true,
+            'message' => $msg,
+            'data'    => [
+                'requested_count' => $reqCount,
+                'skipped_count'   => $skipCount,
+                'skipped'         => $skipped,
+                'requests'        => collect($createdOrUpdated)->map(fn ($r) => [
+                    'id'              => $r->id,
+                    'student_user_id' => $r->student_user_id,
+                    'company_user_id' => $r->company_user_id,
+                    'status'          => $r->status,
+                    'request_type'    => $r->request_type,
+                ])->values(),
+            ],
         ]);
     }
 }

@@ -33,6 +33,7 @@ const TYPE_CFG = {
   offer_rejected:                 { ic: 'xCircle',          color: '#EF4444', defaultRoute: '#/applications' },
   ojt_approved:                   { ic: 'checkCircle',      color: '#10B981', defaultRoute: '#/ojt-tracker' },
   ojt_confirmed:                  { ic: 'shieldCheck',      color: '#005930', defaultRoute: '#/ojt-tracker' },
+  ojt_schedule_updated:           { ic: 'calendar',         color: '#005930', defaultRoute: '#/ojt-tracker' },
   interview_scheduled:            { ic: 'calendar',        color: '#D97706', defaultRoute: '#/interview' },
   interview_rescheduled:          { ic: 'clock',           color: '#D97706', defaultRoute: '#/interview' },
   interview_cancelled:            { ic: 'xCircle',          color: '#EF4444', defaultRoute: '#/interview' },

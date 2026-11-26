@@ -22,6 +22,10 @@ export function openSetOjtScheduleModal({
   postingTitle = 'OJT Placement',
   slotId,
   interestId,
+  studentId,
+  mode = 'set_start', // 'set_start' | 'trainee_schedule'
+  lockStartDate = false,
+  pendingScheduleRequest = null,
   requiredHours = 486,
   existingData = null,
   onSuccess,
@@ -30,17 +34,27 @@ export function openSetOjtScheduleModal({
   modal.className = 'modal-backdrop modal-backdrop--visible';
   modal.style.cssText = 'position:fixed;top:0;right:0;bottom:0;left:0;z-index:10002;background:rgba(15,23,42,0.7);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;';
 
+  const isTraineeMode = mode === 'trainee_schedule';
+  const hasExistingSchedule = Boolean(existingData?.has_confirmed_schedule || (Array.isArray(existingData?.schedule_days) && existingData.schedule_days.length && existingData?.shift_start));
+
   // Default start date = next Monday or today
   const today = new Date();
   const todayStr = today.toISOString().split('T')[0];
   const nextMonday = new Date();
   nextMonday.setDate(today.getDate() + ((1 + 7 - today.getDay()) % 7 || 7));
-  const defaultStartStr = nextMonday.toISOString().split('T')[0];
+  const defaultStartStr = existingData?.ojt_start_date_raw || (isTraineeMode ? todayStr : nextMonday.toISOString().split('T')[0]);
 
   // Schedule state
   let selectedDays = existingData?.schedule_days?.length
     ? [...existingData.schedule_days]
     : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+
+  const modalTitleText = isTraineeMode
+    ? (hasExistingSchedule ? 'Update OJT Work Schedule' : 'Set OJT Work Schedule')
+    : 'Set OJT Start Date &amp; Schedule';
+  const submitLabelText = isTraineeMode
+    ? (hasExistingSchedule ? 'Save Schedule Changes' : 'Confirm &amp; Save Work Schedule')
+    : 'Confirm OJT Start &amp; Schedule';
 
   modal.innerHTML = `
     <div class="modal-box modal-box--visible anim-fade-in-up" role="dialog" aria-modal="true" style="max-width:540px;width:100%;margin:auto;padding:0;overflow:hidden;border-radius:var(--radius-xl);background:var(--bg-elevated);box-shadow:var(--shadow-2xl);border:1px solid var(--border-default);opacity:1!important;transform:none!important;display:flex;flex-direction:column;position:relative;z-index:10003;">
@@ -54,7 +68,7 @@ export function openSetOjtScheduleModal({
             </div>
             <div>
               <h3 style="margin:0;font-size:1.05rem;font-weight:800;color:#fff;line-height:1.2;">
-                Set OJT Start Date &amp; Schedule
+                ${modalTitleText}
               </h3>
               <p style="margin:3px 0 0;font-size:0.78rem;color:rgba(255,255,255,0.85);">
                 ${escapeHtml(studentName)} &middot; ${escapeHtml(postingTitle)}
@@ -70,6 +84,16 @@ export function openSetOjtScheduleModal({
       <!-- Scrollable Form Body -->
       <div style="padding:20px 24px;max-height:72vh;overflow-y:auto;display:flex;flex-direction:column;gap:16px;">
 
+        ${pendingScheduleRequest ? `
+          <div style="background:#FFFBEB;border:1px solid rgba(245,158,11,0.38);border-left:4px solid #F59E0B;border-radius:10px;padding:10px 14px;font-size:0.8rem;color:#92400E;line-height:1.45;">
+            <div style="font-weight:700;display:flex;align-items:center;gap:6px;margin-bottom:2px;">
+              ${icon('bell', 13)} Requested by ${escapeHtml(pendingScheduleRequest.supervisor_name || 'OJT Coordinator')}
+              ${pendingScheduleRequest.requested_at ? `<span style="font-weight:500;font-size:0.72rem;color:#B45309;">(${escapeHtml(pendingScheduleRequest.requested_at)})</span>` : ''}
+            </div>
+            ${pendingScheduleRequest.supervisor_note ? `<div style="font-style:italic;color:#78350F;">&ldquo;${escapeHtml(pendingScheduleRequest.supervisor_note)}&rdquo;</div>` : '<div>Please confirm the student\'s weekly working days, daily shift hours, and break schedule.</div>'}
+          </div>
+        ` : ''}
+
         <!-- Step 1: Start Date -->
         <div>
           <label style="font-size:0.8rem;font-weight:700;display:flex;align-items:center;gap:5px;margin-bottom:6px;color:var(--text-primary);">
@@ -78,13 +102,16 @@ export function openSetOjtScheduleModal({
           <input
             type="date"
             id="sosi-date"
-            min="${todayStr}"
-            value="${existingData?.ojt_start_date_raw || defaultStartStr}"
+            ${!isTraineeMode ? `min="${todayStr}"` : ''}
+            ${lockStartDate ? 'disabled' : ''}
+            value="${defaultStartStr}"
             class="form-input"
-            style="width:100%;height:40px;padding:0 12px;border:1px solid var(--border-default);border-radius:var(--radius-md);background:var(--bg-secondary);font-family:inherit;font-size:0.88rem;color:var(--text-primary);"
+            style="width:100%;height:40px;padding:0 12px;border:1px solid var(--border-default);border-radius:var(--radius-md);background:${lockStartDate ? 'var(--bg-muted,#f1f5f9)' : 'var(--bg-secondary)'};font-family:inherit;font-size:0.88rem;color:var(--text-primary);${lockStartDate ? 'opacity:0.75;cursor:not-allowed;' : ''}"
           />
           <p style="font-size:0.72rem;color:var(--text-secondary);margin:4px 0 0;">
-            The student's OJT Tracker and geo-fenced punch clock will unlock on this date.
+            ${lockStartDate
+              ? 'Start date is locked because OJT training has already started. Working days, shift hours, break, overtime, and instructions remain editable.'
+              : 'The student\'s OJT Tracker and geo-fenced punch clock will unlock on this date.'}
           </p>
         </div>
 
@@ -307,7 +334,7 @@ export function openSetOjtScheduleModal({
           Cancel
         </button>
         <button type="button" id="sosi-submit" class="btn btn--primary" style="height:38px;padding:0 22px;gap:6px;background:#005930;border-color:#005930;">
-          ${icon('checkCircle', 14)} Confirm OJT Start &amp; Schedule
+          ${icon('checkCircle', 14)} ${submitLabelText}
         </button>
       </div>
 
@@ -636,7 +663,7 @@ export function openSetOjtScheduleModal({
       showErr('Shift schedule must have chronological times and provide positive working hours.');
       return;
     }
-    if (!instructions || instructions.length < 10) {
+    if (!isTraineeMode && (!instructions || instructions.length < 10)) {
       showErr('Please enter reporting instructions for the student (at least 10 characters).');
       return;
     }
@@ -649,9 +676,13 @@ export function openSetOjtScheduleModal({
     submitBtn.innerHTML = `${icon('clock', 14)} Confirming...`;
 
     try {
-      const res = await apiPost(`/company/ojt-postings/${slotId}/set-ojt-start/${interestId}`, {
+      const endpoint = isTraineeMode
+        ? `/company/ojt-trainees/${studentId}/schedule`
+        : `/company/ojt-postings/${slotId}/set-ojt-start/${interestId}`;
+
+      const res = await apiPost(endpoint, {
         ojt_start_date:     startDate,
-        ojt_instructions:   instructions,
+        ojt_instructions:   instructions || null,
         schedule_days:      selectedDays,
         shift_start:        shiftStart,
         shift_end:          shiftEnd,
@@ -667,7 +698,7 @@ export function openSetOjtScheduleModal({
       if (!res?.success) {
         showErr(res?.message || 'Failed to save OJT schedule. Please try again.');
         submitBtn.disabled = false;
-        submitBtn.innerHTML = `${icon('checkCircle', 14)} Confirm OJT Start &amp; Schedule`;
+        submitBtn.innerHTML = `${icon('checkCircle', 14)} ${submitLabelText}`;
         return;
       }
 
@@ -691,7 +722,7 @@ export function openSetOjtScheduleModal({
     } catch (err) {
       showErr(err.message || 'Network error while saving schedule. Please try again.');
       submitBtn.disabled = false;
-      submitBtn.innerHTML = `${icon('checkCircle', 14)} Confirm OJT Start &amp; Schedule`;
+      submitBtn.innerHTML = `${icon('checkCircle', 14)} ${submitLabelText}`;
     }
   });
 

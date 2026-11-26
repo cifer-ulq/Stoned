@@ -200,6 +200,8 @@ Route::middleware('auth:sanctum')->prefix('company')->group(function () {
     Route::post('ojt-postings/{postingId}/accept-after-interview/{interestId}',  [CompanyController::class, 'acceptAfterInterview']);
     Route::post('ojt-postings/{postingId}/direct-accept/{interestId}',          [CompanyController::class, 'directAcceptStudent']);
     Route::post('ojt-postings/{postingId}/set-ojt-start/{interestId}',           [CompanyController::class, 'setOjtInstructions']);
+    Route::get('schedule-requests',                                              [CompanyController::class, 'listScheduleRequests']);
+    Route::post('ojt-trainees/{studentId}/schedule',                             [CompanyController::class, 'saveTraineeSchedule']);
 
     // Job Listings CRUD
     Route::get('jobs',              [CompanyController::class, 'listJobs']);
@@ -309,6 +311,10 @@ Route::middleware('auth:sanctum')->prefix('supervisor')->group(function () {
     // OJT Pull-Out Requests
     Route::get('pull-out-requests',                       [OjtPullOutController::class, 'supervisorList']);
     Route::put('pull-out-requests/{id}/recommend',        [OjtPullOutController::class, 'supervisorRecommend']);
+
+    // OJT Schedule Requests (Supervisor -> Company)
+    Route::get('schedule-requests',                       [SupervisorController::class, 'listScheduleRequests']);
+    Route::post('schedule-requests',                      [SupervisorController::class, 'requestOjtSchedules']);
 });
 
 // ── Student routes ────────────────────────────────────────────────────────────

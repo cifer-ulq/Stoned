@@ -6,6 +6,7 @@
 
 import { icon } from '../components/icons.js';
 import { apiGet, apiPost, apiCache, storageUrl, directStorageUrl } from '../api/client.js';
+import { openSetOjtScheduleModal } from '../components/ojt-schedule-modal.js';
 import { openDtrPrintModal } from '@shared/dtr-print-modal.js';
 
 export async function renderOjtTrainees(container) {
@@ -699,6 +700,24 @@ export async function renderOjtTrainees(container) {
         </button>
       </div>
 
+      <!-- ═══ 2b. Schedule Request Alert Ribbon (Appears when coordinators requested trainee schedules) ═══ -->
+      <div class="co-action-ribbon" id="co-sched-ribbon" style="display:none;background:#EFF6FF;border-color:rgba(37,99,235,0.3);border-left-color:#2563EB;">
+        <div class="co-action-ribbon__left">
+          <div class="co-action-ribbon__icon" style="background:rgba(37,99,235,0.12);color:#1D4ED8;">${icon('calendar', 18)}</div>
+          <div>
+            <div style="font-weight:700;font-size:0.9rem;color:#1E3A8A;">
+              <span id="ribbon-sched-count">0</span> Trainee OJT Schedule(s) Requested by Coordinator
+            </div>
+            <div style="font-size:0.78rem;color:#1D4ED8;margin-top:2px;">
+              CHMSU OJT Coordinators requested official working days and shift hours for these interns.
+            </div>
+          </div>
+        </div>
+        <button class="btn btn--sm" id="btn-sched-ribbon-filter" style="background:#1D4ED8;border-color:#1D4ED8;color:#ffffff;font-size:0.78rem;font-weight:700;padding:6px 14px;white-space:nowrap;">
+          View Requests
+        </button>
+      </div>
+
       <!-- ═══ 3. Workforce Operational Pulse Strip ═══ -->
       <div class="co-pulse-strip" id="co-pulse-strip">
         <!-- Metric 1: Total Interns -->
@@ -765,6 +784,8 @@ export async function renderOjtTrainees(container) {
           <!-- Stage Filter -->
           <select class="co-select-compact" id="co-stage-filter" title="Filter by Practicum / Appraisal State">
             <option value="all">All Interns</option>
+            <option value="schedule_requested">Schedule Requested by Coordinator</option>
+            <option value="schedule_missing">Missing Work Schedule</option>
             <option value="action_required">Action Required (Pending Appraisal)</option>
             <option value="hours_completed">Hours Completed (100%)</option>
             <option value="in_progress">Currently Rendering Hours</option>
@@ -856,6 +877,9 @@ export async function renderOjtTrainees(container) {
   const actionRibbon        = container.querySelector('#co-action-ribbon');
   const ribbonPendingCount  = container.querySelector('#ribbon-pending-count');
   const btnRibbonFilter     = container.querySelector('#btn-ribbon-filter-action');
+  const schedRibbon         = container.querySelector('#co-sched-ribbon');
+  const ribbonSchedCount    = container.querySelector('#ribbon-sched-count');
+  const btnSchedRibbonFilter = container.querySelector('#btn-sched-ribbon-filter');
   const pulseCards          = container.querySelectorAll('.co-pulse-card');
 
   const searchInput         = container.querySelector('#co-trainee-search-input');
@@ -898,7 +922,7 @@ export async function renderOjtTrainees(container) {
     // If an intern was already being inspected, re-render their dossier with fresh data
     if (selectedTraineeForDossier) {
       const allFlat = getAllTraineesFlat(rawData);
-      const fresh = allFlat.find(t => t.id === selectedTraineeForDossier.id);
+      const fresh = allFlat.find(t => String(t.id) === String(selectedTraineeForDossier.id));
       if (fresh) inspectTrainee(fresh);
       else closeDossier();
     }
@@ -926,11 +950,13 @@ export async function renderOjtTrainees(container) {
 
     let pendingEvalsCount = 0;
     let hoursCompletedCount = 0;
+    let pendingSchedCount = 0;
 
     flatList.forEach(t => {
       const isCompleted = t.required_hours > 0 && t.completed_hours >= t.required_hours;
       if (isCompleted) hoursCompletedCount++;
       if (t.evaluation?.status === 'pending') pendingEvalsCount++;
+      if (t.pending_schedule_request) pendingSchedCount++;
     });
 
     container.querySelector('#stat-total-trainees').textContent = totalTrainees;
@@ -944,6 +970,15 @@ export async function renderOjtTrainees(container) {
       ribbonPendingCount.textContent = pendingEvalsCount;
     } else {
       actionRibbon.style.display = 'none';
+    }
+
+    if (schedRibbon) {
+      if (pendingSchedCount > 0) {
+        schedRibbon.style.display = 'flex';
+        if (ribbonSchedCount) ribbonSchedCount.textContent = pendingSchedCount;
+      } else {
+        schedRibbon.style.display = 'none';
+      }
     }
   }
 
@@ -981,6 +1016,8 @@ export async function renderOjtTrainees(container) {
         const isHoursCompleted = t.required_hours > 0 && t.completed_hours >= t.required_hours;
 
         // Stage filter
+        if (activeStageFilter === 'schedule_requested' && !t.pending_schedule_request) return false;
+        if (activeStageFilter === 'schedule_missing' && t.has_confirmed_schedule) return false;
         if (activeStageFilter === 'action_required' && t.evaluation?.status !== 'pending') return false;
         if (activeStageFilter === 'hours_completed' && !isHoursCompleted) return false;
         if (activeStageFilter === 'in_progress' && (isHoursCompleted || t.evaluation?.status === 'submitted')) return false;
@@ -1201,9 +1238,32 @@ export async function renderOjtTrainees(container) {
           </button>`;
       }
 
-      const scheduleDaysText = Array.isArray(t.schedule_days) && t.schedule_days.length
-        ? t.schedule_days.join(', ')
-        : 'Mon – Fri';
+      let scheduleSummaryHtml = '';
+      if (t.has_confirmed_schedule) {
+        const scheduleDaysText = Array.isArray(t.schedule_days) && t.schedule_days.length
+          ? t.schedule_days.join(', ')
+          : 'Scheduled';
+        scheduleSummaryHtml = `
+          <div style="font-size:0.75rem;color:var(--text-primary);font-weight:500;">${escapeHtml(scheduleDaysText)}</div>
+          <div style="font-size:0.7rem;color:var(--text-secondary);margin-bottom:4px;">${escapeHtml(t.shift_start || '')} &ndash; ${escapeHtml(t.shift_end || '')}</div>
+        `;
+      } else if (t.pending_schedule_request) {
+        scheduleSummaryHtml = `
+          <div style="margin-bottom:4px;">
+            <span class="co-status-pill" style="background:#FFFBEB;color:#B45309;border-color:rgba(245,158,11,0.35);font-size:0.68rem;padding:2px 7px;">
+              ${icon('calendar', 10)} Schedule Requested
+            </span>
+          </div>
+        `;
+      } else {
+        scheduleSummaryHtml = `
+          <div style="margin-bottom:4px;">
+            <span class="co-status-pill" style="background:#F1F5F9;color:#475569;border-color:#CBD5E1;font-size:0.68rem;padding:2px 7px;">
+              ${icon('calendar', 10)} Schedule Not Set
+            </span>
+          </div>
+        `;
+      }
 
       const dtrBadgeHtml = renderTodayDtrBadge(t.today_dtr);
 
@@ -1237,13 +1297,17 @@ export async function renderOjtTrainees(container) {
             </div>
           </td>
           <td>
-            <div style="font-size:0.75rem;color:var(--text-primary);font-weight:500;">${scheduleDaysText}</div>
-            <div style="font-size:0.7rem;color:var(--text-secondary);margin-bottom:4px;">${t.shift_start || '08:00'} &ndash; ${t.shift_end || '17:00'}</div>
+            ${scheduleSummaryHtml}
             ${dtrBadgeHtml}
           </td>
           <td>${statusBadge}</td>
           <td style="text-align:right;" onclick="event.stopPropagation();">
             <div style="display:inline-flex;align-items:center;gap:6px;justify-content:flex-end;">
+              ${(!t.has_confirmed_schedule || t.pending_schedule_request) ? `
+                <button class="btn btn--sm btn-set-trainee-schedule" data-trainee-id="${t.id}" title="Set Trainee OJT Work Schedule" style="padding:4px 9px;font-size:0.74rem;gap:4px;background:${t.pending_schedule_request ? '#D97706' : '#005930'};border:1px solid ${t.pending_schedule_request ? '#D97706' : '#005930'};color:#fff;font-weight:700;">
+                  ${icon('calendar', 12)} Set Schedule
+                </button>
+              ` : ''}
               <button class="btn btn--outline btn--sm btn-open-trainee-dtr" data-student-id="${st.id}" data-trainee-id="${t.id}" title="View Student Daily Time Record (DTR)" style="padding:4px 9px;font-size:0.75rem;gap:4px;color:var(--color-primary, #005930);border-color:rgba(0,89,48,0.28);font-weight:600;">
                 ${icon('clock', 12)} DTR
               </button>
@@ -1308,7 +1372,19 @@ export async function renderOjtTrainees(container) {
 
     const scheduleDays = Array.isArray(t.schedule_days) && t.schedule_days.length
       ? t.schedule_days.join(', ')
-      : 'Mon – Fri';
+      : '';
+
+    const scheduleRowSnippet = t.has_confirmed_schedule
+      ? `<span style="font-size:0.7rem;color:var(--text-tertiary);">
+           ${escapeHtml(scheduleDays || 'Scheduled')} &bull; ${escapeHtml(t.shift_start || '')} - ${escapeHtml(t.shift_end || '')}
+         </span>`
+      : (t.pending_schedule_request
+          ? `<span class="co-status-pill" style="background:#FFFBEB;color:#B45309;border-color:rgba(245,158,11,0.35);font-size:0.68rem;padding:2px 7px;">
+               ${icon('calendar', 10)} Schedule Requested
+             </span>`
+          : `<span class="co-status-pill" style="background:#F1F5F9;color:#475569;border-color:#CBD5E1;font-size:0.68rem;padding:2px 7px;">
+               ${icon('calendar', 10)} Schedule Not Set
+             </span>`);
 
     const dtrBadgeHtml = renderTodayDtrBadge(t.today_dtr);
 
@@ -1343,9 +1419,7 @@ export async function renderOjtTrainees(container) {
             </div>
           </div>
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px;">
-            <span style="font-size:0.7rem;color:var(--text-tertiary);">
-              ${scheduleDays} &bull; ${t.shift_start || '08:00'} - ${t.shift_end || '17:00'}
-            </span>
+            ${scheduleRowSnippet}
             ${dtrBadgeHtml}
           </div>
         </div>
@@ -1368,6 +1442,11 @@ export async function renderOjtTrainees(container) {
         <!-- Right: Actions -->
         <div class="co-trainee-row__actions" style="display:flex;align-items:center;gap:6px;flex-shrink:0;" onclick="event.stopPropagation();">
           ${actionBtn}
+          ${(!t.has_confirmed_schedule || t.pending_schedule_request) ? `
+            <button class="btn btn--sm btn-set-trainee-schedule" data-trainee-id="${t.id}" title="Set Trainee OJT Work Schedule" style="padding:4px 9px;font-size:0.74rem;gap:4px;background:${t.pending_schedule_request ? '#D97706' : '#005930'};border:1px solid ${t.pending_schedule_request ? '#D97706' : '#005930'};color:#fff;font-weight:700;">
+              ${icon('calendar', 12)} Set Schedule
+            </button>
+          ` : ''}
           <button class="btn btn--outline btn--sm btn-open-trainee-dtr" data-student-id="${st.id}" data-trainee-id="${t.id}" title="View Student Daily Time Record (DTR)" style="padding:4px 9px;font-size:0.75rem;gap:4px;color:var(--color-primary, #005930);border-color:rgba(0,89,48,0.28);font-weight:600;">
             ${icon('clock', 13)} DTR
           </button>
@@ -1383,18 +1462,40 @@ export async function renderOjtTrainees(container) {
           >
             ${icon('award', 13)} Coordinator${Array.isArray(t.coordinators) && t.coordinators.length > 1 ? ` (${t.coordinators.length})` : ''}
           </button>
-          <button
-            type="button"
-            class="btn btn--ghost btn--sm"
-            onclick="window.openChat && window.openChat('ojt_interest_${t.interest_id || t.id}')"
-            title="Message Intern"
-            style="color:var(--color-primary, #005930);padding:4px 8px;font-size:0.75rem;"
-          >
-            ${icon('messageCircle', 13)} Intern
-          </button>
+          ${t.interest_id ? `
+            <button
+              type="button"
+              class="btn btn--ghost btn--sm"
+              onclick="window.openChat && window.openChat('ojt_interest_${t.interest_id}')"
+              title="Message Intern"
+              style="color:var(--color-primary, #005930);padding:4px 8px;font-size:0.75rem;"
+            >
+              ${icon('messageCircle', 13)} Intern
+            </button>
+          ` : ''}
         </div>
       </div>
     `;
+  }
+
+  function openTraineeScheduleModal(t) {
+    if (!t || !t.student?.id) return;
+    const p = t.parentPosting || {};
+    const isStarted = t.status === 'ojt_started' || Boolean(t.has_logged_hours);
+    openSetOjtScheduleModal({
+      mode: 'trainee_schedule',
+      studentId: t.student.id,
+      studentName: t.student.name || 'Intern',
+      postingTitle: p.title || 'OJT Placement',
+      requiredHours: t.required_hours || 600,
+      lockStartDate: isStarted && Boolean(t.ojt_start_date_raw),
+      pendingScheduleRequest: t.pending_schedule_request || null,
+      existingData: t,
+      onSuccess: () => {
+        apiCache.invalidate(['/company/ojt-trainees*', '/company/schedule-requests*']);
+        loadData();
+      },
+    });
   }
 
   // Attach event listeners to trainee rows and action buttons
@@ -1406,25 +1507,34 @@ export async function renderOjtTrainees(container) {
       el.addEventListener('click', (e) => {
         // Prevent if clicked directly on a button or link
         if (e.target.closest('button') || e.target.closest('a')) return;
-        const tId = parseInt(el.getAttribute('data-trainee-id'));
-        const target = allFlat.find(t => t.id === tId);
+        const tId = el.getAttribute('data-trainee-id');
+        const target = allFlat.find(t => String(t.id) === String(tId));
         if (target) inspectTrainee(target);
       });
     });
 
     rootEl.querySelectorAll('.btn-inspect-trainee').forEach(btn => {
       btn.addEventListener('click', () => {
-        const tId = parseInt(btn.getAttribute('data-trainee-id'));
-        const target = allFlat.find(t => t.id === tId);
+        const tId = btn.getAttribute('data-trainee-id');
+        const target = allFlat.find(t => String(t.id) === String(tId));
         if (target) inspectTrainee(target);
+      });
+    });
+
+    rootEl.querySelectorAll('.btn-set-trainee-schedule').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const tId = btn.getAttribute('data-trainee-id');
+        const target = allFlat.find(t => String(t.id) === String(tId));
+        if (target) openTraineeScheduleModal(target);
       });
     });
 
     rootEl.querySelectorAll('.btn-trainee-coord-chat').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        const tId = parseInt(btn.getAttribute('data-trainee-id'));
-        const target = allFlat.find(t => t.id === tId);
+        const tId = btn.getAttribute('data-trainee-id');
+        const target = allFlat.find(t => String(t.id) === String(tId));
         if (!target) return;
         const st = target.student || {};
         const sup = target.supervisor || {};
@@ -1680,25 +1790,42 @@ export async function renderOjtTrainees(container) {
 
       <!-- Work Schedule & Shift Rules -->
       <div class="co-dossier__box">
-        <div class="co-dossier__box-title">${icon('calendar', 13)} Work Terms & Schedule</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:0.75rem;">
-          <div>
-            <span style="color:var(--text-tertiary);display:block;font-size:0.68rem;text-transform:uppercase;">Working Days</span>
-            <span style="font-weight:600;color:var(--text-primary);">${Array.isArray(t.schedule_days) && t.schedule_days.length ? t.schedule_days.join(', ') : 'Mon, Tue, Wed, Thu, Fri'}</span>
-          </div>
-          <div>
-            <span style="color:var(--text-tertiary);display:block;font-size:0.68rem;text-transform:uppercase;">Daily Shift</span>
-            <span style="font-weight:600;color:var(--text-primary);">${t.shift_start || '08:00'} &ndash; ${t.shift_end || '17:00'}</span>
-          </div>
-          <div>
-            <span style="color:var(--text-tertiary);display:block;font-size:0.68rem;text-transform:uppercase;">Lunch Break</span>
-            <span style="color:var(--text-secondary);">${t.has_lunch_break !== false ? `${t.lunch_start || '12:00'} – ${t.lunch_end || '13:00'} (1h)` : 'None'}</span>
-          </div>
-          <div>
-            <span style="color:var(--text-tertiary);display:block;font-size:0.68rem;text-transform:uppercase;">Target End Date</span>
-            <span style="font-weight:600;color:var(--color-primary, #005930);">${t.estimated_end_date || 'Calculated automatically'}</span>
-          </div>
+        <div class="co-dossier__box-title" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <span style="display:inline-flex;align-items:center;gap:5px;">${icon('calendar', 13)} Work Terms &amp; Schedule</span>
+          <button type="button" class="btn btn--xs ${!t.has_confirmed_schedule ? 'btn--primary' : 'btn--outline'}" id="btn-dossier-edit-schedule" style="padding:3px 9px;font-size:0.7rem;font-weight:700;gap:4px;${!t.has_confirmed_schedule ? 'background:#005930;border-color:#005930;color:#fff;' : 'color:var(--color-primary,#005930);border-color:rgba(0,89,48,0.3);'}">
+            ${icon('edit', 11)} ${t.has_confirmed_schedule ? 'Edit Schedule' : 'Set Schedule'}
+          </button>
         </div>
+        ${t.pending_schedule_request ? `
+          <div style="margin:6px 0 8px;padding:8px 10px;border-radius:8px;background:#FFFBEB;border:1px solid rgba(245,158,11,0.35);font-size:0.73rem;color:#92400E;">
+            <strong>Requested by ${escapeHtml(t.pending_schedule_request.supervisor_name || 'Coordinator')}:</strong>
+            ${t.pending_schedule_request.supervisor_note ? `&ldquo;${escapeHtml(t.pending_schedule_request.supervisor_note)}&rdquo;` : 'Please submit official working days and shift hours.'}
+          </div>
+        ` : ''}
+        ${t.has_confirmed_schedule ? `
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:0.75rem;">
+            <div>
+              <span style="color:var(--text-tertiary);display:block;font-size:0.68rem;text-transform:uppercase;">Working Days</span>
+              <span style="font-weight:600;color:var(--text-primary);">${Array.isArray(t.schedule_days) && t.schedule_days.length ? escapeHtml(t.schedule_days.join(', ')) : '—'}</span>
+            </div>
+            <div>
+              <span style="color:var(--text-tertiary);display:block;font-size:0.68rem;text-transform:uppercase;">Daily Shift</span>
+              <span style="font-weight:600;color:var(--text-primary);">${escapeHtml(t.shift_start || '—')} &ndash; ${escapeHtml(t.shift_end || '—')}</span>
+            </div>
+            <div>
+              <span style="color:var(--text-tertiary);display:block;font-size:0.68rem;text-transform:uppercase;">Lunch Break</span>
+              <span style="color:var(--text-secondary);">${t.has_lunch_break !== false ? `${escapeHtml(t.lunch_start || '12:00')} – ${escapeHtml(t.lunch_end || '13:00')}` : 'None'}</span>
+            </div>
+            <div>
+              <span style="color:var(--text-tertiary);display:block;font-size:0.68rem;text-transform:uppercase;">Target End Date</span>
+              <span style="font-weight:600;color:var(--color-primary, #005930);">${escapeHtml(t.estimated_end_date || 'Calculated automatically')}</span>
+            </div>
+          </div>
+        ` : `
+          <div style="padding:10px 12px;border-radius:8px;background:var(--bg-elevated,#f8fafc);border:1px dashed var(--border-default,#cbd5e1);font-size:0.76rem;color:var(--text-secondary);">
+            Work schedule has not been officially configured yet. Click <strong>Set Schedule</strong> above to confirm working days, shift hours, and break times.
+          </div>
+        `}
 
         ${t.ojt_instructions ? `
           <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border-light, #E2E8F0);font-size:0.74rem;color:var(--text-secondary);">
@@ -1755,14 +1882,16 @@ export async function renderOjtTrainees(container) {
 
       <!-- Quick Communication -->
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button
-          type="button"
-          class="btn btn--outline btn--sm"
-          id="btn-dossier-chat"
-          style="flex:1;min-width:130px;gap:6px;font-size:0.78rem;"
-        >
-          ${icon('messageCircle', 13)} Message Intern
-        </button>
+        ${t.interest_id ? `
+          <button
+            type="button"
+            class="btn btn--outline btn--sm"
+            id="btn-dossier-chat"
+            style="flex:1;min-width:130px;gap:6px;font-size:0.78rem;"
+          >
+            ${icon('messageCircle', 13)} Message Intern
+          </button>
+        ` : ''}
         <button
           type="button"
           class="btn btn--outline btn--sm"
@@ -1780,6 +1909,10 @@ export async function renderOjtTrainees(container) {
     `;
 
     // Dossier actions listeners
+    dossierBody.querySelector('#btn-dossier-edit-schedule')?.addEventListener('click', () => {
+      openTraineeScheduleModal(t);
+    });
+
     dossierBody.querySelector('#btn-dossier-eval-action')?.addEventListener('click', () => {
       if (t.evaluation?.id) openCompanyEvaluationModal(t.evaluation.id, () => loadData());
     });
@@ -1793,7 +1926,7 @@ export async function renderOjtTrainees(container) {
     });
 
     dossierBody.querySelector('#btn-dossier-chat')?.addEventListener('click', () => {
-      if (window.openChat) window.openChat(`ojt_interest_${t.interest_id || t.id}`);
+      if (t.interest_id && window.openChat) window.openChat(`ojt_interest_${t.interest_id}`);
     });
 
     dossierBody.querySelectorAll('.btn-dossier-direct-coord').forEach(btn => {
@@ -1881,6 +2014,13 @@ export async function renderOjtTrainees(container) {
     renderActiveView();
   });
 
+  btnSchedRibbonFilter?.addEventListener('click', () => {
+    stageFilterSelect.value = 'schedule_requested';
+    activeStageFilter = 'schedule_requested';
+    updatePulseActiveCard('all');
+    renderActiveView();
+  });
+
   container.querySelector('#btn-refresh-trainees').addEventListener('click', () => {
     apiCache.invalidate(['/company/ojt-trainees*']);
     loadData();
@@ -1928,6 +2068,21 @@ export async function renderOjtTrainees(container) {
   };
   window.addEventListener('hireme:open-company-eval', window.__coOpenCompanyEvalHandler);
 
+  if (window.__coOpenCompanySchedHandler) {
+    window.removeEventListener('hireme:open-company-schedule', window.__coOpenCompanySchedHandler);
+  }
+  window.__coOpenCompanySchedHandler = (e) => {
+    if (!document.body.contains(container)) return;
+    const studentId = parseInt(e.detail?.studentId || sessionStorage.getItem('co_open_schedule_student_id'));
+    if (studentId) {
+      sessionStorage.removeItem('co_open_schedule_student_id');
+      const allFlat = getAllTraineesFlat(rawData);
+      const target = allFlat.find(t => t.student?.id === studentId);
+      if (target) openTraineeScheduleModal(target);
+    }
+  };
+  window.addEventListener('hireme:open-company-schedule', window.__coOpenCompanySchedHandler);
+
   // =========================================================================
   // BOOTSTRAP INITIAL LOAD
   // =========================================================================
@@ -1943,6 +2098,13 @@ export async function renderOjtTrainees(container) {
     if (pendingEvalId) {
       sessionStorage.removeItem('co_open_eval_id');
       openCompanyEvaluationModal(pendingEvalId, () => loadData());
+    }
+    const pendingSchedStudentId = parseInt(sessionStorage.getItem('co_open_schedule_student_id'));
+    if (pendingSchedStudentId) {
+      sessionStorage.removeItem('co_open_schedule_student_id');
+      const allFlat = getAllTraineesFlat(rawData);
+      const target = allFlat.find(t => t.student?.id === pendingSchedStudentId);
+      if (target) openTraineeScheduleModal(target);
     }
   });
 }

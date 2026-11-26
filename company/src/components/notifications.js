@@ -30,6 +30,8 @@ const TYPE_CFG = {
   company_accepted:                  { ic: 'checkCircle',      color: '#10B981', defaultRoute: '#/applicants' },
   company_rejected:                  { ic: 'xCircle',          color: '#EF4444', defaultRoute: '#/applicants' },
   ojt_confirmed:                     { ic: 'shieldCheck',      color: '#005930', defaultRoute: '#/ojt-trainees' },
+  ojt_schedule_requested:            { ic: 'calendar',         color: '#D97706', defaultRoute: '#/ojt-trainees' },
+  ojt_schedule_submitted:            { ic: 'calendar',         color: '#059669', defaultRoute: '#/ojt-trainees' },
   ojt_approved:                      { ic: 'checkCircle',      color: '#10B981', defaultRoute: '#/applicants' },
   interview_scheduled:               { ic: 'calendar',        color: '#D97706', defaultRoute: '#/interviews' },
   interview_rescheduled:             { ic: 'clock',           color: '#D97706', defaultRoute: '#/interviews' },
@@ -90,6 +92,10 @@ function navigateCompanyNotification(actionUrl, notif = {}) {
   if (evalId && (nType === 'ojt_evaluation_request' || nType === 'ojt_evaluation_reminder')) {
     sessionStorage.setItem('co_open_eval_id', String(evalId));
     window.dispatchEvent(new CustomEvent('hireme:open-company-eval', { detail: { evaluationId: evalId } }));
+  }
+  if (nType === 'ojt_schedule_requested' && studentId && (!actionUrl || actionUrl.includes('ojt-trainees'))) {
+    sessionStorage.setItem('co_open_schedule_student_id', String(studentId));
+    window.dispatchEvent(new CustomEvent('hireme:open-company-schedule', { detail: { studentId } }));
   }
   if (!actionUrl) return;
   if (actionUrl.startsWith('#')) {

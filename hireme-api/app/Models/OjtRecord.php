@@ -15,22 +15,23 @@ class OjtRecord extends Model
         'completed_hours', 'status', 'company_instructions',
         'schedule_days', 'shift_start', 'shift_end', 'lunch_start', 'lunch_end',
         'has_lunch_break', 'daily_hours', 'weekly_hours', 'allow_overtime',
-        'max_overtime_hours', 'estimated_end_date',
+        'max_overtime_hours', 'estimated_end_date', 'schedule_confirmed_at',
     ];
 
     protected function casts(): array
     {
         return [
-            'start_date'         => 'date',
-            'end_date'           => 'date',
-            'schedule_days'      => 'array',
-            'has_lunch_break'    => 'boolean',
-            'daily_hours'        => 'float',
-            'weekly_hours'       => 'float',
-            'allow_overtime'     => 'boolean',
-            'max_overtime_hours' => 'float',
-            'estimated_end_date' => 'date',
-            'completed_hours'    => 'decimal:2',
+            'start_date'            => 'date',
+            'end_date'              => 'date',
+            'schedule_days'         => 'array',
+            'has_lunch_break'       => 'boolean',
+            'daily_hours'           => 'float',
+            'weekly_hours'          => 'float',
+            'allow_overtime'        => 'boolean',
+            'max_overtime_hours'    => 'float',
+            'estimated_end_date'    => 'date',
+            'schedule_confirmed_at' => 'datetime',
+            'completed_hours'       => 'decimal:2',
         ];
     }
 

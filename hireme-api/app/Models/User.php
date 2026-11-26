@@ -100,6 +100,11 @@ class User extends Authenticatable
         return $this->hasMany(OjtPullOutRequest::class, 'student_user_id');
     }
 
+    public function ojtScheduleRequests()
+    {
+        return $this->hasMany(OjtScheduleRequest::class, 'student_user_id');
+    }
+
     public function companyProfile()
     {
         return $this->hasOne(CompanyProfile::class);

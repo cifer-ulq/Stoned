@@ -77,10 +77,11 @@ function handleMutationInvalidation(path) {
       '/company/analytics*',
       '/company/profile*'
     ]);
-  } else if (p.includes('/ojt-postings') || p.includes('/ojt-trainees') || p.includes('/endorsement') || p.includes('/set-ojt-start') || p.includes('/evaluat')) {
+  } else if (p.includes('/ojt-postings') || p.includes('/ojt-trainees') || p.includes('/endorsement') || p.includes('/set-ojt-start') || p.includes('/schedule') || p.includes('/evaluat')) {
     apiCache.invalidate([
       '/company/ojt-postings*',
       '/company/ojt-trainees*',
+      '/company/schedule-requests*',
       '/company/applications*',
       '/company/dashboard*',
       '/company/analytics*',

@@ -29,6 +29,8 @@ const TYPE_CFG = {
   company_rejected:               { ic: 'xCircle',          color: '#EF4444', defaultRoute: '#/interests' },
   endorsement_requested:          { ic: 'fileText',          color: '#F59E0B', defaultRoute: '#/interests' },
   ojt_confirmed:                  { ic: 'shieldCheck',      color: '#005930', defaultRoute: '#/trainees' },
+  ojt_schedule_requested:         { ic: 'calendar',         color: '#D97706', defaultRoute: '#/trainees' },
+  ojt_schedule_submitted:         { ic: 'calendar',         color: '#059669', defaultRoute: '#/trainees' },
   ojt_approved:                   { ic: 'checkCircle',      color: '#10B981', defaultRoute: '#/trainees' },
   endorsement_sent:               { ic: 'send',              color: '#10B981', defaultRoute: '#/trainees' },
   supervisor_rejected:            { ic: 'alertTriangle',     color: '#EF4444', defaultRoute: '#/trainees' },

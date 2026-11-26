@@ -7,6 +7,7 @@ import { icon } from '../components/icons.js';
 import { apiFetch, apiGet, apiGetFresh, apiPost, apiUpload, apiCache } from '../api/client.js';
 import { getState } from '../store.js';
 import { openAssignRequirementsModal, openReviewRequirementsModal } from '../components/requirements-modal.js';
+import { openScheduleRequestModal } from '../components/schedule-request-modal.js';
 
 // ── localStorage bridge (shared key with student portal) ────────────────────
 const LS_KEY = 'hireme_ojt_interests';
@@ -1264,6 +1265,38 @@ function renderApplicationsBody(body, students, slot, bd, allInterests, onUpdate
     });
   });
 
+  // Request OJT Schedule from Company button
+  body.querySelectorAll('.btn--request-schedule').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = String(btn.dataset.id);
+      const s = students.find(item => String(item.id) === id);
+      if (!s || !s.student) return;
+      const mapped = {
+        id: s.student.id,
+        name: s.student.name,
+        company: slot?.company_name || s.posting?.company_name || 'Host Company',
+        company_user_id: slot?.company_user_id || s.posting?.company_user_id || null,
+        hasPlacement: true,
+        interest_status: s.status,
+        has_confirmed_schedule: Boolean(s.has_confirmed_schedule),
+        schedule_status: s.schedule_status || (s.has_confirmed_schedule ? 'confirmed' : 'not_set'),
+        schedule_request: s.schedule_request || null,
+      };
+      openScheduleRequestModal({
+        students: [mapped],
+        onRequested: async (res) => {
+          showToast(res?.message || 'OJT schedule request sent to host company!', 'success');
+          const refreshed = await apiGetFresh(`/supervisor/posting/${slot.id}/applications`).catch(() => null);
+          if (refreshed?.success && Array.isArray(refreshed.data)) {
+            renderApplicationsBody(body, refreshed.data, slot, bd, allInterests, onUpdate, activeFilter);
+          }
+          if (typeof onUpdate === 'function') onUpdate();
+        },
+      });
+    });
+  });
+
   // OJT Requirements button (Assign / Review)
   body.querySelectorAll('.btn--open-reqs').forEach(btn => {
     btn.addEventListener('click', async (e) => {
@@ -1410,6 +1443,11 @@ function studentDetailCard(s, state, isSelected = false) {
           </div>
         </div>
         <div class="ojts-candidate-card__actions">
+          ${st.id && ['coordinator_approved', 'ojt_confirmed', 'ojt_active', 'accepted'].includes(state) ? `
+            <button class="ojts-candidate-card__msg-btn btn--request-schedule" data-id="${s.id}" style="${s.has_confirmed_schedule ? '' : 'color:#b45309;border-color:rgba(217,119,6,0.4);background:rgba(245,158,11,0.08);'}" title="${s.has_confirmed_schedule ? 'Request schedule update from company' : 'Ask host company for student OJT schedule'}">
+              ${icon('calendar', 13)} ${s.has_confirmed_schedule ? 'Update Sched' : (s.schedule_status === 'requested' ? 'Remind Sched' : 'Ask Schedule')}
+            </button>
+          ` : ''}
           ${st.id ? `<button class="ojts-candidate-card__msg-btn btn--open-reqs" data-student-id="${st.id}" data-name="${name}" data-program="${program}" data-interest-id="${s.id}" data-posting-id="${s.posting_id || ''}" data-has-req="${latestReq ? '1' : '0'}" data-req-id="${latestReq?.id || ''}" title="Manage OJT Requirements">
             ${latestReq ? (latestReq.status === 'submitted' ? `${icon('checkSquare', 12)} Review Reqs` : `${icon('list', 12)} Reqs`) : `${icon('clipboard', 12)} Assign Reqs`}
           </button>` : ''}

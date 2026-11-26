@@ -10,6 +10,7 @@ import { openStudentImportModal } from '../components/student-import-modal.js';
 import { openAssignRequirementsModal, openReviewRequirementsModal } from '../components/requirements-modal.js';
 import { openReviewEmergencyModal } from '../components/review-emergency-modal.js';
 import { openReviewPullOutModal } from '../components/review-pullout-modal.js';
+import { openScheduleRequestModal } from '../components/schedule-request-modal.js';
 import { openDtrPrintModal } from '@shared/dtr-print-modal.js';
 
 const REAL = v => v && v !== '—' && v !== '';
@@ -466,6 +467,17 @@ export default function traineesPage(container) {
           </div>
 
           <div class="tr2-select-wrap">
+            ${icon('calendar', 14)}
+            <select class="tr2-select" id="trainee-schedule-filter" title="Filter by Host Company OJT Schedule">
+              <option value="">All Schedules</option>
+              <option value="missing">⏳ Missing / Pending Schedule</option>
+              <option value="not_set">📋 Not Requested Yet</option>
+              <option value="requested">🔔 Requested (Awaiting Company)</option>
+              <option value="confirmed">✅ Schedule Confirmed</option>
+            </select>
+          </div>
+
+          <div class="tr2-select-wrap">
             ${icon('filter', 14)}
             <select class="tr2-select" id="trainee-section-filter" title="Filter by Section">
               <option value="">All Sections</option>
@@ -502,6 +514,9 @@ export default function traineesPage(container) {
       <div class="tr2-floating-batch-bar__right">
         <button type="button" class="btn btn--ghost btn--sm" id="tr2-batch-clear-btn" style="color:#ffffff;border-color:rgba(255,255,255,0.35);font-size:0.78rem;">
           Clear Selection
+        </button>
+        <button type="button" class="btn btn--outline btn--sm" id="tr2-batch-req-sched-btn" style="background:rgba(255,255,255,0.14);color:#ffffff;border-color:rgba(255,255,255,0.45);font-weight:700;font-size:0.82rem;gap:6px;" title="Ask host companies for selected students' OJT work schedules">
+          ${icon('calendar', 15)} Request Schedule
         </button>
         <button type="button" class="btn btn--primary btn--sm" id="tr2-batch-trigger-btn" style="background:#ffffff;color:#005930;border-color:#ffffff;font-weight:700;font-size:0.82rem;gap:6px;">
           ${icon('clipboardCheck', 15)} Assign Requirement Packet
@@ -757,6 +772,7 @@ export default function traineesPage(container) {
   const searchInput    = container.querySelector('#trainee-search');
   const searchClear    = container.querySelector('#trainee-search-clear');
   const reqSelect      = container.querySelector('#trainee-requirements-filter');
+  const schedSelect    = container.querySelector('#trainee-schedule-filter');
   const sectionSelect  = container.querySelector('#trainee-section-filter');
   const sortSelect     = container.querySelector('#trainee-sort-filter');
   const resetBtn       = container.querySelector('#trainee-reset-filters');
@@ -818,6 +834,13 @@ export default function traineesPage(container) {
     });
   }
 
+  if (schedSelect) {
+    schedSelect.addEventListener('change', () => {
+      currentPage = 1;
+      applyFilters();
+    });
+  }
+
   sectionSelect.addEventListener('change', () => {
     currentPage = 1;
     applyFilters();
@@ -832,6 +855,7 @@ export default function traineesPage(container) {
     searchInput.value = '';
     searchClear.style.display = 'none';
     if (reqSelect) reqSelect.value = '';
+    if (schedSelect) schedSelect.value = '';
     sectionSelect.value = '';
     sortSelect.value = 'name_asc';
     activeStatusTab = '';
@@ -920,6 +944,23 @@ export default function traineesPage(container) {
     });
   }
 
+  // Floating bar Request Schedule button
+  const batchReqSchedBtn = container.querySelector('#tr2-batch-req-sched-btn');
+  if (batchReqSchedBtn) {
+    batchReqSchedBtn.addEventListener('click', () => {
+      const selectedList = allTrainees.filter(t => selectedIds.has(t.id));
+      openScheduleRequestModal({
+        students: selectedList,
+        onRequested: (res) => {
+          selectedIds.clear();
+          updateBatchBar();
+          showToast(res?.message || 'OJT schedule request sent to host company!', 'success');
+          loadTrainees();
+        }
+      });
+    });
+  }
+
   // Floating bar Clear Selection button
   const batchClearBtn = container.querySelector('#tr2-batch-clear-btn');
   if (batchClearBtn) {
@@ -962,12 +1003,13 @@ export default function traineesPage(container) {
   }
 
   function applyFilters() {
-    const q       = searchInput.value.toLowerCase().trim();
-    const section = sectionSelect.value;
-    const reqVal  = reqSelect ? reqSelect.value : '';
-    const sortVal = sortSelect.value;
+    const q        = searchInput.value.toLowerCase().trim();
+    const section  = sectionSelect.value;
+    const reqVal   = reqSelect ? reqSelect.value : '';
+    const schedVal = schedSelect ? schedSelect.value : '';
+    const sortVal  = sortSelect.value;
 
-    const hasActiveFilters = Boolean(q || activeStatusTab || section || reqVal || sortVal !== 'name_asc');
+    const hasActiveFilters = Boolean(q || activeStatusTab || section || reqVal || schedVal || sortVal !== 'name_asc');
     resetBtn.style.display = hasActiveFilters ? 'inline-flex' : 'none';
 
     filteredTrainees = allTrainees.filter(t => {
@@ -1019,6 +1061,16 @@ export default function traineesPage(container) {
           if (!t.requirements || rStatus !== 'submitted') return false;
         } else if (reqVal === 'verified') {
           if (!t.requirements || (rStatus !== 'verified' && !t.requirements.is_verified)) return false;
+        }
+      }
+
+      // Schedule status filter matching (Dropdown)
+      if (schedVal) {
+        const sStatus = t.schedule_status || (t.hasPlacement ? (t.has_confirmed_schedule ? 'confirmed' : 'not_set') : 'undeployed');
+        if (schedVal === 'missing') {
+          if (!['not_set', 'requested'].includes(sStatus)) return false;
+        } else if (sStatus !== schedVal) {
+          return false;
         }
       }
 
@@ -1077,6 +1129,7 @@ export default function traineesPage(container) {
           searchInput.value = '';
           searchClear.style.display = 'none';
           if (reqSelect) reqSelect.value = '';
+          if (schedSelect) schedSelect.value = '';
           sectionSelect.value = '';
           sortSelect.value = 'name_asc';
           activeStatusTab = '';
@@ -1201,6 +1254,13 @@ export default function traineesPage(container) {
               </div>
             ` : ''}
             ${renderRequirementsIndicator(t)}
+            ${t.hasPlacement && !t.is_pulled_out && t.approval_status !== 'pending' ? (
+              t.schedule_status === 'confirmed'
+                ? `<div style="margin-top:4px;"><span style="display:inline-flex;align-items:center;gap:4px;font-size:0.7rem;font-weight:600;padding:2px 7px;border-radius:4px;background:rgba(0,89,48,0.08);color:#005930;" title="${escapeHtml((Array.isArray(t.schedule_days) ? t.schedule_days.join(', ') : '') + ' ' + (t.shift_start || '') + '–' + (t.shift_end || ''))}">${icon('calendar', 11)} ${escapeHtml(t.shift_start || 'Set')}–${escapeHtml(t.shift_end || '')}</span></div>`
+                : (t.schedule_status === 'requested'
+                    ? `<div style="margin-top:4px;"><span style="display:inline-flex;align-items:center;gap:4px;font-size:0.7rem;font-weight:700;padding:2px 7px;border-radius:4px;background:rgba(217,119,6,0.12);color:#b45309;" title="Requested ${escapeHtml(t.schedule_request?.requested_at || 'recently')}">${icon('clock', 11)} Sched Requested</span></div>`
+                    : `<div style="margin-top:4px;"><span style="display:inline-flex;align-items:center;gap:4px;font-size:0.7rem;font-weight:600;padding:2px 7px;border-radius:4px;background:rgba(100,116,139,0.12);color:#475569;">${icon('calendar', 11)} No Schedule</span></div>`)
+            ) : ''}
             ${t.flag ? `<div style="margin-top:4px;"><span class="badge badge--error" style="font-size:0.72rem;padding:2px 8px;border-radius:4px;">${icon('alertTriangle', 12)} Flagged</span></div>` : ''}
           </td>
 
@@ -1750,7 +1810,23 @@ export default function traineesPage(container) {
 
             <!-- Placement Details -->
             <div class="tr2-modal-section">
-              <h4 class="tr2-modal-sec-title">${icon('building', 16)} Placement Information</h4>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+                <h4 class="tr2-modal-sec-title" style="margin-bottom:0;">${icon('building', 16)} Placement Information</h4>
+                ${t.hasPlacement && !t.is_pulled_out && t.approval_status !== 'pending' ? `
+                  <button type="button" class="btn btn--outline btn--sm tr2-modal-req-sched-btn" style="gap:5px;font-size:0.76rem;font-weight:700;padding:4px 10px;color:${t.has_confirmed_schedule ? '#005930' : '#b45309'};border-color:${t.has_confirmed_schedule ? 'rgba(0,89,48,0.35)' : 'rgba(217,119,6,0.45)'};background:${t.has_confirmed_schedule ? 'rgba(0,89,48,0.05)' : 'rgba(245,158,11,0.08)'};">
+                    ${icon('calendar', 13)} ${t.has_confirmed_schedule ? 'Request Schedule Update' : (t.schedule_status === 'requested' ? 'Remind Company (Schedule)' : 'Request OJT Schedule')}
+                  </button>
+                ` : ''}
+              </div>
+              ${t.hasPlacement && !t.is_pulled_out && t.approval_status !== 'pending' && !t.has_confirmed_schedule ? `
+                <div style="margin-bottom:12px;padding:10px 14px;border-radius:10px;background:${t.schedule_status === 'requested' ? 'rgba(245,158,11,0.08)' : 'rgba(100,116,139,0.07)'};border:1px solid ${t.schedule_status === 'requested' ? 'rgba(245,158,11,0.28)' : 'rgba(100,116,139,0.2)'};font-size:0.81rem;color:${t.schedule_status === 'requested' ? '#92400e' : 'var(--text-secondary)'};display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+                  <span>
+                    ${t.schedule_status === 'requested'
+                      ? `<strong>Schedule Requested:</strong> Waiting for ${escapeHtml(t.company || 'the host company')} to submit working days &amp; shift hours (sent ${escapeHtml(t.schedule_request?.requested_at || 'recently')}).`
+                      : `<strong>OJT Schedule Not Set:</strong> ${escapeHtml(t.company || 'The host company')} has not submitted this trainee's working days and shift hours yet.`}
+                  </span>
+                </div>
+              ` : ''}
               ${placement.length ? `
                 <div class="tr2-detail-grid">
                   ${placement.map(([k, v]) => `
@@ -1917,6 +1993,16 @@ export default function traineesPage(container) {
       openReviewPullOutModal({
         trainee: t,
         onReviewed: () => {
+          loadTrainees();
+        }
+      });
+    });
+    root.querySelector('.tr2-modal-req-sched-btn')?.addEventListener('click', () => {
+      close();
+      openScheduleRequestModal({
+        students: [t],
+        onRequested: (res) => {
+          showToast(res?.message || 'OJT schedule request sent to host company!', 'success');
           loadTrainees();
         }
       });

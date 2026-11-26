@@ -1508,7 +1508,8 @@ function renderApplicantsList(body, students, slot, backdrop, container, allSlot
     btn.addEventListener('click', () => {
       const interestId = btn.dataset.id;
       const studentName = btn.dataset.name || 'Student';
-      showSetOjtStartModal(slot, interestId, studentName, body, container, allSlots, backdrop);
+      const applicant = students.find(s => String(s.id) === String(interestId)) || null;
+      showSetOjtStartModal(slot, interestId, studentName, body, container, allSlots, backdrop, applicant);
     });
   });
 
@@ -1670,6 +1671,12 @@ function applicantCard(s, state) {
         <span style="font-size:0.76rem;color:#334155;">
           Click "Set Start Date & Instructions" so the student knows when and where to report.
         </span>
+        ${s.pending_schedule_request ? `
+          <div style="margin-top:6px;padding:7px 10px;border-radius:6px;background:#FFFBEB;border:1px solid rgba(245,158,11,0.35);color:#92400E;font-size:0.74rem;">
+            <strong>Schedule Requested by ${escapeHtml(s.pending_schedule_request.supervisor_name || 'Coordinator')}:</strong>
+            ${s.pending_schedule_request.supervisor_note ? `&ldquo;${escapeHtml(s.pending_schedule_request.supervisor_note)}&rdquo;` : 'Kindly set the student\'s start date and weekly work schedule.'}
+          </div>
+        ` : ''}
       </div>`;
   } else if (state === 'ojt_confirmed') {
     const daysStr = Array.isArray(s.schedule_days) && s.schedule_days.length ? s.schedule_days.join(', ') : '';
@@ -2484,13 +2491,15 @@ function showAcceptAfterInterviewModal(slot, interestId, studentName, body, cont
  * Called after the coordinator approves the student's OJT (status: accepted).
  * Transitions to ojt_confirmed and creates OjtRecord with status=pending.
  */
-function showSetOjtStartModal(slot, interestId, studentName, body, container, allSlots, backdrop) {
+function showSetOjtStartModal(slot, interestId, studentName, body, container, allSlots, backdrop, existingApplicant = null) {
   openSetOjtScheduleModal({
     studentName,
     postingTitle: slot?.title || 'OJT Placement',
     slotId: slot?.id,
     interestId,
     requiredHours: slot?.required_hours || 486,
+    pendingScheduleRequest: existingApplicant?.pending_schedule_request || null,
+    existingData: existingApplicant,
     onSuccess: async () => {
       const { apiGet } = await import('../api/client.js');
       const fresh = await apiGet(`/company/ojt-postings/${slot.id}/interests`);

@@ -34,7 +34,7 @@ export function clearAuth() {
 function handleMutationInvalidation(path) {
   const p = path.toLowerCase();
 
-  if (p.includes('/recommend') || p.includes('/reject') || p.includes('/final-accept') || p.includes('/interests') || p.includes('/requirements') || p.includes('/emergency') || p.includes('/pull-out')) {
+  if (p.includes('/recommend') || p.includes('/reject') || p.includes('/final-accept') || p.includes('/interests') || p.includes('/requirements') || p.includes('/emergency') || p.includes('/pull-out') || p.includes('/schedule-requests')) {
     apiCache.invalidate([
       '/supervisor/interests*',
       '/supervisor/posting*',
@@ -44,7 +44,8 @@ function handleMutationInvalidation(path) {
       '/supervisor/monitoring*',
       '/supervisor/analytics*',
       '/supervisor/emergency-requests*',
-      '/supervisor/pull-out-requests*'
+      '/supervisor/pull-out-requests*',
+      '/supervisor/schedule-requests*'
     ]);
   } else if (p.includes('/evaluat') || p.includes('/students') || p.includes('/import')) {
     apiCache.invalidate([

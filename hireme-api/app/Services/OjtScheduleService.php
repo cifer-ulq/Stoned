@@ -293,4 +293,263 @@ class OjtScheduleService
 
         return $todayStr;
     }
+
+    /**
+     * Validate, calculate, and persist an OJT schedule across StudentOjtInterest,
+     * OjtRecord, and any pending OjtScheduleRequest records for that student/company.
+     *
+     * @return array{
+     *   success:bool,
+     *   message?:string,
+     *   errors?:array,
+     *   interest:?\App\Models\StudentOjtInterest,
+     *   record:\App\Models\OjtRecord,
+     *   fulfilled_requests:\Illuminate\Support\Collection,
+     *   schedule:array
+     * }
+     */
+    public static function applyScheduleToPlacement(
+        \App\Models\User $student,
+        \App\Models\User $companyUser,
+        ?\App\Models\StudentOjtInterest $interest,
+        ?\App\Models\OjtRecord $record,
+        array $payload
+    ): array {
+        $allowOt = !empty($payload['allow_overtime']);
+        $maxOt   = $allowOt ? (float) ($payload['max_overtime_hours'] ?? 0) : 0.0;
+        if ($allowOt && ($maxOt < 2.0 || $maxOt > 4.0)) {
+            return [
+                'success' => false,
+                'message' => 'Daily overtime cap must be between 2.0 and 4.0 hours per day when overtime is enabled.',
+                'errors'  => [
+                    'max_overtime_hours' => ['Daily overtime cap must be between 2.0 and 4.0 hours per day.'],
+                ],
+            ];
+        }
+
+        $shiftStart = self::normalizeTime($payload['shift_start'] ?? null, '08:00');
+        $shiftEnd   = self::normalizeTime($payload['shift_end'] ?? null, '17:00');
+        $hasLunch   = array_key_exists('has_lunch_break', $payload) ? (bool) $payload['has_lunch_break'] : true;
+        $lunchStart = self::normalizeTime($payload['lunch_start'] ?? null, '12:00');
+        $lunchEnd   = self::normalizeTime($payload['lunch_end'] ?? null, '13:00');
+
+        $seqCheck = self::validateScheduleSequence(
+            $shiftStart,
+            $shiftEnd,
+            $hasLunch,
+            $lunchStart,
+            $lunchEnd
+        );
+        if (!$seqCheck['valid']) {
+            return [
+                'success' => false,
+                'message' => $seqCheck['error'],
+                'errors'  => [
+                    'shift_start' => [$seqCheck['error']],
+                ],
+            ];
+        }
+
+        // Fixed university curriculum target: 600 hours less accredited hours from prior approved pull-outs
+        $curriculumTarget = 600;
+        $accreditedHours  = (float) \App\Models\OjtPullOutRequest::where('student_user_id', $student->id)
+            ->where('status', 'approved')
+            ->sum('credited_hours');
+
+        $existingRequired = (int) ($record?->required_hours ?? 0);
+        $requiredHours    = ($existingRequired > 0 && $existingRequired <= 2000)
+            ? $existingRequired
+            : max(0, $curriculumTarget - $accreditedHours);
+
+        $scheduleDays = $payload['schedule_days'] ?? $record?->schedule_days ?? $interest?->schedule_days ?? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+        if (!is_array($scheduleDays) || empty($scheduleDays)) {
+            $scheduleDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+        }
+
+        $dailyHours  = isset($payload['daily_hours']) ? (float) $payload['daily_hours'] : $seqCheck['daily_hours'];
+        $weeklyHours = isset($payload['weekly_hours'])
+            ? (float) $payload['weekly_hours']
+            : round($dailyHours * max(1, count($scheduleDays)), 2);
+
+        $hasExistingLogs = $record
+            ? \App\Models\TimeLog::where('user_id', $student->id)->where('ojt_record_id', $record->id)->exists()
+            : false;
+        $isAlreadyActive = $record && (
+            in_array($record->status, ['active', 'in_progress', 'completed', 'on_leave', 'flagged'], true)
+            || $hasExistingLogs
+        );
+
+        // Lock start date if training is already active with logs/past start, otherwise accept provided start date
+        $startDateStr = null;
+        if ($isAlreadyActive && $record?->start_date) {
+            $startDateStr = $record->start_date->toDateString();
+        } elseif (!empty($payload['ojt_start_date'])) {
+            $startDateStr = Carbon::parse($payload['ojt_start_date'])->toDateString();
+        } elseif ($record?->start_date) {
+            $startDateStr = $record->start_date->toDateString();
+        } elseif ($interest?->ojt_start_date) {
+            $startDateStr = $interest->ojt_start_date->toDateString();
+        } else {
+            $startDateStr = Carbon::today()->toDateString();
+        }
+
+        $estimatedEndDate = $payload['estimated_end_date'] ?? null;
+        if (!$estimatedEndDate && !empty($scheduleDays) && $dailyHours > 0) {
+            $daysNeeded = max(1, (int) ceil($requiredHours / $dailyHours));
+            $curr       = Carbon::parse($startDateStr);
+            $activeDays = array_map(fn ($d) => strtolower(substr(trim((string) $d), 0, 3)), $scheduleDays);
+            $dayCount   = 0;
+            $safety     = 0;
+            while ($dayCount < $daysNeeded && $safety < 1500) {
+                $safety++;
+                $dayName = strtolower($curr->format('D'));
+                if (in_array($dayName, $activeDays, true)) {
+                    $dayCount++;
+                    if ($dayCount >= $daysNeeded) {
+                        break;
+                    }
+                }
+                $curr->addDay();
+            }
+            $estimatedEndDate = $curr->toDateString();
+        }
+
+        $instructions = trim((string) ($payload['ojt_instructions'] ?? ''));
+        if ($instructions === '') {
+            $instructions = $record?->company_instructions
+                ?? $interest?->ojt_instructions
+                ?? 'Report on your assigned working days and shift schedule.';
+        }
+
+        $now = now();
+        $hasInterestConfirmCol = \Illuminate\Support\Facades\Schema::hasColumn('student_ojt_interests', 'schedule_confirmed_at');
+        $hasRecordConfirmCol   = \Illuminate\Support\Facades\Schema::hasColumn('ojt_records', 'schedule_confirmed_at');
+
+        if ($interest) {
+            $nextInterestStatus = $interest->status === 'accepted' ? 'ojt_confirmed' : $interest->status;
+            $interestData = [
+                'status'             => $nextInterestStatus,
+                'ojt_start_date'     => $startDateStr,
+                'ojt_instructions'   => $instructions,
+                'schedule_days'      => $scheduleDays,
+                'shift_start'        => $shiftStart,
+                'shift_end'          => $shiftEnd,
+                'lunch_start'        => $lunchStart,
+                'lunch_end'          => $lunchEnd,
+                'has_lunch_break'    => $hasLunch,
+                'daily_hours'        => $dailyHours,
+                'weekly_hours'       => $weeklyHours,
+                'allow_overtime'     => $allowOt,
+                'max_overtime_hours' => $maxOt,
+                'estimated_end_date' => $estimatedEndDate,
+                'ojt_started_at'     => $interest->status === 'accepted' ? null : $interest->ojt_started_at,
+            ];
+            if ($hasInterestConfirmCol) {
+                $interestData['schedule_confirmed_at'] = $now;
+            }
+            $interest->update($interestData);
+
+            $interest->posting?->syncSlotsRemaining();
+        }
+
+        $companyProfile = $companyUser->companyProfile;
+        $companyName    = $interest?->posting?->company_name
+            ?? $record?->company_name
+            ?? $companyProfile?->company_name
+            ?? $companyUser->name;
+        $location       = $interest?->posting?->location
+            ?? $record?->location
+            ?? $companyProfile?->company_location
+            ?? '';
+
+        $recordStatus = $record?->status;
+        if (!$recordStatus || in_array($recordStatus, ['pulled_out', 'withdrawn_emergency'], true)) {
+            $recordStatus = ($interest?->status === 'ojt_confirmed') ? 'pending' : 'active';
+        } elseif ($interest?->status === 'ojt_confirmed' && !$isAlreadyActive) {
+            $recordStatus = 'pending';
+        }
+
+        $recordData = [
+            'company_name'         => $companyName,
+            'supervisor_name'      => $record?->supervisor_name ?: $companyUser->name,
+            'supervisor_email'     => $record?->supervisor_email ?: $companyUser->email,
+            'location'             => $location,
+            'start_date'           => $startDateStr,
+            'end_date'             => $estimatedEndDate,
+            'required_hours'       => $requiredHours,
+            'completed_hours'      => (float) ($record?->completed_hours ?? 0),
+            'status'               => $recordStatus,
+            'company_instructions' => $instructions,
+            'schedule_days'        => $scheduleDays,
+            'shift_start'          => $shiftStart,
+            'shift_end'            => $shiftEnd,
+            'lunch_start'          => $lunchStart,
+            'lunch_end'            => $lunchEnd,
+            'has_lunch_break'      => $hasLunch,
+            'daily_hours'          => $dailyHours,
+            'weekly_hours'         => $weeklyHours,
+            'allow_overtime'       => $allowOt,
+            'max_overtime_hours'   => $maxOt,
+            'estimated_end_date'   => $estimatedEndDate,
+        ];
+        if ($hasRecordConfirmCol) {
+            $recordData['schedule_confirmed_at'] = $now;
+        }
+
+        $record = \App\Models\OjtRecord::updateOrCreate(
+            ['user_id' => $student->id],
+            $recordData
+        );
+
+        // Fulfill any pending schedule requests for this student from this company
+        $pendingRequests = collect();
+        if (\Illuminate\Support\Facades\Schema::hasTable('ojt_schedule_requests')) {
+            $pendingRequests = \App\Models\OjtScheduleRequest::where('student_user_id', $student->id)
+                ->where('status', 'pending')
+                ->where(function ($q) use ($companyUser, $companyName) {
+                    $q->where('company_user_id', $companyUser->id)
+                      ->orWhere(function ($sq) use ($companyName) {
+                          $sq->whereNull('company_user_id')
+                             ->where('company_name_snapshot', $companyName);
+                      });
+                })
+                ->get();
+
+            foreach ($pendingRequests as $req) {
+                $req->update([
+                    'status'          => 'fulfilled',
+                    'company_user_id' => $companyUser->id,
+                    'ojt_interest_id' => $req->ojt_interest_id ?? $interest?->id,
+                    'ojt_record_id'   => $req->ojt_record_id ?? $record->id,
+                    'fulfilled_at'    => $now,
+                    'fulfilled_by'    => $companyUser->id,
+                ]);
+            }
+        }
+
+        return [
+            'success'            => true,
+            'interest'           => $interest?->fresh(),
+            'record'             => $record->fresh(),
+            'fulfilled_requests' => $pendingRequests,
+            'is_already_active'  => $isAlreadyActive,
+            'schedule'           => [
+                'start_date'         => $startDateStr,
+                'start_date_fmt'     => Carbon::parse($startDateStr)->format('M d, Y'),
+                'schedule_days'      => $scheduleDays,
+                'shift_start'        => $shiftStart,
+                'shift_end'          => $shiftEnd,
+                'lunch_start'        => $lunchStart,
+                'lunch_end'          => $lunchEnd,
+                'has_lunch_break'    => $hasLunch,
+                'daily_hours'        => $dailyHours,
+                'weekly_hours'       => $weeklyHours,
+                'allow_overtime'     => $allowOt,
+                'max_overtime_hours' => $maxOt,
+                'estimated_end_date' => $estimatedEndDate ? Carbon::parse($estimatedEndDate)->format('M d, Y') : null,
+                'is_overnight'       => $seqCheck['is_overnight'],
+                'ojt_instructions'   => $instructions,
+            ],
+        ];
+    }
 }

@@ -40,6 +40,7 @@ class StudentOjtInterest extends Model
         'allow_overtime',
         'max_overtime_hours',
         'estimated_end_date',
+        'schedule_confirmed_at',
     ];
 
     protected $casts = [
@@ -58,6 +59,7 @@ class StudentOjtInterest extends Model
         'allow_overtime'             => 'boolean',
         'max_overtime_hours'         => 'float',
         'estimated_end_date'         => 'date',
+        'schedule_confirmed_at'      => 'datetime',
     ];
 
 

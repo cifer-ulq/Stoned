@@ -409,7 +409,13 @@ function renderCards(container, apps, allApps) {
         ojtNotice = `
           <div class="ap-ojt-notice" style="margin:10px 0 6px;padding:8px 12px;background:rgba(16,185,129,0.12);border-left:3px solid #005930;border-radius:4px;font-size:0.75rem;color:#005930;line-height:1.4;">
             ${icon('shield', 13)} <strong>Coordinator Approved!</strong> Set OJT start date & reporting instructions.
-          </div>`;
+          </div>
+          ${a.pending_schedule_request ? `
+            <div style="margin:6px 0;padding:7px 10px;background:#FFFBEB;border:1px solid rgba(245,158,11,0.35);border-left:3px solid #F59E0B;border-radius:4px;font-size:0.74rem;color:#92400E;">
+              <strong>Schedule Requested by ${esc(a.pending_schedule_request.supervisor_name || 'Coordinator')}:</strong>
+              ${a.pending_schedule_request.supervisor_note ? `&ldquo;${esc(a.pending_schedule_request.supervisor_note)}&rdquo;` : 'Kindly submit the student\'s start date and work schedule.'}
+            </div>
+          ` : ''}`;
         primaryBtn = `<button class="ap-btn ap-btn--primary ap-btn-ojt-start" data-id="${id}" style="background:#005930;border-color:#005930;" title="Set start date and reporting instructions">${icon('calendar', 14)} Set Start Date & Instructions</button>`;
       } else if (raw === 'ojt_confirmed') {
         statusBadge = 'OJT Confirmed';
@@ -1365,6 +1371,7 @@ function showOjtSetStartModal(app, allApps, container, parentBackdrop) {
     slotId,
     interestId,
     requiredHours,
+    pendingScheduleRequest: app.pending_schedule_request || null,
     existingData: app,
     onSuccess: (res, scheduleData) => {
       if (parentBackdrop) parentBackdrop.remove();
