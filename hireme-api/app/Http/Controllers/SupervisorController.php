@@ -16,6 +16,8 @@ use App\Models\SupervisorRequirementTemplate;
 use App\Models\OjtEmergencyRequest;
 use App\Models\OjtPullOutRequest;
 use App\Models\OjtScheduleRequest;
+use App\Models\SupervisorHourLog;
+use App\Services\OjtHoursService;
 use App\Mail\StudentWelcome;
 use App\Services\CourseNormalizer;
 use App\Services\SectionNormalizer;
@@ -966,7 +968,16 @@ class SupervisorController extends Controller
                 ->groupBy('student_user_id')
             : collect();
 
-        $data = $students->map(function ($student) use ($schedReqByStudent) {
+        $supLogsByStudent = Schema::hasTable('supervisor_hour_logs')
+            ? SupervisorHourLog::with(['supervisor:id,name', 'editedBy:id,name'])
+                ->whereIn('student_user_id', $students->pluck('id'))
+                ->orderByDesc('activity_date')
+                ->orderByDesc('id')
+                ->get()
+                ->groupBy('student_user_id')
+            : collect();
+
+        $data = $students->map(function ($student) use ($schedReqByStudent, $supLogsByStudent) {
             $sp     = $student->studentProfile;
             $record = $student->ojtRecord;
 
@@ -995,17 +1006,39 @@ class SupervisorController extends Controller
             $requiredHours  = ($storedRequired > 0 && $storedRequired <= 2000)
                 ? $storedRequired
                 : $this->parseRequiredHours($posting?->duration ?? null, 600);
+            $companyRequiredHours = (int) ($record?->company_required_hours ?? 500);
+            $supervisorRequiredHours = (int) ($record?->supervisor_required_hours ?? 100);
+
+            $studentSupLogs = $supLogsByStudent->get($student->id, collect());
+            $supervisorHours = round(min(
+                (float) $supervisorRequiredHours,
+                (float) ($record?->supervisor_hours ?? $studentSupLogs->sum('hours'))
+            ), 2);
+            if ($studentSupLogs->isNotEmpty() && $supervisorHours == 0.0) {
+                $supervisorHours = round(min((float) $supervisorRequiredHours, (float) $studentSupLogs->sum('hours')), 2);
+            }
 
             $hasPlacement   = $record !== null || $companyName !== null;
-            $completedHours = 0;
+            $companyHours   = 0.0;
             if ($record) {
-                $completedHours = (float) ($record->completed_hours ?? 0);
-                if ($completedHours == 0) {
-                    $completedHours = (float) TimeLog::where('user_id', $student->id)
+                $companyHours = round((float) ($record->company_hours ?? 0), 2);
+                if ($companyHours == 0.0 && (float) ($record->completed_hours ?? 0) > 0 && $supervisorHours == 0.0) {
+                    $companyHours = round(min((float) $companyRequiredHours, (float) $record->completed_hours), 2);
+                } elseif ($companyHours == 0.0) {
+                    $dtrSum = (float) TimeLog::where('user_id', $student->id)
                         ->where('ojt_record_id', $record->id)
-                        ->sum('hours_rendered');
+                        ->sum('hours_credited');
+                    if ($dtrSum == 0.0) {
+                        $dtrSum = (float) TimeLog::where('user_id', $student->id)
+                            ->where('ojt_record_id', $record->id)
+                            ->where('approval_status', 'approved')
+                            ->sum('hours_rendered');
+                    }
+                    $companyHours = round(min((float) $companyRequiredHours, $dtrSum), 2);
                 }
             }
+            $completedHours = round(min((float) $requiredHours, $companyHours + $supervisorHours), 2);
+            $remainingSupervisorHours = max(0.0, round((float) $supervisorRequiredHours - $supervisorHours, 2));
 
             // Recent time logs (last 5) — scoped to this OJT record when available
             $recentLogs = TimeLog::where('user_id', $student->id)
@@ -1139,6 +1172,35 @@ class SupervisorController extends Controller
                 'companyAddress' => $companyAddress ?: '—',
                 'completedHours' => $completedHours,
                 'requiredHours'  => $requiredHours,
+                'companyHours'   => $companyHours,
+                'companyRequiredHours' => $companyRequiredHours,
+                'supervisorHours' => $supervisorHours,
+                'supervisorRequiredHours' => $supervisorRequiredHours,
+                'remainingSupervisorHours' => $remainingSupervisorHours,
+                'isEligibleForSupervisorHours' => (
+                    !$isPulledOut
+                    && $approvalStatus !== 'pending'
+                    && $emergencyStatus !== 'withdrawn_emergency'
+                    && (
+                        ($record && in_array($record->status, ['active', 'in_progress', 'completed', 'ojt_started', 'flagged'], true))
+                        || $student->ojtInterests->contains(fn($i) => in_array($i->status, ['ojt_started', 'accepted'], true))
+                    )
+                ),
+                'supervisorHourLogs' => $studentSupLogs->map(fn($entry) => [
+                    'id'                => $entry->id,
+                    'student_user_id'   => $entry->student_user_id,
+                    'batch_id'          => $entry->batch_id,
+                    'title'             => $entry->title,
+                    'reason'            => $entry->reason,
+                    'activity_date'     => $entry->activity_date?->toDateString(),
+                    'activity_date_fmt' => $entry->activity_date?->format('M d, Y'),
+                    'hours'             => (float) $entry->hours,
+                    'added_by'          => $entry->supervisor?->name ?? 'Supervisor',
+                    'edited_by'         => $entry->editedBy?->name,
+                    'edited_at'         => $entry->edited_at?->format('M d, Y h:i A'),
+                    'is_edited'         => $entry->edited_at !== null,
+                    'created_at'        => $entry->created_at?->format('M d, Y h:i A'),
+                ])->values(),
                 'hasPlacement'   => $hasPlacement,
                 'status'         => $status,
                 'approval_status' => $approvalStatus,
@@ -3873,6 +3935,195 @@ class SupervisorController extends Controller
                     'request_type'    => $r->request_type,
                 ])->values(),
             ],
+        ]);
+    }
+
+    /**
+     * GET /supervisor/trainees/{studentId}/supervisor-hours
+     * Returns the student's 500/100 split hour summary and supervisor hour audit history.
+     */
+    public function supervisorHoursIndex(Request $request, $studentId, OjtHoursService $hoursService)
+    {
+        $student = User::with(['studentProfile', 'ojtRecord'])->findOrFail($studentId);
+        $course = $this->getSupervisorCourse($request);
+        $campus = $this->getSupervisorCampus($request);
+
+        if ($err = $this->authorizeStudentScope($course, $campus, $student->studentProfile)) {
+            return response()->json(['success' => false, 'message' => $err], 403);
+        }
+
+        $eligibility = $hoursService->checkEligibility($student);
+        $summary = $hoursService->getStudentSummary($student);
+
+        $logs = SupervisorHourLog::with(['supervisor:id,name', 'editedBy:id,name'])
+            ->where('student_user_id', $student->id)
+            ->orderByDesc('activity_date')
+            ->orderByDesc('id')
+            ->get()
+            ->map(fn ($entry) => $hoursService->formatEntry($entry))
+            ->values();
+
+        return response()->json([
+            'success'  => true,
+            'eligible' => $eligibility['eligible'],
+            'reason'   => $eligibility['reason'],
+            'summary'  => $summary,
+            'logs'     => $logs,
+        ]);
+    }
+
+    /**
+     * POST /supervisor/trainees/{studentId}/supervisor-hours
+     * Manually add supervisor hours (events/seminars) for a single active OJT trainee.
+     */
+    public function addSupervisorHours(Request $request, $studentId, OjtHoursService $hoursService)
+    {
+        $validated = $request->validate([
+            'hours'         => 'required|numeric|min:0.25|max:100',
+            'title'         => 'nullable|string|max:150',
+            'reason'        => 'required|string|max:1000',
+            'activity_date' => 'nullable|date',
+        ]);
+
+        $supervisor = $request->user();
+        $student = User::with(['studentProfile', 'ojtRecord'])->findOrFail($studentId);
+        $course = $this->getSupervisorCourse($request);
+        $campus = $this->getSupervisorCampus($request);
+
+        if ($err = $this->authorizeStudentScope($course, $campus, $student->studentProfile)) {
+            return response()->json(['success' => false, 'message' => $err], 403);
+        }
+
+        $result = $hoursService->addSingle($supervisor, $student, $validated);
+        if (!$result['success']) {
+            return response()->json([
+                'success'   => false,
+                'message'   => $result['message'],
+                'remaining' => $result['remaining'] ?? null,
+            ], $result['status'] ?? 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Added {$result['entry']['hours']} supervisor hrs to {$student->name}.",
+            'entry'   => $result['entry'],
+            'summary' => $result['summary'],
+        ]);
+    }
+
+    /**
+     * POST /supervisor/supervisor-hours/batch
+     * Batch-add supervisor hours across multiple active OJT trainees in the supervisor's scope.
+     */
+    public function batchAddSupervisorHours(Request $request, OjtHoursService $hoursService)
+    {
+        $validated = $request->validate([
+            'student_ids'   => 'required|array|min:1',
+            'student_ids.*' => 'integer|exists:users,id',
+            'hours'         => 'required|numeric|min:0.25|max:100',
+            'title'         => 'nullable|string|max:150',
+            'reason'        => 'required|string|max:1000',
+            'activity_date' => 'nullable|date',
+        ]);
+
+        $supervisor = $request->user();
+        $course = $this->getSupervisorCourse($request);
+        $campus = $this->getSupervisorCampus($request);
+
+        $studentIds = array_values(array_unique(array_map('intval', $validated['student_ids'])));
+        $students = User::with(['studentProfile', 'ojtRecord', 'graduateProfile'])
+            ->whereIn('id', $studentIds)
+            ->get();
+
+        $scopedStudents = [];
+        foreach ($students as $student) {
+            if ($this->authorizeStudentScope($course, $campus, $student->studentProfile) === null) {
+                $scopedStudents[] = $student;
+            }
+        }
+
+        if (empty($scopedStudents)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'None of the selected students belong to your assigned program or campus.',
+            ], 403);
+        }
+
+        $result = $hoursService->addBatch($supervisor, $scopedStudents, $validated);
+        if (!$result['success']) {
+            return response()->json([
+                'success' => false,
+                'message' => $result['message'],
+                'data'    => $result['data'] ?? null,
+            ], $result['status'] ?? 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $result['message'],
+            'data'    => $result['data'],
+        ]);
+    }
+
+    /**
+     * PUT /supervisor/supervisor-hours/{entryId}
+     * Edit an existing supervisor hour entry and recalculate the student's totals.
+     */
+    public function updateSupervisorHours(Request $request, $entryId, OjtHoursService $hoursService)
+    {
+        $validated = $request->validate([
+            'hours'         => 'required|numeric|min:0.25|max:100',
+            'title'         => 'nullable|string|max:150',
+            'reason'        => 'required|string|max:1000',
+            'activity_date' => 'nullable|date',
+        ]);
+
+        $entry = SupervisorHourLog::with(['student.studentProfile', 'student.ojtRecord'])->findOrFail($entryId);
+        $student = $entry->student;
+
+        $course = $this->getSupervisorCourse($request);
+        $campus = $this->getSupervisorCampus($request);
+        if ($student && ($err = $this->authorizeStudentScope($course, $campus, $student->studentProfile))) {
+            return response()->json(['success' => false, 'message' => $err], 403);
+        }
+
+        $result = $hoursService->updateEntry($request->user(), $entry, $validated);
+        if (!$result['success']) {
+            return response()->json([
+                'success' => false,
+                'message' => $result['message'],
+            ], $result['status'] ?? 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Supervisor hour entry updated successfully.',
+            'entry'   => $result['entry'],
+            'summary' => $result['summary'],
+        ]);
+    }
+
+    /**
+     * DELETE /supervisor/supervisor-hours/{entryId}
+     * Remove a supervisor hour entry and recalculate the student's totals.
+     */
+    public function deleteSupervisorHours(Request $request, $entryId, OjtHoursService $hoursService)
+    {
+        $entry = SupervisorHourLog::with(['student.studentProfile', 'student.ojtRecord'])->findOrFail($entryId);
+        $student = $entry->student;
+
+        $course = $this->getSupervisorCourse($request);
+        $campus = $this->getSupervisorCampus($request);
+        if ($student && ($err = $this->authorizeStudentScope($course, $campus, $student->studentProfile))) {
+            return response()->json(['success' => false, 'message' => $err], 403);
+        }
+
+        $result = $hoursService->removeEntry($request->user(), $entry);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Supervisor hour entry removed.',
+            'summary' => $result['summary'],
         ]);
     }
 }

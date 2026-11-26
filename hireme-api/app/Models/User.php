@@ -75,6 +75,11 @@ class User extends Authenticatable
         return $this->hasOne(OjtRecord::class);
     }
 
+    public function supervisorHourLogs()
+    {
+        return $this->hasMany(SupervisorHourLog::class, 'student_user_id');
+    }
+
     public function ojtInterests()
     {
         return $this->hasMany(StudentOjtInterest::class, 'student_user_id');

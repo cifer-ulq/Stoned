@@ -228,8 +228,9 @@ class TimeLog extends Model
     }
 
     /**
-     * Reconcile hours_credited on this log and apply only the exact delta to OjtRecord.completed_hours,
-     * capped so completed_hours never exceeds OjtRecord.required_hours.
+     * Reconcile hours_credited on this log and apply only the exact delta to OjtRecord.company_hours
+     * (capped at OjtRecord.company_required_hours, default 500) and keep OjtRecord.completed_hours
+     * synced as company_hours + supervisor_hours.
      */
     public function syncCreditedHours(?OjtRecord $ojtRecord = null): float
     {
@@ -241,9 +242,13 @@ class TimeLog extends Model
         $appliedDelta = $desiredDelta;
 
         if ($desiredDelta > 0) {
-            if ($record && (float) $record->required_hours > 0) {
-                $remainingRoom = max(0.0, round((float) $record->required_hours - (float) $record->completed_hours, 2));
-                $appliedDelta = round(min($desiredDelta, $remainingRoom), 2);
+            if ($record) {
+                $companyCap = (float) ($record->company_required_hours ?: OjtRecord::DEFAULT_COMPANY_HOURS);
+                $currentCompany = (float) ($record->company_hours ?? 0);
+                if ($companyCap > 0) {
+                    $remainingRoom = max(0.0, round($companyCap - $currentCompany, 2));
+                    $appliedDelta = round(min($desiredDelta, $remainingRoom), 2);
+                }
             }
             $newCredited = round($oldCredited + $appliedDelta, 2);
         } elseif ($desiredDelta < 0) {
@@ -259,14 +264,17 @@ class TimeLog extends Model
         }
 
         if ($record && abs($appliedDelta) >= 0.01) {
-            if ($appliedDelta > 0) {
-                $record->increment('completed_hours', $appliedDelta);
-            } else {
-                $decrement = min(abs($appliedDelta), (float) $record->completed_hours);
-                if ($decrement > 0) {
-                    $record->decrement('completed_hours', $decrement);
-                }
-            }
+            $companyCap = (float) ($record->company_required_hours ?: OjtRecord::DEFAULT_COMPANY_HOURS);
+            $currentCompany = (float) ($record->company_hours ?? 0);
+            $newCompany = $appliedDelta > 0
+                ? min($companyCap, round($currentCompany + $appliedDelta, 2))
+                : max(0.0, round($currentCompany + $appliedDelta, 2));
+            $supHours = round((float) ($record->supervisor_hours ?? 0), 2);
+            $totalCap = (float) ($record->required_hours ?: ($companyCap + (float) ($record->supervisor_required_hours ?: OjtRecord::DEFAULT_SUPERVISOR_HOURS)));
+
+            $record->company_hours = $newCompany;
+            $record->completed_hours = round(min($totalCap, $newCompany + $supHours), 2);
+            $record->save();
         }
 
         return $appliedDelta;

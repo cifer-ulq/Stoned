@@ -47,10 +47,11 @@ function handleMutationInvalidation(path) {
       '/supervisor/pull-out-requests*',
       '/supervisor/schedule-requests*'
     ]);
-  } else if (p.includes('/evaluat') || p.includes('/students') || p.includes('/import')) {
+  } else if (p.includes('/supervisor-hours') || p.includes('/trainees') || p.includes('/evaluat') || p.includes('/students') || p.includes('/import')) {
     apiCache.invalidate([
       '/supervisor/evaluations*',
       '/supervisor/trainees*',
+      '/supervisor/monitoring*',
       '/supervisor/dashboard*',
       '/supervisor/analytics*'
     ]);
@@ -94,6 +95,14 @@ export async function apiRequest(method, path, body = null, options = {}) {
       }
 
       if (!res.ok) {
+        if (options.returnErrorBody) {
+          try {
+            const errData = await res.json();
+            return errData || { success: false, message: `Request failed (${res.status})` };
+          } catch {
+            return { success: false, message: `Request failed (${res.status})` };
+          }
+        }
         return null;
       }
 
@@ -173,10 +182,10 @@ export async function revalidateEndpoint(path) {
   }
 }
 
-export const apiPost   = (path, body) => apiRequest('POST',   path, body);
-export const apiPut    = (path, body) => apiRequest('PUT',    path, body);
-export const apiPatch  = (path, body) => apiRequest('PATCH',  path, body);
-export const apiDelete = (path)       => apiRequest('DELETE', path);
+export const apiPost   = (path, body, options = {}) => apiRequest('POST',   path, body, options);
+export const apiPut    = (path, body, options = {}) => apiRequest('PUT',    path, body, options);
+export const apiPatch  = (path, body, options = {}) => apiRequest('PATCH',  path, body, options);
+export const apiDelete = (path, options = {})       => apiRequest('DELETE', path, null, options);
 
 /**
  * Multipart file upload — sends FormData without Content-Type header

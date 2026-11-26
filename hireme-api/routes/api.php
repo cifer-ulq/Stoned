@@ -315,6 +315,13 @@ Route::middleware('auth:sanctum')->prefix('supervisor')->group(function () {
     // OJT Schedule Requests (Supervisor -> Company)
     Route::get('schedule-requests',                       [SupervisorController::class, 'listScheduleRequests']);
     Route::post('schedule-requests',                      [SupervisorController::class, 'requestOjtSchedules']);
+
+    // Supervisor Hours (100h Events & Seminars allocation)
+    Route::get('trainees/{studentId}/supervisor-hours',   [SupervisorController::class, 'supervisorHoursIndex']);
+    Route::post('trainees/{studentId}/supervisor-hours',  [SupervisorController::class, 'addSupervisorHours']);
+    Route::post('supervisor-hours/batch',                 [SupervisorController::class, 'batchAddSupervisorHours']);
+    Route::put('supervisor-hours/{entryId}',              [SupervisorController::class, 'updateSupervisorHours']);
+    Route::delete('supervisor-hours/{entryId}',           [SupervisorController::class, 'deleteSupervisorHours']);
 });
 
 // ── Student routes ────────────────────────────────────────────────────────────

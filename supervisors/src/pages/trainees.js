@@ -11,9 +11,14 @@ import { openAssignRequirementsModal, openReviewRequirementsModal } from '../com
 import { openReviewEmergencyModal } from '../components/review-emergency-modal.js';
 import { openReviewPullOutModal } from '../components/review-pullout-modal.js';
 import { openScheduleRequestModal } from '../components/schedule-request-modal.js';
+import { openSupervisorHoursModal, openEditSupervisorHourModal, openDeleteSupervisorHourConfirm } from '../components/supervisor-hours-modal.js';
 import { openDtrPrintModal } from '@shared/dtr-print-modal.js';
 
 const REAL = v => v && v !== '—' && v !== '';
+const fmtHrs = v => {
+  const n = Number(v || 0);
+  return Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/\.?0+$/, '');
+};
 const PER_PAGE = 10;
 
 const STATUS_BADGES = {
@@ -404,6 +409,9 @@ export default function traineesPage(container) {
         <button class="btn btn--outline btn--sm" onclick="location.hash='/map'" style="gap:7px;font-size:0.85rem;font-weight:600;padding:8px 14px;">
           ${icon('map', 15)} <span>Trainee Map</span>
         </button>
+        <button class="btn btn--outline btn--sm" id="batch-add-hours-btn" style="gap:7px;font-size:0.85rem;font-weight:600;padding:8px 14px;border-color:#BAE6FD;background:#F0F9FF;color:#0369A1;" title="Batch credit supervisor hours (seminars, events, orientations) to active trainees">
+          ${icon('award', 15)} <span>Batch Add Hours</span>
+        </button>
         <button class="btn btn--outline btn--sm" id="batch-assign-packet-btn" style="gap:7px;font-size:0.85rem;font-weight:600;padding:8px 14px;border-color:#A7F3D0;background:#ECFDF5;color:#005930;" title="Batch assign OJT requirements packet to multiple or all students in one click">
           ${icon('clipboardCheck', 15)} <span>Batch Packet</span>
         </button>
@@ -514,6 +522,9 @@ export default function traineesPage(container) {
       <div class="tr2-floating-batch-bar__right">
         <button type="button" class="btn btn--ghost btn--sm" id="tr2-batch-clear-btn" style="color:#ffffff;border-color:rgba(255,255,255,0.35);font-size:0.78rem;">
           Clear Selection
+        </button>
+        <button type="button" class="btn btn--outline btn--sm" id="tr2-batch-add-hours-btn" style="background:rgba(255,255,255,0.14);color:#ffffff;border-color:rgba(255,255,255,0.45);font-weight:700;font-size:0.82rem;gap:6px;" title="Credit supervisor hours (events/seminars) to selected active trainees">
+          ${icon('award', 15)} Add Hours
         </button>
         <button type="button" class="btn btn--outline btn--sm" id="tr2-batch-req-sched-btn" style="background:rgba(255,255,255,0.14);color:#ffffff;border-color:rgba(255,255,255,0.45);font-weight:700;font-size:0.82rem;gap:6px;" title="Ask host companies for selected students' OJT work schedules">
           ${icon('calendar', 15)} Request Schedule
@@ -928,11 +939,49 @@ export default function traineesPage(container) {
     });
   }
 
+  // Header Batch Add Supervisor Hours button
+  const batchAddHoursBtn = container.querySelector('#batch-add-hours-btn');
+  if (batchAddHoursBtn) {
+    batchAddHoursBtn.addEventListener('click', () => {
+      const selectedList = allTrainees.filter(t => selectedIds.has(t.id));
+      openSupervisorHoursModal({
+        mode: 'batch',
+        allTrainees,
+        selectedStudents: selectedList,
+        onSaved: (res) => {
+          selectedIds.clear();
+          updateBatchBar();
+          showToast(res?.message || 'Supervisor hours credited successfully!', 'success');
+          loadTrainees();
+        }
+      });
+    });
+  }
+
   // Header Batch Packet button
   const batchAssignPacketBtn = container.querySelector('#batch-assign-packet-btn');
   if (batchAssignPacketBtn) {
     batchAssignPacketBtn.addEventListener('click', () => {
       triggerBatchRequirementsModal();
+    });
+  }
+
+  // Floating bar Add Supervisor Hours button
+  const batchAddHoursBarBtn = container.querySelector('#tr2-batch-add-hours-btn');
+  if (batchAddHoursBarBtn) {
+    batchAddHoursBarBtn.addEventListener('click', () => {
+      const selectedList = allTrainees.filter(t => selectedIds.has(t.id));
+      openSupervisorHoursModal({
+        mode: 'batch',
+        allTrainees,
+        selectedStudents: selectedList,
+        onSaved: (res) => {
+          selectedIds.clear();
+          updateBatchBar();
+          showToast(res?.message || 'Supervisor hours credited successfully!', 'success');
+          loadTrainees();
+        }
+      });
     });
   }
 
@@ -1217,17 +1266,22 @@ export default function traineesPage(container) {
 
           <!-- 5. OJT Training Progress -->
           <td>
-            ${t.hasPlacement && t.requiredHours > 0 ? `
+            ${(t.hasPlacement || (t.supervisorHours || 0) > 0) && t.requiredHours > 0 ? `
               <div class="tr2-prog-wrap">
                 <div class="tr2-prog-header">
                   <span class="tr2-prog-hours">
-                    <strong>${t.completedHours}</strong> / ${t.requiredHours}h
+                    <strong>${fmtHrs(t.completedHours)}</strong> / ${t.requiredHours}h
                     ${t.accreditedHours > 0 ? `<span style="font-size:0.72rem;color:#005930;font-weight:700;" title="${t.accreditedHours}h accredited from prior OJT">(+${t.accreditedHours}h)</span>` : ''}
                   </span>
                   <span class="tr2-prog-pct" style="color:${barColor};background:${pct >= 75 ? '#ECFDF5' : (pct >= 40 ? '#F0FDF4' : '#FEF3C7')};">${pct}%</span>
                 </div>
                 <div class="tr2-prog-track">
                   <div class="tr2-prog-fill" style="width:${pct}%;background:${barColor};"></div>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;margin-top:4px;font-size:0.71rem;color:var(--text-tertiary);font-weight:600;">
+                  <span style="color:#005930;">Co: ${fmtHrs(t.companyHours ?? t.completedHours)}/${t.companyRequiredHours ?? 500}h</span>
+                  <span>&middot;</span>
+                  <span style="color:#0284C7;">Sup: ${fmtHrs(t.supervisorHours ?? 0)}/${t.supervisorRequiredHours ?? 100}h</span>
                 </div>
               </div>
             ` : `
@@ -1700,16 +1754,65 @@ export default function traineesPage(container) {
               </div>
             ` : ''}
 
-            <!-- Hours Progress -->
-            <div class="tr2-modal-prog" style="background:var(--bg-secondary);padding:18px 20px;border-radius:14px;margin-bottom:20px;">
-              <div class="tr2-modal-prog__labels" style="margin-bottom:8px;">
-                <span style="font-size:0.84rem;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.04em;">OJT Logged Hours</span>
-                <strong style="color:${barColor};font-size:0.95rem;font-weight:700;">${t.completedHours} / ${targetHours} hrs · ${pct}%${!t.hasPlacement ? ' <span style="font-size:0.8rem;font-weight:500;color:var(--text-tertiary);">(Target)</span>' : ''}</strong>
-              </div>
-              <div class="tr2-prog-track" style="height:10px;background:var(--border-default);">
-                <div class="tr2-prog-fill" style="width:${pct}%;background:${barColor};"></div>
-              </div>
-            </div>
+            <!-- Hours Progress (500h Company + 100h Supervisor = 600h Total) -->
+            ${(() => {
+              const compHrs = Number(t.companyHours ?? t.completedHours ?? 0);
+              const compCap = Number(t.companyRequiredHours ?? 500) || 500;
+              const compPct = Math.min(100, Math.round((compHrs / compCap) * 100));
+              const supHrs = Number(t.supervisorHours ?? 0);
+              const supCap = Number(t.supervisorRequiredHours ?? 100) || 100;
+              const supPct = Math.min(100, Math.round((supHrs / supCap) * 100));
+              const supRem = Math.max(0, Number((supCap - supHrs).toFixed(2)));
+              const canAddSup = Boolean(t.isEligibleForSupervisorHours || t.status === 'Active OJT') && supRem > 0;
+              return `
+                <div class="tr2-modal-prog" style="background:var(--bg-secondary);padding:18px 20px;border-radius:14px;margin-bottom:20px;border:1px solid var(--border-default);">
+                  <div class="tr2-modal-prog__labels" style="margin-bottom:8px;">
+                    <span style="font-size:0.84rem;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.04em;">Total OJT Hours</span>
+                    <strong style="color:${barColor};font-size:0.95rem;font-weight:700;">${fmtHrs(t.completedHours)} / ${targetHours} hrs · ${pct}%${!t.hasPlacement ? ' <span style="font-size:0.8rem;font-weight:500;color:var(--text-tertiary);">(Target)</span>' : ''}</strong>
+                  </div>
+                  <div class="tr2-prog-track" style="height:10px;background:var(--border-default);margin-bottom:14px;">
+                    <div class="tr2-prog-fill" style="width:${pct}%;background:${barColor};"></div>
+                  </div>
+
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <!-- Company Bucket (500h) -->
+                    <div style="background:var(--bg-card,#fff);border:1px solid var(--border-default);border-radius:10px;padding:10px 12px;">
+                      <div style="display:flex;align-items:center;justify-content:space-between;font-size:0.76rem;margin-bottom:6px;">
+                        <span style="font-weight:700;color:var(--text-secondary);">Company DTR</span>
+                        <strong style="color:#005930;">${fmtHrs(compHrs)} / ${compCap}h</strong>
+                      </div>
+                      <div class="tr2-prog-track" style="height:6px;background:var(--border-default);">
+                        <div class="tr2-prog-fill" style="width:${compPct}%;background:#005930;"></div>
+                      </div>
+                    </div>
+
+                    <!-- Supervisor Bucket (100h) -->
+                    <div style="background:var(--bg-card,#fff);border:1px solid rgba(2,132,199,0.28);border-radius:10px;padding:10px 12px;">
+                      <div style="display:flex;align-items:center;justify-content:space-between;font-size:0.76rem;margin-bottom:6px;gap:6px;">
+                        <span style="font-weight:700;color:var(--text-secondary);">Supervisor (Events)</span>
+                        <strong style="color:#0284C7;">${fmtHrs(supHrs)} / ${supCap}h</strong>
+                      </div>
+                      <div class="tr2-prog-track" style="height:6px;background:var(--border-default);margin-bottom:8px;">
+                        <div class="tr2-prog-fill" style="width:${supPct}%;background:#0284C7;"></div>
+                      </div>
+                      <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
+                        <span style="font-size:0.71rem;color:var(--text-tertiary);">${supRem > 0 ? `${fmtHrs(supRem)}h remaining` : '100h completed'}</span>
+                        <button
+                          type="button"
+                          class="btn btn--outline btn--xs"
+                          id="tr2-modal-add-sup-hrs-btn"
+                          ${canAddSup ? '' : 'disabled'}
+                          style="padding:3px 9px;font-size:0.73rem;font-weight:700;gap:4px;color:${canAddSup ? '#0284C7' : 'var(--text-tertiary)'};border-color:${canAddSup ? 'rgba(2,132,199,0.4)' : 'var(--border-default)'};background:${canAddSup ? 'rgba(2,132,199,0.06)' : 'transparent'};"
+                          title="${canAddSup ? 'Credit supervisor hours for seminars or events' : (supRem <= 0 ? 'Student already reached 100/100 supervisor hours' : 'Only active OJT trainees can receive supervisor hours')}"
+                        >
+                          ${icon('plus', 12)} Add Hours
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              `;
+            })()}
 
             <!-- OJT Requirements Section -->
             <div style="background:${
@@ -1845,6 +1948,45 @@ export default function traineesPage(container) {
               <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:10px;color:#DC2626;font-size:0.85rem;margin-bottom:20px;">
                 ${icon('alertTriangle', 16)} <strong>Needs Review:</strong> Student time logs or progress require supervisor attention.
               </div>` : ''}
+
+            <!-- Supervisor Hours History (Events & Seminars) -->
+            <div class="tr2-modal-section" style="margin-bottom:20px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+                <h4 class="tr2-modal-sec-title" style="margin-bottom:0;">${icon('award', 16)} Supervisor Hours History (${fmtHrs(t.supervisorHours ?? 0)} / ${t.supervisorRequiredHours ?? 100}h)</h4>
+                ${(t.isEligibleForSupervisorHours || t.status === 'Active OJT') && Number(t.remainingSupervisorHours ?? (100 - (t.supervisorHours || 0))) > 0 ? `
+                  <button type="button" class="btn btn--outline btn--xs" id="tr2-hist-add-sup-btn" style="gap:4px;font-size:0.74rem;padding:4px 10px;font-weight:700;color:#0284C7;border-color:rgba(2,132,199,0.4);background:rgba(2,132,199,0.06);">
+                    ${icon('plus', 12)} Add Entry
+                  </button>
+                ` : ''}
+              </div>
+              <div id="tr2-sup-hours-history" style="display:flex;flex-direction:column;gap:8px;">
+                ${Array.isArray(t.supervisorHourLogs) && t.supervisorHourLogs.length ? t.supervisorHourLogs.map(entry => `
+                  <div style="padding:10px 12px;border-radius:10px;border:1px solid var(--border-default);background:var(--bg-secondary);display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
+                    <div style="min-width:0;flex:1;">
+                      <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
+                        <span style="font-size:0.76rem;font-weight:700;padding:2px 8px;border-radius:99px;background:rgba(2,132,199,0.12);color:#0369A1;">+${fmtHrs(entry.hours)}h</span>
+                        <span style="font-size:0.76rem;font-weight:600;color:var(--text-tertiary);">${escapeHtml(entry.activity_date_fmt || entry.activity_date || '—')}</span>
+                        ${entry.title ? `<strong style="font-size:0.84rem;color:var(--text-primary);">${escapeHtml(entry.title)}</strong>` : ''}
+                      </div>
+                      <div style="font-size:0.81rem;color:var(--text-secondary);margin-top:4px;line-height:1.4;">${escapeHtml(entry.reason || '')}</div>
+                      <div style="font-size:0.71rem;color:var(--text-tertiary);margin-top:4px;">
+                        Added by ${escapeHtml(entry.added_by || 'Supervisor')}${entry.is_edited ? ` · Edited by ${escapeHtml(entry.edited_by || 'Supervisor')} (${escapeHtml(entry.edited_at || '')})` : ''}
+                      </div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
+                      <button type="button" class="btn btn--ghost btn--xs tr2-sup-edit-btn" data-entry-id="${entry.id}" title="Edit entry" style="padding:5px 7px;color:#0284C7;">
+                        ${icon('edit', 14)}
+                      </button>
+                      <button type="button" class="btn btn--ghost btn--xs tr2-sup-del-btn" data-entry-id="${entry.id}" title="Remove entry" style="padding:5px 7px;color:#DC2626;">
+                        ${icon('trash2', 14)}
+                      </button>
+                    </div>
+                  </div>
+                `).join('') : `
+                  <p class="text-sm text-tertiary" style="padding:8px 0;margin:0;">No supervisor-credited hours recorded yet.</p>
+                `}
+              </div>
+            </div>
 
             <!-- Daily Logs -->
             <div class="tr2-modal-section">
@@ -2072,6 +2214,51 @@ export default function traineesPage(container) {
         openStudentChat(t.id);
       }
     });
+    const refreshAndReopenModal = async (toastMsg, toastType = 'success') => {
+      if (toastMsg) showToast(toastMsg, toastType);
+      close();
+      await loadTrainees();
+      const updated = allTrainees.find(x => x.id === t.id);
+      if (updated) openModal(updated);
+    };
+
+    const openAddSingleSupHours = () => {
+      openSupervisorHoursModal({
+        mode: 'single',
+        student: t,
+        onSaved: (res) => refreshAndReopenModal(res?.message || 'Supervisor hours credited!'),
+      });
+    };
+
+    root.querySelector('#tr2-modal-add-sup-hrs-btn')?.addEventListener('click', openAddSingleSupHours);
+    root.querySelector('#tr2-hist-add-sup-btn')?.addEventListener('click', openAddSingleSupHours);
+
+    root.querySelectorAll('.tr2-sup-edit-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const entryId = parseInt(btn.dataset.entryId, 10);
+        const entry = (t.supervisorHourLogs || []).find(e => e.id === entryId);
+        if (!entry) return;
+        openEditSupervisorHourModal({
+          student: t,
+          entry,
+          onSaved: (res) => refreshAndReopenModal(res?.message || 'Supervisor hour entry updated!'),
+        });
+      });
+    });
+
+    root.querySelectorAll('.tr2-sup-del-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const entryId = parseInt(btn.dataset.entryId, 10);
+        const entry = (t.supervisorHourLogs || []).find(e => e.id === entryId);
+        if (!entry) return;
+        openDeleteSupervisorHourConfirm({
+          student: t,
+          entry,
+          onDeleted: (res) => refreshAndReopenModal(res?.message || 'Supervisor hour entry removed.', 'warning'),
+        });
+      });
+    });
+
     root.querySelector('#tr2-modal-bd').addEventListener('click', e => {
       if (e.target.id === 'tr2-modal-bd') close();
     });
