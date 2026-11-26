@@ -1408,6 +1408,8 @@ class StudentController extends Controller
         ]);
 
         return response()->json([
+            'serverNowIso'  => now()->toIso8601String(),
+            'serverTimeHM'  => now()->format('H:i'),
             'deployment'    => [
                 'company'         => $posting->company_name,
                 'companyUserId'   => $posting->company_user_id,
@@ -1759,7 +1761,7 @@ class StudentController extends Controller
     public function logTimeIn(Request $request)
     {
         $request->validate([
-            'time_in'             => 'required|date_format:H:i',
+            'time_in'             => 'nullable|date_format:H:i',
             'latitude'            => 'required|numeric|between:-90,90',
             'longitude'           => 'required|numeric|between:-180,180',
             'session'             => 'nullable|in:morning,afternoon,auto',
@@ -1772,7 +1774,9 @@ class StudentController extends Controller
         ]);
 
         $user  = $request->user();
-        $today = now()->toDateString();
+        $serverNow = now();
+        $today = $serverNow->toDateString();
+        $effectiveTimeIn = $serverNow->format('H:i');
 
         // 0. Enforce emergency leave / stoppage guards
         $rawInterest = StudentOjtInterest::where('student_user_id', $user->id)->latest()->first();
@@ -1933,8 +1937,8 @@ class StudentController extends Controller
         }
 
         $sessionRequested = $request->session ?? 'auto';
-        $timeInFormatted  = \Carbon\Carbon::createFromFormat('H:i', $request->time_in)->format('g:i A');
-        $reqTimeHM        = \Carbon\Carbon::parse($request->time_in)->format('H:i');
+        $timeInFormatted  = $serverNow->format('g:i A');
+        $reqTimeHM        = $effectiveTimeIn;
         $lunchStartHM     = \Carbon\Carbon::parse($lunchStart)->format('H:i');
         $lunchEndHM       = \Carbon\Carbon::parse($lunchEnd)->format('H:i');
         $lunchStart12h    = \Carbon\Carbon::parse($lunchStart)->format('g:i A');
@@ -1986,8 +1990,8 @@ class StudentController extends Controller
                     'user_id'                => $user->id,
                     'ojt_record_id'          => $ojtRecord?->id,
                     'log_date'               => $today,
-                    'time_in'                => $request->time_in,
-                    'morning_in'             => $request->time_in,
+                    'time_in'                => $effectiveTimeIn,
+                    'morning_in'             => $effectiveTimeIn,
                     'latitude'               => $lat,
                     'longitude'              => $lon,
                     'time_in_lat'            => $lat,
@@ -2008,7 +2012,7 @@ class StudentController extends Controller
             } else {
                 // Full-day schedule with lunch break
                 $isAfternoon = ($sessionRequested === 'afternoon')
-                    || ($sessionRequested === 'auto' && $request->time_in >= $lunchEnd);
+                    || ($sessionRequested === 'auto' && $effectiveTimeIn >= $lunchEnd);
 
                 if ($isAfternoon) {
                     // Student missed morning, timed in directly for afternoon
@@ -2016,8 +2020,8 @@ class StudentController extends Controller
                         'user_id'                => $user->id,
                         'ojt_record_id'          => $ojtRecord?->id,
                         'log_date'               => $today,
-                        'time_in'                => $request->time_in,
-                        'afternoon_in'           => $request->time_in,
+                        'time_in'                => $effectiveTimeIn,
+                        'afternoon_in'           => $effectiveTimeIn,
                         'latitude'               => $lat,
                         'longitude'              => $lon,
                         'time_in_lat'            => $lat,
@@ -2041,8 +2045,8 @@ class StudentController extends Controller
                         'user_id'                => $user->id,
                         'ojt_record_id'          => $ojtRecord?->id,
                         'log_date'               => $today,
-                        'time_in'                => $request->time_in,
-                        'morning_in'             => $request->time_in,
+                        'time_in'                => $effectiveTimeIn,
+                        'morning_in'             => $effectiveTimeIn,
                         'latitude'               => $lat,
                         'longitude'              => $lon,
                         'time_in_lat'            => $lat,
@@ -2098,7 +2102,7 @@ class StudentController extends Controller
 
                 // Record Afternoon Time In
                 $updatePayload = array_filter([
-                    'afternoon_in'       => $request->time_in,
+                    'afternoon_in'       => $effectiveTimeIn,
                     'afternoon_in_lat'   => $lat,
                     'afternoon_in_lon'   => $lon,
                     'afternoon_validity' => $locationValidity,
@@ -2120,7 +2124,7 @@ class StudentController extends Controller
             } else {
                 // Fallback to morning in
                 $updatePayload = array_filter([
-                    'morning_in'        => $request->time_in,
+                    'morning_in'        => $effectiveTimeIn,
                     'morning_in_lat'    => $lat,
                     'morning_in_lon'    => $lon,
                     'morning_validity'  => $locationValidity,
@@ -2262,7 +2266,7 @@ class StudentController extends Controller
     public function logTimeOut(Request $request)
     {
         $request->validate([
-            'time_out'            => 'required|date_format:H:i',
+            'time_out'            => 'nullable|date_format:H:i',
             'latitude'            => 'required|numeric|between:-90,90',
             'longitude'           => 'required|numeric|between:-180,180',
             'session'             => 'nullable|in:morning,afternoon,auto',
@@ -2275,7 +2279,9 @@ class StudentController extends Controller
         ]);
 
         $user  = $request->user();
-        $today = now()->toDateString();
+        $serverNow = now();
+        $today = $serverNow->toDateString();
+        $effectiveTimeOut = $serverNow->format('H:i');
 
         // 0. Enforce emergency leave / stoppage guards
         $rawInterest = StudentOjtInterest::where('student_user_id', $user->id)->latest()->first();
@@ -2344,7 +2350,7 @@ class StudentController extends Controller
 
         $outLat = $request->latitude  !== null ? (float) $request->latitude  : null;
         $outLon = $request->longitude !== null ? (float) $request->longitude : null;
-        $reqTimeOut = \Carbon\Carbon::createFromFormat('H:i', $request->time_out);
+        $reqTimeOut = \Carbon\Carbon::createFromFormat('H:i', $effectiveTimeOut);
 
         // Compute time-out geofence distance and handle out-of-range evidence
         $outLocationValidity = null;
@@ -2411,15 +2417,6 @@ class StudentController extends Controller
             }
             $timeIn = \Carbon\Carbon::parse($log->time_in);
 
-            // Auto-correct 12-hour format if user typed e.g. 05:00 instead of 17:00
-            if ($reqTimeOut->lt($timeIn) && $reqTimeOut->hour < 12) {
-                $pmCandidate = $reqTimeOut->copy()->addHours(12);
-                if ($pmCandidate->gte($timeIn)) {
-                    $reqTimeOut = $pmCandidate;
-                    $request->merge(['time_out' => $reqTimeOut->format('H:i')]);
-                }
-            }
-
             if ($reqTimeOut->lt($timeIn)) {
                 $inFmt = $timeIn->format('g:i A');
                 $outFmt = $reqTimeOut->format('g:i A');
@@ -2453,7 +2450,7 @@ class StudentController extends Controller
             $totalHours = $regularHours + $otHours;
 
             $updateData = [
-                'time_out'               => $request->time_out,
+                'time_out'               => $effectiveTimeOut,
                 'hours_rendered'         => $totalHours,
                 'regular_hours'          => $regularHours,
                 'overtime_hours'         => $otHours,
@@ -2498,13 +2495,13 @@ class StudentController extends Controller
                 $totalDayHours = $mHours + (float) ($log->afternoon_hours ?? 0);
 
                 $updateData = [
-                    'morning_out'            => $request->time_out,
+                    'morning_out'            => $effectiveTimeOut,
                     'morning_hours'          => $mHours,
                     'regular_hours'          => $mHours + (float) ($log->afternoon_hours ?? 0),
                     'morning_validity'       => $outLocationValidity === 'Too Far' ? 'Too Far' : ($log->morning_validity ?? $outLocationValidity),
                     'morning_out_lat'        => $outLat,
                     'morning_out_lon'        => $outLon,
-                    'time_out'               => $request->time_out,
+                    'time_out'               => $effectiveTimeOut,
                     'time_out_lat'           => $outLat,
                     'time_out_lon'           => $outLon,
                     'location_validity'      => $outLocationValidity === 'Too Far' ? 'Too Far' : ($log->location_validity ?? $outLocationValidity),
@@ -2524,15 +2521,6 @@ class StudentController extends Controller
             // Branch B: Afternoon session is active (timed in, but not yet timed out for end of day)
             elseif ($log->afternoon_in && !$log->afternoon_out) {
                 $timeIn = \Carbon\Carbon::parse($log->afternoon_in);
-
-                // Auto-correct 12-hour format or off-hours entry (e.g. 01:50 -> 13:50, 05:00 -> 17:00)
-                if ($reqTimeOut->lt($timeIn) && $reqTimeOut->hour < 12) {
-                    $pmCandidate = $reqTimeOut->copy()->addHours(12);
-                    if ($pmCandidate->gte($timeIn)) {
-                        $reqTimeOut = $pmCandidate;
-                        $request->merge(['time_out' => $reqTimeOut->format('H:i')]);
-                    }
-                }
 
                 if ($reqTimeOut->lt($timeIn)) {
                     $inFmt = $timeIn->format('g:i A');
@@ -2571,7 +2559,7 @@ class StudentController extends Controller
                 $totalDayHours = $regularDayHours + $otHours;
 
                 $updateData = [
-                    'afternoon_out'          => $request->time_out,
+                    'afternoon_out'          => $effectiveTimeOut,
                     'afternoon_hours'        => $regularPmHours,
                     'regular_hours'          => $regularDayHours,
                     'overtime_hours'         => $otHours,
@@ -2580,7 +2568,7 @@ class StudentController extends Controller
                     'afternoon_validity'     => $outLocationValidity === 'Too Far' ? 'Too Far' : ($log->afternoon_validity ?? $outLocationValidity),
                     'afternoon_out_lat'      => $outLat,
                     'afternoon_out_lon'      => $outLon,
-                    'time_out'               => $request->time_out,
+                    'time_out'               => $effectiveTimeOut,
                     'time_out_lat'           => $outLat,
                     'time_out_lon'           => $outLon,
                     'location_validity'      => $outLocationValidity === 'Too Far' ? 'Too Far' : ($log->location_validity ?? $outLocationValidity),
@@ -2731,178 +2719,15 @@ class StudentController extends Controller
     }
 
     /**
-     * POST /student/ojt-tracker/log  (legacy — kept for compatibility)
-     * Log today's attendance (time in / time out in one call).
+     * POST /student/ojt-tracker/log  (legacy — retired)
+     * Disabled because attendance must use live server-clock /log-in and /log-out endpoints.
      */
     public function logAttendance(Request $request)
     {
-        $request->validate([
-            'time_in'   => 'required|date_format:H:i',
-            'time_out'  => 'required|date_format:H:i|after:time_in',
-            'latitude'  => 'required|numeric|between:-90,90',
-            'longitude' => 'required|numeric|between:-180,180',
-        ], [
-            'latitude.required'  => 'GPS location is required to log attendance. Please enable location access on your device.',
-            'longitude.required' => 'GPS location is required to log attendance. Please enable location access on your device.',
-        ]);
-
-        $user = $request->user();
-        $today = now()->toDateString();
-
-        // Prevent duplicate log for today
-        $existing = TimeLog::where('user_id', $user->id)
-            ->where('log_date', $today)
-            ->first();
-
-        if ($existing) {
-            return response()->json(['message' => 'Attendance already logged for today.'], 422);
-        }
-
-        // Find active or completed OJT record if exists
-        $latestOjtRec = OjtRecord::where('user_id', $user->id)->latest()->first();
-        if (
-            $latestOjtRec && (
-                $latestOjtRec->status === 'completed' ||
-                ((float) $latestOjtRec->required_hours > 0 && (float) $latestOjtRec->completed_hours >= (float) $latestOjtRec->required_hours)
-            )
-        ) {
-            return response()->json([
-                'success' => false,
-                'message' => 'You have already completed 100% of your required OJT hours. Attendance logging is now closed while waiting for your evaluation.',
-            ], 403);
-        }
-
-        // Find active OJT record if exists
-        $ojtRecord = OjtRecord::where('user_id', $user->id)
-            ->where('status', 'active')
-            ->first();
-
-        $timeIn  = \Carbon\Carbon::createFromFormat('H:i', $request->time_in);
-        $timeOut = \Carbon\Carbon::createFromFormat('H:i', $request->time_out);
-        $hours   = round($timeIn->diffInMinutes($timeOut) / 60, 2);
-
-        $lat = $request->latitude  !== null ? (float) $request->latitude  : null;
-        $lon = $request->longitude !== null ? (float) $request->longitude : null;
-
-        // Location validity
-        $interest = StudentOjtInterest::with('posting')
-            ->where('student_user_id', $user->id)
-            ->whereIn('status', ['accepted', 'ojt_started', 'ojt_confirmed'])
-            ->latest()->first();
-
-        $locationValidity  = null;
-        $distanceMeters    = null;
-        if ($lat !== null && $lon !== null && $interest?->posting) {
-            $posting = $interest->posting;
-            if ($posting->latitude !== null && $posting->longitude !== null) {
-                $distanceMeters = (int) round($this->haversineMeters(
-                    $lat, $lon,
-                    (float) $posting->latitude,
-                    (float) $posting->longitude
-                ));
-                $locationValidity = $distanceMeters <= self::GEOFENCE_RADIUS_METERS ? 'In Site' : 'Too Far';
-
-                if ($distanceMeters > self::GEOFENCE_RADIUS_METERS) {
-                    $compName = $posting->company_name ?: 'Host Company';
-                    return response()->json([
-                        'success'               => false,
-                        'error_code'            => 'OUTSIDE_GEOFENCE',
-                        'message'               => "You cannot log attendance because you are outside the OJT site radius. You are currently {$distanceMeters}m away from {$compName} (maximum allowed radius: " . self::GEOFENCE_RADIUS_METERS . "m).",
-                        'distance_meters'       => $distanceMeters,
-                        'allowed_radius_meters' => self::GEOFENCE_RADIUS_METERS,
-                        'company_name'          => $compName,
-                        'location'              => $posting->location,
-                    ], 422);
-                }
-            } else {
-                return response()->json([
-                    'success'    => false,
-                    'error_code' => 'SITE_COORDINATES_MISSING',
-                    'message'    => "Host training site coordinates have not been configured for your OJT placement. Please contact your company supervisor or OJT coordinator to set the company location pin.",
-                ], 422);
-            }
-        }
-
-        $log = TimeLog::create([
-            'user_id'           => $user->id,
-            'ojt_record_id'     => $ojtRecord?->id,
-            'log_date'          => $today,
-            'time_in'           => $request->time_in,
-            'time_out'          => $request->time_out,
-            'hours_rendered'    => $hours,
-            'latitude'          => $lat,
-            'longitude'         => $lon,
-            'time_in_lat'       => $lat,
-            'time_in_lon'       => $lon,
-            'location_validity' => $locationValidity,
-            'distance_meters'   => $distanceMeters,
-            'status'            => $locationValidity === 'In Site' ? 'valid'
-                                 : ($locationValidity === 'Too Far' ? 'Too Far' : 'No GPS'),
-        ]);
-
-        if ($ojtRecord) {
-            $ojtRecord->increment('completed_hours', $hours);
-        }
-
-        // Notify supervisors for this student's program of attendance log
-        foreach ($this->getSupervisorIdsForStudent($user) as $svId) {
-            AppNotification::send(
-                $svId,
-                'student_time_out',
-                'Student Attendance Logged',
-                "{$user->name} logged {$timeIn->format('g:i A')} – {$timeOut->format('g:i A')} on {$today} ({$hours} hrs).",
-                ['student_id' => $user->id, 'log_id' => $log->id, 'date' => $today,
-                 'time_in' => $timeIn->format('g:i A'), 'time_out' => $timeOut->format('g:i A'), 'hours' => $hours]
-            );
-        }
-
-        // Notify host company of attendance log
-        $companyUserId = $this->getHostCompanyUserIdForStudent($user, $interest, $ojtRecord);
-        if ($companyUserId) {
-            $postingTitle = $interest?->posting?->title ?? 'OJT Placement';
-            $distLabel = $distanceMeters !== null ? " · {$distanceMeters}m" : '';
-            $companyLocNote = $locationValidity ? " [{$locationValidity}{$distLabel}]" : '';
-            AppNotification::send(
-                $companyUserId,
-                'student_time_out',
-                "Trainee Attendance Logged: {$user->name}",
-                "{$user->name} ({$postingTitle}) logged {$timeIn->format('g:i A')} – {$timeOut->format('g:i A')} on {$today} ({$hours} hrs){$companyLocNote}.",
-                [
-                    'student_id'        => $user->id,
-                    'student_name'      => $user->name,
-                    'posting_id'        => $interest?->ojt_posting_id,
-                    'posting_title'     => $postingTitle,
-                    'log_id'            => $log->id,
-                    'date'              => $today,
-                    'time_in'           => $timeIn->format('g:i A'),
-                    'time_out'          => $timeOut->format('g:i A'),
-                    'hours'             => $hours,
-                    'hours_rendered'    => $hours,
-                    'location_validity' => $locationValidity,
-                    'distance_meters'   => $distanceMeters,
-                    'action_url'        => '#/ojt-trainees',
-                ]
-            );
-        }
-
         return response()->json([
-            'message' => 'Attendance logged successfully.',
-            'log' => [
-                'id'               => $log->id,
-                'date'             => $log->log_date->format('M j, Y'),
-                'dayLabel'         => $log->log_date->format('D M j'),
-                'timeIn'           => $timeIn->format('g:i A'),
-                'timeOut'          => $timeOut->format('g:i A'),
-                'hours'            => (float) $log->hours_rendered,
-                'status'           => $log->status,
-                'locationValidity' => $locationValidity,
-                'distanceMeters'   => $distanceMeters,
-                'inLat'            => $lat,
-                'inLon'            => $lon,
-                'outLat'           => null,
-                'outLon'           => null,
-            ],
-        ]);
+            'success' => false,
+            'message' => 'This legacy attendance endpoint is disabled. Please use the live clock Time-In and Time-Out actions.',
+        ], 410);
     }
 
     /**

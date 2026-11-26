@@ -460,9 +460,11 @@ export async function renderOJTTracker(container) {
   }
 
 
+  const serverOffsetMs = res.serverNowIso ? (Date.parse(res.serverNowIso) - Date.now()) : 0;
   const ojt = {
     ...res.deployment,
     ...res.progress,
+    serverOffsetMs: Number.isFinite(serverOffsetMs) ? serverOffsetMs : 0,
     emergency: res.emergency || null,
     pull_out: pullOut || res.pull_out || null,
     is_on_leave: Boolean(res.is_on_leave),
@@ -3777,6 +3779,24 @@ function setupOffSiteEvidence(panelEl, onEvidenceChange) {
 }
 
 // ── Log In Modal ──────────────────────────────────────────────────────────────
+function getSyncedNow(ojtContext) {
+  const offset = Number(ojtContext?.serverOffsetMs || 0);
+  return new Date(Date.now() + (Number.isFinite(offset) ? offset : 0));
+}
+
+function formatDateHHMM(d) {
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+function formatDateClock12h(d) {
+  let h = d.getHours();
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  const m = String(d.getMinutes()).padStart(2, '0');
+  const s = String(d.getSeconds()).padStart(2, '0');
+  return `${h}:${m}:${s} ${ampm}`;
+}
+
 function showLogInModal(sessionLabelOrSuccess, ojtContextOrSuccess, onSuccessMaybe) {
   const sessionLabel = typeof sessionLabelOrSuccess === 'string' ? sessionLabelOrSuccess : 'Log In';
   let ojtContext = null;
@@ -3795,8 +3815,7 @@ function showLogInModal(sessionLabelOrSuccess, ojtContextOrSuccess, onSuccessMay
   let evidenceData = null;
   let evidenceController = null;
   const isAfternoon = sessionLabel.toLowerCase().includes('afternoon');
-  const nowHM = currentTimeHHMM();
-  const defaultTime = isAfternoon && nowHM < '13:00' ? '13:00' : nowHM;
+  const initialSynced = getSyncedNow(ojtContext);
 
   const bd = document.createElement('div');
   bd.className = 'ojt-req-overlay';
@@ -3824,11 +3843,18 @@ function showLogInModal(sessionLabelOrSuccess, ojtContextOrSuccess, onSuccessMay
       <div class="ojt-req-body" style="padding:18px 20px;">
         <div class="ojt-req-form-group">
           <div class="ojt-req-label-row">
-            <label for="li-time" class="ojt-req-label">
-              Time In <span class="ojt-req-required-star">*</span>
+            <label class="ojt-req-label">
+              Time In (Live Server Clock) <span class="ojt-req-required-star">*</span>
             </label>
+            <span style="font-size:0.68rem;font-weight:700;color:#059669;background:rgba(16,185,129,0.12);padding:2px 8px;border-radius:99px;">Synced &bull; Locked</span>
           </div>
-          <input type="time" class="ojt-req-input" id="li-time" value="${defaultTime}" ${isAfternoon ? 'min="13:00"' : ''} required />
+          <div id="li-live-clock-card" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--bg-secondary);border:1.5px solid var(--border-default);border-radius:10px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span style="color:#005930;display:flex;align-items:center;">${icon('clock', 18)}</span>
+              <span id="li-live-clock-val" style="font-size:1.15rem;font-weight:800;font-variant-numeric:tabular-nums;color:var(--text-primary);">${formatDateClock12h(initialSynced)}</span>
+            </div>
+            <span style="font-size:0.72rem;color:var(--text-tertiary);font-weight:600;">Recorded automatically</span>
+          </div>
           ${isAfternoon ? `<p class="text-xs" style="margin-top:4px;color:#d97706;font-weight:600;display:flex;align-items:center;gap:4px;">${icon('clock', 12)} Afternoon session begins at 1:00 PM (Lunch break ends at 1:00 PM)</p>` : ''}
         </div>
 
@@ -3882,6 +3908,13 @@ function showLogInModal(sessionLabelOrSuccess, ojtContextOrSuccess, onSuccessMay
     </div>
   `;
   document.body.appendChild(bd);
+
+  const liveClockValEl = bd.querySelector('#li-live-clock-val');
+  const clockInterval = setInterval(() => {
+    if (liveClockValEl) {
+      liveClockValEl.textContent = formatDateClock12h(getSyncedNow(ojtContext));
+    }
+  }, 1000);
 
   const geoBox    = bd.querySelector('#li-geo-status');
   const geoTitle  = bd.querySelector('#li-geo-title');
@@ -3997,6 +4030,7 @@ function showLogInModal(sessionLabelOrSuccess, ojtContextOrSuccess, onSuccessMay
   attemptGeo();
 
   const close = () => {
+    clearInterval(clockInterval);
     if (evidenceController) evidenceController.destroy();
     bd.remove();
   };
@@ -4005,8 +4039,7 @@ function showLogInModal(sessionLabelOrSuccess, ojtContextOrSuccess, onSuccessMay
   bd.addEventListener('click', e => { if (e.target === bd) close(); });
 
   submitBtn.addEventListener('click', () => {
-    const timeVal = bd.querySelector('#li-time').value;
-    if (!timeVal) return;
+    const timeVal = formatDateHHMM(getSyncedNow(ojtContext));
     if (isAfternoon && timeVal < '13:00') {
       showToast('Cannot time in before 1:00 PM because it is lunch break.', 'warning');
       return;
@@ -4070,17 +4103,7 @@ function showLogOutModal(todayLog, sessionLabelOrOjt, ojtContextOrSuccess, onSuc
   const isMorning = sessionLabel.toLowerCase().includes('lunch') || sessionLabel.toLowerCase().includes('morning');
   const loggedInAt = isMorning ? (todayLog?.morningIn || todayLog?.timeIn || '—') : (todayLog?.afternoonIn || todayLog?.timeIn || '—');
   const loggedIn24 = parseTimeTo24(loggedInAt);
-  const nowHM = currentTimeHHMM();
-
-  // Smart default value:
-  let defaultTimeOut = nowHM;
-  if (loggedIn24 && nowHM < loggedIn24) {
-    if (isMorning) {
-      defaultTimeOut = loggedIn24 > '12:00' ? loggedIn24 : '12:00';
-    } else {
-      defaultTimeOut = loggedIn24 > '17:00' ? loggedIn24 : '17:00';
-    }
-  }
+  const initialSynced = getSyncedNow(ojtContext);
 
   const infoText = isMorning
     ? `Morning session started at <strong>${loggedInAt}</strong>. Taking lunch break?`
@@ -4117,11 +4140,18 @@ function showLogOutModal(todayLog, sessionLabelOrOjt, ojtContextOrSuccess, onSuc
 
         <div class="ojt-req-form-group">
           <div class="ojt-req-label-row">
-            <label for="lo-time" class="ojt-req-label">
-              Time Out <span class="ojt-req-required-star">*</span>
+            <label class="ojt-req-label">
+              Time Out (Live Server Clock) <span class="ojt-req-required-star">*</span>
             </label>
+            <span style="font-size:0.68rem;font-weight:700;color:#b45309;background:rgba(245,158,11,0.14);padding:2px 8px;border-radius:99px;">Synced &bull; Locked</span>
           </div>
-          <input type="time" class="ojt-req-input" id="lo-time" value="${defaultTimeOut}" ${loggedIn24 ? `min="${loggedIn24}"` : ''} required />
+          <div id="lo-live-clock-card" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--bg-secondary);border:1.5px solid var(--border-default);border-radius:10px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span style="color:#d97706;display:flex;align-items:center;">${icon('clock', 18)}</span>
+              <span id="lo-live-clock-val" style="font-size:1.15rem;font-weight:800;font-variant-numeric:tabular-nums;color:var(--text-primary);">${formatDateClock12h(initialSynced)}</span>
+            </div>
+            <span style="font-size:0.72rem;color:var(--text-tertiary);font-weight:600;">Recorded automatically</span>
+          </div>
           <p id="lo-time-warning" class="text-xs" style="margin-top:4px;display:none;color:#ef4444;font-weight:600;"></p>
         </div>
 
@@ -4204,7 +4234,7 @@ function showLogOutModal(todayLog, sessionLabelOrOjt, ojtContextOrSuccess, onSuc
   const submitBtn = bd.querySelector('#lo-submit');
   const failPanel = bd.querySelector('#lo-geo-fail-panel');
   const retryBtn  = bd.querySelector('#lo-retry');
-  const timeInput = bd.querySelector('#lo-time');
+  const liveClockValEl = bd.querySelector('#lo-live-clock-val');
   const warningEl = bd.querySelector('#lo-time-warning');
   const evidenceContainer = bd.querySelector('#lo-evidence-container');
 
@@ -4219,12 +4249,16 @@ function showLogOutModal(todayLog, sessionLabelOrOjt, ojtContextOrSuccess, onSuc
   const otReasonGroup = bd.querySelector('#lo-ot-reason-group');
   const otReasonInput = bd.querySelector('#lo-ot-reason');
 
+  function getCurrentOutHHMM() {
+    return formatDateHHMM(getSyncedNow(ojtContext));
+  }
+
   function checkOvertime() {
     if (isMorning) {
       if (otPanel) otPanel.style.display = 'none';
       return { isOt: false, hours: 0 };
     }
-    const val = normalizeOutTime(timeInput.value);
+    const val = getCurrentOutHHMM();
     if (!val || !shiftEnd24) {
       if (otPanel) otPanel.style.display = 'none';
       return { isOt: false, hours: 0 };
@@ -4278,20 +4312,8 @@ function showLogOutModal(todayLog, sessionLabelOrOjt, ojtContextOrSuccess, onSuc
     }
   }
 
-  function normalizeOutTime(rawVal) {
-    if (!rawVal) return rawVal;
-    if (!isMorning && loggedIn24 && loggedIn24 >= '12:00' && rawVal < '12:00') {
-      const [hStr, mStr] = rawVal.split(':');
-      const h = parseInt(hStr, 10);
-      if (h >= 1 && h <= 9) {
-        return `${String(h + 12).padStart(2, '0')}:${mStr}`;
-      }
-    }
-    return rawVal;
-  }
-
   function checkTimeValidity(updateBtn = true) {
-    const val = normalizeOutTime(timeInput.value);
+    const val = getCurrentOutHHMM();
     if (loggedIn24 && val && val < loggedIn24) {
       warningEl.textContent = `Time Out cannot be earlier than Time In (${loggedInAt}).`;
       warningEl.style.display = 'block';
@@ -4317,8 +4339,13 @@ function showLogOutModal(todayLog, sessionLabelOrOjt, ojtContextOrSuccess, onSuc
     }
   }
 
-  timeInput.addEventListener('input', () => checkTimeValidity(true));
-  timeInput.addEventListener('change', () => checkTimeValidity(true));
+  checkTimeValidity(false);
+  const clockInterval = setInterval(() => {
+    if (liveClockValEl) {
+      liveClockValEl.textContent = formatDateClock12h(getSyncedNow(ojtContext));
+    }
+    checkTimeValidity(true);
+  }, 1000);
 
   function attemptGeo() {
     geoResult = null;
@@ -4414,6 +4441,7 @@ function showLogOutModal(todayLog, sessionLabelOrOjt, ojtContextOrSuccess, onSuc
   attemptGeo();
 
   const close = () => {
+    clearInterval(clockInterval);
     if (evidenceController) evidenceController.destroy();
     bd.remove();
   };
@@ -4422,7 +4450,7 @@ function showLogOutModal(todayLog, sessionLabelOrOjt, ojtContextOrSuccess, onSuc
   bd.addEventListener('click', e => { if (e.target === bd) close(); });
 
   submitBtn.addEventListener('click', () => {
-    const timeVal = normalizeOutTime(bd.querySelector('#lo-time').value);
+    const timeVal = getCurrentOutHHMM();
     if (!timeVal) return;
     if (loggedIn24 && timeVal < loggedIn24) {
       showToast(`Time Out cannot be earlier than Time In (${loggedInAt}).`, 'error');

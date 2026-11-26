@@ -284,13 +284,18 @@ class OvertimeAndOffsiteApprovalTest extends TestCase
         return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+X2Z0AAAAASUVORK5CYII=';
     }
 
+    private function setServerTime(string $hhmm): void
+    {
+        Carbon::setTestNow(Carbon::parse("2026-11-26 {$hhmm}:00", config('app.timezone')));
+    }
+
     public function test_offsite_attendance_approval_credits_only_regular_hours_and_ot_is_approved_separately_without_double_counting(): void
     {
         // Off-site full day (8h regular + 2h OT)
         Sanctum::actingAs($this->studentUser);
 
+        $this->setServerTime('08:00');
         $this->postJson('/api/student/ojt-tracker/log-in', [
-            'time_in'             => '08:00',
             'latitude'            => 10.6900,
             'longitude'           => 122.9700,
             'session'             => 'morning',
@@ -298,15 +303,15 @@ class OvertimeAndOffsiteApprovalTest extends TestCase
             'proof_image'         => $this->tinyBase64Png(),
         ])->assertOk();
 
+        $this->setServerTime('12:00');
         $this->postJson('/api/student/ojt-tracker/log-out', [
-            'time_out'  => '12:00',
             'latitude'  => 10.6900,
             'longitude' => 122.9700,
             'session'   => 'morning',
         ])->assertOk();
 
+        $this->setServerTime('13:00');
         $this->postJson('/api/student/ojt-tracker/log-in', [
-            'time_in'             => '13:00',
             'latitude'            => 10.6900,
             'longitude'           => 122.9700,
             'session'             => 'afternoon',
@@ -314,8 +319,8 @@ class OvertimeAndOffsiteApprovalTest extends TestCase
             'proof_image'         => $this->tinyBase64Png(),
         ])->assertOk();
 
+        $this->setServerTime('19:00');
         $this->postJson('/api/student/ojt-tracker/log-out', [
-            'time_out'        => '19:00',
             'latitude'        => 10.6900,
             'longitude'       => 122.9700,
             'session'         => 'afternoon',
@@ -367,8 +372,8 @@ class OvertimeAndOffsiteApprovalTest extends TestCase
     {
         Sanctum::actingAs($this->studentUser);
 
+        $this->setServerTime('08:00');
         $this->postJson('/api/student/ojt-tracker/log-in', [
-            'time_in'             => '08:00',
             'latitude'            => 10.6900,
             'longitude'           => 122.9700,
             'session'             => 'morning',
@@ -376,15 +381,15 @@ class OvertimeAndOffsiteApprovalTest extends TestCase
             'proof_image'         => $this->tinyBase64Png(),
         ])->assertOk();
 
+        $this->setServerTime('12:00');
         $this->postJson('/api/student/ojt-tracker/log-out', [
-            'time_out'  => '12:00',
             'latitude'  => 10.6900,
             'longitude' => 122.9700,
             'session'   => 'morning',
         ])->assertOk();
 
+        $this->setServerTime('13:00');
         $this->postJson('/api/student/ojt-tracker/log-in', [
-            'time_in'             => '13:00',
             'latitude'            => 10.6900,
             'longitude'           => 122.9700,
             'session'             => 'afternoon',
@@ -392,8 +397,8 @@ class OvertimeAndOffsiteApprovalTest extends TestCase
             'proof_image'         => $this->tinyBase64Png(),
         ])->assertOk();
 
+        $this->setServerTime('19:00');
         $this->postJson('/api/student/ojt-tracker/log-out', [
-            'time_out'        => '19:00',
             'latitude'        => 10.6900,
             'longitude'       => 122.9700,
             'session'         => 'afternoon',
@@ -422,15 +427,15 @@ class OvertimeAndOffsiteApprovalTest extends TestCase
         Sanctum::actingAs($this->studentUser);
 
         // In-site morning (4.00h)
+        $this->setServerTime('08:00');
         $this->postJson('/api/student/ojt-tracker/log-in', [
-            'time_in'   => '08:00',
             'latitude'  => 10.6765,
             'longitude' => 122.9509,
             'session'   => 'morning',
         ])->assertOk();
 
+        $this->setServerTime('12:00');
         $this->postJson('/api/student/ojt-tracker/log-out', [
-            'time_out'  => '12:00',
             'latitude'  => 10.6765,
             'longitude' => 122.9509,
             'session'   => 'morning',
@@ -441,15 +446,15 @@ class OvertimeAndOffsiteApprovalTest extends TestCase
         $this->assertEquals(4.00, (float) $this->ojtRecord->fresh()->completed_hours);
 
         // Afternoon starts in-site, ends off-site with +2h OT
+        $this->setServerTime('13:00');
         $this->postJson('/api/student/ojt-tracker/log-in', [
-            'time_in'   => '13:00',
             'latitude'  => 10.6765,
             'longitude' => 122.9509,
             'session'   => 'afternoon',
         ])->assertOk();
 
+        $this->setServerTime('19:00');
         $this->postJson('/api/student/ojt-tracker/log-out', [
-            'time_out'            => '19:00',
             'latitude'            => 10.6900,
             'longitude'           => 122.9700,
             'session'             => 'afternoon',
@@ -487,29 +492,29 @@ class OvertimeAndOffsiteApprovalTest extends TestCase
     {
         Sanctum::actingAs($this->studentUser);
 
+        $this->setServerTime('08:00');
         $this->postJson('/api/student/ojt-tracker/log-in', [
-            'time_in'   => '08:00',
             'latitude'  => 10.6765,
             'longitude' => 122.9509,
             'session'   => 'morning',
         ])->assertOk();
 
+        $this->setServerTime('12:00');
         $this->postJson('/api/student/ojt-tracker/log-out', [
-            'time_out'  => '12:00',
             'latitude'  => 10.6765,
             'longitude' => 122.9509,
             'session'   => 'morning',
         ])->assertOk();
 
+        $this->setServerTime('13:00');
         $this->postJson('/api/student/ojt-tracker/log-in', [
-            'time_in'   => '13:00',
             'latitude'  => 10.6765,
             'longitude' => 122.9509,
             'session'   => 'afternoon',
         ])->assertOk();
 
+        $this->setServerTime('19:00');
         $this->postJson('/api/student/ojt-tracker/log-out', [
-            'time_out'            => '19:00',
             'latitude'            => 10.6900,
             'longitude'           => 122.9700,
             'session'             => 'afternoon',
@@ -536,29 +541,29 @@ class OvertimeAndOffsiteApprovalTest extends TestCase
     {
         Sanctum::actingAs($this->studentUser);
 
+        $this->setServerTime('08:00');
         $this->postJson('/api/student/ojt-tracker/log-in', [
-            'time_in'   => '08:00',
             'latitude'  => 10.6765,
             'longitude' => 122.9509,
             'session'   => 'morning',
         ])->assertOk();
 
+        $this->setServerTime('12:00');
         $this->postJson('/api/student/ojt-tracker/log-out', [
-            'time_out'  => '12:00',
             'latitude'  => 10.6765,
             'longitude' => 122.9509,
             'session'   => 'morning',
         ])->assertOk();
 
+        $this->setServerTime('13:00');
         $this->postJson('/api/student/ojt-tracker/log-in', [
-            'time_in'   => '13:00',
             'latitude'  => 10.6765,
             'longitude' => 122.9509,
             'session'   => 'afternoon',
         ])->assertOk();
 
+        $this->setServerTime('19:00');
         $this->postJson('/api/student/ojt-tracker/log-out', [
-            'time_out'        => '19:00',
             'latitude'        => 10.6765,
             'longitude'       => 122.9509,
             'session'         => 'afternoon',
@@ -587,24 +592,24 @@ class OvertimeAndOffsiteApprovalTest extends TestCase
         Sanctum::actingAs($this->studentUser);
 
         // Morning time-in in-site, forgets to time out at 12:00
+        $this->setServerTime('08:00');
         $this->postJson('/api/student/ojt-tracker/log-in', [
-            'time_in'   => '08:00',
             'latitude'  => 10.6765,
             'longitude' => 122.9509,
             'session'   => 'morning',
         ])->assertOk();
 
         // Afternoon time-in in-site at 13:00 auto-closes morning as unlogged exit (4.00h ineligible)
+        $this->setServerTime('13:00');
         $this->postJson('/api/student/ojt-tracker/log-in', [
-            'time_in'   => '13:00',
             'latitude'  => 10.6765,
             'longitude' => 122.9509,
             'session'   => 'afternoon',
         ])->assertOk();
 
         // Afternoon time-out in-site at 19:00 (4.00h regular PM + 2.00h OT)
+        $this->setServerTime('19:00');
         $this->postJson('/api/student/ojt-tracker/log-out', [
-            'time_out'        => '19:00',
             'latitude'        => 10.6765,
             'longitude'       => 122.9509,
             'session'         => 'afternoon',
@@ -644,22 +649,22 @@ class OvertimeAndOffsiteApprovalTest extends TestCase
     {
         Sanctum::actingAs($this->studentUser);
 
+        $this->setServerTime('08:00');
         $this->postJson('/api/student/ojt-tracker/log-in', [
-            'time_in'   => '08:00',
             'latitude'  => 10.6765,
             'longitude' => 122.9509,
             'session'   => 'morning',
         ])->assertOk();
 
+        $this->setServerTime('13:00');
         $this->postJson('/api/student/ojt-tracker/log-in', [
-            'time_in'   => '13:00',
             'latitude'  => 10.6765,
             'longitude' => 122.9509,
             'session'   => 'afternoon',
         ])->assertOk();
 
+        $this->setServerTime('19:00');
         $this->postJson('/api/student/ojt-tracker/log-out', [
-            'time_out'        => '19:00',
             'latitude'        => 10.6765,
             'longitude'       => 122.9509,
             'session'         => 'afternoon',
@@ -692,16 +697,16 @@ class OvertimeAndOffsiteApprovalTest extends TestCase
     {
         Sanctum::actingAs($this->studentUser);
 
+        $this->setServerTime('08:00');
         $this->postJson('/api/student/ojt-tracker/log-in', [
-            'time_in'   => '08:00',
             'latitude'  => 10.6765,
             'longitude' => 122.9509,
             'session'   => 'morning',
         ])->assertOk();
 
         // Afternoon login off-site at 13:00 (auto-closes morning 4h + puts afternoon off-site)
+        $this->setServerTime('13:00');
         $this->postJson('/api/student/ojt-tracker/log-in', [
-            'time_in'             => '13:00',
             'latitude'            => 10.6900,
             'longitude'           => 122.9700,
             'session'             => 'afternoon',
@@ -709,8 +714,8 @@ class OvertimeAndOffsiteApprovalTest extends TestCase
             'proof_image'         => $this->tinyBase64Png(),
         ])->assertOk();
 
+        $this->setServerTime('19:00');
         $this->postJson('/api/student/ojt-tracker/log-out', [
-            'time_out'        => '19:00',
             'latitude'        => 10.6900,
             'longitude'       => 122.9700,
             'session'         => 'afternoon',
@@ -741,5 +746,61 @@ class OvertimeAndOffsiteApprovalTest extends TestCase
             ->assertOk();
         $this->assertEquals(10.00, (float) $log->fresh()->hours_credited);
         $this->assertEquals(10.00, (float) $this->ojtRecord->fresh()->completed_hours);
+    }
+
+    public function test_server_clock_overrides_forged_client_time_in_and_time_out_and_blocks_legacy_log_endpoint(): void
+    {
+        Sanctum::actingAs($this->studentUser);
+
+        // Student sends forged 08:00 when real server clock is 10:30
+        $this->setServerTime('10:30');
+        $this->postJson('/api/student/ojt-tracker/log-in', [
+            'time_in'   => '08:00',
+            'latitude'  => 10.6765,
+            'longitude' => 122.9509,
+            'session'   => 'morning',
+        ])->assertOk();
+
+        $this->setServerTime('12:00');
+        $this->postJson('/api/student/ojt-tracker/log-out', [
+            'time_out'  => '12:00',
+            'latitude'  => 10.6765,
+            'longitude' => 122.9509,
+            'session'   => 'morning',
+        ])->assertOk();
+
+        $log = TimeLog::firstOrFail();
+        $this->assertSame('10:30', $log->morning_in);
+        $this->assertEquals(1.50, (float) $log->morning_hours);
+
+        // Afternoon: clocks in at 13:00, then at 17:01 tries to forge time_out = 21:00 (4h OT)
+        $this->setServerTime('13:00');
+        $this->postJson('/api/student/ojt-tracker/log-in', [
+            'latitude'  => 10.6765,
+            'longitude' => 122.9509,
+            'session'   => 'afternoon',
+        ])->assertOk();
+
+        $this->setServerTime('17:01');
+        $this->postJson('/api/student/ojt-tracker/log-out', [
+            'time_out'        => '21:00',
+            'latitude'        => 10.6765,
+            'longitude'       => 122.9509,
+            'session'         => 'afternoon',
+            'overtime_reason' => 'Trying to claim 4h OT',
+        ])->assertOk();
+
+        $log->refresh();
+        $this->assertSame('17:01', $log->afternoon_out);
+        $this->assertEquals(5.50, (float) $log->regular_hours);
+        $this->assertEquals(0.02, (float) $log->overtime_hours);
+
+        // Legacy bypass endpoint must return 410 Gone
+        $this->postJson('/api/student/ojt-tracker/log', [
+            'time_in'   => '08:00',
+            'time_out'  => '21:00',
+            'latitude'  => 10.6765,
+            'longitude' => 122.9509,
+        ])->assertStatus(410);
     }
 }
