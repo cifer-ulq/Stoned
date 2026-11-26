@@ -1734,6 +1734,7 @@ class CompanyController extends Controller
                 'isTimeoutIneligible'     => (bool) ($log->is_timeout_ineligible ?? false),
                 'timeoutIneligibleReason' => $log->timeout_ineligible_reason,
                 'ineligibleHoursEscrow'   => (float) ($log->ineligible_hours_escrow ?? 0),
+                'canApproveOvertime'      => $log->isOvertimeEligibleByAttendance(),
                 'hours'              => (float) ($log->hours_rendered ?? 0),
                 'status'             => $log->status ?: ($locValidity === 'In Site' ? 'valid' : $locValidity),
                 'task'               => $log->description,
@@ -3758,17 +3759,13 @@ class CompanyController extends Controller
             ], 403);
         }
 
-        if ($log->is_timeout_ineligible || ($log->approval_status ?? 'approved') === 'pending_company') {
+        if (!$log->isOvertimeEligibleByAttendance()) {
+            $msg = ($log->approval_status ?? 'approved') === 'rejected'
+                ? 'Cannot approve overtime for a rejected attendance log.'
+                : 'Please review and approve the trainee\'s regular attendance before approving overtime.';
             return response()->json([
                 'success' => false,
-                'message' => 'Please review and approve the trainee\'s regular attendance before approving overtime.',
-            ], 422);
-        }
-
-        if (($log->approval_status ?? 'approved') === 'rejected') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Cannot approve overtime for a rejected attendance log.',
+                'message' => $msg,
             ], 422);
         }
 
@@ -3935,7 +3932,9 @@ class CompanyController extends Controller
             'rejection_reason'        => $reason,
         ];
 
-        if ((float) ($log->overtime_hours ?? 0) > 0 && ($log->overtime_status ?? 'none') !== 'rejected') {
+        $preserveCleanPm = $log->cleanAfternoonRegularHours() > 0 && ($log->auto_morning_timeout || $log->morning_validity === 'Too Far');
+
+        if (!$preserveCleanPm && (float) ($log->overtime_hours ?? 0) > 0 && ($log->overtime_status ?? 'none') !== 'rejected') {
             $updatePayload['overtime_status']           = 'rejected';
             $updatePayload['overtime_rejection_reason'] = 'Attendance rejected: ' . $reason;
             $updatePayload['overtime_approved_by']      = $userId;

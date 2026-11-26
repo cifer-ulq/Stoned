@@ -2717,11 +2717,20 @@ function renderTrackerLogRow(log) {
   const rawHrs = Number(log.hours || 0).toFixed(1);
   let hrsHtml = '';
   if (log.isTimeoutIneligible) {
-    const escrow = Number(log.ineligibleHoursEscrow || log.hours || 0).toFixed(1);
+    const otVal = Number(log.overtimeHours || 0);
+    const regVal = Number((log.regularHours > 0 ? log.regularHours : (log.hours - otVal)) || 0);
+    const credVal = Number(log.hoursCredited || 0);
+    const credOt = log.overtimeStatus === 'approved' ? otVal : 0;
+    const credReg = Math.max(0, credVal - credOt);
+    const pendingReg = Math.max(0, regVal - credReg);
+    const otSub = otVal > 0
+      ? `<span class="dtr-hrs-sub" style="color:${log.overtimeStatus === 'approved' ? '#166534' : (log.overtimeStatus === 'rejected' ? '#ef4444' : '#b45309')};font-weight:700;">(${log.overtimeStatus === 'approved' ? `+${otVal.toFixed(1)}h OT Approved` : (log.overtimeStatus === 'rejected' ? `${otVal.toFixed(1)}h OT Declined` : `+${otVal.toFixed(1)}h OT Escrow`)})</span>`
+      : '';
     hrsHtml = `
-      <div class="dtr-hrs-box" title="Unlogged exit: ${escrow}h rendered held in escrow pending supervisor review">
-        <span class="dtr-hrs-val dtr-hrs-val--rejected">0.0 hrs</span>
-        <span class="dtr-hrs-sub" style="color:#b45309;font-weight:700;">(${escrow}h Ineligible)</span>
+      <div class="dtr-hrs-box" title="Unlogged exit: ${pendingReg.toFixed(1)}h in escrow pending supervisor review">
+        <span class="dtr-hrs-val ${credVal > 0 ? '' : 'dtr-hrs-val--rejected'}">${credVal.toFixed(1)} hrs</span>
+        <span class="dtr-hrs-sub" style="color:#b45309;font-weight:700;">(${pendingReg.toFixed(1)}h Ineligible)</span>
+        ${otSub}
       </div>`;
   } else if (isAbsent || (isExcused && !Number(log.hours))) {
     hrsHtml = `<div class="dtr-hrs-box"><span class="dtr-hrs-val dtr-hrs-val--zero">0.0 hrs</span></div>`;
@@ -4478,7 +4487,15 @@ function showLogDetail(log) {
   
   let totalDisplay = (log.hours > 0 || log.timeOut || log.afternoonOut) ? `${log.hours}h` : '—';
   if (log.isTimeoutIneligible) {
-    totalDisplay = `<span style="color:#dc2626;">0.0h (${Number(log.ineligibleHoursEscrow || log.hours || 0).toFixed(1)}h Ineligible Escrow)</span>`;
+    const otVal = Number(log.overtimeHours || 0);
+    const regVal = Number((log.regularHours > 0 ? log.regularHours : (log.hours - otVal)) || 0);
+    const credVal = Number(log.hoursCredited || 0);
+    const credOt = log.overtimeStatus === 'approved' ? otVal : 0;
+    const pendingReg = Math.max(0, regVal - Math.max(0, credVal - credOt));
+    const otNote = otVal > 0
+      ? (log.overtimeStatus === 'approved' ? ` · +${otVal.toFixed(1)}h OT Approved` : (log.overtimeStatus === 'rejected' ? ` · ${otVal.toFixed(1)}h OT Declined` : ` · +${otVal.toFixed(1)}h OT Pending`))
+      : '';
+    totalDisplay = `<span style="color:#dc2626;">${credVal.toFixed(1)}h (${pendingReg.toFixed(1)}h Ineligible Escrow${otNote})</span>`;
   } else if (isPending) {
     const otVal = Number(log.overtimeHours || 0);
     const regHrs = Number((log.regularHours > 0 ? log.regularHours : (log.hours - otVal)) || 0).toFixed(1);

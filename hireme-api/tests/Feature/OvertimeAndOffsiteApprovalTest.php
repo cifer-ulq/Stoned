@@ -581,4 +581,165 @@ class OvertimeAndOffsiteApprovalTest extends TestCase
         $this->assertEquals(8.00, (float) $log->hours_credited);
         $this->assertEquals(8.00, (float) $this->ojtRecord->fresh()->completed_hours);
     }
+
+    public function test_unlogged_lunch_exit_plus_clean_insite_afternoon_and_ot_preserves_afternoon_and_allows_independent_ot_review(): void
+    {
+        Sanctum::actingAs($this->studentUser);
+
+        // Morning time-in in-site, forgets to time out at 12:00
+        $this->postJson('/api/student/ojt-tracker/log-in', [
+            'time_in'   => '08:00',
+            'latitude'  => 10.6765,
+            'longitude' => 122.9509,
+            'session'   => 'morning',
+        ])->assertOk();
+
+        // Afternoon time-in in-site at 13:00 auto-closes morning as unlogged exit (4.00h ineligible)
+        $this->postJson('/api/student/ojt-tracker/log-in', [
+            'time_in'   => '13:00',
+            'latitude'  => 10.6765,
+            'longitude' => 122.9509,
+            'session'   => 'afternoon',
+        ])->assertOk();
+
+        // Afternoon time-out in-site at 19:00 (4.00h regular PM + 2.00h OT)
+        $this->postJson('/api/student/ojt-tracker/log-out', [
+            'time_out'        => '19:00',
+            'latitude'        => 10.6765,
+            'longitude'       => 122.9509,
+            'session'         => 'afternoon',
+            'overtime_reason' => 'Wrapped up sprint release',
+        ])->assertOk();
+
+        $log = TimeLog::firstOrFail();
+        $this->assertTrue((bool) $log->is_timeout_ineligible);
+        $this->assertTrue((bool) $log->auto_morning_timeout);
+        $this->assertEquals(4.00, (float) $log->ineligible_hours_escrow);
+        $this->assertEquals(8.00, (float) $log->regular_hours);
+        $this->assertEquals(2.00, (float) $log->overtime_hours);
+        // Clean afternoon 4.00h is credited immediately, not trapped by morning's unlogged lunch exit
+        $this->assertEquals(4.00, (float) $log->hours_credited);
+        $this->assertEquals(4.00, (float) $this->ojtRecord->fresh()->completed_hours);
+
+        // Company approves afternoon OT independently (since afternoon itself was valid on-site)
+        Sanctum::actingAs($this->companyUser);
+        $this->postJson("/api/company/ojt-trainees/attendance/{$log->id}/approve-overtime")
+            ->assertOk();
+
+        $this->assertEquals(6.00, (float) $log->fresh()->hours_credited);
+        $this->assertEquals(6.00, (float) $this->ojtRecord->fresh()->completed_hours);
+
+        // Company then approves the morning unlogged exit -> adds ONLY the +4.00h morning (total 10.00h)
+        $this->postJson("/api/company/ojt-trainees/attendance/{$log->id}/approve")
+            ->assertOk();
+
+        $log->refresh();
+        $this->assertFalse((bool) $log->is_timeout_ineligible);
+        $this->assertEquals(0.00, (float) $log->ineligible_hours_escrow);
+        $this->assertEquals(10.00, (float) $log->hours_credited);
+        $this->assertEquals(10.00, (float) $this->ojtRecord->fresh()->completed_hours);
+    }
+
+    public function test_rejecting_unlogged_lunch_exit_preserves_clean_insite_afternoon_and_ot(): void
+    {
+        Sanctum::actingAs($this->studentUser);
+
+        $this->postJson('/api/student/ojt-tracker/log-in', [
+            'time_in'   => '08:00',
+            'latitude'  => 10.6765,
+            'longitude' => 122.9509,
+            'session'   => 'morning',
+        ])->assertOk();
+
+        $this->postJson('/api/student/ojt-tracker/log-in', [
+            'time_in'   => '13:00',
+            'latitude'  => 10.6765,
+            'longitude' => 122.9509,
+            'session'   => 'afternoon',
+        ])->assertOk();
+
+        $this->postJson('/api/student/ojt-tracker/log-out', [
+            'time_out'        => '19:00',
+            'latitude'        => 10.6765,
+            'longitude'       => 122.9509,
+            'session'         => 'afternoon',
+            'overtime_reason' => 'Database migration task',
+        ])->assertOk();
+
+        $log = TimeLog::firstOrFail();
+        $this->assertEquals(4.00, (float) $log->hours_credited);
+
+        // Company rejects the unlogged morning exit
+        Sanctum::actingAs($this->companyUser);
+        $this->postJson("/api/company/ojt-trainees/attendance/{$log->id}/reject", [
+            'reason' => 'Left without permission during morning',
+        ])->assertOk();
+
+        $log->refresh();
+        $this->assertSame('rejected', $log->approval_status);
+        $this->assertSame('pending', $log->overtime_status);
+        $this->assertEquals(4.00, (float) $log->hours_credited);
+        $this->assertEquals(4.00, (float) $this->ojtRecord->fresh()->completed_hours);
+
+        // Afternoon OT can still be approved cleanly
+        $this->postJson("/api/company/ojt-trainees/attendance/{$log->id}/approve-overtime")
+            ->assertOk();
+        $this->assertEquals(6.00, (float) $log->fresh()->hours_credited);
+        $this->assertEquals(6.00, (float) $this->ojtRecord->fresh()->completed_hours);
+    }
+
+    public function test_unlogged_lunch_exit_plus_offsite_afternoon_and_ot_credits_all_regular_hours_on_approval(): void
+    {
+        Sanctum::actingAs($this->studentUser);
+
+        $this->postJson('/api/student/ojt-tracker/log-in', [
+            'time_in'   => '08:00',
+            'latitude'  => 10.6765,
+            'longitude' => 122.9509,
+            'session'   => 'morning',
+        ])->assertOk();
+
+        // Afternoon login off-site at 13:00 (auto-closes morning 4h + puts afternoon off-site)
+        $this->postJson('/api/student/ojt-tracker/log-in', [
+            'time_in'             => '13:00',
+            'latitude'            => 10.6900,
+            'longitude'           => 122.9700,
+            'session'             => 'afternoon',
+            'out_of_range_reason' => 'Afternoon client deployment',
+            'proof_image'         => $this->tinyBase64Png(),
+        ])->assertOk();
+
+        $this->postJson('/api/student/ojt-tracker/log-out', [
+            'time_out'        => '19:00',
+            'latitude'        => 10.6900,
+            'longitude'       => 122.9700,
+            'session'         => 'afternoon',
+            'overtime_reason' => 'Post-deployment testing',
+        ])->assertOk();
+
+        $log = TimeLog::firstOrFail();
+        $this->assertEquals(0.00, (float) $log->hours_credited);
+        $this->assertEquals(8.00, (float) $log->regular_hours);
+        $this->assertEquals(2.00, (float) $log->overtime_hours);
+
+        // Because afternoon was off-site, OT cannot be approved before attendance
+        Sanctum::actingAs($this->companyUser);
+        $this->postJson("/api/company/ojt-trainees/attendance/{$log->id}/approve-overtime")
+            ->assertStatus(422);
+
+        // Approving attendance credits ALL 8.00h regular (both AM + PM, nothing lost!) and keeps OT pending
+        $this->postJson("/api/company/ojt-trainees/attendance/{$log->id}/approve")
+            ->assertOk();
+
+        $log->refresh();
+        $this->assertEquals(8.00, (float) $log->hours_credited);
+        $this->assertEquals(8.00, (float) $this->ojtRecord->fresh()->completed_hours);
+        $this->assertSame('pending', $log->overtime_status);
+
+        // Approving OT adds +2.00h -> 10.00h total
+        $this->postJson("/api/company/ojt-trainees/attendance/{$log->id}/approve-overtime")
+            ->assertOk();
+        $this->assertEquals(10.00, (float) $log->fresh()->hours_credited);
+        $this->assertEquals(10.00, (float) $this->ojtRecord->fresh()->completed_hours);
+    }
 }

@@ -1260,7 +1260,13 @@ function renderLogsPanel(container, logs) {
 
         let hrsChipHtml = '';
         if (log.isTimeoutIneligible) {
-          hrsChipHtml = `<span class="mon-time-chip" style="color:#DC2626;font-weight:700;">0h (${log.ineligibleHoursEscrow || log.hours || 0}h Escrow)</span>`;
+          const otVal = Number(log.overtimeHours || 0);
+          const reg = Number((log.regularHours > 0 ? log.regularHours : (log.hours - otVal)) || 0);
+          const cred = Number(log.hoursCredited || 0);
+          const credOt = log.overtimeStatus === 'approved' ? otVal : 0;
+          const pendingReg = Math.max(0, reg - Math.max(0, cred - credOt));
+          const otNote = otVal > 0 ? ` + ${otVal.toFixed(1)}h OT (${log.overtimeStatus || 'pending'})` : '';
+          hrsChipHtml = `<span class="mon-time-chip" style="color:#DC2626;font-weight:700;">${cred.toFixed(1)}h (${pendingReg.toFixed(1)}h Ineligible${otNote})</span>`;
         } else if (log.status === 'absent' || log.status === 'excused') {
           hrsChipHtml = `<span class="mon-time-chip" style="color:var(--text-tertiary);font-weight:600;">0 hrs</span>`;
         } else if (isPending) {

@@ -1275,6 +1275,7 @@ class StudentController extends Controller
                     'isTimeoutIneligible' => (bool) ($log->is_timeout_ineligible ?? false),
                     'timeoutIneligibleReason' => $log->timeout_ineligible_reason,
                     'ineligibleHoursEscrow'   => (float) ($log->ineligible_hours_escrow ?? 0),
+                    'canApproveOvertime'      => $log->isOvertimeEligibleByAttendance(),
                     'autoMorningTimeout'  => (bool) ($log->auto_morning_timeout ?? false),
                     'autoAfternoonTimeout' => (bool) ($log->auto_afternoon_timeout ?? false),
                     'hours'               => (float) $log->hours_rendered,

@@ -1464,9 +1464,15 @@ export default function traineesPage(container) {
           let hrsText = `${l.hoursCredited ?? l.hours}h`;
 
           if (l.isTimeoutIneligible) {
-            badgeText = 'Unlogged Exit';
+            const otVal = Number(l.overtimeHours || 0);
+            const reg = Number((l.regularHours > 0 ? l.regularHours : (l.hours - otVal)) || 0);
+            const cred = Number(l.hoursCredited || 0);
+            const credOt = l.overtimeStatus === 'approved' ? otVal : 0;
+            const pendingReg = Math.max(0, reg - Math.max(0, cred - credOt));
+            const otNote = otVal > 0 ? ` + ${otVal.toFixed(1)}h OT` : '';
+            badgeText = otVal > 0 ? `Unlogged Exit (+${otVal.toFixed(1)}h OT)` : 'Unlogged Exit';
             badgeClass = 'badge--danger';
-            hrsText = `0h (${Number(l.ineligibleHoursEscrow || l.hours || 0).toFixed(1)}h Ineligible)`;
+            hrsText = `${cred.toFixed(1)}h (${pendingReg.toFixed(1)}h Ineligible${otNote})`;
           } else if (isAbsent) {
             badgeText = 'Absent';
             badgeClass = 'badge--danger';

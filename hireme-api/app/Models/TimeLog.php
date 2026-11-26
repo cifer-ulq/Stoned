@@ -107,6 +107,48 @@ class TimeLog extends Model
     }
 
     /**
+     * Afternoon regular hours that were cleanly logged in-site without auto-close.
+     */
+    public function cleanAfternoonRegularHours(): float
+    {
+        if (
+            !$this->afternoon_in ||
+            !$this->afternoon_out ||
+            $this->auto_afternoon_timeout ||
+            $this->afternoon_validity === 'Too Far'
+        ) {
+            return 0.0;
+        }
+
+        return round(max(0.0, (float) ($this->afternoon_hours ?? 0)), 2);
+    }
+
+    /**
+     * Whether overtime on this log has a valid underlying attendance session to be approved against.
+     */
+    public function isOvertimeEligibleByAttendance(): bool
+    {
+        if (in_array($this->status, ['absent', 'excused'], true)) {
+            return false;
+        }
+
+        $approval = $this->approval_status ?? 'approved';
+        if ($approval === 'approved' && !$this->is_timeout_ineligible) {
+            return true;
+        }
+
+        // If morning was auto-closed/off-site, a cleanly logged on-site afternoon is still valid for OT review.
+        if (
+            $this->cleanAfternoonRegularHours() > 0 &&
+            ($this->auto_morning_timeout || $this->morning_validity === 'Too Far')
+        ) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * Authoritative regular hours for this log (never includes overtime).
      */
     public function effectiveRegularHours(): float
@@ -143,11 +185,24 @@ class TimeLog extends Model
         }
 
         if ($approval === 'pending_company') {
+            $credited = 0.0;
+
+            // Preserve already-verified morning hours when only afternoon is pending.
             if ($this->morning_out && !$this->auto_morning_timeout && ($this->afternoon_in || $this->auto_afternoon_timeout || $this->afternoon_validity === 'Too Far')) {
                 $morningCap = round(max(0.0, (float) ($this->morning_hours ?? 0)), 2);
-                return min($morningCap, round(max(0.0, (float) ($this->hours_credited ?? 0)), 2));
+                $credited += min($morningCap, round(max(0.0, (float) ($this->hours_credited ?? 0)), 2));
             }
-            return 0.0;
+
+            // Preserve cleanly logged on-site afternoon hours (and approved OT) when only morning exit is pending.
+            $cleanPm = $this->cleanAfternoonRegularHours();
+            if ($cleanPm > 0 && ($this->auto_morning_timeout || $this->morning_validity === 'Too Far')) {
+                $credited += $cleanPm;
+                if ($this->overtime_status === 'approved') {
+                    $credited += max(0.0, (float) ($this->overtime_hours ?? 0));
+                }
+            }
+
+            return round($credited, 2);
         }
 
         if ($approval === 'rejected') {
@@ -156,6 +211,16 @@ class TimeLog extends Model
             if ($cleanAm > 0 && ($this->afternoon_validity === 'Too Far' || $this->auto_afternoon_timeout)) {
                 return $cleanAm;
             }
+
+            // Preserve cleanly completed on-site afternoon hours (and approved OT) if only morning was unlogged/off-site.
+            $cleanPm = $this->cleanAfternoonRegularHours();
+            if ($cleanPm > 0 && ($this->auto_morning_timeout || $this->morning_validity === 'Too Far')) {
+                $overtime = ($this->overtime_status === 'approved')
+                    ? max(0.0, (float) ($this->overtime_hours ?? 0))
+                    : 0.0;
+                return round($cleanPm + $overtime, 2);
+            }
+
             return 0.0;
         }
 
