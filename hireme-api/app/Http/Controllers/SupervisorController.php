@@ -1693,7 +1693,7 @@ class SupervisorController extends Controller
                     'autoMorningTimeout'   => (bool) ($log->auto_morning_timeout ?? false),
                     'autoAfternoonTimeout' => (bool) ($log->auto_afternoon_timeout ?? false),
                     'hours'              => (float) $log->hours_rendered,
-                    'regularHours'       => (float) ($log->regular_hours ?? $log->hours_rendered),
+                    'regularHours'       => $log->effectiveRegularHours(),
                     'overtimeHours'      => (float) ($log->overtime_hours ?? 0),
                     'overtimeStatus'     => $log->overtime_status ?? 'none',
                     'overtimeReason'     => $log->overtime_reason,

@@ -1264,11 +1264,18 @@ function renderLogsPanel(container, logs) {
         } else if (log.status === 'absent' || log.status === 'excused') {
           hrsChipHtml = `<span class="mon-time-chip" style="color:var(--text-tertiary);font-weight:600;">0 hrs</span>`;
         } else if (isPending) {
-          hrsChipHtml = `<span class="mon-time-chip" style="color:#B45309;font-weight:700;">${log.hours || 0}h (Escrow)</span>`;
+          const otVal = Number(log.overtimeHours || 0);
+          const reg = Number((log.regularHours > 0 ? log.regularHours : (log.hours - otVal)) || 0).toFixed(1);
+          hrsChipHtml = otVal > 0
+            ? `<span class="mon-time-chip" style="color:#B45309;font-weight:700;">${reg}h (Escrow) + ${otVal.toFixed(1)}h OT</span>`
+            : `<span class="mon-time-chip" style="color:#B45309;font-weight:700;">${reg}h (Escrow)</span>`;
         } else if (isRejected) {
-          hrsChipHtml = `<span class="mon-time-chip" style="color:#DC2626;text-decoration:line-through;">${log.hours || 0}h</span>`;
+          const cred = Number(log.hoursCredited || 0);
+          hrsChipHtml = cred > 0
+            ? `<span class="mon-time-chip" style="color:#DC2626;">${cred.toFixed(1)}h (PM Rejected)</span>`
+            : `<span class="mon-time-chip" style="color:#DC2626;text-decoration:line-through;">${log.hours || 0}h</span>`;
         } else if (log.overtimeHours > 0) {
-          const reg = Number(log.regularHours ?? (log.hours - log.overtimeHours)).toFixed(1);
+          const reg = Number((log.regularHours > 0 ? log.regularHours : (log.hours - log.overtimeHours)) || 0).toFixed(1);
           const ot = Number(log.overtimeHours).toFixed(1);
           if (log.overtimeStatus === 'approved') {
             hrsChipHtml = `<span class="mon-time-chip mon-time-chip--hrs" style="color:#166534;font-weight:700;">${(Number(reg)+Number(ot)).toFixed(1)}h (${reg}h + ${ot}h OT)</span>`;

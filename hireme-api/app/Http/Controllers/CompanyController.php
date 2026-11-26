@@ -1725,7 +1725,7 @@ class CompanyController extends Controller
                 'afternoonHours'     => (float) ($log->afternoon_hours ?? 0),
                 'autoMorningTimeout'   => (bool) ($log->auto_morning_timeout ?? false),
                 'autoAfternoonTimeout' => (bool) ($log->auto_afternoon_timeout ?? false),
-                'regularHours'            => (float) ($log->regular_hours ?? 0),
+                'regularHours'            => $log->effectiveRegularHours(),
                 'overtimeHours'           => (float) ($log->overtime_hours ?? 0),
                 'overtimeStatus'          => $log->overtime_status ?? 'none',
                 'overtimeReason'          => $log->overtime_reason,
@@ -1743,7 +1743,7 @@ class CompanyController extends Controller
                 'distanceMeters'     => $log->distance_meters !== null ? (int) $log->distance_meters : null,
                 'hasGeofenceExemption' => (bool) $log->has_geofence_exemption,
                 'approvalStatus'       => $log->approval_status ?? 'approved',
-                'hoursCredited'        => (float) ($log->hours_credited ?? (($log->approval_status ?? 'approved') === 'approved' ? $log->hours_rendered : 0)),
+                'hoursCredited'        => (float) ($log->hours_credited ?? (($log->approval_status ?? 'approved') === 'approved' ? $log->effectiveRegularHours() : 0)),
                 'outOfRangeReason'     => $log->out_of_range_reason,
                 'proofImage'           => $log->proof_image_path ? '/storage/' . ltrim($log->proof_image_path, '/') : null,
                 'rejectionReason'      => $log->rejection_reason,
@@ -1756,7 +1756,7 @@ class CompanyController extends Controller
             ];
         })->values();
 
-        $totalHoursFromLogs    = (float) $rawLogs->where('approval_status', 'approved')->sum('hours_rendered');
+        $totalHoursFromLogs    = (float) $rawLogs->where('approval_status', 'approved')->sum('hours_credited');
         $completedHours        = (float) ($record?->completed_hours ?? 0);
         if ($completedHours == 0 && $totalHoursFromLogs > 0) {
             $completedHours = $totalHoursFromLogs;
@@ -1794,7 +1794,7 @@ class CompanyController extends Controller
                 'requiredHours'         => $requiredHours,
                 'progressPct'           => $progressPct,
                 'pendingApprovalCount'  => $pendingApprovalsCount,
-                'pendingOtCount'        => $rawLogs->where('overtime_status', 'pending')->count(),
+                'pendingOtCount'        => $rawLogs->where('overtime_status', 'pending')->where('approval_status', '!=', 'rejected')->count(),
                 'ineligibleTimeoutCount'=> $rawLogs->where('is_timeout_ineligible', true)->where('approval_status', 'pending_company')->count(),
                 'unexcusedAbsenceCount' => $rawLogs->where('status', 'absent')->count(),
                 'halfDayAmCount'        => $rawLogs->where('status', 'half_day_am')->count(),
@@ -3679,31 +3679,20 @@ class CompanyController extends Controller
             ]);
         }
 
-        $previouslyCredited = (float) ($log->hours_credited ?? 0);
-        $escrow = (float) ($log->ineligible_hours_escrow > 0 ? $log->ineligible_hours_escrow : 0.00);
-
-        if ($log->is_timeout_ineligible) {
-            $hoursToCredit = $previouslyCredited + ($escrow > 0 ? $escrow : (float) $log->hours_rendered);
-            $deltaToIncrement = $escrow > 0 ? $escrow : max(0, $hoursToCredit - $previouslyCredited);
-        } else {
-            $hoursToCredit = (float) $log->hours_rendered;
-            $deltaToIncrement = max(0, $hoursToCredit - $previouslyCredited);
-        }
-
         $log->update([
             'approval_status'         => 'approved',
             'is_timeout_ineligible'   => false,
             'ineligible_hours_escrow' => 0.00,
-            'hours_credited'          => $hoursToCredit,
             'approved_by_user_id'     => $userId,
             'approved_at'             => now(),
             'rejection_reason'        => null,
         ]);
 
         $ojtRecord = $log->ojtRecord ?? OjtRecord::where('user_id', $log->user_id)->first();
-        if ($ojtRecord && $deltaToIncrement > 0) {
-            $ojtRecord->increment('completed_hours', $deltaToIncrement);
-        }
+        $deltaCredited = $log->syncCreditedHours($ojtRecord);
+        $hoursToCredit = (float) ($log->hours_credited ?? 0);
+        $regularHours  = $log->effectiveRegularHours();
+        $hasPendingOt  = ((float) ($log->overtime_hours ?? 0) > 0) && (($log->overtime_status ?? 'none') === 'pending');
 
         // Dispatch notifications safely
         try {
@@ -3715,8 +3704,8 @@ class CompanyController extends Controller
                 (int) $log->user_id,
                 'attendance_approved',
                 'Attendance Approved',
-                "Your attendance for {$dateFormatted} ({$hoursToCredit} hrs) has been verified and approved by your host company supervisor.",
-                ['log_id' => $log->id, 'hours' => $hoursToCredit, 'date' => $logDate?->toDateString()]
+                "Your regular attendance for {$dateFormatted} ({$regularHours} hrs) has been verified and approved by your host company supervisor." . ($hasPendingOt ? ' Your overtime claim remains pending separate review.' : ''),
+                ['log_id' => $log->id, 'hours' => $hoursToCredit, 'regular_hours' => $regularHours, 'date' => $logDate?->toDateString()]
             );
 
             // Notify academic coordinator
@@ -3728,7 +3717,7 @@ class CompanyController extends Controller
                         (int) $svId,
                         'attendance_approved',
                         'Trainee Attendance Verified',
-                        "{$compName} verified and approved {$studentUser->name}'s attendance for {$dateFormatted} ({$hoursToCredit} hrs).",
+                        "{$compName} verified and approved {$studentUser->name}'s regular attendance for {$dateFormatted} ({$regularHours} hrs).",
                         ['student_id' => $studentUser->id, 'log_id' => $log->id]
                     );
                 }
@@ -3739,8 +3728,11 @@ class CompanyController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => "Attendance approved. {$hoursToCredit} hours credited to trainee.",
-            'log'     => $log,
+            'message' => $hasPendingOt
+                ? "Regular attendance approved ({$regularHours} hrs credited). Pending overtime must be reviewed separately."
+                : "Attendance approved. {$hoursToCredit} hours credited to trainee.",
+            'delta_credited' => $deltaCredited,
+            'log'            => $log->fresh(),
         ]);
     }
 
@@ -3766,6 +3758,20 @@ class CompanyController extends Controller
             ], 403);
         }
 
+        if ($log->is_timeout_ineligible || ($log->approval_status ?? 'approved') === 'pending_company') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please review and approve the trainee\'s regular attendance before approving overtime.',
+            ], 422);
+        }
+
+        if (($log->approval_status ?? 'approved') === 'rejected') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot approve overtime for a rejected attendance log.',
+            ], 422);
+        }
+
         if ($log->overtime_status === 'approved') {
             return response()->json([
                 'success' => true,
@@ -3782,20 +3788,15 @@ class CompanyController extends Controller
             ], 422);
         }
 
-        $newCredited = (float) ($log->hours_credited ?? 0) + $otHours;
-
         $log->update([
             'overtime_status'           => 'approved',
             'overtime_approved_at'      => now(),
             'overtime_approved_by'      => $userId,
             'overtime_rejection_reason' => null,
-            'hours_credited'            => $newCredited,
         ]);
 
         $ojtRecord = $log->ojtRecord ?? OjtRecord::where('user_id', $log->user_id)->first();
-        if ($ojtRecord && $otHours > 0) {
-            $ojtRecord->increment('completed_hours', $otHours);
-        }
+        $log->syncCreditedHours($ojtRecord);
 
         // Notify student & coordinator
         try {
@@ -3830,7 +3831,7 @@ class CompanyController extends Controller
         return response()->json([
             'success' => true,
             'message' => "Overtime approved. {$otHours} overtime hours credited to trainee.",
-            'log'     => $log,
+            'log'     => $log->fresh(),
         ]);
     }
 
@@ -3865,19 +3866,15 @@ class CompanyController extends Controller
         $otHours = (float) ($log->overtime_hours ?? 0);
         $reason = trim($request->reason);
 
-        // If it was previously approved and credited, decrement ojtRecord
-        $ojtRecord = $log->ojtRecord ?? OjtRecord::where('user_id', $log->user_id)->first();
-        if ($log->overtime_status === 'approved' && $otHours > 0 && $ojtRecord) {
-            $ojtRecord->decrement('completed_hours', min($otHours, (float)$ojtRecord->completed_hours));
-            $log->update(['hours_credited' => max(0, (float)($log->hours_credited ?? 0) - $otHours)]);
-        }
-
         $log->update([
             'overtime_status'           => 'rejected',
             'overtime_rejection_reason' => $reason,
             'overtime_approved_by'      => $userId,
             'overtime_approved_at'      => now(),
         ]);
+
+        $ojtRecord = $log->ojtRecord ?? OjtRecord::where('user_id', $log->user_id)->first();
+        $log->syncCreditedHours($ojtRecord);
 
         try {
             $logDate = $log->log_date instanceof Carbon ? $log->log_date : ($log->log_date ? Carbon::parse($log->log_date) : null);
@@ -3896,13 +3893,13 @@ class CompanyController extends Controller
         return response()->json([
             'success' => true,
             'message' => "Overtime claim declined. Regular shift hours remain intact.",
-            'log'     => $log,
+            'log'     => $log->fresh(),
         ]);
     }
 
     /**
      * POST /api/company/ojt-trainees/attendance/{logId}/reject
-     * Reject an out-of-range OJT attendance log (0 hours credited).
+     * Reject an out-of-range OJT attendance log (0 hours credited, preserving clean on-site AM if applicable).
      */
     public function rejectAttendance(Request $request, $logId)
     {
@@ -3928,20 +3925,29 @@ class CompanyController extends Controller
             ], 403);
         }
 
-        $credited = (float) ($log->hours_credited ?? 0);
-        $ojtRecord = $log->ojtRecord ?? OjtRecord::where('user_id', $log->user_id)->first();
-        if ($log->approval_status === 'approved' && $credited > 0 && $ojtRecord) {
-            $ojtRecord->decrement('completed_hours', min($credited, (float)$ojtRecord->completed_hours));
+        $reason = trim($request->reason);
+        $updatePayload = [
+            'approval_status'         => 'rejected',
+            'is_timeout_ineligible'   => false,
+            'ineligible_hours_escrow' => 0.00,
+            'approved_by_user_id'     => $userId,
+            'approved_at'             => now(),
+            'rejection_reason'        => $reason,
+        ];
+
+        if ((float) ($log->overtime_hours ?? 0) > 0 && ($log->overtime_status ?? 'none') !== 'rejected') {
+            $updatePayload['overtime_status']           = 'rejected';
+            $updatePayload['overtime_rejection_reason'] = 'Attendance rejected: ' . $reason;
+            $updatePayload['overtime_approved_by']      = $userId;
+            $updatePayload['overtime_approved_at']      = now();
         }
 
-        $reason = trim($request->reason);
-        $log->update([
-            'approval_status'     => 'rejected',
-            'hours_credited'      => 0.00,
-            'approved_by_user_id' => $userId,
-            'approved_at'         => now(),
-            'rejection_reason'    => $reason,
-        ]);
+        $log->update($updatePayload);
+
+        $ojtRecord = $log->ojtRecord ?? OjtRecord::where('user_id', $log->user_id)->first();
+        $log->syncCreditedHours($ojtRecord);
+
+        $remainingCredited = (float) ($log->hours_credited ?? 0);
 
         try {
             $logDate = $log->log_date instanceof Carbon ? $log->log_date : ($log->log_date ? Carbon::parse($log->log_date) : null);
@@ -3950,8 +3956,10 @@ class CompanyController extends Controller
                 (int) $log->user_id,
                 'attendance_rejected',
                 'Attendance Rejected',
-                "Your out-of-range attendance for {$dateFormatted} was rejected by your host company: \"{$reason}\". 0 hours credited.",
-                ['log_id' => $log->id, 'reason' => $reason]
+                $remainingCredited > 0
+                    ? "Your off-site attendance for {$dateFormatted} was rejected by your host company: \"{$reason}\". Verified morning hours ({$remainingCredited} hrs) remain credited."
+                    : "Your out-of-range attendance for {$dateFormatted} was rejected by your host company: \"{$reason}\". 0 hours credited.",
+                ['log_id' => $log->id, 'reason' => $reason, 'hours_credited' => $remainingCredited]
             );
         } catch (\Throwable $e) {
             \Log::warning('[CompanyController::rejectAttendance] Notification dispatch warning: ' . $e->getMessage());
@@ -3960,7 +3968,7 @@ class CompanyController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Attendance rejected. Trainee notified.',
-            'log'     => $log,
+            'log'     => $log->fresh(),
         ]);
     }
 

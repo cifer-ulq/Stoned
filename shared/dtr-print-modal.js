@@ -47,8 +47,9 @@ function normalizeLog(l) {
   const aOut = l.afternoonOut || (l.afternoonIn ? l.timeOut : '—') || '—';
 
   const hours = parseFloat(l.hoursCredited ?? l.hours ?? l.hours_rendered ?? 0) || 0;
-  const regularHours = parseFloat(l.regularHours ?? l.regular_hours ?? (hours - parseFloat(l.overtimeHours ?? l.overtime_hours ?? 0))) || hours;
   const overtimeHours = parseFloat(l.overtimeHours ?? l.overtime_hours ?? 0) || 0;
+  const rawReg = parseFloat(l.regularHours ?? l.regular_hours ?? 0) || 0;
+  const regularHours = rawReg > 0 ? rawReg : Math.max(0, (parseFloat(l.hours ?? l.hours_rendered ?? 0) || 0) - overtimeHours);
   const overtimeStatus = l.overtimeStatus ?? l.overtime_status ?? 'none';
   const isTimeoutIneligible = !!(l.isTimeoutIneligible ?? l.is_timeout_ineligible);
   const status = (l.status || l.sessionStatus || 'present').toLowerCase();
@@ -64,7 +65,11 @@ function normalizeLog(l) {
   }
 
   if (overtimeHours > 0) {
-    const otTag = overtimeStatus === 'approved' ? `+${overtimeHours.toFixed(1)}h OT Approved` : `+${overtimeHours.toFixed(1)}h OT Pending`;
+    const otTag = overtimeStatus === 'approved'
+      ? `+${overtimeHours.toFixed(1)}h OT Approved`
+      : (overtimeStatus === 'rejected'
+        ? `+${overtimeHours.toFixed(1)}h OT Declined`
+        : `+${overtimeHours.toFixed(1)}h OT Pending`);
     remarks = remarks ? `${remarks} (${otTag})` : otTag;
   }
 

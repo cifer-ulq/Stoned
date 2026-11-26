@@ -2608,11 +2608,14 @@ function openOvertimeReviewModal(log, studentInfo, onComplete) {
     padding: 20px; box-sizing: border-box; animation: fadeIn 0.15s ease-out;
   `;
 
-  const regHrs = Number(log.regularHours ?? (log.hours - log.overtimeHours)).toFixed(2);
+  const regHrsVal = Number((log.regularHours > 0 ? log.regularHours : (log.hours - (log.overtimeHours || 0))) || 0);
+  const regHrs = regHrsVal.toFixed(2);
   const otHrs = Number(log.overtimeHours || 0).toFixed(2);
   const isPending = (log.overtimeStatus || 'pending') === 'pending';
   const isApproved = log.overtimeStatus === 'approved';
   const isRejected = log.overtimeStatus === 'rejected';
+  const isAttendancePending = (log.approvalStatus || 'approved') === 'pending_company' || !!log.isTimeoutIneligible;
+  const isAttendanceRejected = (log.approvalStatus || 'approved') === 'rejected';
 
   bd.innerHTML = `
     <div class="modal modal--visible" style="max-width:480px;width:100%;border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);">
@@ -2642,9 +2645,20 @@ function openOvertimeReviewModal(log, studentInfo, onComplete) {
             <span style="font-size:0.95rem;font-weight:800;color:#b45309;">+${otHrs} hrs</span>
           </div>
           <p style="font-size:0.74rem;color:#78350f;margin:0;line-height:1.45;">
-            Regular shift hours (<strong>${regHrs} hrs</strong>) have been recorded. Approving this overtime will add <strong>${otHrs} hrs</strong> directly to the trainee's total completed OJT hours.
+            ${isAttendancePending
+              ? `Regular shift hours (<strong>${regHrs} hrs</strong>) are still awaiting off-site/exit review. Approve regular attendance first before approving this overtime.`
+              : isAttendanceRejected
+              ? `Regular attendance for this shift was rejected. Overtime cannot be approved.`
+              : `Regular shift hours (<strong>${regHrs} hrs</strong>) are verified. Approving this overtime will add <strong>${otHrs} hrs</strong> directly to the trainee's total completed OJT hours.`}
           </p>
         </div>
+
+        ${isAttendancePending && isPending ? `
+          <div style="padding:10px 12px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;margin-bottom:14px;font-size:0.76rem;color:#92400E;line-height:1.45;display:flex;align-items:flex-start;gap:8px;">
+            ${icon('alertTriangle', 15)}
+            <span><strong>Attendance Approval Required First:</strong> Please review and approve the trainee's regular attendance proof before approving overtime. You may still decline this overtime request now.</span>
+          </div>
+        ` : ''}
 
         <div style="margin-bottom:14px;">
           <label style="display:block;font-size:0.72rem;font-weight:700;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:5px;">
@@ -2658,7 +2672,7 @@ function openOvertimeReviewModal(log, studentInfo, onComplete) {
         <!-- Rejection reason panel (collapsible) -->
         <div id="ot-reject-box" style="display:none;margin-top:12px;padding:12px;background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;">
           <label style="display:block;font-size:0.74rem;font-weight:700;color:#991B1B;margin-bottom:4px;">
-            Reason for Declining Overtime
+            Reason for Declining Overtime *
           </label>
           <textarea id="ot-reject-reason" class="input" rows="2" placeholder="e.g. Overtime was not pre-authorized, task could wait for next regular shift..." style="width:100%;font-size:0.78rem;"></textarea>
           <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px;">
@@ -2669,12 +2683,12 @@ function openOvertimeReviewModal(log, studentInfo, onComplete) {
       </div>
 
       <div class="modal__footer" style="padding:14px 20px;border-top:1px solid #E2E8F0;background:#FAFBFD;display:flex;align-items:center;justify-content:flex-end;gap:10px;">
-        ${isPending ? `
+        ${isPending && !isAttendanceRejected ? `
           <button type="button" class="btn btn--outline btn--sm" id="ot-start-reject-btn" style="color:#DC2626;border-color:#FCA5A5;">
             ${icon('x', 14)} Decline OT
           </button>
-          <button type="button" class="btn btn--primary btn--sm" id="ot-approve-btn" style="background:#005930;gap:6px;">
-            ${icon('checkCircle', 15)} Approve +${otHrs}h OT
+          <button type="button" class="btn btn--primary btn--sm" id="ot-approve-btn" ${isAttendancePending ? 'disabled title="Approve regular attendance first"' : ''} style="background:#005930;gap:6px;${isAttendancePending ? 'opacity:0.5;cursor:not-allowed;' : ''}">
+            ${icon('checkCircle', 15)} ${isAttendancePending ? 'Verify Attendance First' : `Approve +${otHrs}h OT`}
           </button>
         ` : `
           <button type="button" class="btn btn--outline btn--sm" id="ot-done-btn">Close</button>
@@ -2697,7 +2711,7 @@ function openOvertimeReviewModal(log, studentInfo, onComplete) {
   const confirmRejectBtn = bd.querySelector('#ot-confirm-reject-btn');
   const rejectReasonInput = bd.querySelector('#ot-reject-reason');
 
-  if (approveBtn) {
+  if (approveBtn && !isAttendancePending && !isAttendanceRejected) {
     approveBtn.addEventListener('click', async () => {
       approveBtn.disabled = true;
       approveBtn.textContent = 'Approving...';
@@ -2710,7 +2724,7 @@ function openOvertimeReviewModal(log, studentInfo, onComplete) {
       } catch (err) {
         alert(err.message || 'Failed to approve overtime.');
         approveBtn.disabled = false;
-        approveBtn.textContent = 'Approve OT';
+        approveBtn.innerHTML = `${icon('checkCircle', 15)} Approve +${otHrs}h OT`;
       }
     });
   }
@@ -2734,11 +2748,17 @@ function openOvertimeReviewModal(log, studentInfo, onComplete) {
 
   if (confirmRejectBtn) {
     confirmRejectBtn.addEventListener('click', async () => {
+      const reason = rejectReasonInput?.value?.trim() || '';
+      if (reason.length < 3) {
+        alert('Please provide a reason (at least 3 characters) for declining overtime.');
+        rejectReasonInput?.focus();
+        return;
+      }
       confirmRejectBtn.disabled = true;
       confirmRejectBtn.textContent = 'Declining...';
       try {
         const res = await apiPost(`/company/ojt-trainees/attendance/${log.id}/reject-overtime`, {
-          reason: rejectReasonInput?.value?.trim() || null,
+          reason,
         });
         if (!res?.success) throw new Error(res?.message || 'Failed to decline overtime.');
         showToast(res.message || 'Overtime declined.');
@@ -2770,6 +2790,13 @@ function openAttendanceReviewModal(log, studentInfo, onComplete) {
   const isPending = (log.approvalStatus || '') === 'pending_company';
   const isRejected = (log.approvalStatus || '') === 'rejected';
   const isApproved = (log.approvalStatus || '') === 'approved';
+
+  const otVal = Number(log.overtimeHours || 0);
+  const regVal = Number((log.regularHours > 0 ? log.regularHours : (log.hours - otVal)) || 0);
+  const alreadyCreditedVal = Number(log.hoursCredited || 0);
+  const escrowRegToCredit = log.isTimeoutIneligible
+    ? Number(log.ineligibleHoursEscrow || Math.max(0, regVal - alreadyCreditedVal))
+    : Math.max(0, regVal - alreadyCreditedVal);
 
   const mIn = log.morningIn || (!log.afternoonIn && log.timeIn ? log.timeIn : '—');
   const mOut = log.morningOut || (log.autoMorningTimeout ? '12:00 (Auto)' : '—');
@@ -2805,23 +2832,27 @@ function openAttendanceReviewModal(log, studentInfo, onComplete) {
         <!-- Status Banner -->
         ${log.isTimeoutIneligible && isPending ? `
           <div style="padding:10px 14px;background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;margin-bottom:14px;font-size:0.78rem;color:#991B1B;line-height:1.5;">
-            <strong>Unlogged Exit Detected:</strong> The trainee did not time out for this session. By institutional rule, rendered hours (<strong>${Number(log.ineligibleHoursEscrow || log.hours || 0).toFixed(2)} hrs</strong>) are currently <strong>held in escrow as ineligible (0.00 hrs credited)</strong>. Review and click <strong>Approve &amp; Credit Hours</strong> if their departure was legitimate, or <strong>Reject</strong> to keep the hours permanently ineligible.
+            <strong>Unlogged Exit Detected:</strong> The trainee did not time out for this session. By institutional rule, rendered hours (<strong>${escrowRegToCredit.toFixed(2)} hrs</strong>) are currently <strong>held in escrow as ineligible</strong>. Review and click <strong>Approve &amp; Credit Hours</strong> if their departure was legitimate, or <strong>Reject</strong> to keep the hours permanently ineligible.
           </div>
         ` : isPending ? `
           <div style="padding:10px 14px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;margin-bottom:14px;font-size:0.78rem;color:#B45309;line-height:1.5;">
-            <strong>Awaiting Your Decision:</strong> The student logged attendance outside the host training site perimeter (${escapeHtml(dist)}). Hours rendered (<strong>${Number(log.hours || 0).toFixed(2)} hrs</strong>) are currently <strong>held in escrow</strong> and will only count towards their OJT completion if you approve.
+            <strong>Awaiting Your Decision:</strong> The student logged attendance outside the host training site perimeter (${escapeHtml(dist)}).
+            ${alreadyCreditedVal > 0
+              ? `<strong>${alreadyCreditedVal.toFixed(2)} hrs</strong> from an earlier verified session are already credited; <strong>${escrowRegToCredit.toFixed(2)} regular hrs</strong> remain in escrow.`
+              : `Regular shift hours (<strong>${escrowRegToCredit.toFixed(2)} hrs</strong>) are currently <strong>held in escrow</strong> and will count toward OJT completion only if you approve.`}
+            ${otVal > 0 ? `<div style="margin-top:4px;"><strong>Note:</strong> The <strong>+${otVal.toFixed(2)} hrs</strong> overtime claim is reviewed separately via <em>Review OT</em> and will not be approved by this action.</div>` : ''}
           </div>
         ` : isApproved ? `
           <div style="padding:10px 14px;background:#ECFDF5;border:1px solid #A7F3D0;border-radius:8px;margin-bottom:14px;font-size:0.78rem;color:#047857;display:flex;align-items:center;gap:8px;">
             ${icon('checkCircle', 16)}
             <div>
-              <strong>Approved:</strong> This attendance has been approved and <strong>${Number(log.hoursCredited ?? log.hours ?? 0).toFixed(2)} hrs</strong> were credited.
+              <strong>Approved:</strong> Regular attendance has been approved (<strong>${regVal.toFixed(2)} regular hrs</strong>${otVal > 0 && log.overtimeStatus === 'approved' ? ` + ${otVal.toFixed(2)} hrs OT` : ''}).
               ${log.approvedAt ? `<div style="font-size:0.7rem;color:#065F46;margin-top:2px;">Approved on ${escapeHtml(log.approvedAt)}</div>` : ''}
             </div>
           </div>
         ` : `
           <div style="padding:10px 14px;background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;margin-bottom:14px;font-size:0.78rem;color:#B91C1C;">
-            <strong>Rejected:</strong> This attendance record was rejected. Hours were not credited.
+            <strong>Rejected:</strong> This off-site attendance record was rejected.${alreadyCreditedVal > 0 ? ` (${alreadyCreditedVal.toFixed(2)} verified morning hrs remain credited.)` : ' Hours were not credited.'}
             ${log.rejectionReason ? `<div style="margin-top:4px;font-weight:600;">Reason: ${escapeHtml(log.rejectionReason)}</div>` : ''}
           </div>
         `}
@@ -2837,9 +2868,15 @@ function openAttendanceReviewModal(log, studentInfo, onComplete) {
             <div style="font-size:0.8rem;font-weight:600;color:var(--text-primary);margin-top:2px;">In: ${escapeHtml(aIn)} &bull; Out: ${escapeHtml(aOut)}</div>
           </div>
           <div style="grid-column:span 2;border-top:1px dashed #E2E8F0;padding-top:6px;display:flex;justify-content:space-between;align-items:center;">
-            <span style="font-size:0.74rem;color:var(--text-secondary);">Hours Rendered:</span>
-            <span style="font-size:0.86rem;font-weight:800;color:var(--color-primary,#005930);">${Number(log.hours || 0).toFixed(2)} hrs</span>
+            <span style="font-size:0.74rem;color:var(--text-secondary);">Regular Shift Hours:</span>
+            <span style="font-size:0.86rem;font-weight:800;color:var(--color-primary,#005930);">${regVal.toFixed(2)} hrs</span>
           </div>
+          ${otVal > 0 ? `
+            <div style="grid-column:span 2;display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:0.74rem;color:var(--text-secondary);">Overtime (Separate Review):</span>
+              <span style="font-size:0.78rem;font-weight:700;color:${log.overtimeStatus === 'approved' ? '#166534' : (log.overtimeStatus === 'rejected' ? '#DC2626' : '#B45309')};">+${otVal.toFixed(2)} hrs (${log.overtimeStatus === 'approved' ? 'Approved' : (log.overtimeStatus === 'rejected' ? 'Declined' : 'Pending OT Review')})</span>
+            </div>
+          ` : ''}
           <div style="grid-column:span 2;display:flex;justify-content:space-between;align-items:center;">
             <span style="font-size:0.74rem;color:var(--text-secondary);">Distance:</span>
             <span style="font-size:0.76rem;font-weight:700;color:#D97706;">${escapeHtml(dist)}</span>
@@ -2895,7 +2932,7 @@ function openAttendanceReviewModal(log, studentInfo, onComplete) {
             ${icon('x', 14)} Reject
           </button>
           <button type="button" class="btn btn--primary btn--sm" id="arm-approve-btn" style="background:var(--color-primary,#005930);gap:6px;">
-            ${icon('checkCircle', 15)} Approve &amp; Credit Hours
+            ${icon('checkCircle', 15)} Approve &amp; Credit ${escrowRegToCredit.toFixed(2)}h
           </button>
         ` : `
           <button type="button" class="btn btn--outline btn--sm" id="arm-done-btn">Close</button>
@@ -2973,8 +3010,8 @@ function openAttendanceReviewModal(log, studentInfo, onComplete) {
     });
 
     approveBtn?.addEventListener('click', async () => {
-      const hrsToCredit = Number(log.ineligibleHoursEscrow || log.hours || 0).toFixed(2);
-      if (!confirm(`Are you sure you want to approve this attendance and credit ${hrsToCredit} hours to ${studentInfo.name || 'the student'}?`)) {
+      const hrsToCredit = escrowRegToCredit.toFixed(2);
+      if (!confirm(`Are you sure you want to approve regular attendance and credit ${hrsToCredit} regular hours to ${studentInfo.name || 'the student'}?`)) {
         return;
       }
       approveBtn.disabled = true;
@@ -3299,21 +3336,30 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
           </div>
         `;
       } else if (isPending) {
+        const otVal = Number(log.overtimeHours || 0);
+        const regVal = Number((log.regularHours > 0 ? log.regularHours : (log.hours - otVal)) || 0);
+        const credVal = Number(log.hoursCredited || 0);
+        const pendingReg = Math.max(0, regVal - credVal);
         hrsHtml = `
-          <div class="co-dtr-hrs-box">
-            <span class="co-dtr-hrs-val co-dtr-hrs-val--pending">${rawHrs} hrs</span>
-            <span class="co-dtr-escrow-pill">In Escrow</span>
+          <div class="co-dtr-hrs-box" title="Regular hours pending review${otVal > 0 ? ` · +${otVal.toFixed(2)}h OT reviewed separately` : ''}">
+            <span class="co-dtr-hrs-val co-dtr-hrs-val--pending">${regVal.toFixed(2)} hrs</span>
+            <span class="co-dtr-escrow-pill">${credVal > 0 ? `${credVal.toFixed(1)}h Credited · ${pendingReg.toFixed(1)}h Escrow` : 'In Escrow'}</span>
+            ${otVal > 0 ? `
+              <span class="co-dtr-escrow-pill" style="margin-top:2px;background:${log.overtimeStatus === 'rejected' ? '#fee2e2;color:#991b1b;border-color:#fca5a5;' : '#fef3c7;color:#b45309;border-color:#fde68a;'}">
+                ${log.overtimeStatus === 'rejected' ? `${otVal.toFixed(2)}h OT Declined` : `+${otVal.toFixed(2)}h OT Pending`}
+              </span>` : ''}
           </div>
         `;
       } else if (isRejected) {
+        const credVal = Number(log.hoursCredited || 0);
         hrsHtml = `
           <div class="co-dtr-hrs-box">
-            <span class="co-dtr-hrs-val co-dtr-hrs-val--rejected">${rawHrs} hrs</span>
-            <span class="co-dtr-rejected-pill">Rejected</span>
+            <span class="co-dtr-hrs-val co-dtr-hrs-val--rejected">${credVal > 0 ? `${credVal.toFixed(2)} hrs` : `${rawHrs} hrs`}</span>
+            <span class="co-dtr-rejected-pill">${credVal > 0 ? 'AM Valid · PM Rejected' : 'Rejected'}</span>
           </div>
         `;
       } else if (log.overtimeHours > 0) {
-        const regHrs = Number(log.regularHours ?? (log.hours - log.overtimeHours)).toFixed(2);
+        const regHrs = Number((log.regularHours > 0 ? log.regularHours : (log.hours - log.overtimeHours)) || 0).toFixed(2);
         const otHrs = Number(log.overtimeHours).toFixed(2);
         if (log.overtimeStatus === 'approved') {
           const totHrs = (Number(regHrs) + Number(otHrs)).toFixed(2);

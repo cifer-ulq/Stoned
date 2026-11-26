@@ -1482,15 +1482,18 @@ export default function traineesPage(container) {
             badgeText = 'Half Day (PM)';
             badgeClass = 'badge--primary';
           } else if (isPending) {
-            badgeText = 'Pending Review';
+            const otVal = Number(l.overtimeHours || 0);
+            const reg = Number((l.regularHours > 0 ? l.regularHours : (l.hours - otVal)) || 0).toFixed(1);
+            badgeText = otVal > 0 ? `Pending Review (+${otVal.toFixed(1)}h OT)` : 'Pending Review';
             badgeClass = 'badge--warning';
-            hrsText = `${l.hours}h (Escrow)`;
+            hrsText = otVal > 0 ? `${reg}h (Escrow) + ${otVal.toFixed(1)}h OT` : `${reg}h (Escrow)`;
           } else if (isRejected) {
+            const cred = Number(l.hoursCredited || 0);
             badgeText = 'Rejected';
             badgeClass = 'badge--danger';
-            hrsText = `${l.hours}h (Rejected)`;
+            hrsText = cred > 0 ? `${cred.toFixed(1)}h (PM Rejected)` : `${l.hours}h (Rejected)`;
           } else if (l.overtimeHours > 0) {
-            const reg = Number(l.regularHours ?? (l.hours - l.overtimeHours)).toFixed(1);
+            const reg = Number((l.regularHours > 0 ? l.regularHours : (l.hours - l.overtimeHours)) || 0).toFixed(1);
             const ot = Number(l.overtimeHours).toFixed(1);
             badgeText = l.overtimeStatus === 'approved' ? `OT Approved (+${ot}h)` : (l.overtimeStatus === 'rejected' ? `OT Declined` : `OT Pending (+${ot}h)`);
             badgeClass = l.overtimeStatus === 'approved' ? 'badge--success' : (l.overtimeStatus === 'rejected' ? 'badge--danger' : 'badge--warning');

@@ -82,10 +82,10 @@ class AutoCloseAfternoonLogs extends Command
                         'timeout_ineligible_reason' => 'Unlogged Exit: Student forgot to clock out at lunch break.',
                         'ineligible_hours_escrow'   => (float) ($log->ineligible_hours_escrow ?? 0) + $mHours,
                         'hours_rendered'            => (float) $mHours + (float) ($log->afternoon_hours ?? 0),
-                        'hours_credited'            => 0.00,
                         'approval_status'           => 'pending_company',
                         'time_out'                  => $lunchStart,
                     ]);
+                    $log->syncCreditedHours($ojtRecord);
 
                     $closedCount++;
                 }
@@ -103,9 +103,6 @@ class AutoCloseAfternoonLogs extends Command
                         $pmHours = $pEnd->gt($pIn) ? round($pIn->diffInMinutes($pEnd) / 60, 2) : 0;
 
                         $totalDayHours = (float) ($log->morning_hours ?? 0) + $pmHours;
-                        $cleanMorningCredited = ($log->morning_out && !$log->auto_morning_timeout && (float) ($log->morning_hours ?? 0) > 0)
-                            ? (float) $log->morning_hours
-                            : 0.00;
 
                         $log->update([
                             'afternoon_out'             => $shiftEnd,
@@ -117,10 +114,10 @@ class AutoCloseAfternoonLogs extends Command
                             'timeout_ineligible_reason' => 'Unlogged Exit: Student forgot to clock out at shift end.',
                             'ineligible_hours_escrow'   => (float) ($log->ineligible_hours_escrow ?? 0) + $pmHours,
                             'hours_rendered'            => $totalDayHours,
-                            'hours_credited'            => $cleanMorningCredited,
                             'approval_status'           => 'pending_company',
                             'time_out'                  => $shiftEnd,
                         ]);
+                        $log->syncCreditedHours($ojtRecord);
                     } elseif (!$hasLunch && $log->time_in && !$log->time_out) {
                         $tIn   = Carbon::parse($log->time_in);
                         $pEnd  = Carbon::parse($shiftEnd);
@@ -132,13 +129,13 @@ class AutoCloseAfternoonLogs extends Command
                             'morning_hours'             => $hours,
                             'regular_hours'             => $hours,
                             'hours_rendered'            => $hours,
-                            'hours_credited'            => 0.00,
                             'auto_afternoon_timeout'    => true,
                             'is_timeout_ineligible'     => true,
                             'timeout_ineligible_reason' => 'Unlogged Exit: Student forgot to clock out at shift end.',
                             'ineligible_hours_escrow'   => $hours,
                             'approval_status'           => 'pending_company',
                         ]);
+                        $log->syncCreditedHours($ojtRecord);
                     }
                     $closedCount++;
                 }

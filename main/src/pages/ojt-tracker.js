@@ -2726,19 +2726,26 @@ function renderTrackerLogRow(log) {
   } else if (isAbsent || (isExcused && !Number(log.hours))) {
     hrsHtml = `<div class="dtr-hrs-box"><span class="dtr-hrs-val dtr-hrs-val--zero">0.0 hrs</span></div>`;
   } else if (isPendingApproval) {
+    const otVal = Number(log.overtimeHours || 0);
+    const regHrs = Number((log.regularHours > 0 ? log.regularHours : (log.hours - otVal)) || 0).toFixed(1);
+    const otSub = otVal > 0
+      ? `<span class="dtr-hrs-sub" style="color:${log.overtimeStatus === 'rejected' ? '#ef4444' : '#b45309'};font-weight:700;">(${log.overtimeStatus === 'rejected' ? `${otVal.toFixed(1)}h OT Declined` : `+${otVal.toFixed(1)}h OT Escrow`})</span>`
+      : '';
     hrsHtml = `
-      <div class="dtr-hrs-box" title="Hours held in escrow pending supervisor review">
-        <span class="dtr-hrs-val dtr-hrs-val--escrow">${rawHrs} hrs</span>
+      <div class="dtr-hrs-box" title="Regular hours held in escrow pending supervisor review">
+        <span class="dtr-hrs-val dtr-hrs-val--escrow">${regHrs} hrs</span>
         <span class="dtr-hrs-sub" style="color:#b45309;font-weight:700;">(In Escrow)</span>
+        ${otSub}
       </div>`;
   } else if (isRejected) {
+    const credHrs = Number(log.hoursCredited || 0);
     hrsHtml = `
       <div class="dtr-hrs-box" title="${esc(log.rejectionReason || 'Rejected')}">
-        <span class="dtr-hrs-val dtr-hrs-val--rejected">${rawHrs} hrs</span>
-        <span class="dtr-hrs-sub" style="color:#dc2626;font-weight:700;">(Rejected)</span>
+        <span class="dtr-hrs-val dtr-hrs-val--rejected">${credHrs > 0 ? credHrs.toFixed(1) : rawHrs} hrs</span>
+        <span class="dtr-hrs-sub" style="color:#dc2626;font-weight:700;">(${credHrs > 0 ? 'AM Verified · PM Rejected' : 'Rejected'})</span>
       </div>`;
   } else if (log.overtimeHours > 0) {
-    const regHrs = Number(log.regularHours ?? (log.hours - log.overtimeHours)).toFixed(1);
+    const regHrs = Number((log.regularHours > 0 ? log.regularHours : (log.hours - log.overtimeHours)) || 0).toFixed(1);
     const otHrs = Number(log.overtimeHours).toFixed(1);
     if (log.overtimeStatus === 'approved') {
       const totalHrs = (Number(regHrs) + Number(otHrs)).toFixed(1);
@@ -4473,11 +4480,20 @@ function showLogDetail(log) {
   if (log.isTimeoutIneligible) {
     totalDisplay = `<span style="color:#dc2626;">0.0h (${Number(log.ineligibleHoursEscrow || log.hours || 0).toFixed(1)}h Ineligible Escrow)</span>`;
   } else if (isPending) {
-    totalDisplay = `<span style="color:#d97706;">${log.hours || 0}h (Held in Escrow)</span>`;
+    const otVal = Number(log.overtimeHours || 0);
+    const regHrs = Number((log.regularHours > 0 ? log.regularHours : (log.hours - otVal)) || 0).toFixed(1);
+    const credVal = Number(log.hoursCredited || 0);
+    const otText = otVal > 0
+      ? (log.overtimeStatus === 'rejected' ? ` · ${otVal.toFixed(1)}h OT Declined` : ` · +${otVal.toFixed(1)}h OT Pending`)
+      : '';
+    totalDisplay = `<span style="color:#d97706;">${regHrs}h (${credVal > 0 ? `${credVal.toFixed(1)}h AM Credited, ` : ''}Held in Escrow)${otText}</span>`;
   } else if (isRej) {
-    totalDisplay = `<span style="color:#ef4444;text-decoration:line-through;">${log.hours || 0}h (Rejected)</span>`;
+    const credVal = Number(log.hoursCredited || 0);
+    totalDisplay = credVal > 0
+      ? `<span style="color:#ef4444;">${credVal.toFixed(1)}h (AM Verified · PM Rejected)</span>`
+      : `<span style="color:#ef4444;text-decoration:line-through;">${log.hours || 0}h (Rejected)</span>`;
   } else if (log.overtimeHours > 0) {
-    const regHrs = Number(log.regularHours ?? (log.hours - log.overtimeHours)).toFixed(1);
+    const regHrs = Number((log.regularHours > 0 ? log.regularHours : (log.hours - log.overtimeHours)) || 0).toFixed(1);
     const otHrs = Number(log.overtimeHours).toFixed(1);
     if (log.overtimeStatus === 'approved') {
       totalDisplay = `${(Number(regHrs) + Number(otHrs)).toFixed(1)}h (${regHrs}h Reg + ${otHrs}h OT)`;
