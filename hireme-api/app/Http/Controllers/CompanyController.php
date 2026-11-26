@@ -753,9 +753,21 @@ class CompanyController extends Controller
             'daily_hours'        => ['nullable', 'numeric', 'min:0.5', 'max:24'],
             'weekly_hours'       => ['nullable', 'numeric', 'min:0.5', 'max:168'],
             'allow_overtime'     => ['nullable', 'boolean'],
-            'max_overtime_hours' => ['nullable', 'numeric', 'min:0', 'max:12'],
+            'max_overtime_hours' => ['nullable', 'numeric', 'min:0', 'max:4'],
             'estimated_end_date' => ['nullable', 'date'],
         ]);
+
+        $allowOt = !empty($validated['allow_overtime']);
+        $maxOt   = $allowOt ? (float) ($validated['max_overtime_hours'] ?? 0) : 0.0;
+        if ($allowOt && ($maxOt < 2.0 || $maxOt > 4.0)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Daily overtime cap must be between 2.0 and 4.0 hours per day when overtime is enabled.',
+                'errors'  => [
+                    'max_overtime_hours' => ['Daily overtime cap must be between 2.0 and 4.0 hours per day.'],
+                ],
+            ], 422);
+        }
 
         // Fixed university curriculum target: 600 hours less accredited hours from prior approved pull-outs
         $curriculumTarget = 600;
@@ -801,8 +813,8 @@ class CompanyController extends Controller
             'has_lunch_break'    => $hasLunch,
             'daily_hours'        => $dailyHours,
             'weekly_hours'       => $weeklyHours,
-            'allow_overtime'     => !empty($validated['allow_overtime']),
-            'max_overtime_hours' => $validated['max_overtime_hours'] ?? 0,
+            'allow_overtime'     => $allowOt,
+            'max_overtime_hours' => $maxOt,
             'estimated_end_date' => $estimatedEndDate,
             'ojt_started_at'     => null, // will be set when OJT actually starts
         ]);
@@ -832,8 +844,8 @@ class CompanyController extends Controller
                 'has_lunch_break'      => $hasLunch,
                 'daily_hours'          => $dailyHours,
                 'weekly_hours'         => $weeklyHours,
-                'allow_overtime'       => !empty($validated['allow_overtime']),
-                'max_overtime_hours'   => $validated['max_overtime_hours'] ?? 0,
+                'allow_overtime'       => $allowOt,
+                'max_overtime_hours'   => $maxOt,
                 'estimated_end_date'   => $estimatedEndDate,
             ]
         );
@@ -3793,19 +3805,32 @@ class CompanyController extends Controller
         ]);
 
         $ojtRecord = $log->ojtRecord ?? OjtRecord::where('user_id', $log->user_id)->first();
-        $log->syncCreditedHours($ojtRecord);
+        $appliedDelta = $log->syncCreditedHours($ojtRecord);
+        $requiredHours = (float) ($ojtRecord?->required_hours ?? 600);
+
+        $creditMsg = $appliedDelta <= 0
+            ? "Overtime verified, but trainee has already reached 100% ({$requiredHours} hrs). 0.00 additional hours credited."
+            : ($appliedDelta < $otHours
+                ? "Overtime approved. {$appliedDelta} of {$otHours} overtime hours credited (capped at {$requiredHours} hrs required OJT completion)."
+                : "Overtime approved. {$appliedDelta} overtime hours credited to trainee.");
 
         // Notify student & coordinator
         try {
             $logDate = $log->log_date instanceof Carbon ? $log->log_date : ($log->log_date ? Carbon::parse($log->log_date) : null);
             $dateFormatted = $logDate ? $logDate->format('M j, Y') : 'your recent shift';
 
+            $notifBody = $appliedDelta <= 0
+                ? "Your overtime claim of {$otHours} hrs for {$dateFormatted} was verified by your host company (already at 100% completion, 0.00 additional hours needed)."
+                : ($appliedDelta < $otHours
+                    ? "Your overtime claim of {$otHours} hrs for {$dateFormatted} has been approved ({$appliedDelta} hrs credited, reaching {$requiredHours} hrs required completion)."
+                    : "Your overtime claim of {$otHours} hrs for {$dateFormatted} has been approved by your host company.");
+
             AppNotification::send(
                 (int) $log->user_id,
                 'overtime_approved',
                 'Overtime Approved',
-                "Your overtime claim of {$otHours} hrs for {$dateFormatted} has been approved by your host company.",
-                ['log_id' => $log->id, 'overtime_hours' => $otHours, 'date' => $logDate?->toDateString()]
+                $notifBody,
+                ['log_id' => $log->id, 'overtime_hours' => $otHours, 'credited_hours' => $appliedDelta, 'date' => $logDate?->toDateString()]
             );
 
             $studentUser = $log->user;
@@ -3816,8 +3841,8 @@ class CompanyController extends Controller
                         (int) $svId,
                         'overtime_approved',
                         'Trainee Overtime Verified',
-                        "{$compName} verified and approved {$studentUser->name}'s overtime for {$dateFormatted} ({$otHours} hrs).",
-                        ['student_id' => $studentUser->id, 'log_id' => $log->id, 'overtime_hours' => $otHours]
+                        "{$compName} verified and approved {$studentUser->name}'s overtime for {$dateFormatted} ({$appliedDelta} hrs credited).",
+                        ['student_id' => $studentUser->id, 'log_id' => $log->id, 'overtime_hours' => $otHours, 'credited_hours' => $appliedDelta]
                     );
                 }
             }
@@ -3826,9 +3851,10 @@ class CompanyController extends Controller
         }
 
         return response()->json([
-            'success' => true,
-            'message' => "Overtime approved. {$otHours} overtime hours credited to trainee.",
-            'log'     => $log->fresh(),
+            'success'          => true,
+            'message'          => $creditMsg,
+            'credited_delta'   => $appliedDelta,
+            'log'              => $log->fresh(),
         ]);
     }
 

@@ -48,6 +48,7 @@ class OvertimeAndOffsiteApprovalTest extends TestCase
     {
         $tables = [
             'app_notifications',
+            'ojt_pull_out_requests',
             'time_logs',
             'ojt_records',
             'student_ojt_interests',
@@ -102,6 +103,8 @@ class OvertimeAndOffsiteApprovalTest extends TestCase
             $table->string('location')->nullable();
             $table->decimal('latitude', 10, 7)->nullable();
             $table->decimal('longitude', 10, 7)->nullable();
+            $table->integer('slots_total')->default(5);
+            $table->integer('slots_remaining')->default(5);
             $table->string('status')->default('open');
             $table->timestamps();
         });
@@ -112,14 +115,20 @@ class OvertimeAndOffsiteApprovalTest extends TestCase
             $table->foreignId('ojt_posting_id')->constrained('ojt_postings')->cascadeOnDelete();
             $table->string('status')->default('ojt_started');
             $table->unsignedBigInteger('endorsed_by')->nullable();
+            $table->date('ojt_start_date')->nullable();
+            $table->text('ojt_instructions')->nullable();
             $table->json('schedule_days')->nullable();
             $table->string('shift_start')->nullable();
             $table->string('shift_end')->nullable();
             $table->string('lunch_start')->nullable();
             $table->string('lunch_end')->nullable();
             $table->boolean('has_lunch_break')->default(true);
+            $table->decimal('daily_hours', 5, 2)->nullable();
+            $table->decimal('weekly_hours', 5, 2)->nullable();
             $table->boolean('allow_overtime')->default(true);
             $table->decimal('max_overtime_hours', 5, 2)->default(4.00);
+            $table->date('estimated_end_date')->nullable();
+            $table->timestamp('ojt_started_at')->nullable();
             $table->timestamps();
         });
 
@@ -127,17 +136,34 @@ class OvertimeAndOffsiteApprovalTest extends TestCase
             $table->id();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
             $table->string('company_name')->nullable();
+            $table->string('supervisor_name')->nullable();
+            $table->string('supervisor_email')->nullable();
+            $table->string('location')->nullable();
+            $table->date('start_date')->nullable();
+            $table->date('end_date')->nullable();
             $table->integer('required_hours')->default(600);
             $table->decimal('completed_hours', 8, 2)->default(0);
             $table->string('status')->default('active');
+            $table->text('company_instructions')->nullable();
             $table->json('schedule_days')->nullable();
             $table->string('shift_start')->nullable();
             $table->string('shift_end')->nullable();
             $table->string('lunch_start')->nullable();
             $table->string('lunch_end')->nullable();
             $table->boolean('has_lunch_break')->default(true);
+            $table->decimal('daily_hours', 5, 2)->nullable();
+            $table->decimal('weekly_hours', 5, 2)->nullable();
             $table->boolean('allow_overtime')->default(true);
             $table->decimal('max_overtime_hours', 5, 2)->default(4.00);
+            $table->date('estimated_end_date')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('ojt_pull_out_requests', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('student_user_id')->constrained('users')->cascadeOnDelete();
+            $table->string('status')->default('pending');
+            $table->decimal('credited_hours', 8, 2)->default(0);
             $table->timestamps();
         });
 
@@ -802,5 +828,166 @@ class OvertimeAndOffsiteApprovalTest extends TestCase
             'latitude'  => 10.6765,
             'longitude' => 122.9509,
         ])->assertStatus(410);
+    }
+
+    public function test_overtime_and_regular_hours_cap_cleanly_at_required_hours_and_undo_accurately(): void
+    {
+        $this->ojtRecord->update(['completed_hours' => 591.00]);
+
+        Sanctum::actingAs($this->studentUser);
+        $this->setServerTime('08:00');
+        $this->postJson('/api/student/ojt-tracker/log-in', [
+            'latitude'  => 10.6765,
+            'longitude' => 122.9509,
+            'session'   => 'morning',
+        ])->assertOk();
+
+        $this->setServerTime('12:00');
+        $this->postJson('/api/student/ojt-tracker/log-out', [
+            'latitude'  => 10.6765,
+            'longitude' => 122.9509,
+            'session'   => 'morning',
+        ])->assertOk();
+
+        $this->setServerTime('13:00');
+        $this->postJson('/api/student/ojt-tracker/log-in', [
+            'latitude'  => 10.6765,
+            'longitude' => 122.9509,
+            'session'   => 'afternoon',
+        ])->assertOk();
+
+        // 8h regular brings student to 599/600; 4h OT is requested
+        $this->setServerTime('21:00');
+        $this->postJson('/api/student/ojt-tracker/log-out', [
+            'latitude'        => 10.6765,
+            'longitude'       => 122.9509,
+            'session'         => 'afternoon',
+            'overtime_reason' => 'Final system deployment',
+        ])->assertOk();
+
+        $log = TimeLog::firstOrFail();
+        $this->assertEquals(599.00, (float) $this->ojtRecord->fresh()->completed_hours);
+        $this->assertEquals(8.00, (float) $log->hours_credited);
+
+        // Approve 4h OT -> only +1.00h is credited so total hits exactly 600.00 (never 603.00)
+        Sanctum::actingAs($this->companyUser);
+        $this->postJson("/api/company/ojt-trainees/attendance/{$log->id}/approve-overtime")
+            ->assertOk();
+
+        $log->refresh();
+        $this->assertSame('approved', $log->overtime_status);
+        $this->assertEquals(600.00, (float) $this->ojtRecord->fresh()->completed_hours);
+        $this->assertEquals(9.00, (float) $log->hours_credited);
+
+        // Declining that OT later subtracts only the +1.00h that was actually credited (restoring 599.00, not 596.00)
+        $this->postJson("/api/company/ojt-trainees/attendance/{$log->id}/reject-overtime", [
+            'reason' => 'Audit adjustment',
+        ])->assertOk();
+
+        $this->assertEquals(599.00, (float) $this->ojtRecord->fresh()->completed_hours);
+        $this->assertEquals(8.00, (float) $log->fresh()->hours_credited);
+    }
+
+    public function test_already_at_100_percent_caps_pending_ot_approval_at_zero_additional_hours(): void
+    {
+        $this->ojtRecord->update(['completed_hours' => 592.00]);
+
+        Sanctum::actingAs($this->studentUser);
+        $this->setServerTime('08:00');
+        $this->postJson('/api/student/ojt-tracker/log-in', [
+            'latitude'  => 10.6765,
+            'longitude' => 122.9509,
+            'session'   => 'morning',
+        ])->assertOk();
+
+        $this->setServerTime('12:00');
+        $this->postJson('/api/student/ojt-tracker/log-out', [
+            'latitude'  => 10.6765,
+            'longitude' => 122.9509,
+            'session'   => 'morning',
+        ])->assertOk();
+
+        $this->setServerTime('13:00');
+        $this->postJson('/api/student/ojt-tracker/log-in', [
+            'latitude'  => 10.6765,
+            'longitude' => 122.9509,
+            'session'   => 'afternoon',
+        ])->assertOk();
+
+        // 8h regular brings completed_hours to exact 600.00; 2h OT is pending
+        $this->setServerTime('19:00');
+        $this->postJson('/api/student/ojt-tracker/log-out', [
+            'latitude'        => 10.6765,
+            'longitude'       => 122.9509,
+            'session'         => 'afternoon',
+            'overtime_reason' => 'Documentation handoff',
+        ])->assertOk();
+
+        $log = TimeLog::firstOrFail();
+        $this->assertEquals(600.00, (float) $this->ojtRecord->fresh()->completed_hours);
+
+        Sanctum::actingAs($this->companyUser);
+        $this->postJson("/api/company/ojt-trainees/attendance/{$log->id}/approve-overtime")
+            ->assertOk();
+
+        $this->assertEquals(600.00, (float) $this->ojtRecord->fresh()->completed_hours);
+        $this->assertEquals(8.00, (float) $log->fresh()->hours_credited);
+        $this->assertSame('approved', $log->fresh()->overtime_status);
+    }
+
+    public function test_backend_enforces_overtime_reason_and_2_to_4_hour_company_schedule_cap(): void
+    {
+        // 1. Student cannot submit overtime via API without overtime_reason
+        Sanctum::actingAs($this->studentUser);
+        $this->setServerTime('13:00');
+        $this->postJson('/api/student/ojt-tracker/log-in', [
+            'latitude'  => 10.6765,
+            'longitude' => 122.9509,
+            'session'   => 'afternoon',
+        ])->assertOk();
+
+        $this->setServerTime('19:00');
+        $this->postJson('/api/student/ojt-tracker/log-out', [
+            'latitude'  => 10.6765,
+            'longitude' => 122.9509,
+            'session'   => 'afternoon',
+        ])->assertStatus(422)
+          ->assertJsonValidationErrors(['overtime_reason']);
+
+        // 2. Company schedule endpoint rejects OT cap outside 2.0–4.0h when allow_overtime is true
+        $acceptedInterest = StudentOjtInterest::create([
+            'student_user_id' => User::create([
+                'name'  => 'Maria Santos',
+                'email' => 'maria@example.com',
+                'role'  => 'student',
+            ])->id,
+            'ojt_posting_id' => $this->posting->id,
+            'status'         => 'accepted',
+        ]);
+
+        Sanctum::actingAs($this->companyUser);
+        $this->postJson("/api/company/ojt-postings/{$this->posting->id}/set-ojt-start/{$acceptedInterest->id}", [
+            'ojt_start_date'     => '2026-11-27',
+            'ojt_instructions'   => 'Report to IT office at 8:00 AM sharp.',
+            'allow_overtime'     => true,
+            'max_overtime_hours' => 1.0,
+        ])->assertStatus(422);
+
+        $this->postJson("/api/company/ojt-postings/{$this->posting->id}/set-ojt-start/{$acceptedInterest->id}", [
+            'ojt_start_date'     => '2026-11-27',
+            'ojt_instructions'   => 'Report to IT office at 8:00 AM sharp.',
+            'allow_overtime'     => true,
+            'max_overtime_hours' => 6.0,
+        ])->assertStatus(422);
+
+        // Valid 3.0h cap succeeds
+        $this->postJson("/api/company/ojt-postings/{$this->posting->id}/set-ojt-start/{$acceptedInterest->id}", [
+            'ojt_start_date'     => '2026-11-27',
+            'ojt_instructions'   => 'Report to IT office at 8:00 AM sharp.',
+            'allow_overtime'     => true,
+            'max_overtime_hours' => 3.0,
+        ])->assertOk();
+
+        $this->assertEquals(3.0, (float) $acceptedInterest->fresh()->max_overtime_hours);
     }
 }

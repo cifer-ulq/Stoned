@@ -2447,6 +2447,17 @@ class StudentController extends Controller
                 $otStatus = 'none';
             }
 
+            $otReason = $request->input('overtime_reason') ? trim((string) $request->input('overtime_reason')) : null;
+            if ($otHours > 0 && empty($otReason)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Please provide an overtime task or justification before clocking out past your shift end.',
+                    'errors'  => [
+                        'overtime_reason' => ['Overtime task or justification is required.'],
+                    ],
+                ], 422);
+            }
+
             $totalHours = $regularHours + $otHours;
 
             $updateData = [
@@ -2455,7 +2466,7 @@ class StudentController extends Controller
                 'regular_hours'          => $regularHours,
                 'overtime_hours'         => $otHours,
                 'overtime_status'        => $otStatus,
-                'overtime_reason'        => $request->input('overtime_reason') ? trim($request->input('overtime_reason')) : null,
+                'overtime_reason'        => $otHours > 0 ? $otReason : null,
                 'time_out_lat'           => $outLat,
                 'time_out_lon'           => $outLon,
                 'location_validity'      => $outLocationValidity === 'Too Far' ? 'Too Far' : ($log->location_validity ?? $outLocationValidity),
@@ -2554,6 +2565,17 @@ class StudentController extends Controller
                     $otStatus = 'none';
                 }
 
+                $otReason = $request->input('overtime_reason') ? trim((string) $request->input('overtime_reason')) : null;
+                if ($otHours > 0 && empty($otReason)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Please provide an overtime task or justification before clocking out past your shift end.',
+                        'errors'  => [
+                            'overtime_reason' => ['Overtime task or justification is required.'],
+                        ],
+                    ], 422);
+                }
+
                 $morningHours = (float) ($log->morning_hours ?? 0);
                 $regularDayHours = $morningHours + $regularPmHours;
                 $totalDayHours = $regularDayHours + $otHours;
@@ -2564,7 +2586,7 @@ class StudentController extends Controller
                     'regular_hours'          => $regularDayHours,
                     'overtime_hours'         => $otHours,
                     'overtime_status'        => $otStatus,
-                    'overtime_reason'        => $request->input('overtime_reason') ? trim($request->input('overtime_reason')) : null,
+                    'overtime_reason'        => $otHours > 0 ? $otReason : null,
                     'afternoon_validity'     => $outLocationValidity === 'Too Far' ? 'Too Far' : ($log->afternoon_validity ?? $outLocationValidity),
                     'afternoon_out_lat'      => $outLat,
                     'afternoon_out_lon'      => $outLon,

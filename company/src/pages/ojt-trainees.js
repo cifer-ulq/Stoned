@@ -2619,6 +2619,10 @@ function openOvertimeReviewModal(log, studentInfo, onComplete) {
     : ((log.approvalStatus || 'approved') === 'approved' && !log.isTimeoutIneligible);
   const isAttendanceRejected = (log.approvalStatus || 'approved') === 'rejected' && !canApproveByAttendance;
   const isAttendancePending = !canApproveByAttendance && !isAttendanceRejected;
+  const remainingHours = studentInfo?.remainingHours != null ? Number(studentInfo.remainingHours) : null;
+  const otHrsNum = Number(log.overtimeHours || 0);
+  const cappedCreditPreview = remainingHours != null ? Math.min(otHrsNum, Math.max(0, remainingHours)) : otHrsNum;
+  const isCompletionCapped = remainingHours != null && remainingHours < otHrsNum;
 
   bd.innerHTML = `
     <div class="modal modal--visible" style="max-width:480px;width:100%;border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);">
@@ -2652,6 +2656,8 @@ function openOvertimeReviewModal(log, studentInfo, onComplete) {
               ? `Regular shift hours (<strong>${regHrs} hrs</strong>) are still awaiting off-site/exit review. Approve regular attendance first before approving this overtime.`
               : isAttendanceRejected
               ? `Regular attendance for this shift was rejected. Overtime cannot be approved.`
+              : isCompletionCapped
+              ? `Trainee needs only <strong>${remainingHours.toFixed(2)} more hrs</strong> to reach 100% completion. Approving will credit <strong>+${cappedCreditPreview.toFixed(2)} hrs</strong> (capped at 100%).`
               : `Afternoon regular attendance is verified. Approving this overtime will add <strong>${otHrs} hrs</strong> directly to the trainee's total completed OJT hours.`}
           </p>
         </div>
@@ -3088,6 +3094,9 @@ async function openCompanyTraineeDtrModal(studentId, traineeFallback = null) {
       logsData = Array.isArray(res.data) ? res.data : [];
       studentInfo = res.student || studentInfo;
       summaryInfo = res.summary || {};
+      const reqHrs = Number(summaryInfo.requiredHours ?? 600);
+      const compHrs = Number(summaryInfo.completedHours ?? 0);
+      studentInfo = { ...studentInfo, remainingHours: Math.max(0, reqHrs - compHrs) };
 
       renderModalShell();
     } catch (err) {

@@ -228,31 +228,47 @@ class TimeLog extends Model
     }
 
     /**
-     * Reconcile hours_credited on this log and apply only the exact delta to OjtRecord.completed_hours.
+     * Reconcile hours_credited on this log and apply only the exact delta to OjtRecord.completed_hours,
+     * capped so completed_hours never exceeds OjtRecord.required_hours.
      */
     public function syncCreditedHours(?OjtRecord $ojtRecord = null): float
     {
         $oldCredited = round((float) ($this->hours_credited ?? 0), 2);
-        $newCredited = $this->computeCreditedHours();
-        $delta = round($newCredited - $oldCredited, 2);
+        $desiredCredited = $this->computeCreditedHours();
+        $desiredDelta = round($desiredCredited - $oldCredited, 2);
+
+        $record = $ojtRecord ?? $this->ojtRecord ?? OjtRecord::where('user_id', $this->user_id)->first();
+        $appliedDelta = $desiredDelta;
+
+        if ($desiredDelta > 0) {
+            if ($record && (float) $record->required_hours > 0) {
+                $remainingRoom = max(0.0, round((float) $record->required_hours - (float) $record->completed_hours, 2));
+                $appliedDelta = round(min($desiredDelta, $remainingRoom), 2);
+            }
+            $newCredited = round($oldCredited + $appliedDelta, 2);
+        } elseif ($desiredDelta < 0) {
+            $newCredited = round(max(0.0, $oldCredited + $desiredDelta), 2);
+            $appliedDelta = round($newCredited - $oldCredited, 2);
+        } else {
+            $newCredited = $oldCredited;
+        }
 
         if (abs($newCredited - $oldCredited) >= 0.005) {
             $this->hours_credited = $newCredited;
             $this->save();
         }
 
-        $record = $ojtRecord ?? $this->ojtRecord ?? OjtRecord::where('user_id', $this->user_id)->first();
-        if ($record && abs($delta) >= 0.01) {
-            if ($delta > 0) {
-                $record->increment('completed_hours', $delta);
+        if ($record && abs($appliedDelta) >= 0.01) {
+            if ($appliedDelta > 0) {
+                $record->increment('completed_hours', $appliedDelta);
             } else {
-                $decrement = min(abs($delta), (float) $record->completed_hours);
+                $decrement = min(abs($appliedDelta), (float) $record->completed_hours);
                 if ($decrement > 0) {
                     $record->decrement('completed_hours', $decrement);
                 }
             }
         }
 
-        return $delta;
+        return $appliedDelta;
     }
 }
