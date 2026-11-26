@@ -181,31 +181,31 @@ export function openSetOjtScheduleModal({
             </div>
           </div>
 
-          <!-- 2. Midday Lunch Break -->
+          <!-- 2. Mid-Shift Break -->
           <div style="background:rgba(245,158,11,0.06);border:1px dashed rgba(245,158,11,0.35);border-radius:var(--radius-md);padding:9px 12px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
             <label for="sosi-lunch-check" style="font-size:0.75rem;font-weight:700;display:flex;align-items:center;gap:6px;cursor:pointer;margin:0;color:var(--text-primary);">
               <input type="checkbox" id="sosi-lunch-check" ${existingData?.has_lunch_break !== false ? 'checked' : ''} style="accent-color:#005930;width:15px;height:15px;" />
-              <span>${icon('coffee', 13)} Deduct Noon Lunch Break (Unpaid)</span>
+              <span>${icon('coffee', 13)} Deduct Mid-Shift Break (Unpaid)</span>
             </label>
             <span id="sosi-lunch-pill" style="font-size:0.7rem;font-weight:700;color:#b45309;background:rgba(245,158,11,0.14);padding:2px 8px;border-radius:99px;">
               1 hr break (12:00 PM &ndash; 1:00 PM)
             </span>
           </div>
 
-          <!-- 3. Afternoon Session (PM) -->
+          <!-- 3. Second Session (Post-Break) -->
           <div style="background:var(--bg-secondary);border:1px solid var(--border-default);border-radius:var(--radius-lg);padding:12px;">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
               <span style="font-size:0.75rem;font-weight:700;color:var(--text-primary);display:flex;align-items:center;gap:5px;">
-                ${icon('sun', 13)} Afternoon Session (PM)
+                ${icon('sun', 13)} Second Session (Post-Break)
               </span>
               <span id="sosi-afternoon-badge" style="font-size:0.7rem;font-weight:700;color:#005930;background:rgba(0,89,48,0.08);padding:2px 8px;border-radius:99px;">
-                4.0 hrs PM
+                4.0 hrs
               </span>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
               <div>
                 <span style="font-size:0.7rem;color:var(--text-secondary);font-weight:600;display:block;margin-bottom:3px;">
-                  Afternoon Time In <span style="color:var(--color-error);">*</span>
+                  Post-Break Time In <span style="color:var(--color-error);">*</span>
                 </span>
                 <input
                   type="time"
@@ -214,11 +214,11 @@ export function openSetOjtScheduleModal({
                   class="form-input"
                   style="width:100%;height:36px;padding:0 8px;border:1px solid var(--border-default);border-radius:var(--radius-md);background:var(--bg-elevated);font-family:inherit;font-size:0.84rem;color:var(--text-primary);"
                 />
-                <span style="font-size:0.68rem;color:var(--text-tertiary);margin-top:2px;display:block;">Return After Lunch Break</span>
+                <span style="font-size:0.68rem;color:var(--text-tertiary);margin-top:2px;display:block;">Return After Break</span>
               </div>
               <div>
                 <span style="font-size:0.7rem;color:var(--text-secondary);font-weight:600;display:block;margin-bottom:3px;">
-                  Afternoon Time Out <span style="color:var(--color-error);">*</span>
+                  Final Time Out <span style="color:var(--color-error);">*</span>
                 </span>
                 <input
                   type="time"
@@ -227,17 +227,18 @@ export function openSetOjtScheduleModal({
                   class="form-input"
                   style="width:100%;height:36px;padding:0 8px;border:1px solid var(--border-default);border-radius:var(--radius-md);background:var(--bg-elevated);font-family:inherit;font-size:0.84rem;color:var(--text-primary);"
                 />
-                <span style="font-size:0.68rem;color:var(--text-tertiary);margin-top:2px;display:block;">Shift End / Day Departure</span>
+                <span style="font-size:0.68rem;color:var(--text-tertiary);margin-top:2px;display:block;">Shift End / Departure</span>
               </div>
             </div>
           </div>
 
           <!-- Dynamic Live Calculation Strip -->
           <div id="sosi-calc-card" style="margin-top:10px;padding:10px 14px;background:rgba(0,89,48,0.06);border:1px solid rgba(0,89,48,0.18);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
-            <div>
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
               <span id="sosi-calc-daily" style="font-size:0.84rem;font-weight:800;color:#005930;">8.0 hrs / day</span>
-              <span style="font-size:0.76rem;color:var(--text-secondary);"> &middot; </span>
+              <span style="font-size:0.76rem;color:var(--text-secondary);">&middot;</span>
               <span id="sosi-calc-weekly" style="font-size:0.84rem;font-weight:800;color:#005930;">40.0 hrs / week</span>
+              <span id="sosi-overnight-badge" style="display:none;font-size:0.68rem;font-weight:700;color:#1d4ed8;background:rgba(59,130,246,0.12);padding:2px 8px;border-radius:99px;">Overnight Shift (+1 day)</span>
             </div>
             <div id="sosi-calc-end" style="font-size:0.75rem;color:#005930;font-weight:700;">
               Est. Completion: Calculating...
@@ -347,36 +348,60 @@ export function openSetOjtScheduleModal({
     return `${hour12}:${minPad} ${period}`;
   }
 
-  // Helper: calculate net daily hours
-  function computeDailyHours() {
-    const tIn  = timeInInput.value;
-    const tOut = timeOutInput.value;
-    if (!tIn || !tOut) return 0;
+  function toMins(hhmm) {
+    if (!hhmm || !hhmm.includes(':')) return null;
+    const [h, m] = hhmm.split(':').map(Number);
+    if (Number.isNaN(h) || Number.isNaN(m)) return null;
+    return h * 60 + m;
+  }
 
-    const [hIn, mIn]   = tIn.split(':').map(Number);
-    const [hOut, mOut] = tOut.split(':').map(Number);
-    const inMin  = hIn * 60 + mIn;
-    const outMin = hOut * 60 + mOut;
-
-    if (outMin <= inMin) return 0;
-
-    let totalMin = outMin - inMin;
-
-    if (lunchCheck.checked) {
-      const lStart = lunchStartIn.value;
-      const lEnd   = lunchEndIn.value;
-      if (lStart && lEnd) {
-        const [lh1, lm1] = lStart.split(':').map(Number);
-        const [lh2, lm2] = lEnd.split(':').map(Number);
-        const lInMin  = lh1 * 60 + lm1;
-        const lOutMin = lh2 * 60 + lm2;
-        if (lOutMin > lInMin) {
-          totalMin -= (lOutMin - lInMin);
-        }
-      }
+  // Chronological interval calculation supporting overnight wrap-around across midnight
+  function computeScheduleIntervals() {
+    const startMin = toMins(timeInInput.value);
+    const endRaw   = toMins(timeOutInput.value);
+    if (startMin === null || endRaw === null) {
+      return { valid: false, dailyHrs: 0, amMin: 0, lunchMin: 0, pmMin: 0, isOvernight: false };
     }
 
-    return Math.max(0, Math.round((totalMin / 60) * 100) / 100);
+    const isOvernight = endRaw <= startMin;
+    const endMin = isOvernight ? endRaw + 1440 : endRaw;
+    const totalSpan = endMin - startMin;
+    if (totalSpan <= 0 || totalSpan >= 1440) {
+      return { valid: false, dailyHrs: 0, amMin: 0, lunchMin: 0, pmMin: 0, isOvernight };
+    }
+
+    if (!lunchCheck.checked) {
+      return {
+        valid: true,
+        dailyHrs: Math.round((totalSpan / 60) * 100) / 100,
+        amMin: totalSpan,
+        lunchMin: 0,
+        pmMin: 0,
+        isOvernight,
+      };
+    }
+
+    const lsRaw = toMins(lunchStartIn.value);
+    const leRaw = toMins(lunchEndIn.value);
+    if (lsRaw === null || leRaw === null) {
+      return { valid: false, dailyHrs: 0, amMin: 0, lunchMin: 0, pmMin: 0, isOvernight };
+    }
+
+    const lsMin = lsRaw < startMin ? lsRaw + 1440 : lsRaw;
+    const leMin = leRaw < lsMin ? leRaw + 1440 : leRaw;
+
+    const amMin    = lsMin - startMin;
+    const lunchMin = leMin - lsMin;
+    const pmMin    = endMin - leMin;
+    const valid    = amMin > 0 && lunchMin > 0 && pmMin > 0;
+    const dailyHrs = valid ? Math.round(((amMin + pmMin) / 60) * 100) / 100 : 0;
+
+    return { valid, dailyHrs, amMin, lunchMin, pmMin, isOvernight };
+  }
+
+  // Helper: calculate net daily hours
+  function computeDailyHours() {
+    return computeScheduleIntervals().dailyHrs;
   }
 
   // Helper: calculate estimated end date
@@ -407,7 +432,8 @@ export function openSetOjtScheduleModal({
 
   // Recalculate schedule metrics & session badges
   function updateScheduleSummary() {
-    const dailyHrs = computeDailyHours();
+    const intervals = computeScheduleIntervals();
+    const dailyHrs = intervals.dailyHrs;
     const daysCount = selectedDays.length;
     const weeklyHrs = Math.round(dailyHrs * daysCount * 100) / 100;
 
@@ -415,33 +441,36 @@ export function openSetOjtScheduleModal({
     calcWeeklyEl.textContent = `${weeklyHrs.toFixed(1)} hrs / week`;
     daysBadge.textContent = `${daysCount} day${daysCount !== 1 ? 's' : ''} / week`;
 
-    // 1. Morning Session Badge (Morning Time In -> Morning Time Out)
+    const overnightBadge = modal.querySelector('#sosi-overnight-badge');
+    if (overnightBadge) {
+      overnightBadge.style.display = intervals.isOvernight ? 'inline-block' : 'none';
+    }
+
+    // 1. First Session Badge
     const tIn = timeInInput.value;
     const lStart = lunchStartIn.value;
+    const lEnd = lunchEndIn.value;
+    const tOut = timeOutInput.value;
     const morningBadge = modal.querySelector('#sosi-morning-badge');
-    if (morningBadge && tIn && lStart) {
-      const [h1, m1] = tIn.split(':').map(Number);
-      const [h2, m2] = lStart.split(':').map(Number);
-      const diffMin = (h2 * 60 + m2) - (h1 * 60 + m1);
-      if (diffMin > 0) {
-        morningBadge.textContent = `${(diffMin / 60).toFixed(1)} hrs AM`;
+    if (morningBadge && tIn && (lunchCheck.checked ? lStart : tOut)) {
+      if (intervals.amMin > 0) {
+        morningBadge.textContent = lunchCheck.checked
+          ? `${(intervals.amMin / 60).toFixed(1)} hrs`
+          : `${(intervals.amMin / 60).toFixed(1)} hrs total`;
         morningBadge.style.color = '#005930';
         morningBadge.style.background = 'rgba(0,89,48,0.08)';
       } else {
-        morningBadge.textContent = 'Invalid AM interval';
+        morningBadge.textContent = 'Invalid interval';
         morningBadge.style.color = 'var(--color-error)';
         morningBadge.style.background = 'rgba(239,68,68,0.1)';
       }
     }
 
-    // 2. Lunch Break Duration Pill
-    const lEnd = lunchEndIn.value;
+    // 2. Break Duration Pill
     const lunchPill = modal.querySelector('#sosi-lunch-pill');
     if (lunchPill) {
       if (lunchCheck.checked && lStart && lEnd) {
-        const [lh1, lm1] = lStart.split(':').map(Number);
-        const [lh2, lm2] = lEnd.split(':').map(Number);
-        const lMin = (lh2 * 60 + lm2) - (lh1 * 60 + lm1);
+        const lMin = intervals.lunchMin;
         if (lMin > 0) {
           const lHrs = Math.floor(lMin / 60);
           const lMins = lMin % 60;
@@ -450,30 +479,30 @@ export function openSetOjtScheduleModal({
           lunchPill.style.color = '#b45309';
           lunchPill.style.background = 'rgba(245,158,11,0.14)';
         } else {
-          lunchPill.textContent = 'Afternoon return must be after lunch start';
+          lunchPill.textContent = 'Break end must follow break start';
           lunchPill.style.color = 'var(--color-error)';
           lunchPill.style.background = 'rgba(239,68,68,0.1)';
         }
       } else if (!lunchCheck.checked) {
-        lunchPill.textContent = 'No lunch break deduction (continuous)';
+        lunchPill.textContent = 'No break deduction (continuous)';
         lunchPill.style.color = 'var(--text-secondary)';
         lunchPill.style.background = 'var(--bg-elevated)';
       }
     }
 
-    // 3. Afternoon Session Badge (Afternoon Time In -> Afternoon Time Out)
-    const tOut = timeOutInput.value;
+    // 3. Second Session Badge
     const afternoonBadge = modal.querySelector('#sosi-afternoon-badge');
     if (afternoonBadge && lEnd && tOut) {
-      const [h3, m3] = lEnd.split(':').map(Number);
-      const [h4, m4] = tOut.split(':').map(Number);
-      const diffMinPm = (h4 * 60 + m4) - (h3 * 60 + m3);
-      if (diffMinPm > 0) {
-        afternoonBadge.textContent = `${(diffMinPm / 60).toFixed(1)} hrs PM`;
+      if (!lunchCheck.checked) {
+        afternoonBadge.textContent = 'Continuous';
+        afternoonBadge.style.color = 'var(--text-secondary)';
+        afternoonBadge.style.background = 'var(--bg-elevated)';
+      } else if (intervals.pmMin > 0) {
+        afternoonBadge.textContent = `${(intervals.pmMin / 60).toFixed(1)} hrs`;
         afternoonBadge.style.color = '#005930';
         afternoonBadge.style.background = 'rgba(0,89,48,0.08)';
       } else {
-        afternoonBadge.textContent = 'Invalid PM interval';
+        afternoonBadge.textContent = 'Invalid interval';
         afternoonBadge.style.color = 'var(--color-error)';
         afternoonBadge.style.background = 'rgba(239,68,68,0.1)';
       }
@@ -599,8 +628,8 @@ export function openSetOjtScheduleModal({
       showErr('Please select at least one working day for the weekly schedule.');
       return;
     }
-    if (!shiftStart || !shiftEnd || !lunchStart || !lunchEnd) {
-      showErr('Please fill in all 4 schedule times: Morning Time In/Out and Afternoon Time In/Out.');
+    if (!shiftStart || !shiftEnd || (hasLunch && (!lunchStart || !lunchEnd))) {
+      showErr('Please fill in all required shift schedule times.');
       return;
     }
     if (dailyHrs <= 0) {

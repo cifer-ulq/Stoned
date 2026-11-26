@@ -288,9 +288,9 @@ class OjtAbsenceService
                 $rawDays
             );
 
-            $shiftEnd = $record->shift_end ?? $primaryInterest?->shift_end ?? '17:00';
-            $cutoffTime = Carbon::parse($shiftEnd)->addMinutes(15)->format('H:i');
-            $hasLunch = (bool) ($record->has_lunch_break ?? $primaryInterest?->has_lunch_break ?? true);
+            $schedule = OjtScheduleService::extractSchedule($record, $primaryInterest);
+            $hasLunch = $schedule['has_lunch_break'];
+            $now      = Carbon::now();
 
             $isCurrentlyPaused = $latestInterest && in_array($latestInterest->status, $pausedStatuses, true);
 
@@ -300,8 +300,9 @@ class OjtAbsenceService
             $studentPullOuts = $pullOutsByStudent->get($student->id, collect());
 
             for ($cursor = $studentStart->copy(); $cursor->lte($studentEnd); $cursor->addDay()) {
-                $dateStr = $cursor->toDateString();
-                $isToday = ($dateStr === $todayStr);
+                $dateStr     = $cursor->toDateString();
+                $isToday     = ($dateStr === $todayStr);
+                $shiftWindow = OjtScheduleService::buildShiftWindow($dateStr, $schedule, $now->getTimezone());
 
                 // 1. Philippine holiday guard
                 if (HolidayService::getHolidayName($cursor) && !$force) {
@@ -316,8 +317,8 @@ class OjtAbsenceService
                     continue;
                 }
 
-                // 3. Dynamic shift-end cutoff guard applies ONLY to today (past dates are already closed)
-                if ($isToday && $nowTime < $cutoffTime && !$force) {
+                // 3. Anchored shift-end + 15m grace cutoff (supports overnight shifts ending on day +1)
+                if ($now->lt($shiftWindow['absence_cutoff']) && !$force) {
                     continue;
                 }
 

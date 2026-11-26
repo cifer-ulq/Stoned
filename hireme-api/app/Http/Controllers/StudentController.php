@@ -1156,33 +1156,20 @@ class StudentController extends Controller
 
         // Schedule & Session parameters
         $scheduleDays = $interest->schedule_days ?? $ojtRecord?->schedule_days ?? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-        $shiftStart   = $interest->shift_start ?? $ojtRecord?->shift_start ?? '08:00';
-        $shiftEnd     = $interest->shift_end ?? $ojtRecord?->shift_end ?? '17:00';
-        $lunchStart   = $interest->lunch_start ?? $ojtRecord?->lunch_start ?? '12:00';
-        $lunchEnd     = $interest->lunch_end ?? $ojtRecord?->lunch_end ?? '13:00';
-        $hasLunch     = (bool) ($interest->has_lunch_break ?? $ojtRecord?->has_lunch_break ?? true);
-        $allowOt      = (bool) ($interest->allow_overtime ?? $ojtRecord?->allow_overtime ?? false);
-        $maxOtHours   = min(4.0, max(2.0, (float) ($interest->max_overtime_hours ?? $ojtRecord?->max_overtime_hours ?? 2.0)));
+        $schedule     = \App\Services\OjtScheduleService::extractSchedule($interest, $ojtRecord);
+        $shiftStart   = $schedule['shift_start'];
+        $shiftEnd     = $schedule['shift_end'];
+        $lunchStart   = $schedule['lunch_start'];
+        $lunchEnd     = $schedule['lunch_end'];
+        $hasLunch     = $schedule['has_lunch_break'];
+        $allowOt      = $schedule['allow_overtime'];
+        $maxOtHours   = $schedule['max_overtime_hours'];
 
-        $todayStr          = \Carbon\Carbon::today()->toDateString();
-        $nowTime           = \Carbon\Carbon::now()->format('H:i');
-        $shiftStartHM      = \Carbon\Carbon::parse($shiftStart)->format('H:i');
-        $shiftEndHM        = \Carbon\Carbon::parse($shiftEnd)->format('H:i');
-        $lunchStartHM      = \Carbon\Carbon::parse($lunchStart)->format('H:i');
-        $lunchEndHM        = \Carbon\Carbon::parse($lunchEnd)->format('H:i');
-        $earlyGateHM       = \Carbon\Carbon::parse($shiftStart)->subHour()->format('H:i');
+        $serverNow = \Carbon\Carbon::now();
+        $todayStr  = $serverNow->toDateString();
 
-        // Dynamic Cutoff: If overtime allowed, extend cutoff to shiftEnd + maxOtHours + 30 mins (capped to 22:00 night curfew)
-        $extraOtMins       = $allowOt ? min((int)($maxOtHours * 60) + 30, 300) : 30;
-        $calculatedCutoff  = \Carbon\Carbon::parse($shiftEnd)->addMinutes($extraOtMins);
-        if ($calculatedCutoff->format('H:i') > '22:00') {
-            $calculatedCutoff = \Carbon\Carbon::parse('22:00');
-        }
-        $afternoonCutoffHM = $calculatedCutoff->format('H:i');
-
-        // 1. Auto-close any unfinalized logs from previous days
-        $pastUnclosed = TimeLog::where('user_id', $user->id)
-            ->where('log_date', '<', $todayStr)
+        // 1. Auto-close any unfinalized logs whose shift boundary / OT cutoff has passed
+        $unclosedLogs = TimeLog::where('user_id', $user->id)
             ->where(function ($q) {
                 $q->where(fn($sub) => $sub->whereNotNull('afternoon_in')->whereNull('afternoon_out'))
                   ->orWhere(fn($sub) => $sub->whereNotNull('morning_in')->whereNull('morning_out'))
@@ -1190,31 +1177,27 @@ class StudentController extends Controller
             })
             ->get();
 
-        foreach ($pastUnclosed as $pLog) {
-            if ($pLog->morning_in && !$pLog->morning_out) {
+        foreach ($unclosedLogs as $pLog) {
+            $pAnchor = $pLog->log_date ? $pLog->log_date->toDateString() : $todayStr;
+            $pWindow = \App\Services\OjtScheduleService::buildShiftWindow($pAnchor, $schedule);
+
+            if ($hasLunch && $pLog->morning_in && !$pLog->morning_out && $serverNow->gte($pWindow['lunch_start'])) {
                 $this->autoCloseMorningIfNeeded($pLog, $lunchStart, $ojtRecord);
+                $pLog->refresh();
             }
-            if (($pLog->afternoon_in && !$pLog->afternoon_out) || (!$hasLunch && $pLog->time_in && !$pLog->time_out)) {
+            if ((($pLog->afternoon_in && !$pLog->afternoon_out) || (!$hasLunch && $pLog->time_in && !$pLog->time_out)) && $serverNow->gte($pWindow['auto_close_cutoff'])) {
                 $this->autoCloseAfternoonIfNeeded($pLog, $shiftEnd, $ojtRecord);
             }
         }
 
-        // 2. Auto-close today's morning or afternoon if cutoff passed
+        // 2. Resolve active shift anchor date (handles overnight shifts past midnight)
+        $activeShiftDate = $this->resolveActiveShiftDateForStudent($user, $serverNow, $schedule, $scheduleDays, $startDate, $ojtRecord);
+        $shiftWindow     = \App\Services\OjtScheduleService::buildShiftWindow($activeShiftDate, $schedule);
+
         $todayLogRecord = TimeLog::where('user_id', $user->id)
             ->when($ojtRecord, fn($q) => $q->where('ojt_record_id', $ojtRecord->id))
-            ->whereDate('log_date', $todayStr)
+            ->whereDate('log_date', $activeShiftDate)
             ->first();
-
-        if ($todayLogRecord) {
-            if ($hasLunch && $todayLogRecord->morning_in && !$todayLogRecord->morning_out && $nowTime >= $lunchStartHM) {
-                $this->autoCloseMorningIfNeeded($todayLogRecord, $lunchStart, $ojtRecord);
-                $todayLogRecord->refresh();
-            }
-            if ((($todayLogRecord->afternoon_in && !$todayLogRecord->afternoon_out) || (!$hasLunch && $todayLogRecord->time_in && !$todayLogRecord->time_out)) && $nowTime >= $afternoonCutoffHM) {
-                $this->autoCloseAfternoonIfNeeded($todayLogRecord, $shiftEnd, $ojtRecord);
-                $todayLogRecord->refresh();
-            }
-        }
 
         if ($ojtRecord) {
             $ojtRecord->refresh();
@@ -1315,8 +1298,9 @@ class StudentController extends Controller
             ->orderByDesc('log_date')
             ->first();
 
-        $currentDayShort = \Carbon\Carbon::now()->format('D');
-        $currentDayFull  = \Carbon\Carbon::now()->format('l');
+        $activeShiftCarbon = \Carbon\Carbon::parse($activeShiftDate);
+        $currentDayShort = $activeShiftCarbon->format('D');
+        $currentDayFull  = $activeShiftCarbon->format('l');
         $activeDays = array_map(fn($d) => strtolower(substr(trim($d), 0, 3)), (array)$scheduleDays);
         $isWorkDay = in_array(strtolower($currentDayShort), $activeDays);
 
@@ -1333,13 +1317,13 @@ class StudentController extends Controller
         } elseif ($todayLogRecord?->status === 'excused') {
             $sessionState = 'excused_today';
         } elseif (!$todayLogRecord) {
-            if ($nowTime < $earlyGateHM) {
+            if ($serverNow->lt($shiftWindow['early_gate'])) {
                 $sessionState = 'before_shift';
-            } elseif ($hasLunch && $nowTime >= $lunchStartHM && $nowTime < $lunchEndHM) {
+            } elseif ($hasLunch && $serverNow->gte($shiftWindow['lunch_start']) && $serverNow->lt($shiftWindow['lunch_end'])) {
                 $sessionState = 'on_lunch';
-            } elseif ($nowTime >= $shiftEndHM) {
+            } elseif ($serverNow->gte($shiftWindow['shift_end'])) {
                 $sessionState = 'shift_ended';
-            } elseif ($hasLunch && $nowTime >= $lunchEndHM) {
+            } elseif ($hasLunch && $serverNow->gte($shiftWindow['lunch_end'])) {
                 $sessionState = 'ready_afternoon_in';
             } else {
                 $sessionState = 'ready_morning_in';
@@ -1350,9 +1334,9 @@ class StudentController extends Controller
             } elseif ($todayLogRecord->afternoon_in) {
                 $sessionState = 'afternoon_active';
             } elseif ($todayLogRecord->morning_out) {
-                if ($nowTime < $lunchEndHM) {
+                if ($serverNow->lt($shiftWindow['lunch_end'])) {
                     $sessionState = 'on_lunch';
-                } elseif ($nowTime >= $shiftEndHM) {
+                } elseif ($serverNow->gte($shiftWindow['shift_end'])) {
                     $sessionState = 'shift_ended';
                 } else {
                     $sessionState = 'ready_afternoon_in';
@@ -1363,7 +1347,7 @@ class StudentController extends Controller
         } else {
             if ($todayLogRecord->time_out) {
                 $sessionState = 'day_completed';
-            } elseif ($nowTime >= $shiftEndHM && !$todayLogRecord->time_in) {
+            } elseif ($serverNow->gte($shiftWindow['shift_end']) && !$todayLogRecord->time_in) {
                 $sessionState = 'shift_ended';
             } else {
                 $sessionState = 'morning_active';
@@ -1443,6 +1427,8 @@ class StudentController extends Controller
                     'lunchStart'       => $lunchStart,
                     'lunchEnd'         => $lunchEnd,
                     'hasLunchBreak'    => $hasLunch,
+                    'isOvernight'      => $shiftWindow['is_overnight'],
+                    'activeShiftDate'  => $activeShiftDate,
                     'dailyHours'       => (float) ($interest->daily_hours ?? $ojtRecord?->daily_hours ?? 8.0),
                     'weeklyHours'      => (float) ($interest->weekly_hours ?? $ojtRecord?->weekly_hours ?? 40.0),
                     'allowOvertime'    => (bool) ($interest->allow_overtime ?? $ojtRecord?->allow_overtime ?? false),
@@ -1454,12 +1440,14 @@ class StudentController extends Controller
                     'todayLog'         => $todayFormatted,
                 ],
             ],
-            'isWorkDay'     => $isWorkDay,
-            'todayDay'      => $currentDayFull,
-            'sessionState'  => $sessionState,
-            'lunchStart'    => $lunchStart,
-            'lunchEnd'      => $lunchEnd,
-            'todayLog'      => $todayFormatted,
+            'isWorkDay'       => $isWorkDay,
+            'todayDay'        => $currentDayFull,
+            'sessionState'    => $sessionState,
+            'isOvernight'     => $shiftWindow['is_overnight'],
+            'activeShiftDate' => $activeShiftDate,
+            'lunchStart'      => $lunchStart,
+            'lunchEnd'        => $lunchEnd,
+            'todayLog'        => $todayFormatted,
             'emergency'     => $latestEmergency ? [
                 'id'                      => $latestEmergency->id,
                 'type'                    => $latestEmergency->type,
@@ -1578,19 +1566,79 @@ class StudentController extends Controller
      * Auto-close morning session if morning_in is set but morning_out is still pending
      * and lunch has started or afternoon session is initiated.
      */
+    /**
+     * Resolve the active shift anchor date (Y-m-d) for a student, handling overnight shifts crossing midnight.
+     */
+    private function resolveActiveShiftDateForStudent(
+        User $user,
+        \Carbon\Carbon $now,
+        array $schedule,
+        array $scheduleDays,
+        $startDate = null,
+        ?OjtRecord $ojtRecord = null
+    ): string {
+        $todayStr     = $now->toDateString();
+        $yesterdayStr = $now->copy()->subDay()->toDateString();
+
+        if (!\App\Services\OjtScheduleService::isOvernightSchedule($schedule['shift_start'], $schedule['shift_end'])) {
+            return $todayStr;
+        }
+
+        $yesterdayLog = TimeLog::where('user_id', $user->id)
+            ->when($ojtRecord, fn($q) => $q->where('ojt_record_id', $ojtRecord->id))
+            ->whereDate('log_date', $yesterdayStr)
+            ->first();
+
+        $yesterdayHasOpenLog = $yesterdayLog && (
+            ($yesterdayLog->afternoon_in && !$yesterdayLog->afternoon_out)
+            || ($yesterdayLog->morning_in && !$yesterdayLog->morning_out)
+            || (!$schedule['has_lunch_break'] && $yesterdayLog->time_in && !$yesterdayLog->time_out)
+        );
+
+        $activeDays = array_map(fn($d) => strtolower(substr(trim((string) $d), 0, 3)), $scheduleDays);
+        $yesterdayShort = strtolower(\Carbon\Carbon::parse($yesterdayStr)->format('D'));
+        $yesterdayIsWorkday = in_array($yesterdayShort, $activeDays, true);
+
+        if ($startDate) {
+            $startStr = $startDate instanceof \DateTimeInterface
+                ? $startDate->format('Y-m-d')
+                : \Carbon\Carbon::parse($startDate)->toDateString();
+            if ($yesterdayStr < $startStr) {
+                $yesterdayIsWorkday = false;
+            }
+        }
+
+        return \App\Services\OjtScheduleService::resolveActiveShiftDate(
+            $now,
+            $schedule,
+            (bool) $yesterdayLog,
+            (bool) $yesterdayHasOpenLog,
+            $yesterdayIsWorkday
+        );
+    }
+
+    /**
+     * Auto-close an unfinalized morning session at the scheduled break start.
+     */
     public function autoCloseMorningIfNeeded(TimeLog $log, $lunchStart = '12:00', $ojtRecord = null): void
     {
         if ($log->morning_in && !$log->morning_out) {
-            $mIn    = \Carbon\Carbon::parse($log->morning_in);
-            $mLunch = \Carbon\Carbon::parse($lunchStart);
+            $resolvedRecord = $ojtRecord ?? $log->ojtRecord;
+            $resolvedInterest = $resolvedRecord ? null : StudentOjtInterest::where('student_user_id', $log->user_id)->latest()->first();
+            $schedule = \App\Services\OjtScheduleService::extractSchedule($resolvedRecord, $resolvedInterest);
+            $lunchStartHM = \App\Services\OjtScheduleService::normalizeTime((string) $lunchStart, $schedule['lunch_start']);
+            $schedule['lunch_start'] = $lunchStartHM;
 
-            $mHours = 0;
-            if ($mLunch->gt($mIn)) {
-                $mHours = round($mIn->diffInMinutes($mLunch) / 60, 2);
-            }
+            $anchorDate = $log->log_date ? $log->log_date->toDateString() : now()->toDateString();
+            $window = \App\Services\OjtScheduleService::buildShiftWindow($anchorDate, $schedule);
+
+            $mIn    = \App\Services\OjtScheduleService::parsePunchAt($anchorDate, $log->morning_in, $window);
+            $mLunch = $window['lunch_start'];
+
+            $mHours = ($mIn && $mLunch->gt($mIn)) ? round($mIn->diffInMinutes($mLunch) / 60, 2) : 0;
 
             $log->update([
-                'morning_out'               => $lunchStart,
+                'morning_out'               => $lunchStartHM,
                 'morning_hours'             => $mHours,
                 'regular_hours'             => (float) ($log->regular_hours ?? 0) + $mHours,
                 'auto_morning_timeout'      => true,
@@ -1599,7 +1647,7 @@ class StudentController extends Controller
                 'ineligible_hours_escrow'   => (float) ($log->ineligible_hours_escrow ?? 0) + $mHours,
                 'hours_rendered'            => (float) $mHours + (float) ($log->afternoon_hours ?? 0),
                 'approval_status'           => 'pending_company',
-                'time_out'                  => $lunchStart,
+                'time_out'                  => $lunchStartHM,
             ]);
             $log->syncCreditedHours($ojtRecord);
         }
@@ -1610,20 +1658,25 @@ class StudentController extends Controller
      */
     public function autoCloseAfternoonIfNeeded(TimeLog $log, $shiftEnd = '17:00', $ojtRecord = null): void
     {
+        $resolvedRecord = $ojtRecord ?? $log->ojtRecord;
+        $resolvedInterest = $resolvedRecord ? null : StudentOjtInterest::where('student_user_id', $log->user_id)->latest()->first();
+        $schedule = \App\Services\OjtScheduleService::extractSchedule($resolvedRecord, $resolvedInterest);
+        $shiftEndHM = \App\Services\OjtScheduleService::normalizeTime((string) $shiftEnd, $schedule['shift_end']);
+        $schedule['shift_end'] = $shiftEndHM;
+
+        $anchorDate = $log->log_date ? $log->log_date->toDateString() : now()->toDateString();
+        $window = \App\Services\OjtScheduleService::buildShiftWindow($anchorDate, $schedule);
+        $pEnd   = $window['shift_end'];
+
         // Case 1: Full-day schedule with afternoon session
         if ($log->afternoon_in && !$log->afternoon_out) {
-            $pIn  = \Carbon\Carbon::parse($log->afternoon_in);
-            $pEnd = \Carbon\Carbon::parse($shiftEnd);
-
-            $pmHours = 0;
-            if ($pEnd->gt($pIn)) {
-                $pmHours = round($pIn->diffInMinutes($pEnd) / 60, 2);
-            }
+            $pIn     = \App\Services\OjtScheduleService::parsePunchAt($anchorDate, $log->afternoon_in, $window);
+            $pmHours = ($pIn && $pEnd->gt($pIn)) ? round($pIn->diffInMinutes($pEnd) / 60, 2) : 0;
 
             $totalDayHours = (float) ($log->morning_hours ?? 0) + $pmHours;
 
             $log->update([
-                'afternoon_out'             => $shiftEnd,
+                'afternoon_out'             => $shiftEndHM,
                 'afternoon_hours'           => $pmHours,
                 'regular_hours'             => $totalDayHours,
                 'auto_afternoon_timeout'    => true,
@@ -1633,19 +1686,18 @@ class StudentController extends Controller
                 'ineligible_hours_escrow'   => (float) ($log->ineligible_hours_escrow ?? 0) + $pmHours,
                 'hours_rendered'            => $totalDayHours,
                 'approval_status'           => 'pending_company',
-                'time_out'                  => $shiftEnd,
+                'time_out'                  => $shiftEndHM,
             ]);
             $log->syncCreditedHours($ojtRecord);
         }
         // Case 2: Half-day schedule without lunch break (time_in active, no time_out)
         elseif (!$log->time_out && $log->time_in && !$log->morning_out && !$log->afternoon_in) {
-            $tIn   = \Carbon\Carbon::parse($log->time_in);
-            $pEnd  = \Carbon\Carbon::parse($shiftEnd);
-            $hours = $pEnd->gt($tIn) ? round($tIn->diffInMinutes($pEnd) / 60, 2) : 0;
+            $tIn   = \App\Services\OjtScheduleService::parsePunchAt($anchorDate, $log->time_in, $window);
+            $hours = ($tIn && $pEnd->gt($tIn)) ? round($tIn->diffInMinutes($pEnd) / 60, 2) : 0;
 
             $log->update([
-                'time_out'                  => $shiftEnd,
-                'morning_out'               => $shiftEnd,
+                'time_out'                  => $shiftEndHM,
+                'morning_out'               => $shiftEndHM,
                 'morning_hours'             => $hours,
                 'regular_hours'             => $hours,
                 'hours_rendered'            => $hours,
@@ -1821,13 +1873,7 @@ class StudentController extends Controller
             ], 403);
         }
 
-        // 1. Enforce agreed work days schedule
-        $dayCheck = $this->validateScheduleDay($user, $today);
-        if ($dayCheck) {
-            return $dayCheck;
-        }
-
-        // 2. Resolve active OJT context
+        // 1. Resolve active OJT context & schedule first so overnight post-midnight punches anchor cleanly
         $interest = StudentOjtInterest::with('posting')
             ->where('student_user_id', $user->id)
             ->whereIn('status', ['accepted', 'ojt_started', 'ojt_confirmed'])
@@ -1837,17 +1883,16 @@ class StudentController extends Controller
             ->whereIn('status', ['pending', 'active'])
             ->first();
 
-        $shiftStart = $ojtRecord?->shift_start ?? $interest?->shift_start ?? '08:00';
-        $shiftEnd   = $ojtRecord?->shift_end   ?? $interest?->shift_end   ?? '17:00';
-        $lunchStart = $ojtRecord?->lunch_start ?? $interest?->lunch_start ?? '12:00';
-        $lunchEnd   = $ojtRecord?->lunch_end   ?? $interest?->lunch_end   ?? '13:00';
-        $hasLunch   = (bool) ($ojtRecord?->has_lunch_break ?? $interest?->has_lunch_break ?? true);
-        $allowOt    = (bool) ($ojtRecord?->allow_overtime ?? $interest?->allow_overtime ?? false);
-        $maxOtHours = min(4.0, max(2.0, (float) ($ojtRecord?->max_overtime_hours ?? $interest?->max_overtime_hours ?? 2.0)));
+        $schedule     = \App\Services\OjtScheduleService::extractSchedule($ojtRecord, $interest);
+        $scheduleDays = $ojtRecord?->schedule_days ?? $interest?->schedule_days ?? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+        $shiftStart   = $schedule['shift_start'];
+        $shiftEnd     = $schedule['shift_end'];
+        $lunchStart   = $schedule['lunch_start'];
+        $lunchEnd     = $schedule['lunch_end'];
+        $hasLunch     = $schedule['has_lunch_break'];
 
-        // Sweep any past unclosed logs for this student
-        $pastUnclosed = TimeLog::where('user_id', $user->id)
-            ->where('log_date', '<', $today)
+        // Sweep unclosed logs whose shift boundary / OT cutoff has already passed
+        $unclosedLogs = TimeLog::where('user_id', $user->id)
             ->where(function ($q) {
                 $q->where(fn($sub) => $sub->whereNotNull('afternoon_in')->whereNull('afternoon_out'))
                   ->orWhere(fn($sub) => $sub->whereNotNull('morning_in')->whereNull('morning_out'))
@@ -1855,13 +1900,28 @@ class StudentController extends Controller
             })
             ->get();
 
-        foreach ($pastUnclosed as $pLog) {
-            if ($pLog->morning_in && !$pLog->morning_out) {
+        foreach ($unclosedLogs as $pLog) {
+            $pAnchor = $pLog->log_date ? $pLog->log_date->toDateString() : $today;
+            $pWindow = \App\Services\OjtScheduleService::buildShiftWindow($pAnchor, $schedule);
+
+            if ($hasLunch && $pLog->morning_in && !$pLog->morning_out && $serverNow->gte($pWindow['lunch_start'])) {
                 $this->autoCloseMorningIfNeeded($pLog, $lunchStart, $ojtRecord);
+                $pLog->refresh();
             }
-            if (($pLog->afternoon_in && !$pLog->afternoon_out) || (!$hasLunch && $pLog->time_in && !$pLog->time_out)) {
+            if ((($pLog->afternoon_in && !$pLog->afternoon_out) || (!$hasLunch && $pLog->time_in && !$pLog->time_out)) && $serverNow->gte($pWindow['auto_close_cutoff'])) {
                 $this->autoCloseAfternoonIfNeeded($pLog, $shiftEnd, $ojtRecord);
             }
+        }
+
+        // Resolve active shift anchor date ($today is anchored to yesterday for post-midnight overnight punches)
+        $startRef = $ojtRecord?->start_date ?? $interest?->ojt_start_date;
+        $today = $this->resolveActiveShiftDateForStudent($user, $serverNow, $schedule, $scheduleDays, $startRef, $ojtRecord);
+        $shiftWindow = \App\Services\OjtScheduleService::buildShiftWindow($today, $schedule);
+
+        // 2. Enforce agreed work days schedule against the anchored shift date
+        $dayCheck = $this->validateScheduleDay($user, $today);
+        if ($dayCheck) {
+            return $dayCheck;
         }
 
         // 3. Location validity & geofence distance enforcement (<= 50m)
@@ -1938,54 +1998,53 @@ class StudentController extends Controller
 
         $sessionRequested = $request->session ?? 'auto';
         $timeInFormatted  = $serverNow->format('g:i A');
-        $reqTimeHM        = $effectiveTimeIn;
-        $lunchStartHM     = \Carbon\Carbon::parse($lunchStart)->format('H:i');
-        $lunchEndHM       = \Carbon\Carbon::parse($lunchEnd)->format('H:i');
-        $lunchStart12h    = \Carbon\Carbon::parse($lunchStart)->format('g:i A');
-        $lunchEnd12h      = \Carbon\Carbon::parse($lunchEnd)->format('g:i A');
+        $lunchStartHM     = $shiftWindow['lunch_start_hm'];
+        $lunchEndHM       = $shiftWindow['lunch_end_hm'];
+        $lunchStart12h    = $shiftWindow['lunch_start']->format('g:i A');
+        $lunchEnd12h      = $shiftWindow['lunch_end']->format('g:i A');
 
-        $shiftStartHM  = \Carbon\Carbon::parse($shiftStart)->format('H:i');
-        $shiftStart12h = \Carbon\Carbon::parse($shiftStart)->format('g:i A');
-        $shiftEndHM    = \Carbon\Carbon::parse($shiftEnd)->format('H:i');
-        $shiftEnd12h   = \Carbon\Carbon::parse($shiftEnd)->format('g:i A');
-        $earlyGateHM   = \Carbon\Carbon::parse($shiftStart)->subHour()->format('H:i');
+        $shiftStartHM  = $shiftWindow['shift_start_hm'];
+        $shiftStart12h = $shiftWindow['shift_start']->format('g:i A');
+        $shiftEndHM    = $shiftWindow['shift_end_hm'];
+        $shiftEnd12h   = $shiftWindow['shift_end']->format('g:i A');
+        $earlyGateHM   = $shiftWindow['early_gate']->format('H:i');
 
-        // Rule 0: Cannot time in after shift has ended for today
-        if ($reqTimeHM >= $shiftEndHM) {
+        // Rule 0: Cannot time in after shift has ended for this active shift window
+        if ($serverNow->gte($shiftWindow['shift_end'])) {
             return response()->json([
-                'message' => "Your scheduled OJT shift for today ended at {$shiftEnd12h}. Time-in is closed for the rest of the day. Please time in again tomorrow morning.",
+                'message' => "Your scheduled OJT shift for today ended at {$shiftEnd12h}. Time-in is closed for this shift. Please time in again on your next shift.",
             ], 422);
         }
 
-        // Rule 0b: Too early in the morning before gate opens
-        if ($sessionRequested !== 'afternoon' && $reqTimeHM < $earlyGateHM) {
-            $gate12h = \Carbon\Carbon::parse($earlyGateHM)->format('g:i A');
+        // Rule 0b: Too early before time-in gate opens
+        if ($sessionRequested !== 'afternoon' && $serverNow->lt($shiftWindow['early_gate'])) {
+            $gate12h = $shiftWindow['early_gate']->format('g:i A');
             return response()->json([
                 'message' => "It is too early to time in. Your shift starts at {$shiftStart12h}. Morning time-in opens at {$gate12h}.",
             ], 422);
         }
 
-        // Check lunch break constraints
+        // Check break constraints
         if ($hasLunch) {
-            // Rule 1: Afternoon session CANNOT time in before lunch_end (13:00 / 1:00 PM)
-            if ($sessionRequested === 'afternoon' && $reqTimeHM < $lunchEndHM) {
+            // Rule 1: Second session CANNOT time in before lunch_end
+            if ($sessionRequested === 'afternoon' && $serverNow->lt($shiftWindow['lunch_end'])) {
                 return response()->json([
-                    'message' => "Cannot time in before {$lunchEnd12h} because it is lunch break. Afternoon session starts at {$lunchEnd12h}.",
+                    'message' => "Cannot time in before {$lunchEnd12h} because it is break time. Afternoon session starts at {$lunchEnd12h}.",
                 ], 422);
             }
 
-            // Rule 2: Cannot time in during lunch break (e.g. 12:00 to 13:00)
-            if ($reqTimeHM >= $lunchStartHM && $reqTimeHM < $lunchEndHM) {
+            // Rule 2: Cannot time in during break
+            if ($serverNow->gte($shiftWindow['lunch_start']) && $serverNow->lt($shiftWindow['lunch_end'])) {
                 return response()->json([
-                    'message' => "Cannot time in during lunch break ({$lunchStart12h} – {$lunchEnd12h}). Afternoon session starts at {$lunchEnd12h}.",
+                    'message' => "Cannot time in during break ({$lunchStart12h} – {$lunchEnd12h}). Afternoon session starts at {$lunchEnd12h}.",
                 ], 422);
             }
         }
 
         if (!$log) {
-            // No log exists yet today
+            // No log exists yet for this shift date
             if (!$hasLunch) {
-                // Half-day or no lunch break
+                // Half-day or continuous schedule without break
                 $log = TimeLog::create([
                     'user_id'                => $user->id,
                     'ojt_record_id'          => $ojtRecord?->id,
@@ -2010,9 +2069,9 @@ class StudentController extends Controller
                 ]);
                 $sessionLabel = 'Time In';
             } else {
-                // Full-day schedule with lunch break
+                // Split schedule with mid-shift break
                 $isAfternoon = ($sessionRequested === 'afternoon')
-                    || ($sessionRequested === 'auto' && $effectiveTimeIn >= $lunchEnd);
+                    || ($sessionRequested === 'auto' && $serverNow->gte($shiftWindow['lunch_end']));
 
                 if ($isAfternoon) {
                     // Student missed morning, timed in directly for afternoon
@@ -2067,7 +2126,7 @@ class StudentController extends Controller
                 }
             }
         } else {
-            // Log already exists today
+            // Log already exists for this shift date
             if (!$hasLunch) {
                 return response()->json(['message' => 'Already logged in today.'], 422);
             }
@@ -2075,21 +2134,21 @@ class StudentController extends Controller
             // Morning was timed in
             if ($log->morning_in) {
                 if (!$log->morning_out) {
-                    // Auto-close morning session if it is lunch time or later!
-                    if ($reqTimeHM >= $lunchStartHM) {
+                    // Auto-close morning session if break time has started
+                    if ($serverNow->gte($shiftWindow['lunch_start'])) {
                         $this->autoCloseMorningIfNeeded($log, $lunchStart, $ojtRecord);
                         $log->refresh();
                     } else {
                         return response()->json([
-                            'message' => "Morning session is already active (logged in at {$log->morning_in}). Please log out for lunch before starting the afternoon session.",
+                            'message' => "Morning session is already active (logged in at {$log->morning_in}). Please log out for break before starting the afternoon session.",
                         ], 422);
                     }
                 }
 
-                // Check again to ensure afternoon time in is NOT before lunchEnd (13:00 / 1:00 PM)
-                if ($reqTimeHM < $lunchEndHM) {
+                // Check again to ensure afternoon time in is NOT before lunchEnd
+                if ($serverNow->lt($shiftWindow['lunch_end'])) {
                     return response()->json([
-                        'message' => "Cannot time in before {$lunchEnd12h} because it is lunch break. Afternoon session starts at {$lunchEnd12h}.",
+                        'message' => "Cannot time in before {$lunchEnd12h} because it is break time. Afternoon session starts at {$lunchEnd12h}.",
                     ], 422);
                 }
 
@@ -2320,7 +2379,31 @@ class StudentController extends Controller
             ], 403);
         }
 
-        // 1. Enforce agreed work days schedule
+        // 1. Resolve active OJT context & schedule first so post-midnight overnight exits anchor to shift start date
+        $interest = StudentOjtInterest::with('posting')
+            ->where('student_user_id', $user->id)
+            ->whereIn('status', ['accepted', 'ojt_started', 'ojt_confirmed', 'pull_out_requested'])
+            ->latest()->first();
+
+        $ojtRecord = OjtRecord::where('user_id', $user->id)
+            ->whereIn('status', ['pending', 'active'])
+            ->first();
+
+        $schedule     = \App\Services\OjtScheduleService::extractSchedule($ojtRecord, $interest);
+        $scheduleDays = $ojtRecord?->schedule_days ?? $interest?->schedule_days ?? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+        $shiftStart   = $schedule['shift_start'];
+        $shiftEnd     = $schedule['shift_end'];
+        $lunchStart   = $schedule['lunch_start'];
+        $lunchEnd     = $schedule['lunch_end'];
+        $hasLunch     = $schedule['has_lunch_break'];
+        $allowOt      = $schedule['allow_overtime'];
+        $maxOtHours   = $schedule['max_overtime_hours'];
+
+        $startRef = $ojtRecord?->start_date ?? $interest?->ojt_start_date;
+        $today = $this->resolveActiveShiftDateForStudent($user, $serverNow, $schedule, $scheduleDays, $startRef, $ojtRecord);
+        $shiftWindow = \App\Services\OjtScheduleService::buildShiftWindow($today, $schedule);
+
+        // 2. Enforce agreed work days schedule against anchored shift date
         $dayCheck = $this->validateScheduleDay($user, $today);
         if ($dayCheck) {
             return $dayCheck;
@@ -2331,26 +2414,9 @@ class StudentController extends Controller
             return response()->json(['message' => 'No time-in found for today. Please log in first.'], 422);
         }
 
-        $interest = StudentOjtInterest::with('posting')
-            ->where('student_user_id', $user->id)
-            ->whereIn('status', ['accepted', 'ojt_started', 'ojt_confirmed', 'pull_out_requested'])
-            ->latest()->first();
-
-        $ojtRecord = OjtRecord::where('user_id', $user->id)
-            ->whereIn('status', ['pending', 'active'])
-            ->first();
-
-        $shiftStart = $ojtRecord?->shift_start ?? $interest?->shift_start ?? '08:00';
-        $shiftEnd   = $ojtRecord?->shift_end   ?? $interest?->shift_end   ?? '17:00';
-        $lunchStart = $ojtRecord?->lunch_start ?? $interest?->lunch_start ?? '12:00';
-        $lunchEnd   = $ojtRecord?->lunch_end   ?? $interest?->lunch_end   ?? '13:00';
-        $hasLunch   = (bool) ($ojtRecord?->has_lunch_break ?? $interest?->has_lunch_break ?? true);
-        $allowOt    = (bool) ($ojtRecord?->allow_overtime ?? $interest?->allow_overtime ?? false);
-        $maxOtHours = min(4.0, max(2.0, (float) ($ojtRecord?->max_overtime_hours ?? $interest?->max_overtime_hours ?? 2.0)));
-
         $outLat = $request->latitude  !== null ? (float) $request->latitude  : null;
         $outLon = $request->longitude !== null ? (float) $request->longitude : null;
-        $reqTimeOut = \Carbon\Carbon::createFromFormat('H:i', $effectiveTimeOut);
+        $reqTimeOut = $serverNow->copy();
 
         // Compute time-out geofence distance and handle out-of-range evidence
         $outLocationValidity = null;
@@ -2409,21 +2475,21 @@ class StudentController extends Controller
         $effectiveApprovalStatus = $isPendingCompany ? 'pending_company' : 'approved';
 
         // -------------------------------------------------------------
-        // Case 1: Half-Day schedule (hasLunch == false)
+        // Case 1: Half-Day / Continuous schedule (hasLunch == false)
         // -------------------------------------------------------------
         if (!$hasLunch) {
             if ($log->time_out) {
                 return response()->json(['message' => 'Already logged out today.'], 422);
             }
-            $timeIn = \Carbon\Carbon::parse($log->time_in);
+            $timeIn = \App\Services\OjtScheduleService::parsePunchAt($today, $log->time_in, $shiftWindow);
 
-            if ($reqTimeOut->lt($timeIn)) {
+            if ($timeIn && $reqTimeOut->lt($timeIn)) {
                 $inFmt = $timeIn->format('g:i A');
                 $outFmt = $reqTimeOut->format('g:i A');
                 return response()->json(['message' => "Time out ({$outFmt}) cannot be earlier than time in ({$inFmt})."], 422);
             }
 
-            $shiftEndCarbon = \Carbon\Carbon::parse($shiftEnd);
+            $shiftEndCarbon = $shiftWindow['shift_end'];
             $isPastShiftEnd = $reqTimeOut->gt($shiftEndCarbon);
 
             $regularHours = 0.00;
@@ -2432,17 +2498,17 @@ class StudentController extends Controller
 
             if ($isPastShiftEnd) {
                 if ($allowOt) {
-                    $regularHours = $shiftEndCarbon->gt($timeIn) ? round($timeIn->diffInMinutes($shiftEndCarbon) / 60, 2) : 0;
+                    $regularHours = ($timeIn && $shiftEndCarbon->gt($timeIn)) ? round($timeIn->diffInMinutes($shiftEndCarbon) / 60, 2) : 0;
                     $rawOtHours = round($shiftEndCarbon->diffInMinutes($reqTimeOut) / 60, 2);
                     $otHours = min($rawOtHours, $maxOtHours);
                     $otStatus = $otHours > 0 ? 'pending' : 'none';
                 } else {
-                    $regularHours = $shiftEndCarbon->gt($timeIn) ? round($timeIn->diffInMinutes($shiftEndCarbon) / 60, 2) : 0;
+                    $regularHours = ($timeIn && $shiftEndCarbon->gt($timeIn)) ? round($timeIn->diffInMinutes($shiftEndCarbon) / 60, 2) : 0;
                     $otHours = 0.00;
                     $otStatus = 'none';
                 }
             } else {
-                $regularHours = round($timeIn->diffInMinutes($reqTimeOut) / 60, 2);
+                $regularHours = $timeIn ? round($timeIn->diffInMinutes($reqTimeOut) / 60, 2) : 0;
                 $otHours = 0.00;
                 $otStatus = 'none';
             }
@@ -2483,13 +2549,13 @@ class StudentController extends Controller
             $sessionHours = $totalHours;
         }
         // -------------------------------------------------------------
-        // Case 2: Full-Day schedule (Morning Lunch Out OR Afternoon End-of-Day Out)
+        // Case 2: Split schedule (Morning/First Out OR Afternoon/Second End-of-Day Out)
         // -------------------------------------------------------------
         else {
-            // Branch A: Morning session is active (timed in, but not yet timed out for lunch)
+            // Branch A: Morning / First session is active
             if ($log->morning_in && !$log->morning_out) {
-                $timeIn = \Carbon\Carbon::parse($log->morning_in);
-                if ($reqTimeOut->lt($timeIn)) {
+                $timeIn = \App\Services\OjtScheduleService::parsePunchAt($today, $log->morning_in, $shiftWindow);
+                if ($timeIn && $reqTimeOut->lt($timeIn)) {
                     $inFmt = $timeIn->format('g:i A');
                     $outFmt = $reqTimeOut->format('g:i A');
                     return response()->json([
@@ -2497,11 +2563,10 @@ class StudentController extends Controller
                     ], 422);
                 }
 
-                // If timed out before 12:00, use exact time!
-                // If timed out after lunch_start (12:00), cap at lunch_start so lunch hour is not work hours!
-                $capLunch = \Carbon\Carbon::parse($lunchStart);
+                // If timed out before break start, use exact time; otherwise cap at lunch_start
+                $capLunch = $shiftWindow['lunch_start'];
                 $effectiveOut = $reqTimeOut->gt($capLunch) ? $capLunch : $reqTimeOut;
-                $mHours = round($timeIn->diffInMinutes($effectiveOut) / 60, 2);
+                $mHours = ($timeIn && $effectiveOut->gt($timeIn)) ? round($timeIn->diffInMinutes($effectiveOut) / 60, 2) : 0;
 
                 $totalDayHours = $mHours + (float) ($log->afternoon_hours ?? 0);
 
@@ -2529,11 +2594,11 @@ class StudentController extends Controller
                 $sessionLabel = 'Time Out (Morning)';
                 $sessionHours = $mHours;
             }
-            // Branch B: Afternoon session is active (timed in, but not yet timed out for end of day)
+            // Branch B: Afternoon / Second session is active
             elseif ($log->afternoon_in && !$log->afternoon_out) {
-                $timeIn = \Carbon\Carbon::parse($log->afternoon_in);
+                $timeIn = \App\Services\OjtScheduleService::parsePunchAt($today, $log->afternoon_in, $shiftWindow);
 
-                if ($reqTimeOut->lt($timeIn)) {
+                if ($timeIn && $reqTimeOut->lt($timeIn)) {
                     $inFmt = $timeIn->format('g:i A');
                     $outFmt = $reqTimeOut->format('g:i A');
                     return response()->json([
@@ -2541,7 +2606,7 @@ class StudentController extends Controller
                     ], 422);
                 }
 
-                $shiftEndCarbon = \Carbon\Carbon::parse($shiftEnd);
+                $shiftEndCarbon = $shiftWindow['shift_end'];
                 $isPastShiftEnd = $reqTimeOut->gt($shiftEndCarbon);
 
                 $regularPmHours = 0.00;

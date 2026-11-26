@@ -895,4 +895,42 @@ class OjtAbsenceDetectionTest extends TestCase
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.stats.activeTrainees', 1);
     }
+
+    public function test_overnight_shift_waits_for_next_day_shift_end_grace_before_marking_absent(): void
+    {
+        // Night shift: 8:00 PM - 4:00 AM (+1 day), break 12:00 AM - 1:00 AM
+        $fx = $this->seedDeploymentFixture([
+            'start_date' => '2026-11-09',
+        ]);
+        $fx['record']->update([
+            'shift_start' => '20:00',
+            'shift_end'   => '04:00',
+            'lunch_start' => '00:00',
+            'lunch_end'   => '01:00',
+        ]);
+        $fx['interest']->update([
+            'shift_start' => '20:00',
+            'shift_end'   => '04:00',
+            'lunch_start' => '00:00',
+            'lunch_end'   => '01:00',
+        ]);
+
+        // 1. Monday 10:00 PM (inside shift) -> must NOT mark Monday absent
+        Carbon::setTestNow(Carbon::create(2026, 11, 9, 22, 0, 0, 'Asia/Manila'));
+        $service = app(OjtAbsenceService::class);
+        $summary1 = $service->runSweep(force: false, lookbackDays: 1);
+        $this->assertSame(0, $summary1['absent']);
+
+        // 2. Tuesday 3:30 AM (still inside Monday's overnight shift ending 04:00) -> must NOT mark absent
+        Carbon::setTestNow(Carbon::create(2026, 11, 10, 3, 30, 0, 'Asia/Manila'));
+        $summary2 = $service->runSweep(force: false, lookbackDays: 2);
+        $this->assertSame(0, $summary2['absent']);
+
+        // 3. Tuesday 4:20 AM (past 04:00 + 15m grace) -> marks ONLY Monday absent, not Tuesday night
+        Carbon::setTestNow(Carbon::create(2026, 11, 10, 4, 20, 0, 'Asia/Manila'));
+        $summary3 = $service->runSweep(force: false, lookbackDays: 2);
+        $this->assertSame(1, $summary3['absent']);
+        $this->assertTrue(TimeLog::where('user_id', $fx['student']->id)->whereDate('log_date', '2026-11-09')->where('status', 'absent')->exists());
+        $this->assertFalse(TimeLog::where('user_id', $fx['student']->id)->whereDate('log_date', '2026-11-10')->exists());
+    }
 }

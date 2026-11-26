@@ -224,6 +224,80 @@ class OvertimeAndOffsiteApprovalTest extends TestCase
             $table->timestamps();
         });
 
+        Schema::dropIfExists('ojt_emergency_requests');
+        Schema::create('ojt_emergency_requests', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('student_user_id')->constrained('users')->cascadeOnDelete();
+            $table->unsignedBigInteger('ojt_record_id')->nullable();
+            $table->unsignedBigInteger('ojt_interest_id')->nullable();
+            $table->string('type')->default('temporary_leave');
+            $table->string('category')->nullable();
+            $table->text('reason')->nullable();
+            $table->string('supporting_document_path')->nullable();
+            $table->string('supporting_document_name')->nullable();
+            $table->date('start_date')->nullable();
+            $table->date('expected_return_date')->nullable();
+            $table->date('actual_return_date')->nullable();
+            $table->decimal('hours_rendered_snapshot', 8, 2)->nullable();
+            $table->decimal('required_hours_snapshot', 8, 2)->nullable();
+            $table->string('coordinator_status')->default('pending');
+            $table->text('coordinator_remarks')->nullable();
+            $table->unsignedBigInteger('coordinator_action_by')->nullable();
+            $table->timestamp('coordinator_action_at')->nullable();
+            $table->decimal('credited_hours', 8, 2)->nullable();
+            $table->string('academic_verdict')->nullable();
+            $table->string('company_status')->nullable();
+            $table->text('company_clearance_notes')->nullable();
+            $table->timestamp('company_cleared_at')->nullable();
+            $table->boolean('assets_returned')->default(false);
+            $table->string('fit_to_work_document_path')->nullable();
+            $table->timestamp('cleared_to_resume_at')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::dropIfExists('student_evaluations');
+        Schema::create('student_evaluations', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('template_id')->nullable();
+            $table->string('term')->nullable();
+            $table->foreignId('student_user_id')->constrained('users')->cascadeOnDelete();
+            $table->foreignId('company_user_id')->constrained('users')->cascadeOnDelete();
+            $table->unsignedBigInteger('supervisor_user_id')->nullable();
+            $table->unsignedBigInteger('ojt_record_id')->nullable();
+            $table->unsignedBigInteger('ojt_posting_id')->nullable();
+            $table->string('status')->default('pending');
+            $table->boolean('is_waived')->default(false);
+            $table->text('waiver_reason')->nullable();
+            $table->decimal('weight', 5, 2)->nullable();
+            $table->decimal('overall_score', 5, 2)->nullable();
+            $table->text('general_feedback')->nullable();
+            $table->text('recommendation')->nullable();
+            $table->string('evaluator_name')->nullable();
+            $table->string('evaluator_position')->nullable();
+            $table->timestamp('sent_at')->nullable();
+            $table->timestamp('submitted_at')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::dropIfExists('student_ojt_requirements');
+        Schema::create('student_ojt_requirements', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('student_user_id')->constrained('users')->cascadeOnDelete();
+            $table->unsignedBigInteger('supervisor_user_id')->nullable();
+            $table->unsignedBigInteger('interest_id')->nullable();
+            $table->unsignedBigInteger('posting_id')->nullable();
+            $table->string('title')->nullable();
+            $table->json('items')->nullable();
+            $table->text('instructions')->nullable();
+            $table->date('due_date')->nullable();
+            $table->string('status')->default('pending');
+            $table->string('drive_url')->nullable();
+            $table->text('supervisor_remarks')->nullable();
+            $table->timestamp('submitted_at')->nullable();
+            $table->timestamp('verified_at')->nullable();
+            $table->timestamps();
+        });
+
         Schema::create('app_notifications', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
@@ -989,5 +1063,188 @@ class OvertimeAndOffsiteApprovalTest extends TestCase
         ])->assertOk();
 
         $this->assertEquals(3.0, (float) $acceptedInterest->fresh()->max_overtime_hours);
+    }
+
+    public function test_company_can_confirm_overnight_and_custom_break_schedules_and_reject_invalid_sequence(): void
+    {
+        Sanctum::actingAs($this->companyUser);
+
+        $overnightStudent = User::create([
+            'name'  => 'Night Shift Intern',
+            'email' => 'nightintern@example.com',
+            'role'  => 'student',
+        ]);
+        $overnightInterest = StudentOjtInterest::create([
+            'student_user_id' => $overnightStudent->id,
+            'ojt_posting_id'  => $this->posting->id,
+            'status'          => 'accepted',
+        ]);
+
+        // Reject broken sequence (break after shift end)
+        $this->postJson("/api/company/ojt-postings/{$this->posting->id}/set-ojt-start/{$overnightInterest->id}", [
+            'ojt_start_date'   => '2026-11-27',
+            'ojt_instructions' => 'Night operations support desk.',
+            'shift_start'      => '20:00',
+            'lunch_start'      => '18:00',
+            'lunch_end'        => '19:00',
+            'shift_end'        => '20:00',
+            'has_lunch_break'  => true,
+        ])->assertStatus(422);
+
+        // Accept valid overnight schedule: 20:00 - 00:00, break 00:00 - 01:00, 01:00 - 04:00 (7.0 hrs/day)
+        $this->postJson("/api/company/ojt-postings/{$this->posting->id}/set-ojt-start/{$overnightInterest->id}", [
+            'ojt_start_date'     => '2026-11-27',
+            'ojt_instructions'   => 'Night operations support desk.',
+            'shift_start'        => '20:00',
+            'lunch_start'        => '00:00',
+            'lunch_end'          => '01:00',
+            'shift_end'          => '04:00',
+            'has_lunch_break'    => true,
+            'allow_overtime'     => true,
+            'max_overtime_hours' => 3.0,
+        ])->assertOk();
+
+        $overnightInterest->refresh();
+        $record = OjtRecord::where('user_id', $overnightStudent->id)->firstOrFail();
+        $this->assertSame('20:00', $overnightInterest->shift_start);
+        $this->assertSame('04:00', $overnightInterest->shift_end);
+        $this->assertSame('00:00', $overnightInterest->lunch_start);
+        $this->assertSame('01:00', $overnightInterest->lunch_end);
+        $this->assertEquals(7.0, (float) $record->daily_hours);
+        $this->assertEquals(35.0, (float) $record->weekly_hours);
+    }
+
+    public function test_overnight_shift_end_to_end_punches_overtime_and_autoclose_cross_midnight(): void
+    {
+        StudentOjtInterest::where('student_user_id', $this->studentUser->id)->update([
+            'shift_start' => '20:00',
+            'lunch_start' => '00:00',
+            'lunch_end'   => '01:00',
+            'shift_end'   => '04:00',
+        ]);
+        $this->ojtRecord->update([
+            'shift_start' => '20:00',
+            'lunch_start' => '00:00',
+            'lunch_end'   => '01:00',
+            'shift_end'   => '04:00',
+        ]);
+
+        Sanctum::actingAs($this->studentUser);
+        $tz = config('app.timezone');
+
+        // Monday Nov 23, 20:00 -> First session time-in
+        Carbon::setTestNow(Carbon::create(2026, 11, 23, 20, 0, 0, $tz));
+        $this->postJson('/api/student/ojt-tracker/log-in', [
+            'latitude'  => 10.6765,
+            'longitude' => 122.9509,
+            'session'   => 'morning',
+        ])->assertOk();
+
+        // Tracker at 23:30 stays open (must NOT auto-close before 00:00 midnight break)
+        Carbon::setTestNow(Carbon::create(2026, 11, 23, 23, 30, 0, $tz));
+        $this->getJson('/api/student/ojt-tracker')
+            ->assertOk()
+            ->assertJsonPath('deployment.schedule.isOvernight', true)
+            ->assertJsonPath('deployment.schedule.activeShiftDate', '2026-11-23')
+            ->assertJsonPath('deployment.schedule.sessionState', 'morning_active');
+
+        // Tuesday Nov 24, 00:05 -> Time out for break (anchored to Nov 23 shift, capped at 00:00 = 4.00 hrs)
+        Carbon::setTestNow(Carbon::create(2026, 11, 24, 0, 5, 0, $tz));
+        $this->postJson('/api/student/ojt-tracker/log-out', [
+            'latitude'  => 10.6765,
+            'longitude' => 122.9509,
+            'session'   => 'morning',
+        ])->assertOk();
+
+        $log = TimeLog::where('user_id', $this->studentUser->id)->whereDate('log_date', '2026-11-23')->firstOrFail();
+        $this->assertEquals(4.00, (float) $log->morning_hours);
+
+        // During break at 00:30 -> rejected cleanly
+        Carbon::setTestNow(Carbon::create(2026, 11, 24, 0, 30, 0, $tz));
+        $this->postJson('/api/student/ojt-tracker/log-in', [
+            'latitude'  => 10.6765,
+            'longitude' => 122.9509,
+            'session'   => 'afternoon',
+        ])->assertStatus(422);
+
+        // Post-break at 01:00 AM -> attaches to 2026-11-23 shift log
+        Carbon::setTestNow(Carbon::create(2026, 11, 24, 1, 0, 0, $tz));
+        $this->postJson('/api/student/ojt-tracker/log-in', [
+            'latitude'  => 10.6765,
+            'longitude' => 122.9509,
+            'session'   => 'afternoon',
+        ])->assertOk();
+
+        // Check tracker at 02:30 AM -> must stay afternoon_active (NOT auto-closed across midnight)
+        Carbon::setTestNow(Carbon::create(2026, 11, 24, 2, 30, 0, $tz));
+        $this->getJson('/api/student/ojt-tracker')
+            ->assertOk()
+            ->assertJsonPath('deployment.schedule.activeShiftDate', '2026-11-23')
+            ->assertJsonPath('deployment.schedule.sessionState', 'afternoon_active');
+
+        // Clock out at 05:30 AM (01:00–04:00 = 3.00h regular + 1.50h OT)
+        Carbon::setTestNow(Carbon::create(2026, 11, 24, 5, 30, 0, $tz));
+        $this->postJson('/api/student/ojt-tracker/log-out', [
+            'latitude'        => 10.6765,
+            'longitude'       => 122.9509,
+            'session'         => 'afternoon',
+            'overtime_reason' => 'Night deployment handoff',
+        ])->assertOk();
+
+        $log->refresh();
+        $this->assertEquals(3.00, (float) $log->afternoon_hours);
+        $this->assertEquals(7.00, (float) $log->regular_hours);
+        $this->assertEquals(1.50, (float) $log->overtime_hours);
+        $this->assertSame('pending', $log->overtime_status);
+
+        Sanctum::actingAs($this->companyUser);
+        $this->postJson("/api/company/ojt-trainees/attendance/{$log->id}/approve-overtime")
+            ->assertOk();
+
+        $this->assertEquals(8.50, (float) $log->fresh()->hours_credited);
+        $this->assertEquals(8.50, (float) $this->ojtRecord->fresh()->completed_hours);
+    }
+
+    public function test_custom_daytime_break_enforces_company_break_window_instead_of_hardcoded_1pm(): void
+    {
+        // Custom daytime shift: 09:00 - 18:00 with 13:30 - 14:30 break
+        StudentOjtInterest::where('student_user_id', $this->studentUser->id)->update([
+            'shift_start' => '09:00',
+            'lunch_start' => '13:30',
+            'lunch_end'   => '14:30',
+            'shift_end'   => '18:00',
+        ]);
+        $this->ojtRecord->update([
+            'shift_start' => '09:00',
+            'lunch_start' => '13:30',
+            'lunch_end'   => '14:30',
+            'shift_end'   => '18:00',
+        ]);
+
+        Sanctum::actingAs($this->studentUser);
+
+        $this->setServerTime('14:00'); // Inside 13:30-14:30 break (would have passed old hardcoded 13:00 check!)
+        $this->postJson('/api/student/ojt-tracker/log-in', [
+            'latitude'  => 10.6765,
+            'longitude' => 122.9509,
+            'session'   => 'afternoon',
+        ])->assertStatus(422);
+
+        $this->setServerTime('14:30');
+        $this->postJson('/api/student/ojt-tracker/log-in', [
+            'latitude'  => 10.6765,
+            'longitude' => 122.9509,
+            'session'   => 'afternoon',
+        ])->assertOk();
+
+        $this->setServerTime('18:00');
+        $this->postJson('/api/student/ojt-tracker/log-out', [
+            'latitude'  => 10.6765,
+            'longitude' => 122.9509,
+            'session'   => 'afternoon',
+        ])->assertOk();
+
+        $log = TimeLog::firstOrFail();
+        $this->assertEquals(3.50, (float) $log->afternoon_hours);
     }
 }

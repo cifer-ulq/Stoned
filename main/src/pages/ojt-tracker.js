@@ -1631,7 +1631,12 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
   logs.forEach(l => { logMap[l.date] = l; });
 
   const sched = ojt.schedule || {};
-  const todayLog = logMap[TODAY_STR] || sched.todayLog || null;
+  const shiftDateStr = sched.activeShiftDate || TODAY_STR;
+  const todayLog = sched.todayLog || logMap[shiftDateStr] || null;
+  const breakStartLabel = sched.lunchStart ? formatTimeDisplay12h(sched.lunchStart) : '12:00 PM';
+  const breakEndLabel   = sched.lunchEnd   ? formatTimeDisplay12h(sched.lunchEnd)   : '1:00 PM';
+  const shiftStartLabel = sched.shiftStart ? formatTimeDisplay12h(sched.shiftStart) : '8:00 AM';
+  const shiftEndLabel   = sched.shiftEnd   ? formatTimeDisplay12h(sched.shiftEnd)   : '5:00 PM';
 
   // Determine work day validity & session state
   const isWorkDay = sched.isWorkDay !== false;
@@ -1700,7 +1705,7 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
   } else if (sessionState === 'before_shift') {
     punchClockHtml = `
       <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(59,130,246,0.1);color:#1d4ed8;border:1px solid rgba(59,130,246,0.25);padding:8px 16px;border-radius:99px;font-size:0.83rem;font-weight:600;" title="Morning time-in opens 1 hour before shift start">
-        ${icon('clock', 15)} Shift starts at ${sched.shiftStart || '8:00 AM'} &middot; Morning time-in opens soon
+        ${icon('clock', 15)} Shift starts at ${shiftStartLabel} &middot; Morning time-in opens soon
       </div>
     `;
   } else if (sessionState === 'excused_today') {
@@ -1710,7 +1715,7 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
       </div>
     `;
   } else if (sessionState === 'shift_ended') {
-    const amNote = todayLog?.morningIn ? `AM: ${todayLog.morningIn} – ${todayLog.morningOut || '12:00'}` : null;
+    const amNote = todayLog?.morningIn ? `AM: ${todayLog.morningIn} – ${todayLog.morningOut || breakStartLabel}` : null;
     punchClockHtml = `
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
         ${amNote ? `
@@ -1718,8 +1723,8 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
             ${icon('checkCircle', 14)} ${amNote}
           </span>
         ` : ''}
-        <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(239,68,68,0.1);color:#dc2626;border:1px solid rgba(239,68,68,0.25);padding:8px 16px;border-radius:99px;font-size:0.83rem;font-weight:600;" title="Today's scheduled shift has ended. You can time in again tomorrow morning.">
-          ${icon('alertCircle', 15)} ${todayLog?.status === 'absent' ? `Marked Absent (${sched.shiftEnd || '5:00 PM'})` : `Shift Ended (${sched.shiftEnd || '5:00 PM'})`} &middot; Time-in Closed for Today
+        <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(239,68,68,0.1);color:#dc2626;border:1px solid rgba(239,68,68,0.25);padding:8px 16px;border-radius:99px;font-size:0.83rem;font-weight:600;" title="This scheduled shift has ended. Time-in opens again on your next shift.">
+          ${icon('alertCircle', 15)} ${todayLog?.status === 'absent' ? `Marked Absent (${shiftEndLabel})` : `Shift Ended (${shiftEndLabel})`} &middot; Time-in Closed
         </div>
       </div>
     `;
@@ -1743,15 +1748,15 @@ function renderTrackerPage(container, ojt, logs, year, month, onMonthChange, eva
     punchClockHtml = `
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
         <span style="display:flex;align-items:center;gap:6px;background:rgba(245,158,11,0.12);color:#d97706;padding:8px 14px;border-radius:99px;font-size:0.82rem;font-weight:600;">
-          ${icon('clock', 14)} Lunch Break (${sched.lunchStart || '12:00'} – ${sched.lunchEnd || '1:00 PM'})
+          ${icon('clock', 14)} Break (${breakStartLabel} – ${breakEndLabel})
         </span>
-        <button class="btn btn--secondary" disabled style="display:flex;align-items:center;gap:8px;opacity:0.65;cursor:not-allowed;" title="You cannot time in before 1:00 PM because it is lunch break">
-          ${icon('clock', 16)} Time In (Afternoon at 1:00 PM)
+        <button class="btn btn--secondary" disabled style="display:flex;align-items:center;gap:8px;opacity:0.65;cursor:not-allowed;" title="You cannot time in before ${breakEndLabel} because it is break time">
+          ${icon('clock', 16)} Time In (Afternoon at ${breakEndLabel})
         </button>
       </div>
     `;
   } else if (sessionState === 'ready_afternoon_in') {
-    const amNote = todayLog?.morningIn ? `AM: ${todayLog.morningIn} – ${todayLog.morningOut || '12:00'}${todayLog.autoMorningTimeout ? ' (Auto)' : ''}` : 'AM Missed';
+    const amNote = todayLog?.morningIn ? `AM: ${todayLog.morningIn} – ${todayLog.morningOut || breakStartLabel}${todayLog.autoMorningTimeout ? ' (Auto)' : ''}` : 'AM Missed';
     punchClockHtml = `
       <span style="display:flex;align-items:center;gap:6px;background:var(--color-success-bg);color:var(--color-success);padding:8px 14px;border-radius:99px;font-size:0.82rem;font-weight:600;">
         ${icon('checkCircle', 14)} ${amNote}
@@ -3816,6 +3821,10 @@ function showLogInModal(sessionLabelOrSuccess, ojtContextOrSuccess, onSuccessMay
   let evidenceController = null;
   const isAfternoon = sessionLabel.toLowerCase().includes('afternoon');
   const initialSynced = getSyncedNow(ojtContext);
+  const liSched = ojtContext?.schedule || {};
+  const breakEnd24 = parseTimeTo24(liSched.lunchEnd || '13:00') || '13:00';
+  const breakEnd12 = formatTimeDisplay12h(breakEnd24);
+  const shiftStart24In = parseTimeTo24(liSched.shiftStart || '08:00') || '08:00';
 
   const bd = document.createElement('div');
   bd.className = 'ojt-req-overlay';
@@ -3855,7 +3864,7 @@ function showLogInModal(sessionLabelOrSuccess, ojtContextOrSuccess, onSuccessMay
             </div>
             <span style="font-size:0.72rem;color:var(--text-tertiary);font-weight:600;">Recorded automatically</span>
           </div>
-          ${isAfternoon ? `<p class="text-xs" style="margin-top:4px;color:#d97706;font-weight:600;display:flex;align-items:center;gap:4px;">${icon('clock', 12)} Afternoon session begins at 1:00 PM (Lunch break ends at 1:00 PM)</p>` : ''}
+          ${isAfternoon ? `<p class="text-xs" style="margin-top:4px;color:#d97706;font-weight:600;display:flex;align-items:center;gap:4px;">${icon('clock', 12)} Second session begins at ${breakEnd12} (Break ends at ${breakEnd12})</p>` : ''}
         </div>
 
         <!-- Location Geofence Status Banner -->
@@ -4040,8 +4049,8 @@ function showLogInModal(sessionLabelOrSuccess, ojtContextOrSuccess, onSuccessMay
 
   submitBtn.addEventListener('click', () => {
     const timeVal = formatDateHHMM(getSyncedNow(ojtContext));
-    if (isAfternoon && timeVal < '13:00') {
-      showToast('Cannot time in before 1:00 PM because it is lunch break.', 'warning');
+    if (isAfternoon && getShiftOffsetMinutes(timeVal, shiftStart24In) < getShiftOffsetMinutes(breakEnd24, shiftStart24In)) {
+      showToast(`Cannot time in before ${breakEnd12} because it is break time.`, 'warning');
       return;
     }
     if (!geoResult || geoResult.lat == null || geoResult.lon == null) {
@@ -4070,6 +4079,28 @@ function parseTimeTo24(timeStr) {
   if (ampm === 'PM' && h < 12) h += 12;
   if (ampm === 'AM' && h === 12) h = 0;
   return `${String(h).padStart(2, '0')}:${min}`;
+}
+
+function formatTimeDisplay12h(timeStr) {
+  const t24 = parseTimeTo24(timeStr);
+  if (!t24) return String(timeStr || '');
+  const [hStr, mStr] = t24.split(':');
+  let h = parseInt(hStr, 10);
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  return `${h}:${mStr} ${ampm}`;
+}
+
+function getShiftOffsetMinutes(hhmm, shiftStart24) {
+  const t24 = parseTimeTo24(hhmm) || hhmm;
+  const s24 = parseTimeTo24(shiftStart24 || '08:00') || '08:00';
+  if (!t24 || !t24.includes(':')) return 0;
+  const [h, m] = t24.split(':').map(Number);
+  const [sh, sm] = s24.split(':').map(Number);
+  const anchorMin = ((sh * 60 + sm) - 120 + 1440) % 1440;
+  let total = h * 60 + m;
+  if (total < anchorMin) total += 1440;
+  return total - anchorMin;
 }
 
 // ── Log Out Modal ─────────────────────────────────────────────────────────────
@@ -4241,7 +4272,9 @@ function showLogOutModal(todayLog, sessionLabelOrOjt, ojtContextOrSuccess, onSuc
   const sched = ojtContext?.schedule || {};
   const allowOt = !!sched.allowOvertime;
   const maxOt = Math.min(4.0, Math.max(2.0, Number(sched.maxOvertimeHours) || 2.0));
+  const shiftStart24 = parseTimeTo24(sched.shiftStart || '08:00') || '08:00';
   const shiftEnd24 = parseTimeTo24(sched.shiftEnd || '17:00') || '17:00';
+  const shiftEnd12Label = formatTimeDisplay12h(sched.shiftEnd || '17:00');
 
   const otPanel = bd.querySelector('#lo-ot-panel');
   const otBadge = bd.querySelector('#lo-ot-badge');
@@ -4263,9 +4296,7 @@ function showLogOutModal(todayLog, sessionLabelOrOjt, ojtContextOrSuccess, onSuc
       if (otPanel) otPanel.style.display = 'none';
       return { isOt: false, hours: 0 };
     }
-    const [outH, outM] = val.split(':').map(Number);
-    const [endH, endM] = shiftEnd24.split(':').map(Number);
-    const diffMins = (outH * 60 + outM) - (endH * 60 + endM);
+    const diffMins = getShiftOffsetMinutes(val, shiftStart24) - getShiftOffsetMinutes(shiftEnd24, shiftStart24);
 
     if (diffMins > 0) {
       const rawOt = diffMins / 60;
@@ -4276,7 +4307,7 @@ function showLogOutModal(todayLog, sessionLabelOrOjt, ojtContextOrSuccess, onSuc
           otBadge.textContent = `+${cappedOt.toFixed(1)} hrs OT (Max ${maxOt}h)`;
           otBadge.style.background = '#fef3c7';
           otBadge.style.color = '#b45309';
-          otDesc.textContent = `You are clocking out past your regular shift end (${sched.shiftEnd || '5:00 PM'}). ${cappedOt < rawOt ? `Raw OT is ${rawOt.toFixed(1)}h, capped at policy max ${maxOt}h.` : `Detected ${cappedOt.toFixed(1)}h overtime.`} Overtime hours will be reviewed by your host company.`;
+          otDesc.textContent = `You are clocking out past your regular shift end (${shiftEnd12Label}). ${cappedOt < rawOt ? `Raw OT is ${rawOt.toFixed(1)}h, capped at policy max ${maxOt}h.` : `Detected ${cappedOt.toFixed(1)}h overtime.`} Overtime hours will be reviewed by your host company.`;
           if (otReasonGroup) otReasonGroup.style.display = 'block';
         }
         return { isOt: true, hours: cappedOt, rawHours: rawOt };
@@ -4286,7 +4317,7 @@ function showLogOutModal(todayLog, sessionLabelOrOjt, ojtContextOrSuccess, onSuc
           otBadge.textContent = 'OT Not Permitted';
           otBadge.style.background = '#fee2e2';
           otBadge.style.color = '#dc2626';
-          otDesc.textContent = `Your shift ended at ${sched.shiftEnd || '5:00 PM'}. Your company schedule does not permit overtime. Hours beyond shift end will not be credited.`;
+          otDesc.textContent = `Your shift ended at ${shiftEnd12Label}. Your company schedule does not permit overtime. Hours beyond shift end will not be credited.`;
           if (otReasonGroup) otReasonGroup.style.display = 'none';
         }
         return { isOt: false, hours: 0, unauthorized: true };
@@ -4314,7 +4345,9 @@ function showLogOutModal(todayLog, sessionLabelOrOjt, ojtContextOrSuccess, onSuc
 
   function checkTimeValidity(updateBtn = true) {
     const val = getCurrentOutHHMM();
-    if (loggedIn24 && val && val < loggedIn24) {
+    const outOff = getShiftOffsetMinutes(val, shiftStart24);
+    const inOff = loggedIn24 ? getShiftOffsetMinutes(loggedIn24, shiftStart24) : null;
+    if (inOff !== null && val && outOff < inOff) {
       warningEl.textContent = `Time Out cannot be earlier than Time In (${loggedInAt}).`;
       warningEl.style.display = 'block';
       if (updateBtn) submitBtn.disabled = true;

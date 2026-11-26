@@ -769,6 +769,29 @@ class CompanyController extends Controller
             ], 422);
         }
 
+        $shiftStart = \App\Services\OjtScheduleService::normalizeTime($validated['shift_start'] ?? null, '08:00');
+        $shiftEnd   = \App\Services\OjtScheduleService::normalizeTime($validated['shift_end'] ?? null, '17:00');
+        $hasLunch   = array_key_exists('has_lunch_break', $validated) ? (bool) $validated['has_lunch_break'] : true;
+        $lunchStart = \App\Services\OjtScheduleService::normalizeTime($validated['lunch_start'] ?? null, '12:00');
+        $lunchEnd   = \App\Services\OjtScheduleService::normalizeTime($validated['lunch_end'] ?? null, '13:00');
+
+        $seqCheck = \App\Services\OjtScheduleService::validateScheduleSequence(
+            $shiftStart,
+            $shiftEnd,
+            $hasLunch,
+            $lunchStart,
+            $lunchEnd
+        );
+        if (!$seqCheck['valid']) {
+            return response()->json([
+                'success' => false,
+                'message' => $seqCheck['error'],
+                'errors'  => [
+                    'shift_start' => [$seqCheck['error']],
+                ],
+            ], 422);
+        }
+
         // Fixed university curriculum target: 600 hours less accredited hours from prior approved pull-outs
         $curriculumTarget = 600;
         $accreditedHours  = (float) \App\Models\OjtPullOutRequest::where('student_user_id', $interest->student_user_id)
@@ -777,10 +800,11 @@ class CompanyController extends Controller
 
         $requiredHours = max(0, $curriculumTarget - $accreditedHours);
 
-        $dailyHours  = isset($validated['daily_hours']) ? (float) $validated['daily_hours'] : 8.0;
-        $weeklyHours = isset($validated['weekly_hours']) ? (float) $validated['weekly_hours'] : 40.0;
         $scheduleDays= $validated['schedule_days'] ?? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-        $hasLunch    = array_key_exists('has_lunch_break', $validated) ? (bool) $validated['has_lunch_break'] : true;
+        $dailyHours  = isset($validated['daily_hours']) ? (float) $validated['daily_hours'] : $seqCheck['daily_hours'];
+        $weeklyHours = isset($validated['weekly_hours'])
+            ? (float) $validated['weekly_hours']
+            : round($dailyHours * max(1, count($scheduleDays)), 2);
 
         // Calculate estimated end date if not provided
         $estimatedEndDate = $validated['estimated_end_date'] ?? null;
@@ -806,10 +830,10 @@ class CompanyController extends Controller
             'ojt_start_date'     => $validated['ojt_start_date'],
             'ojt_instructions'   => $validated['ojt_instructions'],
             'schedule_days'      => $scheduleDays,
-            'shift_start'        => $validated['shift_start'] ?? '08:00',
-            'shift_end'          => $validated['shift_end'] ?? '17:00',
-            'lunch_start'        => $validated['lunch_start'] ?? '12:00',
-            'lunch_end'          => $validated['lunch_end'] ?? '13:00',
+            'shift_start'        => $shiftStart,
+            'shift_end'          => $shiftEnd,
+            'lunch_start'        => $lunchStart,
+            'lunch_end'          => $lunchEnd,
             'has_lunch_break'    => $hasLunch,
             'daily_hours'        => $dailyHours,
             'weekly_hours'       => $weeklyHours,
@@ -837,10 +861,10 @@ class CompanyController extends Controller
                 'status'               => 'pending',
                 'company_instructions' => $validated['ojt_instructions'],
                 'schedule_days'        => $scheduleDays,
-                'shift_start'          => $validated['shift_start'] ?? '08:00',
-                'shift_end'            => $validated['shift_end'] ?? '17:00',
-                'lunch_start'          => $validated['lunch_start'] ?? '12:00',
-                'lunch_end'            => $validated['lunch_end'] ?? '13:00',
+                'shift_start'          => $shiftStart,
+                'shift_end'            => $shiftEnd,
+                'lunch_start'          => $lunchStart,
+                'lunch_end'            => $lunchEnd,
                 'has_lunch_break'      => $hasLunch,
                 'daily_hours'          => $dailyHours,
                 'weekly_hours'         => $weeklyHours,
@@ -852,8 +876,8 @@ class CompanyController extends Controller
 
         $startFormatted = \Carbon\Carbon::parse($validated['ojt_start_date'])->format('M d, Y');
         $daysStr        = implode(', ', $scheduleDays);
-        $shiftStr       = ($validated['shift_start'] ?? '08:00') . ' – ' . ($validated['shift_end'] ?? '17:00');
-        $lunchStr       = $hasLunch ? " (Lunch: " . ($validated['lunch_start'] ?? '12:00') . " – " . ($validated['lunch_end'] ?? '13:00') . ")" : "";
+        $shiftStr       = "{$shiftStart} – {$shiftEnd}" . ($seqCheck['is_overnight'] ? ' (Overnight)' : '');
+        $lunchStr       = $hasLunch ? " (Break: {$lunchStart} – {$lunchEnd})" : "";
 
         // Notify student: start date and work schedule confirmed
         AppNotification::send(

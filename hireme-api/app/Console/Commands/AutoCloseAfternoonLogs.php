@@ -42,7 +42,7 @@ class AutoCloseAfternoonLogs extends Command
             ->get();
 
         foreach ($unclosedLogs as $log) {
-            $isPastDay = $log->log_date && $log->log_date->format('Y-m-d') < $todayStr;
+            $anchorDate = $log->log_date ? $log->log_date->toDateString() : $todayStr;
 
             $interest = StudentOjtInterest::where('student_user_id', $log->user_id)
                 ->whereIn('status', ['accepted', 'ojt_started', 'ojt_confirmed'])
@@ -52,26 +52,18 @@ class AutoCloseAfternoonLogs extends Command
                 ->whereIn('status', ['pending', 'active'])
                 ->first();
 
-            $shiftEnd   = $ojtRecord?->shift_end   ?? $interest?->shift_end   ?? '17:00';
-            $lunchStart = $ojtRecord?->lunch_start ?? $interest?->lunch_start ?? '12:00';
-            $hasLunch   = (bool) ($ojtRecord?->has_lunch_break ?? $interest?->has_lunch_break ?? true);
-            $allowOt    = (bool) ($ojtRecord?->allow_overtime ?? $interest?->allow_overtime ?? false);
-            $maxOtHours = min(4.0, max(2.0, (float) ($ojtRecord?->max_overtime_hours ?? $interest?->max_overtime_hours ?? 2.0)));
+            $schedule   = \App\Services\OjtScheduleService::extractSchedule($ojtRecord, $interest);
+            $window     = \App\Services\OjtScheduleService::buildShiftWindow($anchorDate, $schedule);
+            $shiftEnd   = $schedule['shift_end'];
+            $lunchStart = $schedule['lunch_start'];
+            $hasLunch   = $schedule['has_lunch_break'];
 
-            $shiftEndHM = Carbon::parse($shiftEnd)->format('H:i');
-            $extraOtMins = $allowOt ? min((int)($maxOtHours * 60) + 30, 300) : 30;
-            $calculatedCutoff = Carbon::parse($shiftEnd)->addMinutes($extraOtMins);
-            if ($calculatedCutoff->format('H:i') > '22:00') {
-                $calculatedCutoff = Carbon::parse('22:00');
-            }
-            $afternoonCutoffHM = $calculatedCutoff->format('H:i');
-
-            // 1. Morning auto-close if past day or passed lunch
-            if ($log->morning_in && !$log->morning_out) {
-                if ($isPastDay || $nowTime >= Carbon::parse($lunchStart)->format('H:i')) {
-                    $mIn    = Carbon::parse($log->morning_in);
-                    $mLunch = Carbon::parse($lunchStart);
-                    $mHours = $mLunch->gt($mIn) ? round($mIn->diffInMinutes($mLunch) / 60, 2) : 0;
+            // 1. Morning auto-close if shift lunch break has begun
+            if ($hasLunch && $log->morning_in && !$log->morning_out) {
+                if ($now->gte($window['lunch_start'])) {
+                    $mIn    = \App\Services\OjtScheduleService::parsePunchAt($anchorDate, $log->morning_in, $window);
+                    $mLunch = $window['lunch_start'];
+                    $mHours = ($mIn && $mLunch->gt($mIn)) ? round($mIn->diffInMinutes($mLunch) / 60, 2) : 0;
 
                     $log->update([
                         'morning_out'               => $lunchStart,
@@ -91,16 +83,16 @@ class AutoCloseAfternoonLogs extends Command
                 }
             }
 
-            // 2. Afternoon auto-close if past day or passed shift cutoff
+            // 2. Afternoon auto-close if shift end + OT cutoff has passed
             $needsAfternoonClose = ($log->afternoon_in && !$log->afternoon_out)
                 || (!$hasLunch && $log->time_in && !$log->time_out);
 
             if ($needsAfternoonClose) {
-                if ($isPastDay || $nowTime >= $afternoonCutoffHM) {
+                if ($now->gte($window['auto_close_cutoff'])) {
                     if ($log->afternoon_in && !$log->afternoon_out) {
-                        $pIn  = Carbon::parse($log->afternoon_in);
-                        $pEnd = Carbon::parse($shiftEnd);
-                        $pmHours = $pEnd->gt($pIn) ? round($pIn->diffInMinutes($pEnd) / 60, 2) : 0;
+                        $pIn     = \App\Services\OjtScheduleService::parsePunchAt($anchorDate, $log->afternoon_in, $window);
+                        $pEnd    = $window['shift_end'];
+                        $pmHours = ($pIn && $pEnd->gt($pIn)) ? round($pIn->diffInMinutes($pEnd) / 60, 2) : 0;
 
                         $totalDayHours = (float) ($log->morning_hours ?? 0) + $pmHours;
 
@@ -119,9 +111,9 @@ class AutoCloseAfternoonLogs extends Command
                         ]);
                         $log->syncCreditedHours($ojtRecord);
                     } elseif (!$hasLunch && $log->time_in && !$log->time_out) {
-                        $tIn   = Carbon::parse($log->time_in);
-                        $pEnd  = Carbon::parse($shiftEnd);
-                        $hours = $pEnd->gt($tIn) ? round($tIn->diffInMinutes($pEnd) / 60, 2) : 0;
+                        $tIn   = \App\Services\OjtScheduleService::parsePunchAt($anchorDate, $log->time_in, $window);
+                        $pEnd  = $window['shift_end'];
+                        $hours = ($tIn && $pEnd->gt($tIn)) ? round($tIn->diffInMinutes($pEnd) / 60, 2) : 0;
 
                         $log->update([
                             'time_out'                  => $shiftEnd,
