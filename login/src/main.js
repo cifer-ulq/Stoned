@@ -1326,6 +1326,7 @@ async function handleSubmit(e) {
       company:    '/company/',
       supervisor: '/supervisors/',
       admin:      '/admin/',
+      cier:       '/cier/',
     };
     window.location.href = destinations[data.user.role] || '/main/';
   } catch {
@@ -1532,6 +1533,7 @@ async function checkOAuthCallback() {
           company:    '/company/',
           supervisor: '/supervisors/',
           admin:      '/admin/',
+          cier:       '/cier/',
         };
         window.location.href = destinations[user.role] || '/main/';
         return;

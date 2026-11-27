@@ -37,8 +37,8 @@ class CheckMoaExpirations extends Command
         $updatedCount = 0;
         $notificationsSent = 0;
 
-        // Cache admin users to send renewal alerts
-        $adminUsers = User::where('role', 'admin')->get();
+        // Cache CIER users to send renewal alerts
+        $cierUsers = User::where('role', 'cier')->get();
 
         foreach ($companies as $company) {
             $effectiveStatus = $company->getEffectiveMoaStatus();
@@ -76,22 +76,22 @@ class CheckMoaExpirations extends Command
                     );
                     $notificationsSent++;
 
-                    // If within 30 days of June 30, also notify CIER Admins
+                    // If within 30 days of June 30, also notify CIER personnel
                     if ($daysUntilEnd <= 30) {
-                        foreach ($adminUsers as $admin) {
-                            $adminAlerted = AppNotification::where('user_id', $admin->id)
+                        foreach ($cierUsers as $cier) {
+                            $cierAlerted = AppNotification::where('user_id', $cier->id)
                                 ->where('type', 'moa_admin_renewal_alert')
                                 ->where('data->company_id', $company->id)
                                 ->where('created_at', '>=', $now->copy()->subDays(30))
                                 ->exists();
 
-                            if (!$adminAlerted) {
+                            if (!$cierAlerted) {
                                 AppNotification::send(
-                                    $admin->id,
+                                    $cier->id,
                                     'moa_admin_renewal_alert',
                                     'Partner MOA Expiring Soon',
                                     "Partner company \"{$company->company_name}\" has an MOA expiring on {$endDate->format('F d, Y')}.",
-                                    ['company_id' => $company->id, 'company_name' => $company->company_name, 'moa_end_date' => $company->moa_end_date]
+                                    ['company_id' => $company->id, 'company_name' => $company->company_name, 'moa_end_date' => $company->moa_end_date, 'route' => '/']
                                 );
                             }
                         }

@@ -150,8 +150,8 @@ class LoginController extends Controller
             return response()->json(['message' => 'Invalid credentials'], 401);
         }
 
-        if ($user->role !== 'admin') {
-            return response()->json(['message' => 'Access denied. Admin accounts only.'], 403);
+        if (! in_array($user->role, ['admin', 'cier'], true)) {
+            return response()->json(['message' => 'Access denied. Authorized personnel only.'], 403);
         }
 
         $user->tokens()->delete();

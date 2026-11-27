@@ -213,11 +213,11 @@ class CompanyFlowAndGuardTest extends TestCase
         Mail::fake();
         config(['app.login_app_url' => 'https://chmsu-hireme.vercel.app/login/']);
 
-        $admin = User::create([
-            'name'     => 'System Admin',
-            'email'    => 'admin@chmsu.edu.ph',
-            'password' => 'secret1234',
-            'role'     => 'admin',
+        $cier = User::create([
+            'name'     => 'CHMSU CIER Office',
+            'email'    => 'cier@chmsu.edu.ph',
+            'password' => 'Demo@1234',
+            'role'     => 'cier',
         ]);
 
         // 1. Self-registration with .test email skips SMTP
@@ -237,9 +237,9 @@ class CompanyFlowAndGuardTest extends TestCase
             ->assertJsonPath('mail_skipped', true)
             ->assertJsonPath('email_sent', false);
 
-        // 2. Admin registration with .test email skips SMTP and still creates valid set_password_url
-        Sanctum::actingAs($admin);
-        $adminRes = $this->postJson('/api/admin/companies', [
+        // 2. CIER registration with .test email skips SMTP and still creates valid set_password_url
+        Sanctum::actingAs($cier);
+        $cierRes = $this->postJson('/api/cier/companies', [
             'company_name'   => 'Silay TechHive Solutions',
             'industry'       => 'Cloud Computing & DevOps',
             'location'       => 'Silay City, Negros Occidental',
@@ -250,13 +250,13 @@ class CompanyFlowAndGuardTest extends TestCase
             'moa_duration'   => 3,
         ]);
 
-        $adminRes->assertStatus(201)
+        $cierRes->assertStatus(201)
             ->assertJsonPath('mail_skipped', true)
             ->assertJsonPath('email_sent', false)
             ->assertJsonPath('company.moaStatus', 'Active')
-            ->assertJsonPath('company.registrationSource', 'admin');
+            ->assertJsonPath('company.registrationSource', 'cier');
 
-        $setPasswordUrl = $adminRes->json('set_password_url');
+        $setPasswordUrl = $cierRes->json('set_password_url');
         $this->assertNotEmpty($setPasswordUrl);
         $this->assertStringStartsWith(
             'https://chmsu-hireme.vercel.app/login/set-password.html?token=',
@@ -264,8 +264,8 @@ class CompanyFlowAndGuardTest extends TestCase
         );
 
         // 3. Re-send invitation also skips SMTP and returns URL
-        $companyId = $adminRes->json('company.id');
-        $inviteRes = $this->postJson("/api/admin/companies/{$companyId}/send-invitation");
+        $companyId = $cierRes->json('company.id');
+        $inviteRes = $this->postJson("/api/cier/companies/{$companyId}/send-invitation");
         $inviteRes->assertStatus(200)
             ->assertJsonPath('mail_skipped', true)
             ->assertJsonPath('email_sent', false);
@@ -310,11 +310,11 @@ class CompanyFlowAndGuardTest extends TestCase
         Mail::fake();
         Storage::fake('public');
 
-        $admin = User::create([
-            'name'     => 'System Admin',
-            'email'    => 'admin@chmsu.edu.ph',
-            'password' => 'secret1234',
-            'role'     => 'admin',
+        $cier = User::create([
+            'name'     => 'CHMSU CIER Office',
+            'email'    => 'cier@chmsu.edu.ph',
+            'password' => 'Demo@1234',
+            'role'     => 'cier',
         ]);
 
         // 1. Self-register
@@ -375,10 +375,10 @@ class CompanyFlowAndGuardTest extends TestCase
         ]);
         $moaReq->assertStatus(200)->assertJsonPath('data.moa_status', 'Requested');
 
-        // 5. Admin approves & uploads MOA PDF -> auto-activates status & unlocks postings
-        Sanctum::actingAs($admin);
+        // 5. CIER approves & uploads MOA PDF -> auto-activates status & unlocks postings
+        Sanctum::actingAs($cier);
         $moaPdf = UploadedFile::fake()->create('moa.pdf', 120, 'application/pdf');
-        $approveRes = $this->post("/api/admin/companies/{$companyUser->id}/moa", [
+        $approveRes = $this->post("/api/cier/companies/{$companyUser->id}/moa", [
             'moa_file'       => $moaPdf,
             'moa_start_date' => '2026-11-09',
             'moa_end_date'   => '2029-06-30',
@@ -454,16 +454,16 @@ class CompanyFlowAndGuardTest extends TestCase
     {
         Mail::fake();
 
-        $admin = User::create([
-            'name'     => 'System Admin',
-            'email'    => 'admin@chmsu.edu.ph',
-            'password' => 'secret1234',
-            'role'     => 'admin',
+        $cier = User::create([
+            'name'     => 'CHMSU CIER Office',
+            'email'    => 'cier@chmsu.edu.ph',
+            'password' => 'Demo@1234',
+            'role'     => 'cier',
         ]);
 
-        Sanctum::actingAs($admin);
+        Sanctum::actingAs($cier);
         $nearExpiry = now()->addDays(20)->toDateString();
-        $createRes = $this->postJson('/api/admin/companies', [
+        $createRes = $this->postJson('/api/cier/companies', [
             'company_name'   => 'Bacolod FinLedger Solutions Inc.',
             'industry'       => 'Financial Services & FinTech',
             'location'       => 'Bacolod City, Negros Occidental',

@@ -61,7 +61,7 @@ export default function SettingsPage(container) {
             </div>
             <div class="form-group">
               <label class="form-label">System Email</label>
-              <input class="form-input" type="email" value="cier@chmsu.edu.ph" />
+              <input class="form-input" type="email" value="admin@chmsu.edu.ph" />
             </div>
             <div class="form-group">
               <label class="form-label">Academic Year</label>

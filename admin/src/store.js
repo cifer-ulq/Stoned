@@ -4,8 +4,8 @@ const state = {
   user: {
     name: 'Mariene Labrador',
     initials: 'ML',
-    role: 'CIER Administrator',
-    department: 'Center for Institutional Effectiveness & Research',
+    role: 'System Administrator',
+    department: 'College of Information & Computing Sciences',
     employeeId: 'ADM-2024-001',
   },
   ui: {

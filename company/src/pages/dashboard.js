@@ -87,7 +87,7 @@ function renderMoaBanner(company) {
               <span style="background:#dcfce7;color:#15803d;font-size:0.7rem;font-weight:700;padding:2px 8px;border-radius:99px;border:1px solid #86efac;">Pending Approval</span>
             </div>
             <p style="margin:4px 0 0;font-size:0.82rem;color:#15803d;line-height:1.4;">
-              Your MOA request has been submitted to the CHMSU CIER Admin office. Opportunity postings will unlock automatically once the administrator reviews and uploads your agreement document.
+              Your MOA request has been submitted to the CHMSU CIER office. Opportunity postings will unlock automatically once CIER reviews and uploads your agreement document.
             </p>
           </div>
         </div>

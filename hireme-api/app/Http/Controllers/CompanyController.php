@@ -2026,11 +2026,11 @@ class CompanyController extends Controller
             'moa_request_notes' => $validated['notes'] ?? $cp->moa_request_notes,
         ]);
 
-        // Send notification to all administrators
-        $admins = User::where('role', 'admin')->get();
-        foreach ($admins as $admin) {
+        // Send notification to all CIER personnel
+        $cierUsers = User::where('role', 'cier')->get();
+        foreach ($cierUsers as $cier) {
             AppNotification::send(
-                $admin->id,
+                $cier->id,
                 'moa_request',
                 'New MOA Request: ' . ($cp->company_name ?? $user->name),
                 'Company "' . ($cp->company_name ?? $user->name) . '" has completed their profile and requested an MOA partnership review.',
@@ -2039,13 +2039,14 @@ class CompanyController extends Controller
                     'company_user_id' => $user->id,
                     'company_name'    => $cp->company_name ?? $user->name,
                     'requested_at'    => now()->toIso8601String(),
+                    'route'           => '/',
                 ]
             );
         }
 
         return response()->json([
             'success' => true,
-            'message' => 'MOA request submitted successfully. The CIER admin office will review your request and upload the partnership agreement.',
+            'message' => 'MOA request submitted successfully. The CHMSU CIER office will review your request and upload the partnership agreement.',
             'data'    => [
                 'moa_status'             => 'Requested',
                 'moa_requested_at'       => $cp->moa_requested_at?->toIso8601String(),

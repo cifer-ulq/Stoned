@@ -27,7 +27,7 @@ function render() {
 
         <div class="al-badge">
           <span class="al-badge__dot"></span>
-          CIER Admin Portal
+          Authorized Personnel Portal
         </div>
 
         <div class="al-header">
@@ -35,8 +35,8 @@ function render() {
             <div class="al-logo__mark">H</div>
             <span class="al-logo__text">Hire<span>Me</span></span>
           </div>
-          <h1 class="al-title">Administrator Access</h1>
-          <p class="al-subtitle">Restricted to authorized CIER personnel only.</p>
+          <h1 class="al-title">Admin &amp; CIER Access</h1>
+          <p class="al-subtitle">Restricted to authorized Admin and CIER personnel only.</p>
         </div>
 
         <form class="al-form" id="admin-login-form" novalidate>
@@ -154,7 +154,7 @@ async function handleSubmit(e) {
     const data = await res.json();
 
     if (res.status === 403) {
-      showError('email', 'Access denied. Admin accounts only.');
+      showError('email', 'Access denied. Authorized Admin or CIER accounts only.');
       btn.disabled = false;
       lbl.textContent = 'Sign In';
       return;
@@ -172,7 +172,7 @@ async function handleSubmit(e) {
       localStorage.setItem('hireme_token', data.token);
     }
     localStorage.setItem('hireme_user', JSON.stringify(data.user));
-    window.location.href = '/admin/';
+    window.location.href = data.user?.role === 'cier' ? '/cier/' : '/admin/';
   } catch {
     showError('email', 'Could not connect to server. Is the backend running?');
     btn.disabled = false;

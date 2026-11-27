@@ -239,7 +239,7 @@ async function initApp() {
 
     const u = me.data || me;
     if (u.role && u.role !== 'admin') {
-      const destinations = { student: '../main/', company: '../company/', supervisor: '../supervisors/' };
+      const destinations = { student: '../main/', graduate: '../jobseeker/', jobseeker: '../jobseeker/', company: '../company/', supervisor: '../supervisors/', cier: '../cier/' };
       window.location.href = destinations[u.role] || '../login/';
       return;
     }

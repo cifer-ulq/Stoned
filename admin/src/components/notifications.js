@@ -12,9 +12,11 @@ let _lastPolledCount = -1;
 /* ── Type Configurations ── */
 const TYPE_CONFIG = {
   company_registered:          { icon: 'briefcase',      color: '#2563EB', bg: 'rgba(37, 99, 235, 0.12)',  route: '/companies' },
+  company_emergency_suspended: { icon: 'alert-triangle', color: '#EF4444', bg: 'rgba(239, 68, 68, 0.12)',  route: '/companies' },
   moa_submitted:               { icon: 'file-text',      color: '#D97706', bg: 'rgba(217, 119, 6, 0.12)',  route: '/companies' },
   moa_request:                 { icon: 'file-text',      color: '#D97706', bg: 'rgba(217, 119, 6, 0.12)',  route: '/companies' },
   moa_expiring:                { icon: 'alert-triangle', color: '#EA580C', bg: 'rgba(234, 88, 12, 0.12)',  route: '/companies' },
+  moa_admin_renewal_alert:     { icon: 'alert-triangle', color: '#EA580C', bg: 'rgba(234, 88, 12, 0.12)',  route: '/companies' },
   moa_approved:                { icon: 'check-circle',   color: '#059669', bg: 'rgba(5, 150, 105, 0.12)',  route: '/companies' },
   student_eligible_graduation: { icon: 'graduation-cap', color: '#005930', bg: 'rgba(0, 89, 48, 0.12)',    route: '/students' },
   graduation_promotion:        { icon: 'award',          color: '#059669', bg: 'rgba(5, 150, 105, 0.12)',  route: '/students' },

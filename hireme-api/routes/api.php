@@ -6,6 +6,7 @@ use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\CompanyRegisterController;
 use App\Http\Controllers\Auth\SocialAuthController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\CierController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\OjtController;
 use App\Http\Controllers\CompanyController;
@@ -494,8 +495,20 @@ Route::middleware('auth:sanctum')->prefix('chat')->group(function () {
 });
 
 
+// ── CIER routes (Company Registration & MOA Lifecycle) ───────────────────────
+Route::middleware(['auth:sanctum', 'role:cier'])->prefix('cier')->group(function () {
+    Route::get('sidebar',                         [CierController::class, 'sidebar']);
+    Route::get('companies',                       [CierController::class, 'listCompanies']);
+    Route::post('companies',                      [CierController::class, 'storeCompany']);
+    Route::post('companies/{id}/send-invitation', [CierController::class, 'sendInvitation']);
+    Route::patch('companies/{id}/status',         [CierController::class, 'updateCompanyStatus']);
+    Route::post('companies/{id}/moa',             [CierController::class, 'uploadMoa']);
+    Route::delete('companies/{id}',               [CierController::class, 'deleteCompany']);
+});
+
+
 // ── Admin routes ──────────────────────────────────────────────────────────────
-Route::middleware('auth:sanctum')->prefix('admin')->group(function () {
+Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(function () {
     Route::get('dashboard',                        [AdminController::class, 'dashboard']);
     Route::get('sidebar',                          [AdminController::class, 'sidebar']);
     Route::get('students',                         [AdminController::class, 'listStudents']);
@@ -511,11 +524,15 @@ Route::middleware('auth:sanctum')->prefix('admin')->group(function () {
 
     Route::get('ojt',                              [AdminController::class, 'listOjt']);
     Route::get('companies',                        [AdminController::class, 'listCompanies']);
-    Route::post('companies',                       [AdminController::class, 'storeCompany']);
-    Route::post('companies/{id}/send-invitation',  [AdminController::class, 'sendInvitation']);
     Route::patch('companies/{id}/status',          [AdminController::class, 'updateCompanyStatus']);
-    Route::post('companies/{id}/moa',             [AdminController::class, 'uploadMoa']);
-    Route::delete('companies/{id}',                [AdminController::class, 'deleteCompany']);
+    $cierOnlyMessage = fn () => response()->json([
+        'success' => false,
+        'message' => 'Company registration and MOA management has moved to the CIER portal.',
+    ], 403);
+    Route::post('companies',                       $cierOnlyMessage);
+    Route::post('companies/{id}/send-invitation',  $cierOnlyMessage);
+    Route::post('companies/{id}/moa',              $cierOnlyMessage);
+    Route::delete('companies/{id}',                $cierOnlyMessage);
     Route::get('jobs',                             [AdminController::class, 'listJobs']);
     Route::get('alumni-analytics',                 [AdminController::class, 'alumniAnalytics']);
     Route::get('peo-analytics',                    [AdminController::class, 'peoAnalytics']);

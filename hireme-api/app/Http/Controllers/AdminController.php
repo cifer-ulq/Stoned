@@ -17,6 +17,7 @@ use App\Models\JobListing;
 use App\Models\JobApplication;
 use App\Models\AppNotification;
 use App\Models\StudentEvaluation;
+use App\Services\CompanyPartnershipService;
 use App\Services\PeoAnalyticsService;
 use App\Services\CourseNormalizer;
 use App\Services\SectionNormalizer;
@@ -43,414 +44,56 @@ class AdminController extends Controller
     }
 
 
-    /* ── POST /api/admin/companies ── */
-    public function storeCompany(Request $request)
+    /* ── GET /api/admin/companies ── (Read-only overview for Admin) */
+    public function listCompanies(Request $request, CompanyPartnershipService $partnerships)
+    {
+        $this->requireAdmin($request);
+
+        return response()->json($partnerships->listCompanies());
+    }
+
+    /* ── PATCH /api/admin/companies/{id}/status ── (Emergency Suspend Override Only) */
+    public function updateCompanyStatus(Request $request, $id, CompanyPartnershipService $partnerships)
     {
         $this->requireAdmin($request);
 
         $data = $request->validate([
-            'company_name'    => ['required', 'string', 'max:255'],
-            'industry'        => ['required', 'string', 'max:255'],
-            'ownership_type'  => ['nullable', 'string', 'max:100'],
-            'company_size'    => ['nullable', 'string', 'max:50'],
-            'year_founded'    => ['nullable', 'string', 'max:4'],
-            'website'         => ['nullable', 'url', 'max:255'],
-            'email'           => ['required', 'email', 'unique:users,email'],
-            'contact_person'  => ['required', 'string', 'max:255'],
-            'contact_title'   => ['nullable', 'string', 'max:100'],
-            'phone'           => ['nullable', 'string', 'max:50'],
-            'location'        => ['nullable', 'string', 'max:255'],
-            'full_address'    => ['nullable', 'string', 'max:500'],
-            'description'     => ['nullable', 'string', 'max:1000'],
-            'moa_file'        => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:10240'],
-            'moa_start_date'  => ['nullable', 'date'],
-            'moa_duration'    => ['nullable', 'integer', 'min:1', 'max:50'],
-            'moa_end_date'    => ['nullable', 'date'],
+            'status' => ['required', 'string', 'in:Suspended'],
         ]);
 
-        // Create a system user account for the company
-        $password = Str::random(12);
-        $user = User::create([
-            'name'                 => $data['company_name'],
-            'email'                => $data['email'],
-            'password'             => Hash::make($password),
-            'role'                 => 'company',
-            'onboarding_completed' => true,
-        ]);
+        $userId  = $partnerships->parseUserId($id);
+        $profile = CompanyProfile::where('user_id', $userId)->firstOrFail();
 
-        // Compute MOA end date aligned with Academic Year (June 30) or explicit end date
-        $moaStartDate = isset($data['moa_start_date']) ? Carbon::parse($data['moa_start_date']) : Carbon::now();
-        $moaEndDate   = null;
-        if (!empty($data['moa_end_date'])) {
-            $moaEndDate = Carbon::parse($data['moa_end_date']);
-        } elseif (isset($data['moa_duration'])) {
-            $moaEndDate = CompanyProfile::calculateAcademicYearEndDate($moaStartDate, (int) $data['moa_duration']);
-        } else {
-            $moaEndDate = CompanyProfile::calculateAcademicYearEndDate($moaStartDate, 3);
+        if (strtolower(trim((string) ($profile->status ?? 'Pending'))) === 'pending') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Pending company registrations must be verified by CIER before emergency suspension.',
+            ], 422);
         }
 
-        $moaStatus = 'Active';
-        if ($moaStartDate && $moaEndDate) {
-            $now = Carbon::now(config('app.timezone', 'Asia/Manila'));
-            $end = $moaEndDate->copy()->endOfDay();
-            if ($now->lte($end)) {
-                $moaStatus = $now->diffInDays($end, false) <= 60 ? 'Expiring Soon' : 'Active';
-            } else {
-                $moaStatus = 'Expired';
-            }
-        }
+        $profile->update(['status' => 'Suspended']);
 
-        // Handle MOA file upload
-        $moaFilePath = null;
-        if ($request->hasFile('moa_file')) {
-            $moaFilePath = $request->file('moa_file')
-                ->store('moa_documents', 'public');
-        }
-
-        $profile = CompanyProfile::create([
-            'user_id'             => $user->id,
-            'company_name'        => $data['company_name'],
-            'company_location'    => $data['location'] ?? null,
-            'full_address'        => $data['full_address'] ?? null,
-            'company_type'        => $data['industry'],
-            'ownership_type'      => $data['ownership_type'] ?? null,
-            'company_size'        => $data['company_size'] ?? null,
-            'year_founded'        => $data['year_founded'] ?? null,
-            'website'             => $data['website'] ?? null,
-            'description'         => $data['description'] ?? null,
-            'contact_email'       => $data['email'],
-            'contact_phone'       => $data['phone'] ?? null,
-            'contact_person'      => $data['contact_person'],
-            'contact_title'       => $data['contact_title'] ?? null,
-            'moa_file_path'       => $moaFilePath,
-            'moa_start_date'      => $moaStartDate?->toDateString(),
-            'moa_end_date'        => $moaEndDate?->toDateString(),
-            'moa_status'          => $moaStatus,
-            'status'              => 'Pending',
-            'profile_completed'   => false,
-            'registration_source' => 'admin',
-        ]);
-
-        // Generate password-reset / onboarding link and send invitation email unless test domain
-        $emailSent      = false;
-        $mailSkipped    = StudentIdHelper::isNonDeliverableTestEmail($user->email);
-        $setPasswordUrl = null;
+        // Alert CIER personnel about the emergency suspension
         try {
-            $token = Password::createToken($user);
-            $setPasswordUrl = rtrim(StudentIdHelper::resolveLoginAppUrl(), '/') . '/set-password.html'
-                . '?token=' . urlencode($token)
-                . '&email=' . urlencode($user->email);
-
-            if (!$mailSkipped) {
-                Mail::to($user->email)->send(new CompanyInvitation(
-                    companyName:    $data['company_name'],
-                    contactPerson:  $data['contact_person'],
-                    email:          $data['email'],
-                    industry:       $data['industry'],
-                    location:       $data['location'] ?? '—',
-                    phone:          $data['phone'] ?? '',
-                    moaStartDate:   $moaStartDate?->toDateString(),
-                    moaEndDate:     $moaEndDate?->toDateString(),
-                    moaStatus:      $moaStatus,
-                    status:         'Pending',
-                    setPasswordUrl: $setPasswordUrl,
-                ));
-                $emailSent = true;
+            $companyName = $profile->company_name ?? $profile->user?->name ?? 'Partner Company';
+            $cierUsers = User::where('role', 'cier')->get();
+            foreach ($cierUsers as $cier) {
+                AppNotification::send(
+                    $cier->id,
+                    'company_emergency_suspended',
+                    'Emergency Company Suspension',
+                    "Administrator suspended \"{$companyName}\" as an emergency override. Please review partnership status.",
+                    [
+                        'company_id' => $userId,
+                        'route'      => '/',
+                    ]
+                );
             }
         } catch (\Throwable $e) {
-            \Log::error('[storeCompany] Failed to send invitation email: ' . $e->getMessage());
+            \Log::warning('[AdminController::updateCompanyStatus] Failed to notify CIER: ' . $e->getMessage());
         }
 
-        $message = $emailSent
-            ? 'Partner registered. Invitation email sent.'
-            : ($mailSkipped
-                ? 'Partner registered. Onboarding link generated (SMTP skipped for reserved test domain).'
-                : 'Partner registered (invitation email pending).');
-
-        return response()->json([
-            'message'          => $message,
-            'email_sent'       => $emailSent,
-            'mail_skipped'     => $mailSkipped,
-            'set_password_url' => $setPasswordUrl,
-            'company'          => [
-                'id'                 => 'C-' . $user->id,
-                'name'               => $data['company_name'],
-                'industry'           => $data['industry'],
-                'location'           => $data['location'] ?? '',
-                'status'             => 'Pending',
-                'moaStatus'          => $moaStatus,
-                'moaStartDate'       => $moaStartDate?->toDateString(),
-                'moaExpiry'          => $moaEndDate?->toDateString(),
-                'moaFileUrl'         => $moaFilePath ? url(Storage::url($moaFilePath)) : null,
-                'contactPerson'      => $data['contact_person'],
-                'email'              => $data['email'],
-                'phone'              => $data['phone'] ?? '',
-                'registrationSource' => 'admin',
-                'profileCompleted'   => false,
-                'ojtSlots'           => 0,
-                'activePostings'     => 0,
-                'rating'             => 0.0,
-                'moa_file_url'       => $moaFilePath ? url(Storage::url($moaFilePath)) : null,
-            ],
-        ], 201);
-    }
-
-    /* ── GET /api/admin/companies ── */
-    public function listCompanies(Request $request)
-    {
-        $this->requireAdmin($request);
-
-        $profiles = CompanyProfile::with('user')->get();
-        $userIds  = $profiles->pluck('user_id')->all();
-
-        // Active job-posting counts per company
-        $jobCounts = DB::table('job_listings')
-            ->whereIn('company_user_id', $userIds)
-            ->where('status', 'open')
-            ->groupBy('company_user_id')
-            ->selectRaw('company_user_id, COUNT(*) as cnt')
-            ->pluck('cnt', 'company_user_id');
-
-        // Total remaining OJT slots per company
-        $ojtSlotTotals = DB::table('ojt_postings')
-            ->whereIn('company_user_id', $userIds)
-            ->whereIn('status', ['open', 'filling_up'])
-            ->groupBy('company_user_id')
-            ->selectRaw('company_user_id, SUM(slots_remaining) as total')
-            ->pluck('total', 'company_user_id');
-
-        // Active student trainees currently deployed per company (Option A Grace Period tracking)
-        $activeTraineesCounts = DB::table('student_ojt_interests')
-            ->join('ojt_postings', 'student_ojt_interests.ojt_posting_id', '=', 'ojt_postings.id')
-            ->whereIn('ojt_postings.company_user_id', $userIds)
-            ->whereIn('student_ojt_interests.status', ['ojt_started', 'accepted'])
-            ->groupBy('ojt_postings.company_user_id')
-            ->selectRaw('ojt_postings.company_user_id as company_user_id, COUNT(*) as total')
-            ->pluck('total', 'company_user_id');
-
-        $companies = $profiles->map(function ($p) use ($jobCounts, $ojtSlotTotals, $activeTraineesCounts) {
-            $rawStatus = trim($p->status ?? 'Pending');
-            $status = ucfirst(strtolower($rawStatus));
-            if (!in_array($status, ['Active', 'Pending', 'Suspended', 'Inactive'])) {
-                $status = 'Pending';
-            }
-
-            // Real-time dynamic MOA resolution incorporating June 30 academic calendar & Option A
-            $moaStatus = $p->getEffectiveMoaStatus();
-            $activeTrainees = (int) ($activeTraineesCounts[$p->user_id] ?? 0);
-
-            return [
-                'id'                 => 'C-' . $p->user_id,
-                'name'               => $p->company_name ?? $p->user?->name,
-                'industry'           => $p->company_type ?? 'Unknown',
-                'location'           => $p->company_location ?? '',
-                'status'             => $status,
-                'moaStatus'          => $moaStatus,
-                'moaStartDate'       => $p->moa_start_date,
-                'moaExpiry'          => $p->moa_end_date,
-                'moaFileUrl'         => $p->moa_file_path ? url(Storage::url($p->moa_file_path)) : null,
-                'contactPerson'      => $p->contact_person ?? $p->user?->name,
-                'email'              => $p->contact_email ?? $p->user?->email,
-                'phone'              => $p->contact_phone ?? '',
-                'registrationSource' => $p->registration_source ?? 'admin',
-                'moaRequestedAt'     => $p->moa_requested_at?->toIso8601String(),
-                'moaRequestNotes'    => $p->moa_request_notes,
-                'profileCompleted'   => (bool) $p->profile_completed,
-                'ojtSlots'           => (int) ($ojtSlotTotals[$p->user_id] ?? 0),
-                'activePostings'     => (int) ($jobCounts[$p->user_id] ?? 0),
-                'activeTrainees'     => $activeTrainees,
-                'rating'             => 0.0,
-            ];
-        });
-
-        return response()->json($companies);
-    }
-
-    /* ── POST /api/admin/companies/{id}/send-invitation ── */
-    public function sendInvitation(Request $request, $id)
-    {
-        $this->requireAdmin($request);
-
-        // Strip "C-" prefix if present
-        $userId = is_numeric($id) ? (int)$id : (int)str_replace('C-', '', $id);
-
-        $user = User::where('id', $userId)->where('role', 'company')->firstOrFail();
-        $profile = CompanyProfile::where('user_id', $userId)->firstOrFail();
-
-        // Generate a password-reset token (stored in password_reset_tokens table)
-        $token = Password::createToken($user);
-
-        // Link points to the resolved login app set-password page
-        $setPasswordUrl = rtrim(StudentIdHelper::resolveLoginAppUrl(), '/') . '/set-password.html'
-            . '?token=' . urlencode($token)
-            . '&email=' . urlencode($user->email);
-
-        $mailSkipped = StudentIdHelper::isNonDeliverableTestEmail($user->email);
-        if ($mailSkipped) {
-            return response()->json([
-                'message'          => 'Onboarding link generated (SMTP skipped for reserved test domain).',
-                'email_sent'       => false,
-                'mail_skipped'     => true,
-                'set_password_url' => $setPasswordUrl,
-            ]);
-        }
-
-        Mail::to($user->email)->send(new CompanyInvitation(
-            companyName:    $profile->company_name ?? $user->name,
-            contactPerson:  $profile->contact_person ?? $user->name,
-            email:          $user->email,
-            industry:       $profile->company_type ?? '—',
-            location:       $profile->company_location ?? '—',
-            phone:          $profile->contact_phone ?? '',
-            moaStartDate:   $profile->moa_start_date,
-            moaEndDate:     $profile->moa_end_date,
-            moaStatus:      $profile->moa_status ?? 'Pending',
-            status:         $profile->status ?? 'Pending',
-            setPasswordUrl: $setPasswordUrl,
-        ));
-
-        return response()->json([
-            'message'          => 'Invitation email sent to ' . $user->email,
-            'email_sent'       => true,
-            'mail_skipped'     => false,
-            'set_password_url' => $setPasswordUrl,
-        ]);
-    }
-
-    /* ── DELETE /api/admin/companies/{id} ── (Pending only) */
-    public function deleteCompany(Request $request, $id)
-    {
-        $this->requireAdmin($request);
-
-        $userId = is_numeric($id) ? (int)$id : (int)str_replace('C-', '', $id);
-
-        $profile = CompanyProfile::where('user_id', $userId)->firstOrFail();
-
-        if (($profile->status ?? 'Pending') !== 'Pending') {
-            return response()->json(['message' => 'Only Pending companies can be deleted.'], 403);
-        }
-
-        // Delete profile first, then the user account
-        $profile->delete();
-        User::where('id', $userId)->delete();
-
-        return response()->json(['message' => 'Company deleted successfully.']);
-    }
-
-    /* ── PATCH /api/admin/companies/{id}/status ── */
-    public function updateCompanyStatus(Request $request, $id)
-    {
-        $this->requireAdmin($request);
-
-        $data = $request->validate([
-            'status' => ['required', 'string', 'in:Active,Pending,Suspended,Inactive'],
-        ]);
-
-        $userId = is_numeric($id) ? (int)$id : (int)str_replace('C-', '', $id);
-
-        $profile = CompanyProfile::where('user_id', $userId)->firstOrFail();
-        $profile->update(['status' => $data['status']]);
-
-        return response()->json(['message' => 'Status updated.', 'status' => $data['status']]);
-    }
-
-    /* ── POST /api/admin/companies/{id}/moa ── */
-    public function uploadMoa(Request $request, $id)
-    {
-        $this->requireAdmin($request);
-
-        $rawId = is_numeric($id) ? (int)$id : (int)str_replace('C-', '', $id);
-        $user = User::where('id', $rawId)->where('role', 'company')->first();
-        if ($user) {
-            $profile = CompanyProfile::where('user_id', $user->id)->firstOrFail();
-        } else {
-            $profile = CompanyProfile::findOrFail($rawId);
-            $user = User::findOrFail($profile->user_id);
-        }
-
-        $data = $request->validate([
-            'moa_file'       => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:10240'],
-            'moa_start_date' => ['nullable', 'date'],
-            'moa_end_date'   => ['nullable', 'date'],
-            'moa_duration'   => ['nullable', 'integer', 'min:1', 'max:50'],
-            'moa_status'     => ['nullable', 'string', 'in:Active,Pending,Expired,Requested,Terminated'],
-        ]);
-
-        $previousMoaStatus = strtolower(trim((string)($profile->moa_status ?? 'Pending')));
-        $isFirstTimeActivation = ($previousMoaStatus !== 'active');
-
-        $updateData = [];
-
-        if ($request->hasFile('moa_file')) {
-            $path = $request->file('moa_file')->store('moa-documents', 'public');
-            $updateData['moa_file_path'] = $path;
-        }
-
-        if ($request->filled('moa_start_date')) {
-            $updateData['moa_start_date'] = $data['moa_start_date'];
-        }
-        if ($request->filled('moa_end_date')) {
-            $updateData['moa_end_date'] = $data['moa_end_date'];
-        } elseif ($request->filled('moa_duration')) {
-            $startDate = $request->filled('moa_start_date') ? $data['moa_start_date'] : ($profile->moa_start_date ?: now());
-            $updateData['moa_end_date'] = CompanyProfile::calculateAcademicYearEndDate($startDate, (int) $data['moa_duration'])->toDateString();
-        }
-
-        $newStatus = $data['moa_status'] ?? 'Active';
-        $updateData['moa_status'] = $newStatus;
-
-        if (($profile->status ?? 'Pending') === 'Pending' && $newStatus === 'Active') {
-            $updateData['status'] = 'Active';
-        }
-
-        $profile->update($updateData);
-
-        // Notify the company user when MOA is approved or updated
-        if ($newStatus === 'Active') {
-            if ($isFirstTimeActivation) {
-                AppNotification::send(
-                    $user->id,
-                    'moa_approved',
-                    'MOA Approved & Active',
-                    'Your Memorandum of Agreement (MOA) with CHMSU CIER has been approved and activated! You can now post OJT slots and job opportunities.',
-                    [
-                        'moa_start_date' => $profile->moa_start_date,
-                        'moa_end_date'   => $profile->moa_end_date,
-                        'moa_file_url'   => $profile->moa_file_path ? url(Storage::url($profile->moa_file_path)) : null,
-                    ]
-                );
-            } else {
-                AppNotification::send(
-                    $user->id,
-                    'moa_renewed',
-                    'MOA Terms Updated / Renewed',
-                    'Your Memorandum of Agreement (MOA) validity terms have been updated by CIER Administration.',
-                    [
-                        'moa_start_date' => $profile->moa_start_date,
-                        'moa_end_date'   => $profile->moa_end_date,
-                        'moa_file_url'   => $profile->moa_file_path ? url(Storage::url($profile->moa_file_path)) : null,
-                    ]
-                );
-            }
-        }
-
-        $message = $isFirstTimeActivation
-            ? 'MOA partnership approved and activated successfully.'
-            : 'MOA agreement terms updated successfully.';
-
-        return response()->json([
-            'success' => true,
-            'message' => $message,
-            'data'    => [
-                'id'             => 'C-' . $user->id,
-                'moaStatus'      => $profile->effective_moa_status,
-                'moaExpiry'      => $profile->moa_end_date,
-                'moaStartDate'   => $profile->moa_start_date,
-                'moaFileUrl'     => $profile->moa_file_path ? url(Storage::url($profile->moa_file_path)) : null,
-                'status'         => $profile->status,
-                'activeTrainees' => $profile->getActiveTraineeCount(),
-            ],
-        ]);
+        return response()->json(['message' => 'Company suspended via emergency override.', 'status' => 'Suspended']);
     }
 
     /* ── GET /api/admin/ojt ── */
@@ -2535,16 +2178,16 @@ class AdminController extends Controller
     {
         $this->requireAdmin($request);
 
-        // ── Pending Approvals ──────────────────────────────────────────────
-        $pendingCompanies = CompanyProfile::with('user')
-            ->where('status', 'Pending')
+        // ── Pending Approvals (Students & Endorsed OJT) ────────────────────
+        $pendingStudents = StudentProfile::with('user')
+            ->where('approval_status', 'pending')
             ->orderByDesc('created_at')
-            ->limit(5)
+            ->limit(4)
             ->get()
             ->map(fn($p) => [
-                'type'   => 'company',
-                'name'   => $p->company_name ?? $p->user?->name ?? 'Unknown Company',
-                'detail' => 'Company registration pending verification',
+                'type'   => 'student',
+                'name'   => $p->user?->name ?? 'Unknown Student',
+                'detail' => 'Student registration pending approval',
             ]);
 
         $endorsedOjt = StudentOjtInterest::with(['student', 'posting'])
@@ -2558,12 +2201,12 @@ class AdminController extends Controller
                 'detail' => 'OJT endorsement at ' . ($i->posting?->company_name ?? '—'),
             ]);
 
-        $pending = $pendingCompanies->concat($endorsedOjt)->take(6)->values();
+        $pending = $pendingStudents->concat($endorsedOjt)->take(6)->values();
 
         // ── Recent Activity ────────────────────────────────────────────────
         $recentStudents = User::where('role', 'student')
             ->orderByDesc('created_at')
-            ->limit(3)
+            ->limit(4)
             ->get()
             ->map(fn($u) => [
                 'icon'  => 'users',
@@ -2572,21 +2215,10 @@ class AdminController extends Controller
                 'time'  => $u->created_at?->diffForHumans(),
             ]);
 
-        $recentCompanies = User::where('role', 'company')
-            ->orderByDesc('created_at')
-            ->limit(3)
-            ->get()
-            ->map(fn($u) => [
-                'icon'  => 'briefcase',
-                'color' => 'primary',
-                'text'  => 'Company registered: ' . $u->name,
-                'time'  => $u->created_at?->diffForHumans(),
-            ]);
-
         $recentOjt = StudentOjtInterest::with(['student', 'posting'])
             ->whereIn('status', ['accepted', 'endorsed'])
             ->orderByDesc('updated_at')
-            ->limit(3)
+            ->limit(4)
             ->get()
             ->map(fn($i) => [
                 'icon'  => $i->status === 'accepted' ? 'check' : 'flag',
@@ -2596,31 +2228,15 @@ class AdminController extends Controller
             ]);
 
         $activities = $recentStudents
-            ->concat($recentCompanies)
             ->concat($recentOjt)
             ->sortByDesc(fn($a) => $a['time'])
             ->take(7)
             ->values();
 
-        // ── Upcoming (Expiring MOAs within 60 days) ────────────────────────
-        $upcoming = CompanyProfile::with('user')
-            ->whereNotNull('moa_end_date')
-            ->whereDate('moa_end_date', '>=', Carbon::now()->toDateString())
-            ->whereDate('moa_end_date', '<=', Carbon::now()->addDays(60)->toDateString())
-            ->orderBy('moa_end_date')
-            ->limit(5)
-            ->get()
-            ->map(fn($p) => [
-                'type'  => 'moa',
-                'title' => ($p->company_name ?? $p->user?->name ?? 'Company') . ' MOA',
-                'date'  => Carbon::parse($p->moa_end_date)->format('M d, Y'),
-                'days'  => Carbon::now()->diffInDays(Carbon::parse($p->moa_end_date), false),
-            ]);
-
         return response()->json([
             'pending'    => $pending,
             'activities' => $activities,
-            'upcoming'   => $upcoming,
+            'upcoming'   => [],
         ]);
     }
 

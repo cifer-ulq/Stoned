@@ -253,7 +253,7 @@ async function initApp() {
   // Attempt to refresh user data from API in background or apply cached
   if (cachedUser) {
     if (cachedUser.role && cachedUser.role !== 'supervisor') {
-      const destinations = { student: '/main/', company: '/company/', admin: '/admin/', jobseeker: '/jobseeker/' };
+      const destinations = { student: '/main/', company: '/company/', admin: '/admin/', cier: '/cier/', jobseeker: '/jobseeker/' };
       window.location.href = destinations[cachedUser.role] || '/login/';
       return;
     }
@@ -265,7 +265,7 @@ async function initApp() {
     if (me && (me.data || me.role)) {
       const u = me.data || me;
       if (u.role && u.role !== 'supervisor') {
-        const destinations = { student: '/main/', company: '/company/', admin: '/admin/', jobseeker: '/jobseeker/' };
+        const destinations = { student: '/main/', company: '/company/', admin: '/admin/', cier: '/cier/', jobseeker: '/jobseeker/' };
         window.location.href = destinations[u.role] || '/login/';
         return;
       }

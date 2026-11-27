@@ -86,6 +86,7 @@ async function initAuth() {
         company:    '../company/',
         supervisor: '../supervisors/',
         admin:      '../admin/',
+        cier:       '../cier/',
       };
       window.location.href = destinations[role] || '../login/';
       return false;

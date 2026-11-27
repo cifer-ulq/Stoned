@@ -87,24 +87,24 @@ class CompanyRegisterController extends Controller
             }
         }
 
-        // Notify all system administrators
+        // Notify all CIER personnel
         try {
-            $admins = User::where('role', 'admin')->get();
-            foreach ($admins as $admin) {
+            $cierUsers = User::where('role', 'cier')->get();
+            foreach ($cierUsers as $cier) {
                 \App\Models\AppNotification::send(
-                    $admin->id,
+                    $cier->id,
                     'company_registered',
                     'New Company Registered',
                     "{$data['company_name']} ({$data['industry']}) has registered and requires account & MOA verification.",
                     [
                         'company_id'   => $user->id,
                         'company_name' => $data['company_name'],
-                        'route'        => '/companies',
+                        'route'        => '/',
                     ]
                 );
             }
         } catch (\Throwable $ne) {
-            \Log::error('[CompanyRegister] Failed to dispatch admin notification: ' . $ne->getMessage());
+            \Log::error('[CompanyRegister] Failed to dispatch CIER notification: ' . $ne->getMessage());
         }
 
         return response()->json([

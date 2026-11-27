@@ -580,7 +580,7 @@ export async function renderPostJob(container) {
           ${!isCompleted 
             ? 'You must complete your company profile before requesting an MOA partnership and publishing job listings.'
             : (moaStatus === 'Requested'
-                ? 'Your MOA request has been submitted to CHMSU CIER and is under review. Job posting will unlock once the university administrator reviews and uploads your signed agreement document.'
+                ? 'Your MOA request has been submitted to CHMSU CIER and is under review. Job posting will unlock once CIER reviews and uploads your signed agreement document.'
                 : 'An active Memorandum of Agreement (MOA) between your organization and CHMSU CIER is required before you can publish job listings and recruit applicants.')
           }
         </p>

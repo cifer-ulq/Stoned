@@ -494,7 +494,7 @@ function renderAboutTab() {
           ` : (C.moaStatus === 'Requested' ? `
             <p style="margin:0;font-size:0.84rem;color:#b45309;line-height:1.5;display:flex;align-items:flex-start;gap:7px;">
               <span style="display:inline-flex;flex-shrink:0;margin-top:2px;">${icon('hourglass', 15)}</span>
-              <span>Your MOA partnership request is currently being reviewed by the CHMSU CIER administrative office. You will be notified once the agreement document is approved and uploaded.</span>
+              <span>Your MOA partnership request is currently being reviewed by the CHMSU CIER office. You will be notified once the agreement document is approved and uploaded.</span>
             </p>
           ` : ((C.moaStatus || '').toLowerCase() === 'expired' ? `
             <p style="margin:0;font-size:0.84rem;color:#b91c1c;line-height:1.5;display:flex;align-items:flex-start;gap:7px;">

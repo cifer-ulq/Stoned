@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
 
-const subApps = ['landing', 'main', 'jobseeker', 'login', 'admin', 'company', 'supervisors'];
+const subApps = ['landing', 'main', 'jobseeker', 'login', 'admin', 'cier', 'company', 'supervisors'];
 
 export default defineConfig({
   appType: 'mpa',
@@ -78,6 +78,7 @@ export default defineConfig({
         resetPassword: resolve(__dirname, 'login/reset-password.html'),
         onboarding: resolve(__dirname, 'login/onboarding.html'),
         admin: resolve(__dirname, 'admin/index.html'),
+        cier: resolve(__dirname, 'cier/index.html'),
         company: resolve(__dirname, 'company/index.html'),
         companyStudentProfile: resolve(__dirname, 'company/student-profile.html'),
         supervisors: resolve(__dirname, 'supervisors/index.html'),

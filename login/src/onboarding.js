@@ -588,6 +588,7 @@ function attachTemporaryPasswordEvents(cachedUser) {
           company:    '/company/',
           supervisor: '/supervisors/',
           admin:      '/admin/',
+          cier:       '/cier/',
         };
         window.location.href = destinations[updatedUser.role] || '/main/';
       }, 1000);

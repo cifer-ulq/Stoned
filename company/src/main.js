@@ -251,7 +251,7 @@ async function initApp() {
 
     // Role guard — only company users can access this portal
     if (u.role && u.role !== 'company') {
-      const destinations = { student: '../main/', supervisor: '../supervisors/', admin: '../admin/', jobseeker: '../jobseeker/' };
+      const destinations = { student: '../main/', supervisor: '../supervisors/', admin: '../admin/', cier: '../cier/', jobseeker: '../jobseeker/' };
       window.location.href = destinations[u.role] || '../login/';
       return;
     }

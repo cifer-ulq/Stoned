@@ -15,7 +15,6 @@ const navItems = [
 ];
 
 const quickActions = [
-  { icon: 'plus', label: 'Register Company', action: '/companies' },
   { icon: 'upload', label: 'Import Students', action: '/students' },
   { icon: 'flag', label: 'Review Flagged', action: '/jobs' },
 ];

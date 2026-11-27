@@ -191,7 +191,7 @@ export function showPostingRestrictedModal(actionName = 'post opportunities') {
     `;
   } else if (moaStatus === 'Requested') {
     title = 'MOA Request Under Review';
-    message = `Your MOA partnership request has already been submitted to the CHMSU CIER Admin office and is currently under review. Once approved and activated by the administrator, your posting privileges will unlock automatically.`;
+    message = `Your MOA partnership request has already been submitted to the CHMSU CIER office and is currently under review. Once approved and activated by CIER, your posting privileges will unlock automatically.`;
     primaryActionHtml = `
       <button class="btn btn--outline" id="btn-view-dash" style="gap:6px;">
         ${icon('home', 14)} Back to Dashboard
