@@ -209,4 +209,48 @@ class PersistentStorageTest extends TestCase
         $this->assertSame(0, StoredFile::where('path', $firstPath)->count());
         $this->assertSame(1, StoredFile::where('path', $secondPath)->count());
     }
+
+    public function test_student_portrait_seeder_restores_missing_paths_and_preserves_external_urls(): void
+    {
+        Storage::fake('public');
+
+        $bianca = User::create([
+            'name'       => 'Bianca L. Fernandez',
+            'email'      => 'bianca.fernandez.bsit4b@chmsu.edu.ph',
+            'password'   => 'password123',
+            'role'       => 'student',
+            'avatar_url' => '/storage/student-avatars/j7YvHiywJvsQuvhrXGPU9JIjXDsIIYGxGbJH3Xah.jpg',
+        ]);
+
+        $oscar = User::create([
+            'name'       => 'Oscar K. Espino',
+            'email'      => 'oscar.espino.bsit4b@chmsu.edu.ph',
+            'password'   => 'password123',
+            'role'       => 'student',
+            'avatar_url' => null,
+        ]);
+
+        $googleUser = User::create([
+            'name'       => 'Vhan C. Gimarangan',
+            'email'      => 'vhan@chmsu.edu.ph',
+            'password'   => 'password123',
+            'role'       => 'student',
+            'avatar_url' => 'https://lh3.googleusercontent.com/a/example-photo',
+        ]);
+
+        $migration = require database_path('migrations/2026_11_28_000002_seed_missing_student_portraits.php');
+        $migration->up();
+
+        $bianca->refresh();
+        $oscar->refresh();
+        $googleUser->refresh();
+
+        $this->assertSame('/storage/student-avatars/j7YvHiywJvsQuvhrXGPU9JIjXDsIIYGxGbJH3Xah.jpg', $bianca->avatar_url);
+        $this->assertNotNull($oscar->avatar_url);
+        $this->assertStringStartsWith('/storage/student-avatars/', $oscar->avatar_url);
+        $this->assertSame('https://lh3.googleusercontent.com/a/example-photo', $googleUser->avatar_url);
+
+        $this->get($bianca->avatar_url)->assertOk()->assertHeader('Content-Type', 'image/jpeg');
+        $this->get($oscar->avatar_url)->assertOk()->assertHeader('Content-Type', 'image/jpeg');
+    }
 }

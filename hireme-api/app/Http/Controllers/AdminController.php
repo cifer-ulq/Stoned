@@ -3082,6 +3082,30 @@ class AdminController extends Controller
     }
 
     /**
+     * POST /api/admin/seed-student-portraits
+     * Seed realistic gender-matched portraits into PostgreSQL for students missing photos.
+     */
+    public function seedStudentPortraits(Request $request)
+    {
+        $this->requireAdmin($request);
+
+        try {
+            $result = (new \Database\Seeders\SeedStudentPortraitsSeeder())->run();
+            return response()->json([
+                'success' => true,
+                'message' => 'Student portraits seeded into persistent storage.',
+                'result'  => $result,
+            ]);
+        } catch (\Throwable $e) {
+            \Log::error('[seedStudentPortraits] Failed: ' . $e->getMessage(), ['exception' => $e]);
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * GET /api/admin/alumni/pending
      * Retrieve all self-registered graduates awaiting administrative verification.
      */

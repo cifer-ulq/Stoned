@@ -66,10 +66,10 @@ async function initAuth() {
     applyUserToStore(u);
   } catch (_) { /* ignore bad cache */ }
 
-  // Verify + refresh user from API in background
+  // Verify + refresh user from API (bypassing sessionStorage cache so avatar/profile updates appear immediately)
   try {
-    const data = await apiGet('/auth/me');
-    if (!data) return false; // 401 handled inside apiGet → redirects
+    const data = await apiGetFresh('/auth/me');
+    if (!data) return false; // 401 handled inside apiGetFresh → redirects
 
     const userData = data.data || data;
     if (userData.must_change_password) {

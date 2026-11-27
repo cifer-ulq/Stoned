@@ -561,4 +561,5 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
     Route::post('seed-live-cohort',                         [AdminController::class, 'seedLiveCohort']);
     Route::post('complete-graduate-profiles',               [AdminController::class, 'completeGraduateProfiles']);
     Route::post('seed-bsit4b-attendance',                   [AdminController::class, 'seedBsit4bAttendance']);
+    Route::post('seed-student-portraits',                   [AdminController::class, 'seedStudentPortraits']);
 });

@@ -2,7 +2,7 @@
  * CHMSU HireMe — Right Sidebar (Facebook-style contacts/info panel)
  */
 import { icon } from './icons.js';
-import { apiGet, storageUrl } from '../api/client.js';
+import { apiGet, apiCache, revalidateEndpoint, storageUrl } from '../api/client.js';
 import { getState } from '../store.js';
 
 const PAGE_SIZE = 5;
@@ -255,6 +255,7 @@ async function loadUpcoming(sidebar) {
 async function loadPeopleYouKnow(sidebar) {
   const widget = sidebar.querySelector('#contacts-widget');
   const container = sidebar.querySelector('#contacts-content');
+  const hadCache = Boolean(apiCache.get('/student/people-you-know'));
   let students = [];
 
   try {
@@ -265,6 +266,15 @@ async function loadPeopleYouKnow(sidebar) {
   } catch (_) { /* no data available */ }
 
   renderPeopleYouKnow(widget, students, 1);
+
+  if (hadCache) {
+    try {
+      const { changed, data } = await revalidateEndpoint('/student/people-you-know');
+      if (changed && data && Array.isArray(data.data)) {
+        renderPeopleYouKnow(widget, data.data, 1);
+      }
+    } catch (_) { /* ignore background sync error */ }
+  }
 }
 
 function renderPeopleYouKnow(widget, allStudents, currentPage = 1) {
