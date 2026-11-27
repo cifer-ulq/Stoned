@@ -3061,15 +3061,24 @@ class AdminController extends Controller
     {
         $this->requireAdmin($request);
 
-        $seeder = new \Database\Seeders\SeedBsit4bAttendanceLogsSeeder();
-        $results = $seeder->run();
+        try {
+            $seeder = new \Database\Seeders\SeedBsit4bAttendanceLogsSeeder();
+            $results = $seeder->run();
 
-        return response()->json([
-            'success'  => true,
-            'message'  => 'BSIT 4-B attendance logs seeded successfully (5 @ 600h, 5 @ 300h).',
-            'count'    => count($results),
-            'students' => $results,
-        ]);
+            return response()->json([
+                'success'  => true,
+                'message'  => 'BSIT 4-B attendance logs seeded successfully (mixed hours).',
+                'count'    => count($results),
+                'students' => $results,
+            ]);
+        } catch (\Throwable $e) {
+            \Log::error('[seedBsit4bAttendance] Failed: ' . $e->getMessage(), ['exception' => $e]);
+            return response()->json([
+                'success'  => false,
+                'message'  => $e->getMessage(),
+                'location' => basename($e->getFile()) . ':' . $e->getLine(),
+            ], 500);
+        }
     }
 
     /**
