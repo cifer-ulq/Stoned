@@ -122,7 +122,7 @@ class OjtPullOutController extends Controller
         // Store letter file
         $file     = $request->file('letter');
         $docName  = $file->getClientOriginalName();
-        $docPath  = $file->store('pull_out_letters', 'public');
+        $docPath  = \App\Services\PersistentFileService::storeUploadedFile($file, 'pull_out_letters');
 
         // Snapshot hours
         $hoursSnapshot = 0.00;

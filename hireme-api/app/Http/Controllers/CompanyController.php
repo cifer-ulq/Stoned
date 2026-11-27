@@ -1956,7 +1956,7 @@ class CompanyController extends Controller
                 'id'                => $user->id,
                 'name'              => $user->name,
                 'email'             => $user->email,
-                'avatar_url'        => $user->avatar_url,
+                'avatar_url'        => \App\Services\PersistentFileService::resolveAccessibleUrl($user->avatar_url),
                 'company_name'      => $cp?->company_name,
                 'company_location'  => $cp?->company_location,
                 'full_address'      => $cp?->full_address,
@@ -1968,7 +1968,7 @@ class CompanyController extends Controller
                 'contact_email'     => $cp?->contact_email,
                 'contact_phone'     => $cp?->contact_phone,
                 'description'       => $cp?->description,
-                'logo_url'          => $cp?->logo_url,
+                'logo_url'          => \App\Services\PersistentFileService::resolveAccessibleUrl($cp?->logo_url),
                 'profile_completed' => (bool) ($cp?->profile_completed),
                 'status'            => $cp?->status ?? 'Pending',
                 'moa_status'        => $cp?->moa_status ?? 'Pending',
@@ -2094,10 +2094,9 @@ class CompanyController extends Controller
         $logoUrl = null;
         if ($request->hasFile('logo')) {
             if ($cp && $cp->logo_url && str_starts_with($cp->logo_url, '/storage/')) {
-                $old = str_replace('/storage/', '', $cp->logo_url);
-                \Illuminate\Support\Facades\Storage::disk('public')->delete($old);
+                \App\Services\PersistentFileService::delete($cp->logo_url);
             }
-            $path    = $request->file('logo')->store('company-logos', 'public');
+            $path    = \App\Services\PersistentFileService::storeUploadedFile($request->file('logo'), 'company-logos');
             $logoUrl = '/storage/' . $path;
             $user->update(['avatar_url' => $logoUrl]);
         }
@@ -2224,11 +2223,10 @@ class CompanyController extends Controller
 
         // Delete previous logo if local file
         if ($cp && $cp->logo_url && str_starts_with($cp->logo_url, '/storage/')) {
-            $oldPath = str_replace('/storage/', '', $cp->logo_url);
-            \Illuminate\Support\Facades\Storage::disk('public')->delete($oldPath);
+            \App\Services\PersistentFileService::delete($cp->logo_url);
         }
 
-        $path = $request->file('logo')->store('company-logos', 'public');
+        $path = \App\Services\PersistentFileService::storeUploadedFile($request->file('logo'), 'company-logos');
         $url  = '/storage/' . $path;
 
         if ($cp) {

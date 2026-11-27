@@ -4,7 +4,7 @@
  * rich meta facts, structured contact cards, and interactive job & OJT listings.
  */
 import { icon } from '../components/icons.js';
-import { apiGet } from '../api/client.js';
+import { apiGet, storageUrl } from '../api/client.js';
 import { navigate } from '../router.js';
 
 let activeTab = 'about';
@@ -18,9 +18,8 @@ function toArr(val) {
 
 /** Normalize relative storage paths to full API URL */
 function logoSrc(url) {
-  if (!url) return null;
-  if (url.startsWith('http')) return url;
-  return `http://localhost:8000${url}`;
+  const resolved = storageUrl(url);
+  return resolved || null;
 }
 
 const GRADIENTS = [

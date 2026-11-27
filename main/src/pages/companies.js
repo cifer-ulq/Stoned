@@ -4,7 +4,7 @@
  * live search, stats banner, and rich company cards.
  */
 import { icon } from '../components/icons.js';
-import { apiGet } from '../api/client.js';
+import { apiGet, storageUrl } from '../api/client.js';
 import { navigate } from '../router.js';
 
 let currentView = 'grid'; // 'grid' | 'list'
@@ -13,9 +13,8 @@ let selectedCategory = 'all';
 let sortBy = 'name';
 
 function logoSrc(url) {
-  if (!url) return null;
-  if (url.startsWith('http')) return url;
-  return `http://localhost:8000${url}`;
+  const resolved = storageUrl(url);
+  return resolved || null;
 }
 
 const GRADIENTS = [

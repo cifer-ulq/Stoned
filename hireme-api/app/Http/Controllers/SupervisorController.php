@@ -565,8 +565,10 @@ class SupervisorController extends Controller
 
         $letterPath = null;
         if ($request->hasFile('endorsement_letter')) {
-            $letterPath = $request->file('endorsement_letter')
-                ->store('endorsement-letters', 'public');
+            $letterPath = \App\Services\PersistentFileService::storeUploadedFile(
+                $request->file('endorsement_letter'),
+                'endorsement-letters'
+            );
         } else {
             // Dynamically generate the official CHMSU Endorsement Memorandum PDF
             $letterPath = \App\Services\EndorsementPdfService::generateAndStore(
@@ -694,7 +696,10 @@ class SupervisorController extends Controller
         // Handle uploaded file if supervisor uploaded a single custom document for the cohort
         $uploadedLetterPath = null;
         if ($request->hasFile('endorsement_letter')) {
-            $uploadedLetterPath = $request->file('endorsement_letter')->store('endorsement-letters', 'public');
+            $uploadedLetterPath = \App\Services\PersistentFileService::storeUploadedFile(
+                $request->file('endorsement_letter'),
+                'endorsement-letters'
+            );
         }
 
         $endorsedRecords = [];
@@ -3585,7 +3590,7 @@ class SupervisorController extends Controller
 
             if ($student->avatar_url && !str_starts_with($student->avatar_url, 'http')) {
                 try {
-                    \Illuminate\Support\Facades\Storage::disk('public')->delete($student->avatar_url);
+                    \App\Services\PersistentFileService::delete($student->avatar_url);
                 } catch (\Throwable $e) {}
             }
 

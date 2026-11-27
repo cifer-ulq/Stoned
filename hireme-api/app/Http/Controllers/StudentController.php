@@ -169,7 +169,7 @@ class StudentController extends Controller
             'id'               => $user->id,
             'name'             => $user->name,
             'email'            => $user->email,
-            'avatar_url'       => $user->avatar_url,
+            'avatar_url'       => \App\Services\PersistentFileService::resolveAccessibleUrl($user->avatar_url),
             'role'             => $user->role,
             'school'           => $profile?->school,
             'campus'           => $profile?->campus,
@@ -280,7 +280,7 @@ class StudentController extends Controller
                 'id'               => $user->id,
                 'name'             => $user->name,
                 'email'            => $user->email,
-                'avatar_url'       => $user->avatar_url,
+                'avatar_url'       => \App\Services\PersistentFileService::resolveAccessibleUrl($user->avatar_url),
                 'role'             => $user->role,
                 'is_alumni'        => $isAlumni,
                 'school'           => $profile?->school,
@@ -408,7 +408,7 @@ class StudentController extends Controller
                     'name'         => $sup->name,
                     'email'        => $sup->email,
                     'phone'        => $sup->supervisorProfile?->phone ?? '',
-                    'avatar'       => $sup->avatar_url,
+                    'avatar'       => \App\Services\PersistentFileService::resolveAccessibleUrl($sup->avatar_url),
                     'course'       => $assignedCourse,
                     'position'     => $sup->supervisorProfile?->position ?? $assignedCourse,
                     'company_name' => $sup->supervisorProfile?->company_name ?? 'CHMSU',
@@ -442,7 +442,7 @@ class StudentController extends Controller
                     'resume_type'            => $resumeType,
                     'resume_objective'       => $resumeObj,
                     'cover_color'      => $studentProfile?->cover_color,
-                    'avatar_url'       => $user->avatar_url,
+                    'avatar_url'       => \App\Services\PersistentFileService::resolveAccessibleUrl($user->avatar_url),
                 ],
                 'skills' => $skills->map(fn($s) => [
                     'name'     => $s->name,
@@ -520,11 +520,10 @@ class StudentController extends Controller
 
         // Delete the old stored file if it was one we uploaded
         if ($user->avatar_url && str_starts_with($user->avatar_url, '/storage/')) {
-            $old = str_replace('/storage/', '', $user->avatar_url);
-            \Illuminate\Support\Facades\Storage::disk('public')->delete($old);
+            \App\Services\PersistentFileService::delete($user->avatar_url);
         }
 
-        $path = $request->file('avatar')->store('student-avatars', 'public');
+        $path = \App\Services\PersistentFileService::storeUploadedFile($request->file('avatar'), 'student-avatars');
         $url  = '/storage/' . $path;
         $user->update(['avatar_url' => $url]);
 
@@ -910,7 +909,7 @@ class StudentController extends Controller
         $request->validate([
             'image' => ['required', 'image', 'mimes:jpeg,jpg,png,gif,webp', 'max:4096'],
         ]);
-        $path = $request->file('image')->store('project-thumbnails', 'public');
+        $path = \App\Services\PersistentFileService::storeUploadedFile($request->file('image'), 'project-thumbnails');
         return response()->json(['url' => '/storage/' . $path, 'image_url' => '/storage/' . $path]);
     }
 
@@ -959,8 +958,7 @@ class StudentController extends Controller
     {
         $project = PortfolioProject::where('user_id', $request->user()->id)->findOrFail($id);
         if ($project->image_url && str_starts_with($project->image_url, '/storage/project-thumbnails/')) {
-            $old = str_replace('/storage/', '', $project->image_url);
-            \Illuminate\Support\Facades\Storage::disk('public')->delete($old);
+            \App\Services\PersistentFileService::delete($project->image_url);
         }
         $project->delete();
         return response()->json(['message' => 'Project deleted']);
@@ -975,7 +973,7 @@ class StudentController extends Controller
         $request->validate([
             'certificate' => ['required', 'file', 'mimes:jpeg,jpg,png,pdf,webp', 'max:5120'],
         ]);
-        $path = $request->file('certificate')->store('achievement-certificates', 'public');
+        $path = \App\Services\PersistentFileService::storeUploadedFile($request->file('certificate'), 'achievement-certificates');
         return response()->json(['url' => '/storage/' . $path, 'certificate_url' => '/storage/' . $path]);
     }
 
@@ -1026,8 +1024,7 @@ class StudentController extends Controller
     {
         $ach = StudentAchievement::where('user_id', $request->user()->id)->findOrFail($id);
         if ($ach->certificate_url && str_starts_with($ach->certificate_url, '/storage/achievement-certificates/')) {
-            $old = str_replace('/storage/', '', $ach->certificate_url);
-            \Illuminate\Support\Facades\Storage::disk('public')->delete($old);
+            \App\Services\PersistentFileService::delete($ach->certificate_url);
         }
         $ach->delete();
         return response()->json(['message' => 'Achievement deleted']);
@@ -1090,7 +1087,7 @@ class StudentController extends Controller
                     'deployment'    => [
                         'company'         => $posting->company_name,
                         'companyUserId'   => $posting->company_user_id,
-                        'companyLogo'     => $posting->company?->avatar_url,
+                        'companyLogo'     => \App\Services\PersistentFileService::resolveAccessibleUrl($posting->company?->avatar_url),
                         'companyInitial'  => $posting->company_initial ?? ($posting->company_name ? strtoupper(substr($posting->company_name, 0, 2)) : 'CO'),
                         'companyColor'    => $posting->company_color ?? '#005930',
                         'department'      => $posting->department,
@@ -1397,7 +1394,7 @@ class StudentController extends Controller
             'deployment'    => [
                 'company'         => $posting->company_name,
                 'companyUserId'   => $posting->company_user_id,
-                'companyLogo'     => $posting->company?->avatar_url,
+                'companyLogo'     => \App\Services\PersistentFileService::resolveAccessibleUrl($posting->company?->avatar_url),
                 'companyInitial'  => $posting->company_initial ?? ($posting->company_name ? strtoupper(substr($posting->company_name, 0, 2)) : 'CO'),
                 'companyColor'    => $posting->company_color ?? '#005930',
                 'department'      => $posting->department,
@@ -1727,10 +1724,10 @@ class StudentController extends Controller
 
             $filename = 'proof_' . $userId . '_' . time() . '_' . \Illuminate\Support\Str::random(8) . '.' . $type;
             $path = 'attendance_proofs/' . $filename;
-            \Illuminate\Support\Facades\Storage::disk('public')->put($path, $decoded);
+            \App\Services\PersistentFileService::put($path, $decoded, 'image/' . ($type === 'jpg' ? 'jpeg' : $type));
             return $path;
         } elseif ($proofImage instanceof \Illuminate\Http\UploadedFile) {
-            return $proofImage->store('attendance_proofs', 'public');
+            return \App\Services\PersistentFileService::storeUploadedFile($proofImage, 'attendance_proofs');
         }
 
         return null;
@@ -3093,7 +3090,7 @@ class StudentController extends Controller
 
         $customResumeUrl = null;
         if ($request->hasFile('custom_resume')) {
-            $path = $request->file('custom_resume')->store('resumes', 'public');
+            $path = \App\Services\PersistentFileService::storeUploadedFile($request->file('custom_resume'), 'resumes');
             $customResumeUrl = '/storage/' . $path;
         }
 
@@ -3297,7 +3294,7 @@ class StudentController extends Controller
 
         $file     = $request->file('file');
         $docType  = $validated['document_type'];
-        $path     = $file->store('onboarding-documents', 'public');
+        $path     = \App\Services\PersistentFileService::storeUploadedFile($file, 'onboarding-documents');
 
         $checklist = $app->onboarding_checklist ?? [];
         $checklist[$docType] = [
@@ -3704,7 +3701,7 @@ class StudentController extends Controller
         if ($request->hasFile('document')) {
             $file = $request->file('document');
             $docName = $file->getClientOriginalName();
-            $docPath = $file->store('ojt_emergencies', 'public');
+            $docPath = \App\Services\PersistentFileService::storeUploadedFile($file, 'ojt_emergencies');
         }
 
         // 4. Calculate hours rendered snapshot
@@ -3829,7 +3826,7 @@ class StudentController extends Controller
         }
 
         $file = $request->file('document');
-        $docPath = $file->store('ojt_emergencies/fit_to_work', 'public');
+        $docPath = \App\Services\PersistentFileService::storeUploadedFile($file, 'ojt_emergencies/fit_to_work');
 
         $emergency->update([
             'fit_to_work_document_path' => $docPath,

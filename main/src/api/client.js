@@ -246,15 +246,17 @@ export async function apiUpload(path, formData) {
  * Resolve public storage path to full absolute URL.
  */
 export function storageUrl(path) {
-  if (!path) return '';
-  if (typeof path !== 'string') return '';
-  if (path.startsWith('data:') || path.startsWith('blob:')) return path;
-  let clean = path.replace(/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i, '')
-                  .replace(/^https?:\/\/stoned\.onrender\.com/i, '');
+  if (!path || typeof path !== 'string') return '';
+  const trimmed = path.trim();
+  if (!trimmed) return '';
+  if (trimmed.startsWith('data:') || trimmed.startsWith('blob:')) return trimmed;
+  let clean = trimmed.replace(/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i, '')
+                     .replace(/^https?:\/\/stoned\.onrender\.com/i, '');
   if (clean.startsWith('http://') || clean.startsWith('https://')) {
     return clean;
   }
   const relative = clean.replace(/^\//, '');
+  if (!relative) return '';
   return relative.startsWith('storage/') ? `/${relative}` : `/storage/${relative}`;
 }
 

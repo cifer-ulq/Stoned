@@ -118,7 +118,7 @@ class CompanyPartnershipService
 
         $moaFilePath = null;
         if ($moaFile) {
-            $moaFilePath = $moaFile->store('moa_documents', 'public');
+            $moaFilePath = PersistentFileService::storeUploadedFile($moaFile, 'moa_documents');
         }
 
         CompanyProfile::create([
@@ -292,7 +292,7 @@ class CompanyPartnershipService
         $updateData = [];
 
         if ($moaFile) {
-            $updateData['moa_file_path'] = $moaFile->store('moa-documents', 'public');
+            $updateData['moa_file_path'] = PersistentFileService::storeUploadedFile($moaFile, 'moa-documents');
         }
 
         if (!empty($data['moa_start_date'])) {

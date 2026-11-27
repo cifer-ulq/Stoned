@@ -31,7 +31,7 @@ class JobseekerController extends Controller
             'id'                  => $user->id,
             'name'                => $user->name,
             'email'               => $user->email,
-            'avatar_url'          => $user->avatar_url,
+            'avatar_url'          => \App\Services\PersistentFileService::resolveAccessibleUrl($user->avatar_url),
             'desired_job_title'   => $profile?->desired_job_title,
             'work_preference'     => $profile?->work_preference,
             'years_of_experience' => $profile?->years_of_experience,
@@ -63,7 +63,10 @@ class JobseekerController extends Controller
         ]);
 
         if ($request->hasFile('avatar')) {
-            $path = $request->file('avatar')->store('jobseeker-avatars', 'public');
+            if ($user->avatar_url && str_starts_with($user->avatar_url, '/storage/')) {
+                \App\Services\PersistentFileService::delete($user->avatar_url);
+            }
+            $path = \App\Services\PersistentFileService::storeUploadedFile($request->file('avatar'), 'jobseeker-avatars');
             $data['avatar_url'] = '/storage/' . $path;
             $user->update(['avatar_url' => $data['avatar_url']]);
         }
@@ -232,7 +235,7 @@ class JobseekerController extends Controller
                 'name'         => $user->name,
                 'email'        => $user->email,
                 'role'         => $user->role,
-                'avatar_url'   => $user->avatar_url,
+                'avatar_url'   => \App\Services\PersistentFileService::resolveAccessibleUrl($user->avatar_url),
                 'headline'     => $profile?->headline,
                 'bio'          => $profile?->bio,
                 'location'     => $profile?->location,
@@ -491,7 +494,7 @@ class JobseekerController extends Controller
 
         $file     = $request->file('file');
         $docType  = $validated['document_type'];
-        $path     = $file->store('onboarding-documents', 'public');
+        $path     = \App\Services\PersistentFileService::storeUploadedFile($file, 'onboarding-documents');
 
         $checklist = $app->onboarding_checklist ?? [];
         $checklist[$docType] = [
@@ -674,7 +677,7 @@ class JobseekerController extends Controller
 
         $customResumeUrl = null;
         if ($request->hasFile('custom_resume')) {
-            $path = $request->file('custom_resume')->store('resumes', 'public');
+            $path = \App\Services\PersistentFileService::storeUploadedFile($request->file('custom_resume'), 'resumes');
             $customResumeUrl = '/storage/' . $path;
         }
 
@@ -960,7 +963,7 @@ class JobseekerController extends Controller
         $request->validate([
             'image' => ['required', 'image', 'mimes:jpeg,jpg,png,gif,webp', 'max:4096'],
         ]);
-        $path = $request->file('image')->store('project-thumbnails', 'public');
+        $path = \App\Services\PersistentFileService::storeUploadedFile($request->file('image'), 'project-thumbnails');
         return response()->json(['url' => '/storage/' . $path, 'image_url' => '/storage/' . $path]);
     }
 
@@ -1010,8 +1013,7 @@ class JobseekerController extends Controller
     {
         $project = PortfolioProject::where('user_id', $request->user()->id)->findOrFail($id);
         if ($project->image_url && str_starts_with($project->image_url, '/storage/project-thumbnails/')) {
-            $old = str_replace('/storage/', '', $project->image_url);
-            \Illuminate\Support\Facades\Storage::disk('public')->delete($old);
+            \App\Services\PersistentFileService::delete($project->image_url);
         }
         $project->delete();
         return response()->json(['message' => 'Deleted.']);
@@ -1023,7 +1025,7 @@ class JobseekerController extends Controller
         $request->validate([
             'certificate' => ['required', 'file', 'mimes:jpeg,jpg,png,pdf,webp', 'max:5120'],
         ]);
-        $path = $request->file('certificate')->store('achievement-certificates', 'public');
+        $path = \App\Services\PersistentFileService::storeUploadedFile($request->file('certificate'), 'achievement-certificates');
         return response()->json(['url' => '/storage/' . $path, 'certificate_url' => '/storage/' . $path]);
     }
 
@@ -1075,8 +1077,7 @@ class JobseekerController extends Controller
     {
         $ach = StudentAchievement::where('user_id', $request->user()->id)->findOrFail($id);
         if ($ach->certificate_url && str_starts_with($ach->certificate_url, '/storage/achievement-certificates/')) {
-            $old = str_replace('/storage/', '', $ach->certificate_url);
-            \Illuminate\Support\Facades\Storage::disk('public')->delete($old);
+            \App\Services\PersistentFileService::delete($ach->certificate_url);
         }
         $ach->delete();
         return response()->json(['message' => 'Deleted.']);

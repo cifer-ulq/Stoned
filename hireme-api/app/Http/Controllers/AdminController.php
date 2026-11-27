@@ -2632,7 +2632,7 @@ class AdminController extends Controller
             // 12. Delete uploaded avatar if on public disk
             if ($student->avatar_url && !str_starts_with($student->avatar_url, 'http')) {
                 try {
-                    Storage::disk('public')->delete($student->avatar_url);
+                    \App\Services\PersistentFileService::delete($student->avatar_url);
                 } catch (\Throwable $e) {
                     // Ignore storage delete errors
                 }

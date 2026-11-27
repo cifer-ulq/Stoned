@@ -511,7 +511,7 @@ class EndorsementPdfService
         $filename = "endorsement_{$safeStudentSlug}_{$interest->id}.pdf";
         $relativePath = "endorsement-letters/{$filename}";
 
-        Storage::disk('public')->put($relativePath, $pdfBinary);
+        PersistentFileService::put($relativePath, $pdfBinary, 'application/pdf');
 
         return $relativePath;
     }

@@ -87,12 +87,12 @@ function getCountdownData(daysLeft) {
 }
 
 function renderCompanyAvatar(dep) {
-  if (dep.companyLogo) {
-    const src = dep.companyLogo.startsWith('http') ? dep.companyLogo : `http://localhost:8000${dep.companyLogo}`;
-    return `<div class="ojt-dossier-avatar"><img src="${src}" alt="${esc(dep.company || 'Company')}"></div>`;
-  }
   const initial = dep.companyInitial || (dep.company ? dep.company.trim().slice(0, 2).toUpperCase() : 'CO');
   const color = dep.companyColor || 'var(--color-primary)';
+  const src = dep.companyLogo ? storageUrl(dep.companyLogo) : '';
+  if (src) {
+    return `<div class="ojt-dossier-avatar" style="background:var(--color-primary-bg);color:${color};"><img src="${esc(src)}" alt="${esc(dep.company || 'Company')}" onerror="this.onerror=null;this.parentElement.textContent='${esc(initial)}';"></div>`;
+  }
   return `<div class="ojt-dossier-avatar" style="background:var(--color-primary-bg);color:${color};">${esc(initial)}</div>`;
 }
 
@@ -4625,8 +4625,9 @@ function showLogDetail(log) {
       ? `<span style="background:rgba(239,68,68,0.12);color:#ef4444;font-size:0.7rem;font-weight:700;padding:2px 8px;border-radius:99px;">Rejected</span>`
       : `<span style="background:var(--color-success-bg);color:var(--color-success);font-size:0.7rem;font-weight:700;padding:2px 8px;border-radius:99px;">Approved by Supervisor</span>`;
 
-    const imgHtml = log.proofImage
-      ? `<div style="margin-top:8px;text-align:center;"><img src="${storageUrl(log.proofImage)}" alt="Attendance proof" style="max-width:100%;max-height:180px;border-radius:var(--radius-md);border:1px solid var(--border-light);object-fit:cover;" /></div>`
+    const proofSrc = log.proofImage ? storageUrl(log.proofImage) : '';
+    const imgHtml = proofSrc
+      ? `<div style="margin-top:8px;text-align:center;"><img src="${esc(proofSrc)}" alt="Attendance proof" style="max-width:100%;max-height:180px;border-radius:var(--radius-md);border:1px solid var(--border-light);object-fit:cover;" onerror="this.onerror=null;this.parentElement.style.display='none';" /></div>`
       : '';
 
     const rejHtml = isRej && log.rejectionReason

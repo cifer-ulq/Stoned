@@ -31,6 +31,8 @@ class PeerPortfolioService
             ->limit($limit)
             ->get();
 
+        PersistentFileService::preloadPaths($peers->pluck('avatar_url')->all());
+
         $data = $peers->map(function ($u) {
             $nameParts = explode(' ', trim($u->name));
             $initials  = strtoupper(
@@ -60,7 +62,7 @@ class PeerPortfolioService
                 'id'                => $u->id,
                 'name'              => $u->name,
                 'initials'          => $initials,
-                'avatar_url'        => $u->avatar_url,
+                'avatar_url'        => PersistentFileService::resolveAccessibleUrl($u->avatar_url),
                 'role'              => $u->role,
                 'is_alumni'         => $isAlumni,
                 'program'           => $program,
@@ -159,7 +161,7 @@ class PeerPortfolioService
                 'id'           => $targetUser->id,
                 'name'         => $targetUser->name,
                 'email'        => $targetUser->email,
-                'avatar_url'   => $targetUser->avatar_url,
+                'avatar_url'   => PersistentFileService::resolveAccessibleUrl($targetUser->avatar_url),
                 'role'         => $targetUser->role,
                 'is_alumni'    => $isAlumni,
                 'school'       => $school,

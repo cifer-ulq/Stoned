@@ -209,7 +209,7 @@ class LoginController extends Controller
                 'terms_accepted_at'    => $user->terms_accepted_at?->toIso8601String(),
                 'has_accepted_terms'   => !empty($user->terms_accepted_at),
                 'terms_version'        => $user->terms_version,
-                'avatar_url'           => $user->avatar_url,
+                'avatar_url'           => \App\Services\PersistentFileService::resolveAccessibleUrl($user->avatar_url),
                 'company_profile'      => $user->companyProfile,
                 'student_profile'      => $user->studentProfile,
                 'supervisor_profile'   => $user->supervisorProfile,
@@ -262,8 +262,7 @@ class LoginController extends Controller
 
         // Delete previous uploaded avatar file if it was a local storage file
         if ($user->avatar_url && str_starts_with($user->avatar_url, '/storage/')) {
-            $oldPath = str_replace('/storage/', '', $user->avatar_url);
-            \Illuminate\Support\Facades\Storage::disk('public')->delete($oldPath);
+            \App\Services\PersistentFileService::delete($user->avatar_url);
         }
 
         $folder = match ($user->role) {
@@ -274,7 +273,7 @@ class LoginController extends Controller
             default      => 'student-avatars',
         };
 
-        $path = $request->file('avatar')->store($folder, 'public');
+        $path = \App\Services\PersistentFileService::storeUploadedFile($request->file('avatar'), $folder);
         $url  = '/storage/' . $path;
 
         $user->update(['avatar_url' => $url]);
@@ -373,7 +372,7 @@ class LoginController extends Controller
                 'status'               => $user->studentProfile?->status ?? 'regular',
                 'must_change_password' => false,
                 'onboarding_completed' => $user->onboarding_completed,
-                'avatar_url'           => $user->avatar_url,
+                'avatar_url'           => \App\Services\PersistentFileService::resolveAccessibleUrl($user->avatar_url),
                 'company_profile'      => $user->companyProfile,
                 'student_profile'      => $user->studentProfile,
                 'supervisor_profile'   => $user->supervisorProfile,
@@ -412,7 +411,7 @@ class LoginController extends Controller
                 'provider'             => $user->provider,
                 'must_change_password' => false,
                 'onboarding_completed' => $user->onboarding_completed,
-                'avatar_url'           => $user->avatar_url,
+                'avatar_url'           => \App\Services\PersistentFileService::resolveAccessibleUrl($user->avatar_url),
                 'company_profile'      => $user->companyProfile,
                 'student_profile'      => $user->studentProfile,
                 'supervisor_profile'   => $user->supervisorProfile,

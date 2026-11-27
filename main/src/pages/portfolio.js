@@ -216,13 +216,17 @@ function emptyState(msg) {
 /* ── Update every avatar element in the shell (sidebar + navbar) ── */
 function syncAvatarEverywhere(url) {
   const photoUrl = storageUrl(url);
-  const imgHtml = `<img src="${photoUrl}" alt="Profile" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" onerror="this.onerror=null;this.style.display='none';">`;
+  const user = getState('user') || {};
+  const initials = String(user.initials || 'U').replace(/'/g, '');
+  const imgHtml = photoUrl
+    ? `<img src="${photoUrl}" alt="Profile" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" onerror="this.onerror=null;this.parentElement.textContent='${initials}';">`
+    : initials;
   document.querySelectorAll('[data-user-avatar]').forEach(el => { el.innerHTML = imgHtml; });
-  setState('user.avatar', photoUrl);
+  setState('user.avatar', photoUrl || null);
   // Persist so next full page load shows the image too
   try {
     const cached = JSON.parse(localStorage.getItem('hireme_user') || '{}');
-    cached.avatar_url = photoUrl;
+    cached.avatar_url = photoUrl || null;
     localStorage.setItem('hireme_user', JSON.stringify(cached));
   } catch (_) {}
 }
@@ -3157,12 +3161,13 @@ function renderProjects() {
             const role = p.role || 'Contributor';
             const date = p.date_completed || '';
             const grad = projectGradients[i % projectGradients.length];
+            const thumbUrl = p.image_url ? storageUrl(p.image_url) : '';
 
             return `
             <div class="work-card hover-lift" data-id="${p.id}">
-              <div class="work-card__preview" style="background:${p.image_url ? 'var(--bg-secondary)' : grad};">
-                ${p.image_url
-                  ? `<img class="work-card__thumb" src="${storageUrl(p.image_url)}" alt="${p.title}" loading="lazy" />`
+              <div class="work-card__preview" style="background:${thumbUrl ? 'var(--bg-secondary)' : grad};">
+                ${thumbUrl
+                  ? `<img class="work-card__thumb" src="${thumbUrl}" alt="${p.title}" loading="lazy" onerror="this.onerror=null;this.parentElement.style.background='${grad}';this.remove();" />`
                   : `<div class="work-card__banner-placeholder">
                       <span style="display:inline-flex;opacity:0.92;">${getProjectCatIcon(p.category, 30)}</span>
                       <span style="font-size:0.8rem;font-weight:700;letter-spacing:0.04em;">${cat}</span>

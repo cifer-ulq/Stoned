@@ -2,6 +2,9 @@
 
 use Illuminate\Support\Facades\Route;
 
+Route::get('/storage/{path}', [\App\Http\Controllers\StorageController::class, 'serve'])
+    ->where('path', '.*');
+
 Route::get('/reset-to-admin-only', function () {
     try {
         \Illuminate\Support\Facades\DB::transaction(function () {
