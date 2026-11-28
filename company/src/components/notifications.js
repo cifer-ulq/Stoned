@@ -539,11 +539,11 @@ export function initNotifications(triggerBtn) {
     }
   }
 
-  function scheduleNextPoll(delay = 4000) {
+  function scheduleNextPoll(delay = 15000) {
     clearTimeout(pollTimer);
     pollTimer = setTimeout(async () => {
       await syncNotifications();
-      const nextDelay = document.hidden ? 30000 : 4000;
+      const nextDelay = document.hidden ? 30000 : 15000;
       scheduleNextPoll(nextDelay);
     }, delay);
   }
@@ -551,7 +551,7 @@ export function initNotifications(triggerBtn) {
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) {
       syncNotifications();
-      scheduleNextPoll(4000);
+      scheduleNextPoll(15000);
     } else {
       scheduleNextPoll(30000);
     }
@@ -710,5 +710,5 @@ export function initNotifications(triggerBtn) {
   });
 
   syncNotifications();
-  scheduleNextPoll(4000);
+  scheduleNextPoll(15000);
 }

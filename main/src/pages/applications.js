@@ -1830,7 +1830,7 @@ export async function renderApplications(container) {
         return;
       }
       syncApplications(false);
-    }, 6000); // 6 seconds live poll
+    }, 20000); // 20 seconds live poll
 
     syncTimeTimer = setInterval(() => {
       if (!container.isConnected) {

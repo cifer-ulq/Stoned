@@ -194,11 +194,11 @@ async function checkActiveViewFreshness() {
   } catch (_) {}
 }
 
-function scheduleActiveViewCheck(delay = 6000) {
+function scheduleActiveViewCheck(delay = 30000) {
   clearTimeout(activeSyncTimer);
   activeSyncTimer = setTimeout(async () => {
     await checkActiveViewFreshness();
-    scheduleActiveViewCheck(document.hidden ? 30000 : 6000);
+    scheduleActiveViewCheck(document.hidden ? 60000 : 30000);
   }, delay);
 }
 
@@ -209,9 +209,9 @@ window.addEventListener('focus', () => {
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) {
     checkActiveViewFreshness();
-    scheduleActiveViewCheck(6000);
-  } else {
     scheduleActiveViewCheck(30000);
+  } else {
+    scheduleActiveViewCheck(60000);
   }
 });
 
@@ -282,7 +282,7 @@ async function initApp() {
   initSidebarLeft();
   initSidebarRight();
   initRouter();
-  scheduleActiveViewCheck(6000);
+  scheduleActiveViewCheck(30000);
 }
 
 initApp();
